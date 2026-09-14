@@ -10,9 +10,7 @@ It is not the working repository. It has no development history. The data corpor
 
 ## Version
 
-The files are a snapshot of the working repository at commit `2e10f41`.
-
-<!-- RELEASE: public commit ________ · release tag v1.0.0 · DOI ________ (filled in once the release is archived) -->
+The files are a snapshot of the working repository at commit `2e10f41`. Release `v1.0.0` of this repository, at public commit `5627792`, is archived at Zenodo: DOI [10.5281/zenodo.22758536](https://doi.org/10.5281/zenodo.22758536) for this version, and [10.5281/zenodo.22758535](https://doi.org/10.5281/zenodo.22758535) for all versions.
 
 ## Resolving a thesis citation
 
