@@ -1,12 +1,10 @@
-# Appendix (candidate): background supplements
+# Background supplements
 
-Status: skeleton created by the ch.2 compression session (2026-09-10) · Source text verbatim from merged draft-r3 except where an item is marked NEW or notes a pointer edit · Every item is marked **appendix-candidate** or **repo-cite (recommended)**; final print-appendix curation is Ali's end-of-wave ruling · Appendix letter assigned at curation · Narrative: none
+Appendix items of the thesis that are published here rather than printed (end-game step 3, applying the classification ruled 2026-09-13). Each item opens with its printed home, or states that it has none. `§n.m` names a section of the printed thesis and `Table Tn.m` one of its tables; `D-nnn` is an entry of `docs/DECISIONS.md`; a bracketed tag such as `[TierTrajectories]` is a row of `thesis/claims-ledger.md`, listed under *Claims used* at the end of the file. Item identifiers are the ones the working files carried, so an identifier is unambiguous only together with its file name; the printed appendices number their own items (A.1–A.3, B.1–B.2, C.1–C.2), and every printed pointer to this repository names the file.
 
-**Why this file exists.** The ch.2 ceiling of 797 words is below the chapter's measured anchor floor (~995 words of content that another chapter's §-pointer or a ledger tag depends on). Ali ruled on 2026-09-10 that the ceiling binds. Everything below therefore left print rather than being deleted, because deleting it would have removed cited scholarship from the thesis's only related-work chapter. Items E.1, E.2 and E.4 are **strong print-appendix candidates**: each is the last home of a work or a fact the chapter previously carried in print. Ali ruled the curation on 2026-09-10: the cost-model item was deleted (ch.3 §3.1 and ch.12 §12.3 are its print homes) and the deleted-figures item was sent to repo-cite (the record is in `thesis/audits/ch2-retarget-map.md`).
+## E.1 The six evaluated tools
 
-## E.1 The six evaluated tools — appendix-candidate (strong)
-
-Chapter home: §2.2 (the six names, their one-line identities, and Weave's abstention stay in print; ch.3 §3.3 cites §2.2 as the place all six are introduced).
+Printed home: §2.2, which names the six tools with their one-line identities and Weave's abstention; §3.3 cites §2.2 as the place all six are introduced.
 
 - **`git merge-file`** is the line-based baseline. It is a standalone three-way merge over file triples, with no notion of syntax.
 - **JDime** is the reference structured merge for Java, with the auto-tuned line/structure switch [CITE: apel2012autotuning, seibt2022leveraging]. Its practical standing is poor. Schesch et al. excluded it from their own evaluation [CITE: schesch2024evaluation]. They report that it discards comments and file headers, reorders declarations, runs slowly, and does not handle the full syntax of Java 8. It is retained here as a baseline for a specific reason. One family of its defects is content loss during AST round-trips. That family recurs in other tools.
@@ -19,9 +17,9 @@ Chapter home: §2.2 (the six names, their one-line identities, and Weave's abste
 
 **The auto-tuning precedent.** JDime's principle is to spend precision only where the cheap path fails. The routing hypothesis this thesis examines has precedent in it. Chapter 6 tests the same idea at whole-tool granularity, routing entire merge cases to specialist tools by predicted difficulty. That test measures the principle's limits at that granularity. It does not question the principle itself.
 
-## E.2 The seven-category starting taxonomy — appendix-candidate (strong)
+## E.2 The seven-category starting taxonomy
 
-Chapter home: §2.3, which prints the seven category names, the design-phase provenance record, and the working-hypothesis framing. This item carries the mechanisms and the worked-example pointers. Table T4.2 (ch.4) and Table T7.3 (ch.7) both print the seven category names in their own left-hand columns.
+Printed home: §2.3, which prints the seven category names, the design-phase provenance record and the working-hypothesis framing; Table T4.2 and Table T7.3 carry the names in their own columns.
 
 1. atomic updates split across branches;
 2. control-flow interference, e.g. a short-circuit introduced around a call the other side made effectful;
@@ -37,10 +35,9 @@ Chapter home: §2.3, which prints the seven category names, the design-phase pro
 
 **Foundations.** Program-integration research defined *interference* over program dependence representations [CITE: horwitz1989integrating]. That work showed that integrating noninterfering versions is possible in principle. It also showed that establishing noninterference is undecidable in general. Brun et al. observed clean merges that fail to build or test, and argued for proactive detection [CITE: brun2011proactive].
 
+## E.4 Detection-side approaches not carried in print
 
-## E.4 Detection-side approaches not carried in print — appendix-candidate (strong)
-
-Chapter home: §2.6 (the overriding-assignment operating point and IntelliMerge stay in print, because ch.8 §8.5 and ch.10 §10.4 cite them). This item is the last home of two works: RefMerge and MergeBERT. The Accioly conflict-pattern taxonomy returned to print in §2.6 on Ali's 2026-09-10 curation ruling.
+Printed home: §2.6, which keeps the overriding-assignment operating point and IntelliMerge (§8.5 cites the operating point, and §10.4 cites the survey) and one sentence on each of RefMerge and MergeBERT; the rest of this item's reading survives only here.
 
 - **Proactive approaches** merge continuously in the background and surface build or test breakage early [CITE: brun2011proactive].
 - **SMAT** detects behavioral interference by generating unit tests targeted at merged regions [CITE: dasilva2020behavior].
@@ -49,3 +46,6 @@ Chapter home: §2.6 (the overriding-assignment operating point and IntelliMerge 
 
 **The IntelliMerge gate.** The project's own tool survey reached the same conclusion as the external evidence. IntelliMerge occupies a box in this project's historical target pipeline, and I kept it out before integration. The omission was evidence-gated, not accidental. Chapter 6 applies the same gate logic to the specialist arms that *were* built.
 
+## Claims used
+
+None. The items carry citations but no ledger-tagged value.

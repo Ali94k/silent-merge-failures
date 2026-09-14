@@ -47,8 +47,8 @@ Appendices (uncounted): full tables, normalization-tier catalogue, human-annotat
 
 ## Writing conventions
 
-- Narrative device (try–fail cycles): narrative voice in Ch. 10 only (PR #45 deleted the bridges and the mini-abstracts of Chs. 2–12, and PR #53 the Ch. 1 arc); structure (hypothesis → gate → verdict) everywhere; results sections and headings stay flat. Vocabulary: *hypothesis / gate / refuted / retained* — never "failure". First-person agency (R12): the author's own actions are first person wherever they appear — body prose, table cells, figure boxes ("I rule", never "the author" as an actor).
+- Narrative device (try–fail cycles): narrative voice in Ch. 10 only (PR #45 deleted the bridges and the mini-abstracts of Chs. 2–12, PR #53 the Ch. 1 arc, and end-game step 4 the Ch. 1 mini-abstract); structure (hypothesis → gate → verdict) everywhere; results sections and headings stay flat. Vocabulary: *hypothesis / gate / refuted / retained* — never "failure". First-person agency (R12): the author's own actions are first person wherever they appear — body prose, table cells, figure boxes ("I rule", never "the author" as an actor).
 - Every number comes from a claims-ledger macro; no inline numbers.
 - One claim, one home: stated fully once, referenced elsewhere.
-- Ch. 1 opens with a Zeller-style mini-abstract (what question, what was done, what came out); PR #45 deleted the other chapters' mini-abstracts.
+- No chapter carries a mini-abstract. PR #45 deleted those of Chs. 2–12, and end-game step 4 (Ali, 2026-09-14) deleted Ch. 1's, which duplicated the front-matter abstract (`thesis/latex/templates/frontmatter/abstract.tex`).
 - Register: the calm register R13 for all prose (adopted 2026-08-11; reference example ch. 6 §6.5 as merged in PR #11); the light direct register for ch. 10 from r7, ch. 11 and ch. 12 (ruled 2026-09-02). Rules R1–R13 and the marker conventions live in WORKFLOW.md.
