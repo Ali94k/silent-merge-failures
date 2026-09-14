@@ -1,0 +1,1575 @@
+UNIT cloudslang_score__8c78da61cf
+repo: cloudslang_score   merge: 8c78da61cf44cdb794fac40239d91aa7fec8e61e   stratum: B
+files shown: 4 of 4 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/4: package/score-worker/src/main/java/io/cloudslang/schema/WorkerBeanDefinitionParser.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -80,17 +80,18 @@
+         put(WorkerExecutionMonitorServiceImpl.class, "workerExecutionMonitorService");
+         put(WorkerMonitorsImpl.class, "workerMonitorsImpl");
+         put(ScheduledWorkerLoadMonitor.class, "scheduledWorkerLoadMonitor");
+ 	}};
+ 
+ 	private List<ConfValue> configurationValues = Arrays.asList(
+ 			new ConfValue().NAME("inBufferCapacity").DEFAULT(500),
+ 			new ConfValue().NAME("numberOfExecutionThreads").DEFAULT(20),
+-			new ConfValue().NAME("maxDeltaBetweenDrains").DEFAULT(100)
++			new ConfValue().NAME("maxDeltaBetweenDrains").DEFAULT(100),
++			new ConfValue().NAME("pollingMemoryRatio").DEFAULT(0.2D)
+ 	);
+ 
+ 	private List<ConfValue> schedulerValues = Arrays.asList(
+ 			new ConfValue().NAME("outBufferInterval").DEFAULT(100L),
+ 			new ConfValue().NAME("keepAliveInterval").DEFAULT(10000L),
+ 			new ConfValue().NAME("configRefreshInterval").DEFAULT(1000L),
+ 			new ConfValue().NAME("interruptCanceledInterval").DEFAULT(30000L),
+             new ConfValue().NAME("statisticsInterval").DEFAULT(1000L),
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -23,16 +23,17 @@
+ import io.cloudslang.worker.execution.services.ScoreRobotAvailabilityServiceImpl;
+ import io.cloudslang.worker.execution.services.SessionDataHandlerImpl;
+ import io.cloudslang.worker.execution.services.StubExecutionPostconditionService;
+ import io.cloudslang.worker.execution.services.StubExecutionPreconditionService;
+ import io.cloudslang.worker.management.WorkerConfigurationServiceImpl;
+ import io.cloudslang.worker.management.WorkerRegistration;
+ import io.cloudslang.worker.management.monitor.ScheduledWorkerLoadMonitor;
+ import io.cloudslang.worker.management.monitor.WorkerMonitorsImpl;
++import io.cloudslang.worker.management.monitor.WorkerStateUpdateServiceImpl;
+ import io.cloudslang.worker.management.services.InBuffer;
+ import io.cloudslang.worker.management.services.OutboundBufferImpl;
+ import io.cloudslang.worker.management.services.RetryTemplate;
+ import io.cloudslang.worker.management.services.SimpleExecutionRunnableFactory;
+ import io.cloudslang.worker.management.services.SynchronizationManagerImpl;
+ import io.cloudslang.worker.management.services.WorkerConfigurationUtils;
+ import io.cloudslang.worker.management.services.WorkerExecutionMonitorServiceImpl;
+ import io.cloudslang.worker.management.services.WorkerManager;
+@@ -61,16 +62,17 @@
+ public class WorkerBeanDefinitionParser extends AbstractBeanDefinitionParser {
+ 
+ 	private Map<Class<?>,String> beans = new HashMap<Class<?>,String>(){{
+ 		put(WorkerManager.class, "workerManager");
+ 		put(EventBusImpl.class, null);
+ 		put(ExecutionServiceImpl.class, "agent");
+ 		put(InBuffer.class, null);
+ 		put(WorkerConfigurationUtils.class, null);
++		put(WorkerStateUpdateServiceImpl.class, null);
+ 		put(OutboundBufferImpl.class, "outBuffer");
+ 		put(RetryTemplate.class, null);
+ 		put(SimpleExecutionRunnableFactory.class, null);
+ 		put(WorkerManagerMBean.class, "io.cloudslang.worker.management.services.WorkerManagerMBean");
+ 		put(WorkerRecoveryManagerImpl.class, null);
+ 		put(ReflectionAdapterImpl.class, null);
+         put(SessionDataHandlerImpl.class, "sessionDataHandler");
+ 		put(SynchronizationManagerImpl.class, null);
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright © 2014-2017 EntIT Software LLC, a Micro Focus company (L.P.)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.cloudslang.schema;
+
+import io.cloudslang.runtime.impl.sequential.DefaultSequentialExecutionServiceImpl;
+import io.cloudslang.score.events.EventBusImpl;
+import io.cloudslang.worker.execution.reflection.ReflectionAdapterImpl;
+import io.cloudslang.worker.execution.services.ExecutionServiceImpl;
+import io.cloudslang.worker.execution.services.ScoreRobotAvailabilityServiceImpl;
+import io.cloudslang.worker.execution.services.SessionDataHandlerImpl;
+import io.cloudslang.worker.execution.services.StubExecutionPostconditionService;
+import io.cloudslang.worker.execution.services.StubExecutionPreconditionService;
+import io.cloudslang.worker.management.WorkerConfigurationServiceImpl;
+import io.cloudslang.worker.management.WorkerRegistration;
+import io.cloudslang.worker.management.monitor.ScheduledWorkerLoadMonitor;
+import io.cloudslang.worker.management.monitor.WorkerMonitorsImpl;
+import io.cloudslang.worker.management.monitor.WorkerStateUpdateServiceImpl;
+import io.cloudslang.worker.management.services.InBuffer;
+import io.cloudslang.worker.management.services.OutboundBufferImpl;
+import io.cloudslang.worker.management.services.RetryTemplate;
+import io.cloudslang.worker.management.services.SimpleExecutionRunnableFactory;
+import io.cloudslang.worker.management.services.SynchronizationManagerImpl;
+import io.cloudslang.worker.management.services.WorkerConfigurationUtils;
+import io.cloudslang.worker.management.services.WorkerExecutionMonitorServiceImpl;
+import io.cloudslang.worker.management.services.WorkerManager;
+import io.cloudslang.worker.management.services.WorkerManagerMBean;
+import io.cloudslang.worker.management.services.WorkerRecoveryManagerImpl;
+import io.cloudslang.worker.management.services.WorkerVersionServiceImpl;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
+import org.springframework.beans.factory.xml.AbstractBeanDefinitionParser;
+import org.springframework.beans.factory.xml.ParserContext;
+import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
+import org.springframework.util.StringUtils;
+import org.springframework.util.xml.DomUtils;
+import org.w3c.dom.Element;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static java.lang.Boolean.FALSE;
+
+/**
+ * @since 21/01/2014
+ */
+public class WorkerBeanDefinitionParser extends AbstractBeanDefinitionParser {
+
+	private Map<Class<?>,String> beans = new HashMap<Class<?>,String>(){{
+		put(WorkerManager.class, "workerManager");
+		put(EventBusImpl.class, null);
+		put(ExecutionServiceImpl.class, "agent");
+		put(InBuffer.class, null);
+		put(WorkerConfigurationUtils.class, null);
+		put(WorkerStateUpdateServiceImpl.class, null);
+		put(OutboundBufferImpl.class, "outBuffer");
+		put(RetryTemplate.class, null);
+		put(SimpleExecutionRunnableFactory.class, null);
+		put(WorkerManagerMBean.class, "io.cloudslang.worker.management.services.WorkerManagerMBean");
+		put(WorkerRecoveryManagerImpl.class, null);
+		put(ReflectionAdapterImpl.class, null);
+        put(SessionDataHandlerImpl.class, "sessionDataHandler");
+		put(SynchronizationManagerImpl.class, null);
+        put(WorkerConfigurationServiceImpl.class, "workerConfiguration");
+
+        //Monitors
+        put(WorkerExecutionMonitorServiceImpl.class, "workerExecutionMonitorService");
+        put(WorkerMonitorsImpl.class, "workerMonitorsImpl");
+        put(ScheduledWorkerLoadMonitor.class, "scheduledWorkerLoadMonitor");
+	}};
+
+	private List<ConfValue> configurationValues = Arrays.asList(
+			new ConfValue().NAME("inBufferCapacity").DEFAULT(500),
+			new ConfValue().NAME("numberOfExecutionThreads").DEFAULT(20),
+			new ConfValue().NAME("maxDeltaBetweenDrains").DEFAULT(100),
+			new ConfValue().NAME("pollingMemoryRatio").DEFAULT(0.2D)
+	);
+
+	private List<ConfValue> schedulerValues = Arrays.asList(
+			new ConfValue().NAME("outBufferInterval").DEFAULT(100L),
+			new ConfValue().NAME("keepAliveInterval").DEFAULT(10000L),
+			new ConfValue().NAME("configRefreshInterval").DEFAULT(1000L),
+			new ConfValue().NAME("interruptCanceledInterval").DEFAULT(30000L),
+            new ConfValue().NAME("statisticsInterval").DEFAULT(1000L),
+            new ConfValue().NAME("scheduledWorkerMonitorInterval").DEFAULT(10000L),
+            new ConfValue().NAME("workerMonitorRefreshInterval").DEFAULT(300000L)
+	);
+
+	@Override
+	protected AbstractBeanDefinition parseInternal(Element element, ParserContext parserContext) {
+		registerWorkerUuid(element.getAttribute("uuid"), element.getAttribute("depends-on"), parserContext);
+		registerBeans(parserContext);
+		registerSpecialBeans(element, parserContext);
+		registerConfiguration(DomUtils.getChildElementByTagName(element, "configuration"), parserContext);
+		registerScheduler(DomUtils.getChildElementByTagName(element, "scheduler"), parserContext);
+		return createRootBeanDefinition();
+	}
+
+	private AbstractBeanDefinition createRootBeanDefinition(){
+		return BeanDefinitionBuilder.genericBeanDefinition(Object.class).getBeanDefinition();
+	}
+
+	private void registerWorkerUuid(String uuid, String dependsOn, ParserContext parserContext) {
+		new BeanRegistrator(parserContext)
+				.NAME("workerUuid")
+				.CLASS(String.class)
+				.addConstructorArgValue(uuid)
+				.addDependsOn(StringUtils.hasText(dependsOn)? dependsOn.split(","): null)
+				.register();
+	}
+
+	private void registerBeans(ParserContext parserContext){
+		BeanRegistrator beanRegistrator = new BeanRegistrator(parserContext);
+		for (Map.Entry<Class<?>,String> entry : beans.entrySet()) {
+			beanRegistrator
+					.NAME(entry.getValue())
+					.CLASS(entry.getKey())
+					.register();
+		}
+	}
+
+	private void registerSpecialBeans(Element element, ParserContext parserContext) {
+		if (!"false".equalsIgnoreCase(element.getAttribute("register"))) {
+			new BeanRegistrator(parserContext).CLASS(WorkerRegistration.class).register();
+		}
+
+		registerWorkerVersionService(element, parserContext);
+		registerSequentialExecution(element, parserContext);
+		registerRobotAvailabilityService(element, parserContext);
+		registerExecutionPreconditionService(element, parserContext);
+		registerExecutionPostconditionService(element, parserContext);
+	}
+
+	private void registerSequentialExecution(Element element, ParserContext parserContext) {
+		String registerSequentialExecutionService = element.getAttribute("registerSequentialExecutionService");
+		if (!FALSE.toString().equals(registerSequentialExecutionService)) {
+			new BeanRegistrator(parserContext)
+					.NAME("sequentialExecutionService")
+					.CLASS(DefaultSequentialExecutionServiceImpl.class)
+					.register();
+		}
+	}
+
+	private void registerWorkerVersionService(Element element, ParserContext parserContext) {
+		String registerWorkerVersionService = element.getAttribute("registerWorkerVersionService");
+		if (!FALSE.toString().equals(registerWorkerVersionService)) {
+			new BeanRegistrator(parserContext).CLASS(WorkerVersionServiceImpl.class).register();
+		}
+	}
+
+	private void registerRobotAvailabilityService(Element element, ParserContext parserContext) {
+		String registerRobotAvailabilityService = element.getAttribute("registerRobotAvailabilityService");
+		if (!FALSE.toString().equals(registerRobotAvailabilityService)) {
+			new BeanRegistrator(parserContext)
+					.NAME("robotAvailabilityService")
+					.CLASS(ScoreRobotAvailabilityServiceImpl.class)
+					.register();
+		}
+	}
+
+	private void registerExecutionPreconditionService(Element element, ParserContext parserContext) {
+		String registerPreconditionService = element.getAttribute("registerExecutionPreconditionService");
+		if (!FALSE.toString().equals(registerPreconditionService)) {
+			new BeanRegistrator(parserContext)
+					.NAME("executionPreconditionService")
+					.CLASS(StubExecutionPreconditionService.class)
+					.register();
+		}
+	}
+
+
+	private void registerExecutionPostconditionService(Element element, ParserContext parserContext) {
+		String registerPostconditionService = element.getAttribute("registerExecutionPostconditionService");
+		if (!FALSE.toString().equals(registerPostconditionService)) {
+			new BeanRegistrator(parserContext)
+					.NAME("executionPostconditionService")
+					.CLASS(StubExecutionPostconditionService.class)
+					.register();
+		}
+	}
+
+	private void registerConfiguration(Element configurationElement, ParserContext parserContext) {
+		for (ConfValue configurationValue : configurationValues) {
+			configurationValue.register(configurationElement, parserContext);
+		}
+	}
+
+	private void registerScheduler(Element schedulerElement, ParserContext parserContext){
+		for (ConfValue value : schedulerValues) {
+			value.register(schedulerElement, parserContext);
+		}
+		new XmlBeanDefinitionReader(parserContext.getRegistry())
+				.loadBeanDefinitions("META-INF/spring/score/context/scoreWorkerSchedulerContext.xml");
+	}
+
+	@Override
+	protected boolean shouldGenerateId() {
+		return true;
+	}
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/4: worker/worker-manager/score-worker-manager-impl/src/main/java/io/cloudslang/worker/management/services/InBuffer.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -148,17 +148,17 @@
+ 
+                     int inBufferSize = workerManager.getInBufferSize();
+                     if (needToPoll(inBufferSize)) {
+                         int messagesToGet = !newInBufferBehaviour ? (capacity - inBufferSize) : (newInBufferSize - inBufferSize);
+ 
+                         if (logger.isDebugEnabled()) {
+                             logger.debug("Polling messages from queue (max " + messagesToGet + ")");
+                         }
+-                        List<ExecutionMessage> newMessages = queueDispatcher.poll(workerUuid, messagesToGet);
++                        List<ExecutionMessage> newMessages = queueDispatcher.poll(workerUuid, messagesToGet, workerManager.getFreeMemory());
+                         if (executionsActivityListener != null) {
+                             executionsActivityListener.onActivate(extract(newMessages, on(ExecutionMessage.class).getExecStateId()));
+                         }
+                         if (logger.isDebugEnabled()) {
+                             logger.debug("Received " + newMessages.size() + " messages from queue");
+                         }
+ 
+                         if (!newMessages.isEmpty()) {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -16,16 +16,17 @@
+ 
+ package io.cloudslang.worker.management.services;
+ 
+ import io.cloudslang.engine.queue.entities.ExecStatus;
+ import io.cloudslang.engine.queue.entities.ExecutionMessage;
+ import io.cloudslang.engine.queue.entities.Payload;
+ import io.cloudslang.engine.queue.services.QueueDispatcherService;
+ import io.cloudslang.worker.management.ExecutionsActivityListener;
++import io.cloudslang.worker.management.monitor.WorkerStateUpdateService;
+ import org.apache.commons.lang3.tuple.Pair;
+ import org.apache.log4j.Logger;
+ import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.beans.factory.annotation.Qualifier;
+ import org.springframework.context.ApplicationEvent;
+ import org.springframework.context.ApplicationListener;
+ import org.springframework.context.event.ContextClosedEvent;
+ import org.springframework.context.event.ContextRefreshedEvent;
+@@ -79,29 +80,32 @@
+     @Qualifier("numberOfExecutionThreads")
+     private Integer numberOfThreads;
+ 
+     @Autowired(required = false)
+     private ExecutionsActivityListener executionsActivityListener;
+ 
+     @Autowired
+     private WorkerConfigurationUtils workerConfigurationUtils;
++
++    @Autowired
++    private WorkerStateUpdateService workerStateUpdateService;
+ 
+     private Thread fillBufferThread = new Thread(this);
+     private boolean inShutdown;
+     private boolean endOfInit = false;
+     private long gcTimer = System.currentTimeMillis();
+     // New in buffer settings
+     private boolean newInBufferBehaviour;
+     private int newInBufferSize;
+     private int minInBufferSize;
+     private double workerFreeMemoryRatio;
+ 
+     @PostConstruct
+-    private void init() {
++    void init() {
+         capacity = getInteger("worker.inbuffer.capacity", capacity);
+         coolDownPollingMillis = getInteger("worker.inbuffer.coolDownPollingMillis", coolDownPollingMillis);
+         logger.info("InBuffer capacity is set to :" + capacity
+                 + ", coolDownPollingMillis is set to :" + coolDownPollingMillis);
+ 
+         newInBufferBehaviour = workerConfigurationUtils.isNewInbuffer();
+         logger.info("new inbuffer behaviour enabled: " + newInBufferBehaviour);
+ 
+@@ -138,16 +142,21 @@
+                     Thread.sleep(3000); //sleep if worker is not fully started yet
+                 } else {
+                     // We must lock recovery lock before poll - otherwise we will get duplications
+                     syncManager.startGetMessages();
+ 
+                     // We need to check if the current thread was interrupted while waiting for the lock (InBufferThread) and RESET its interrupted flag!
+                     if (Thread.interrupted()) {
+                         logger.info("Thread was interrupted while waiting on the lock in fillBufferPeriodically()");
++                        continue;
++                    }
++
++                    if (!workerStateUpdateService.isWorkerEnabled()) {
++                        logger.debug("Worker is disabled, skipping polling.");
+                         continue;
+                     }
+ 
+                     int inBufferSize = workerManager.getInBufferSize();
+                     if (needToPoll(inBufferSize)) {
+                         int messagesToGet = !newInBufferBehaviour ? (capacity - inBufferSize) : (newInBufferSize - inBufferSize);
+ 
+                         if (logger.isDebugEnabled()) {
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright © 2014-2017 EntIT Software LLC, a Micro Focus company (L.P.)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.cloudslang.worker.management.services;
+
+import io.cloudslang.engine.queue.entities.ExecStatus;
+import io.cloudslang.engine.queue.entities.ExecutionMessage;
+import io.cloudslang.engine.queue.entities.Payload;
+import io.cloudslang.engine.queue.services.QueueDispatcherService;
+import io.cloudslang.worker.management.ExecutionsActivityListener;
+import io.cloudslang.worker.management.monitor.WorkerStateUpdateService;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.ContextRefreshedEvent;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+
+import java.util.List;
+
+import static ch.lambdaj.Lambda.extract;
+import static ch.lambdaj.Lambda.on;
+import static io.cloudslang.worker.management.services.WorkerConfigurationUtils.NEW_DEFAULT_WORKER_MEMORY_RATIO;
+import static java.lang.Double.compare;
+import static java.lang.Integer.getInteger;
+import static java.lang.Long.parseLong;
+import static java.lang.Runtime.getRuntime;
+
+
+public class InBuffer implements WorkerRecoveryListener, ApplicationListener, Runnable {
+
+    private static final Logger logger = Logger.getLogger(InBuffer.class);
+    private static final int MINIMUM_GC_DELTA = 10000; // Minimum delta between garbage collections in milliseconds
+
+    @Autowired
+    private QueueDispatcherService queueDispatcher;
+
+    @Resource
+    private String workerUuid;
+
+    @Autowired
+    @Qualifier("inBufferCapacity")
+    private Integer capacity;
+
+    @Autowired(required = false)
+    @Qualifier("coolDownPollingMillis")
+    private Integer coolDownPollingMillis = 200;
+
+    @Autowired
+    private WorkerManager workerManager;
+
+    @Autowired
+    private SimpleExecutionRunnableFactory simpleExecutionRunnableFactory;
+
+    @Autowired
+    private OutboundBuffer outBuffer;
+
+    @Autowired
+    private SynchronizationManager syncManager;
+
+    @Autowired
+    @Qualifier("numberOfExecutionThreads")
+    private Integer numberOfThreads;
+
+    @Autowired(required = false)
+    private ExecutionsActivityListener executionsActivityListener;
+
+    @Autowired
+    private WorkerConfigurationUtils workerConfigurationUtils;
+
+    @Autowired
+    private WorkerStateUpdateService workerStateUpdateService;
+
+    private Thread fillBufferThread = new Thread(this);
+    private boolean inShutdown;
+    private boolean endOfInit = false;
+    private long gcTimer = System.currentTimeMillis();
+    // New in buffer settings
+    private boolean newInBufferBehaviour;
+    private int newInBufferSize;
+    private int minInBufferSize;
+    private double workerFreeMemoryRatio;
+
+    @PostConstruct
+    void init() {
+        capacity = getInteger("worker.inbuffer.capacity", capacity);
+        coolDownPollingMillis = getInteger("worker.inbuffer.coolDownPollingMillis", coolDownPollingMillis);
+        logger.info("InBuffer capacity is set to :" + capacity
+                + ", coolDownPollingMillis is set to :" + coolDownPollingMillis);
+
+        newInBufferBehaviour = workerConfigurationUtils.isNewInbuffer();
+        logger.info("new inbuffer behaviour enabled: " + newInBufferBehaviour);
+
+        // Simplify out of the box worker configuration settings, to only set thread pool number of threads.
+        // Buffer size and min buffer size are computed based on worker execution thread count.
+
+        // Buffer size is the capacity that is desired (it is not enforced right now) since we can offer to queue from inside SimpleExecutionRunnable,
+        // and buffer size is infinite (Integer.MAX_VALUE)
+
+        // Min buffer size is the size at which the WorkerFillBufferThread thread starts polling if free memory conditions are met.
+        if (newInBufferBehaviour) {
+            Pair<Integer, Integer> minSizeAndSizeOfInBuffer = workerConfigurationUtils.getMinSizeAndSizeOfInBuffer(numberOfThreads);
+            minInBufferSize = minSizeAndSizeOfInBuffer.getLeft();
+            newInBufferSize = minSizeAndSizeOfInBuffer.getRight();
+
+            logger.info("new inbuffer size: " + newInBufferSize);
+            logger.info("new inbuffer minimum size: " + minInBufferSize);
+        }
+
+        workerFreeMemoryRatio = workerConfigurationUtils.getWorkerMemoryRatio();
+        logger.info("Worker free memory ratio is: " + String.format("%.2f", workerFreeMemoryRatio));
+    }
+
+    private double getWorkerFreeMemoryRatio() {
+        double localWorkerFreeMemoryRatio = workerFreeMemoryRatio;
+        return (compare(0, localWorkerFreeMemoryRatio) == 0) ? NEW_DEFAULT_WORKER_MEMORY_RATIO : localWorkerFreeMemoryRatio;
+    }
+
+    private void fillBufferPeriodically() {
+        while (!inShutdown) {
+            try {
+                boolean workerUp = workerManager.isUp();
+                if (!workerUp) {
+                    Thread.sleep(3000); //sleep if worker is not fully started yet
+                } else {
+                    // We must lock recovery lock before poll - otherwise we will get duplications
+                    syncManager.startGetMessages();
+
+                    // We need to check if the current thread was interrupted while waiting for the lock (InBufferThread) and RESET its interrupted flag!
+                    if (Thread.interrupted()) {
+                        logger.info("Thread was interrupted while waiting on the lock in fillBufferPeriodically()");
+                        continue;
+                    }
+
+                    if (!workerStateUpdateService.isWorkerEnabled()) {
+                        logger.debug("Worker is disabled, skipping polling.");
+                        continue;
+                    }
+
+                    int inBufferSize = workerManager.getInBufferSize();
+                    if (needToPoll(inBufferSize)) {
+                        int messagesToGet = !newInBufferBehaviour ? (capacity - inBufferSize) : (newInBufferSize - inBufferSize);
+
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Polling messages from queue (max " + messagesToGet + ")");
+                        }
+                        List<ExecutionMessage> newMessages = queueDispatcher.poll(workerUuid, messagesToGet, workerManager.getFreeMemory());
+                        if (executionsActivityListener != null) {
+                            executionsActivityListener.onActivate(extract(newMessages, on(ExecutionMessage.class).getExecStateId()));
+                        }
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("Received " + newMessages.size() + " messages from queue");
+                        }
+
+                        if (!newMessages.isEmpty()) {
+                            // We must acknowledge the messages that we took from the queue
+                            ackMessages(newMessages);
+                            for (ExecutionMessage msg : newMessages) {
+                                addExecutionMessageInner(msg);
+                            }
+
+                            syncManager.finishGetMessages(); // Release all locks before going to sleep
+                            Thread.sleep(coolDownPollingMillis / 8); // Cool down - sleep a while
+                        } else {
+                            syncManager.finishGetMessages(); // Release all locks before going to sleep
+                            Thread.sleep(coolDownPollingMillis); // If there are no messages - sleep a while
+                        }
+                    } else {
+                        syncManager.finishGetMessages(); // Release all locks before going to sleep
+                        Thread.sleep(coolDownPollingMillis); // If the buffer is not empty enough yet or in recovery - sleep a while
+                    }
+                }
+            } catch (InterruptedException ex) {
+                logger.error("Fill InBuffer thread was interrupted... ", ex);
+                syncManager.finishGetMessages(); // Release all locks before going to sleep
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ignore) {/*ignore*/}
+            } catch (Exception ex) {
+                logger.error("Failed to load new ExecutionMessages to the buffer!", ex);
+                syncManager.finishGetMessages(); // Release all locks before going to sleep
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ignore) {/*ignore*/}
+            } finally {
+                syncManager.finishGetMessages();
+            }
+        }
+    }
+
+    private boolean needToPoll(int bufferSize) {
+        if (logger.isDebugEnabled()) {
+            logger.debug("InBuffer size: " + bufferSize);
+        }
+        if (!newInBufferBehaviour) {
+            return bufferSize < (capacity * 0.2) && checkFreeMemorySpace();
+        } else {
+            return (bufferSize < minInBufferSize) && checkFreeMemorySpace();
+        }
+    }
+
+    private void ackMessages(List<ExecutionMessage> newMessages) throws InterruptedException {
+        ExecutionMessage cloned;
+        for (ExecutionMessage message : newMessages) {
+            // create a unique id for this lane in this specific worker to be used in out buffer optimization
+            message.setWorkerKey(message.getMsgId() + " : " + message.getExecStateId());
+
+            Payload payload = message.getPayload(); // store payload
+            message.setPayload(null);
+
+            cloned = (ExecutionMessage) message.clone(); // To clone without payload, payload is not needed in ack - make it null in order to minimize the data that is being sent
+            cloned.setStatus(ExecStatus.IN_PROGRESS);
+            cloned.incMsgSeqId();
+
+            message.setPayload(payload); // Fix payload again in original message
+            message.incMsgSeqId(); // Increment the original message seq too in order to preserve the order of all messages of entire step
+
+            outBuffer.put(cloned);
+        }
+    }
+
+
+    public void addExecutionMessage(ExecutionMessage msg) throws InterruptedException {
+        try {
+            syncManager.startGetMessages(); // This is a public method that can push new executions from outside - from execution threads
+            // We need to check if the current execution thread was interrupted while waiting for the lock
+            if (Thread.currentThread().isInterrupted()) {
+                throw new InterruptedException("Thread was interrupted while waiting on the lock in fillBufferPeriodically()!");
+            }
+            addExecutionMessageInner(msg);
+        } finally {
+            syncManager.finishGetMessages();
+        }
+    }
+
+    private void addExecutionMessageInner(ExecutionMessage msg) {
+        SimpleExecutionRunnable simpleExecutionRunnable = simpleExecutionRunnableFactory.getObject();
+        simpleExecutionRunnable.setExecutionMessage(msg);
+        long executionId = parseLong(msg.getMsgId());
+        workerManager.addExecution(executionId, simpleExecutionRunnable);
+    }
+
+    @Override
+    public void onApplicationEvent(ApplicationEvent applicationEvent) {
+        if (applicationEvent instanceof ContextRefreshedEvent && !endOfInit) {
+            endOfInit = true;
+            inShutdown = false;
+            fillBufferThread.setName("WorkerFillBufferThread");
+            fillBufferThread.start();
+        } else if (applicationEvent instanceof ContextClosedEvent) {
+            inShutdown = true;
+        }
+    }
+
+    @Override
+    public void run() {
+        fillBufferPeriodically();
+    }
+
+    private boolean checkFreeMemorySpace() {
+        double allocatedMemory = getRuntime().totalMemory() - getRuntime().freeMemory();
+        long maxMemory = getRuntime().maxMemory();
+        double presumableFreeMemory = maxMemory - allocatedMemory;
+        double crtFreeMemoryRatio = presumableFreeMemory / maxMemory;
+        double configuredWorkerFreeMemoryRatio = getWorkerFreeMemoryRatio();
+        boolean result = crtFreeMemoryRatio > configuredWorkerFreeMemoryRatio;
+        if (!result) {
+            logger.warn("InBuffer would not poll messages, because there is not enough free memory. Free memory is "
+                    + String.format("%.0f", presumableFreeMemory) + ". Worker free memory ratio is "
+                    + String.format("%.2f", configuredWorkerFreeMemoryRatio));
+            if (System.currentTimeMillis() > (gcTimer + MINIMUM_GC_DELTA)) {
+                logger.warn("Trying to initiate garbage collection");
+                System.gc();
+                gcTimer = System.currentTimeMillis();
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public void doRecovery() {
+        //We must interrupt the inBuffer thread in case it is stuck in await() because the outBuffer is full
+        fillBufferThread.interrupt();
+    }
+
+    public int getCapacity() {
+        return (!newInBufferBehaviour) ? capacity : newInBufferSize;
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/4: worker/worker-manager/score-worker-manager-impl/src/main/java/io/cloudslang/worker/management/services/WorkerManager.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -123,16 +123,32 @@
+         executorService = new ThreadPoolExecutor(numberOfThreads,
+                 numberOfThreads,
+                 Long.MAX_VALUE, TimeUnit.NANOSECONDS,
+                 inBuffer,
+                 new WorkerThreadFactory(valueOf(incrementAndGetTreadPoolVersion()) + "_WorkerExecutionThread"));
+ 
+         mapOfRunningTasks = new ConcurrentHashMap<>(numberOfThreads);
+         newCancelBehaviour = parseBoolean(getProperty("enable.new.cancel.execution", FALSE.toString()));
++    }
++
++    /**
++     * Returns the amount of free memory in the worker's jvm.
++     * @return amount of memory currently available, measured in bytes.
++     */
++    public long getFreeMemory() {
++        return Runtime.getRuntime().freeMemory();
++    }
++
++    /**
++     * Returns the amount of memory that the worker's jvm will attempt to use.
++     * @return  amount of memory that the worker's jvm will attempt to use, in bytes.
++     */
++    public long getMaxMemory() {
++        return Runtime.getRuntime().maxMemory();
+     }
+ 
+     public void addExecution(long executionId, Runnable runnable) {
+         // Since we can offer to thread pool queue from SimpleExecutionRunnable run method
+         // it is possible we will have step x + 1 of an execution plan that is in the map of running tasks,
+         // but step x did not yet clean itself from the map
+         Future future = executorService.submit(runnable);
+         mapOfRunningTasks.merge(executionId, newQueue(future), this::addLists);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -11,19 +11,21 @@
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ 
+ package io.cloudslang.worker.management.services;
+ 
++import io.cloudslang.engine.node.entities.WorkerKeepAliveInfo;
+ import io.cloudslang.engine.node.services.WorkerNodeService;
+ import io.cloudslang.orchestrator.services.EngineVersionService;
+ import io.cloudslang.worker.management.WorkerConfigurationService;
++import io.cloudslang.worker.management.monitor.WorkerStateUpdateService;
+ import org.apache.commons.lang.ArrayUtils;
+ import org.apache.log4j.Logger;
+ import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.beans.factory.annotation.Qualifier;
+ import org.springframework.context.ApplicationEvent;
+ import org.springframework.context.ApplicationListener;
+ import org.springframework.context.event.ContextClosedEvent;
+ import org.springframework.context.event.ContextRefreshedEvent;
+@@ -92,16 +94,19 @@
+ 
+     @Autowired
+     private WorkerConfigurationUtils workerConfigurationUtils;
+ 
+     @Autowired
+     @Qualifier("inBufferCapacity")
+     private Integer capacity;
+ 
++    @Autowired
++    private WorkerStateUpdateService workerStateUpdateService;
++
+     private int keepAliveFailCount = 0;
+ 
+     private ExecutorService executorService;
+ 
+     private ConcurrentMap<Long, Queue<Future>> mapOfRunningTasks;
+ 
+     private volatile boolean endOfInit = false;
+ 
+@@ -183,17 +188,19 @@
+     }
+ 
+     @SuppressWarnings("unused")
+     // Scheduled in xml
+     public void workerKeepAlive() {
+         if (!recoveryManager.isInRecovery()) {
+             if (endOfInit) {
+                 try {
+-                    String newWrv = workerNodeService.keepAlive(workerUuid);
++                    WorkerKeepAliveInfo workerKeepAliveInfo = workerNodeService.newKeepAlive(workerUuid);
++                    String newWrv = workerKeepAliveInfo.getWorkerRecoveryVersion();
++                    workerStateUpdateService.setEnableState(workerKeepAliveInfo.isActive());
+                     String currentWrv = recoveryManager.getWRV();
+                     //do not update it!!! if it is different than we have - restart worker (clean state)
+                     if (!currentWrv.equals(newWrv)) {
+                         logger.warn("Got new WRV from Orchestrator during keepAlive(). Going to reload...");
+                         recoveryManager.doRecovery();
+                     }
+                     keepAliveFailCount = 0;
+                 } catch (Exception e) {
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright © 2014-2017 EntIT Software LLC, a Micro Focus company (L.P.)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.cloudslang.worker.management.services;
+
+import io.cloudslang.engine.node.entities.WorkerKeepAliveInfo;
+import io.cloudslang.engine.node.services.WorkerNodeService;
+import io.cloudslang.orchestrator.services.EngineVersionService;
+import io.cloudslang.worker.management.WorkerConfigurationService;
+import io.cloudslang.worker.management.monitor.WorkerStateUpdateService;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.ContextRefreshedEvent;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import static ch.lambdaj.Lambda.max;
+import static ch.lambdaj.Lambda.on;
+import static java.lang.Boolean.FALSE;
+import static java.lang.Boolean.parseBoolean;
+import static java.lang.String.valueOf;
+import static java.lang.System.getProperty;
+
+
+public class WorkerManager implements ApplicationListener, EndExecutionCallback, WorkerRecoveryListener {
+
+    private static final Logger logger = Logger.getLogger(WorkerManager.class);
+    private static final int KEEP_ALIVE_FAIL_LIMIT = 5;
+    private static final String DOTNET_PATH = System.getenv("WINDIR") + "/Microsoft.NET/Framework";
+
+    @Resource
+    private String workerUuid;
+
+    @Autowired
+    protected WorkerNodeService workerNodeService;
+
+    @Autowired
+    private EngineVersionService engineVersionService;
+
+    @Autowired
+    protected WorkerConfigurationService workerConfigurationService;
+
+    @Autowired
+    protected WorkerRecoveryManager recoveryManager;
+
+    @Autowired
+    protected WorkerVersionService workerVersionService;
+
+    private BlockingQueue<Runnable> inBuffer;
+
+    @Autowired
+    @Qualifier("numberOfExecutionThreads")
+    private Integer numberOfThreads;
+
+    @Autowired(required = false)
+    @Qualifier("initStartUpSleep")
+    private Long initStartUpSleep = 15 * 1000L; // by default 15 seconds
+
+    @Autowired(required = false)
+    @Qualifier("maxStartUpSleep")
+    private Long maxStartUpSleep = 10 * 60 * 1000L; // by default 10 minutes
+
+    @Autowired
+    private WorkerConfigurationUtils workerConfigurationUtils;
+
+    @Autowired
+    @Qualifier("inBufferCapacity")
+    private Integer capacity;
+
+    @Autowired
+    private WorkerStateUpdateService workerStateUpdateService;
+
+    private int keepAliveFailCount = 0;
+
+    private ExecutorService executorService;
+
+    private ConcurrentMap<Long, Queue<Future>> mapOfRunningTasks;
+
+    private volatile boolean endOfInit = false;
+
+    private volatile boolean initStarted = false;
+
+    private boolean up = false;
+
+    private int threadPoolVersion = 0;
+
+    private boolean newCancelBehaviour;
+
+    @PostConstruct
+    private void init() {
+        logger.info("Initialize worker with UUID: " + workerUuid);
+        System.setProperty("worker.uuid", workerUuid); //do not remove!!!
+
+        inBuffer = workerConfigurationUtils.getBlockingQueue(numberOfThreads, capacity);
+
+        executorService = new ThreadPoolExecutor(numberOfThreads,
+                numberOfThreads,
+                Long.MAX_VALUE, TimeUnit.NANOSECONDS,
+                inBuffer,
+                new WorkerThreadFactory(valueOf(incrementAndGetTreadPoolVersion()) + "_WorkerExecutionThread"));
+
+        mapOfRunningTasks = new ConcurrentHashMap<>(numberOfThreads);
+        newCancelBehaviour = parseBoolean(getProperty("enable.new.cancel.execution", FALSE.toString()));
+    }
+
+    /**
+     * Returns the amount of free memory in the worker's jvm.
+     * @return amount of memory currently available, measured in bytes.
+     */
+    public long getFreeMemory() {
+        return Runtime.getRuntime().freeMemory();
+    }
+
+    /**
+     * Returns the amount of memory that the worker's jvm will attempt to use.
+     * @return  amount of memory that the worker's jvm will attempt to use, in bytes.
+     */
+    public long getMaxMemory() {
+        return Runtime.getRuntime().maxMemory();
+    }
+
+    public void addExecution(long executionId, Runnable runnable) {
+        // Since we can offer to thread pool queue from SimpleExecutionRunnable run method
+        // it is possible we will have step x + 1 of an execution plan that is in the map of running tasks,
+        // but step x did not yet clean itself from the map
+        Future future = executorService.submit(runnable);
+        mapOfRunningTasks.merge(executionId, newQueue(future), this::addLists);
+    }
+
+    private Queue<Future> newQueue(Future future) {
+        Queue<Future> queue = new LinkedList<>();
+        queue.offer(future);
+        return queue;
+    }
+
+    private Queue<Future> addLists(Queue<Future> oldValue, Queue<Future> newValue) {
+        oldValue.offer(newValue.poll()); // There is only one value in newValue
+        return oldValue;
+    }
+
+    @Override
+    public void endExecution(long executionId) {
+        mapOfRunningTasks.merge(executionId, new LinkedList<>(),
+                (queue, newValue) -> {
+                    queue.poll();
+                    return !queue.isEmpty() ? queue : null;
+                }
+        );
+    }
+
+    public int getInBufferSize() {
+        return inBuffer.size();
+    }
+
+    @SuppressWarnings("unused")
+    // Scheduled in scoreWorkerSchedulerContext.xml
+    public void interruptCanceledExecutions() {
+        try {
+            if (!newCancelBehaviour) { // For backward compatibility
+                for (Long executionId : mapOfRunningTasks.keySet()) {
+                    if (workerConfigurationService.isExecutionCancelled(executionId)) {
+                        Collection<Future> futures = mapOfRunningTasks.get(executionId);
+                        for (Future future : futures) {
+                            future.cancel(true);
+                        }
+                    }
+                }
+            }
+        } catch (Exception exc) {
+            logger.error("Could not stop cancelled executions: ", exc);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    // Scheduled in xml
+    public void workerKeepAlive() {
+        if (!recoveryManager.isInRecovery()) {
+            if (endOfInit) {
+                try {
+                    WorkerKeepAliveInfo workerKeepAliveInfo = workerNodeService.newKeepAlive(workerUuid);
+                    String newWrv = workerKeepAliveInfo.getWorkerRecoveryVersion();
+                    workerStateUpdateService.setEnableState(workerKeepAliveInfo.isActive());
+                    String currentWrv = recoveryManager.getWRV();
+                    //do not update it!!! if it is different than we have - restart worker (clean state)
+                    if (!currentWrv.equals(newWrv)) {
+                        logger.warn("Got new WRV from Orchestrator during keepAlive(). Going to reload...");
+                        recoveryManager.doRecovery();
+                    }
+                    keepAliveFailCount = 0;
+                } catch (Exception e) {
+                    keepAliveFailCount++;
+                    logger.error("Could not send keep alive to Central, keepAliveFailCount = " + keepAliveFailCount, e);
+                    if (keepAliveFailCount >= KEEP_ALIVE_FAIL_LIMIT) {
+                        logger.error("Failed sending keepAlive for " + KEEP_ALIVE_FAIL_LIMIT
+                                + " times. Invoking worker internal recovery...");
+                        recoveryManager.doRecovery();
+                    }
+                }
+            }
+        } else {
+            if (logger.isDebugEnabled()) {
+                logger.debug("worker waits for recovery");
+            }
+        }
+    }
+
+    @SuppressWarnings("unused") // called by scheduler
+    public void logStatistics() {
+        if (logger.isDebugEnabled()) {
+            logger.debug("InBuffer size: " + getInBufferSize());
+            logger.debug("Running task size: " + mapOfRunningTasks.size());
+        }
+    }
+
+    public String getWorkerUuid() {
+        return workerUuid;
+    }
+
+    public int getRunningTasksCount() {
+        return mapOfRunningTasks.size();
+    }
+
+    public int getExecutionThreadsCount() {
+        return numberOfThreads;
+    }
+
+    @Override
+    public void onApplicationEvent(final ApplicationEvent applicationEvent) {
+        if (applicationEvent instanceof ContextRefreshedEvent && !initStarted) {
+            doStartup();
+        } else if (applicationEvent instanceof ContextClosedEvent) {
+            doShutdown();
+        }
+    }
+
+    private void doStartup() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                initStarted = true;
+                long sleep = initStartUpSleep;
+                boolean shouldRetry = true;
+                while (shouldRetry) {
+                    try {
+                        String newWrv = workerNodeService.up(workerUuid, workerVersionService.getWorkerVersion(),
+                                workerVersionService.getWorkerVersionId());
+                        recoveryManager
+                                .setWRV(newWrv); //we do set of WRV here and in doRecovery() only!!! not in keepalive!!!
+                        shouldRetry = false;
+                        logger.info("Worker is up");
+                    } catch (Exception ex) {
+                        logger.error("Worker failed on start up, will retry in a " + sleep / 1000 + " seconds", ex);
+                        try {
+                            Thread.sleep(sleep);
+                        } catch (InterruptedException iex) {/*do nothing*/}
+                        sleep = Math.min(maxStartUpSleep, sleep * 2); // double the sleep time until max 10 minute
+                    }
+                }
+
+                endOfInit = true;
+
+                //Check that this Worker is in the same version as engine - if not - stay idle
+                String engineVersionId = engineVersionService.getEngineVersionId();
+                if (workerVersionService.getWorkerVersionId().equals(engineVersionId)) {
+
+                    //mark that worker is up and its recovery is ended - only now we can start asking for messages from queue
+                    up = true;
+                    workerConfigurationService.setEnabled(true);
+                    workerNodeService.updateEnvironmentParams(workerUuid,
+                            getProperty("os.name"),
+                            getProperty("java.version"),
+                            resolveDotNetVersion());
+                } else {
+                    logger.warn(
+                            "Worker's version is not equal to engine version. Won't be able to start processing flows!");
+                }
+            }
+        }).start();
+    }
+
+    private void doShutdown() {
+        endOfInit = false;
+        initStarted = false;
+        workerConfigurationService.setEnabled(false);
+        up = false;
+        logger.info("The worker is down");
+    }
+
+    protected static String resolveDotNetVersion() {
+        File dotNetHome = new File(DOTNET_PATH);
+        if (dotNetHome.isDirectory()) {
+            File[] versionFolders = dotNetHome.listFiles(new FileFilter() {
+
+                @Override
+                public boolean accept(File file) {
+                    return file.isDirectory() && file.getName().startsWith("v");
+                }
+            });
+            if (!ArrayUtils.isEmpty(versionFolders)) {
+                String maxVersion = max(versionFolders, on(File.class).getName()).substring(1);
+                return maxVersion.substring(0, 1) + ".x";
+            }
+        }
+        return "N/A";
+    }
+
+    public boolean isUp() {
+        return up;
+    }
+
+    public synchronized boolean isFromCurrentThreadPool(String threadName) {
+        // Since this is executed in the score threadpool, making code simpler to avoid unnecessary contention
+        return threadName.startsWith(valueOf(threadPoolVersion));
+    }
+
+    //Must clean the buffer that holds Runnables that wait for execution and also drop all the executions that currently run
+    public void doRecovery() {
+
+//        Attempts to stop all actively executing tasks, halts the
+//        processing of waiting tasks, and returns a list of the tasks
+//        that were awaiting execution.
+//
+//        This method does not wait for actively executing tasks to
+//        terminate.
+//
+//        There are no guarantees beyond best-effort attempts to stop
+//        processing actively executing tasks.  For example, typical
+//        implementations will cancel via {@link Thread#interrupt}, so any
+//        task that fails to respond to interrupts may never terminate.
+        try {
+            synchronized (this) {
+                executorService.shutdownNow(); //shutting down current running threads
+                threadPoolVersion++;           //updating the thread pool version to a new one - so current running threads will exit
+                logger.warn(
+                        "Worker is in doRecovery(). Cleaning state and cancelling running tasks. It may take up to 30 seconds...");
+            }
+
+            boolean finished = executorService.awaitTermination(30, TimeUnit.SECONDS);
+
+            if (finished) {
+                logger.warn("Worker succeeded to cancel running tasks during doRecovery().");
+            } else {
+                logger.warn("Not all running tasks responded to cancel.");
+            }
+        } catch (InterruptedException ex) {/*ignore*/}
+
+        mapOfRunningTasks.clear();
+
+        //Make new executor
+        executorService = new ThreadPoolExecutor(numberOfThreads,
+                numberOfThreads,
+                Long.MAX_VALUE, TimeUnit.NANOSECONDS,
+                inBuffer,
+                new WorkerThreadFactory(valueOf(getTreadPoolVersion()) + "_WorkerExecutionThread"));
+    }
+
+    private synchronized int getTreadPoolVersion() {
+        return threadPoolVersion;
+    }
+
+    private synchronized int incrementAndGetTreadPoolVersion() {
+        return (++threadPoolVersion);
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/4: worker/worker-manager/score-worker-manager-impl/src/test/java/io/cloudslang/worker/management/services/WorkerManagerTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -224,16 +224,21 @@
+ 		}
+ 
+ 		@Bean
+ 		Integer numberOfExecutionThreads() {
+ 			return 2;
+ 		}
+ 
+ 		@Bean
++		Double pollingMemoryRatio() {
++			return 0.2D;
++		}
++
++		@Bean
+ 		Long initStartUpSleep() {
+ 			return 10L;
+ 		}
+ 
+ 		@Bean
+ 		Long maxStartUpSleep() {
+ 			return 100L;
+ 		}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -14,16 +14,17 @@
+  * limitations under the License.
+  */
+ 
+ package io.cloudslang.worker.management.services;
+ 
+ import io.cloudslang.engine.node.services.WorkerNodeService;
+ import io.cloudslang.orchestrator.services.EngineVersionService;
+ import io.cloudslang.worker.management.WorkerConfigurationService;
++import io.cloudslang.worker.management.monitor.WorkerStateUpdateService;
+ import org.junit.After;
+ import org.junit.Before;
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
+ import org.springframework.context.event.ContextClosedEvent;
+@@ -241,16 +242,21 @@
+ 		@Bean
+ 		WorkerConfigurationUtils workerConfigurationUtils() {
+ 			WorkerConfigurationUtils workerConfigurationUtils = mock(WorkerConfigurationUtils.class);
+ 			doReturn(mock(LinkedBlockingQueue.class)).when(workerConfigurationUtils).getBlockingQueue(anyInt(), anyInt());
+ 			return workerConfigurationUtils;
+ 		}
+ 
+ 		@Bean
++		WorkerStateUpdateService workerStateUpdateService() {
++			return mock(WorkerStateUpdateService.class);
++		}
++
++		@Bean
+ 		Integer inBufferCapacity() {
+ 			return 20;
+ 		}
+ 
+ 		@Bean
+ 		WorkerVersionService workerVersionService() {
+ 			WorkerVersionService service =  mock(WorkerVersionService.class);
+ 			when(service.getWorkerVersion()).thenReturn("version");
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright © 2014-2017 EntIT Software LLC, a Micro Focus company (L.P.)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.cloudslang.worker.management.services;
+
+import io.cloudslang.engine.node.services.WorkerNodeService;
+import io.cloudslang.orchestrator.services.EngineVersionService;
+import io.cloudslang.worker.management.WorkerConfigurationService;
+import io.cloudslang.worker.management.monitor.WorkerStateUpdateService;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+import java.util.concurrent.LinkedBlockingQueue;
+
+import static org.fest.assertions.Assertions.assertThat;
+import static org.fest.assertions.Fail.fail;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+
+/**
+ * Created with IntelliJ IDEA.
+ * User: kravtsov
+ * Date: 29/05/13
+ * Time: 09:18
+ */
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(classes = WorkerManagerTest.Configurator.class)
+public class WorkerManagerTest {
+
+	@Autowired
+	private WorkerManager workerManager;
+
+	@Autowired
+	private WorkerNodeService workerNodeService;
+
+	@Autowired
+	private WorkerRecoveryManager workerRecoveryManager;
+
+	@Autowired
+	private EngineVersionService engineVersionService;
+
+	static final String CREDENTIAL_UUID = "uuid";
+
+	@Before
+	public void setup() throws Exception {
+		reset(workerNodeService, workerRecoveryManager);
+		startWorker();
+	}
+
+	@After
+	public void shutdownWorker() throws Exception {
+		shutdownWorkerAndWait();
+	}
+
+	private void startWorker() throws InterruptedException {
+		final long TIME_OUT = 2000L;
+		workerManager.onApplicationEvent(mock(ContextRefreshedEvent.class));
+		long t = System.currentTimeMillis();
+		while (!workerManager.isUp()) {
+			if (System.currentTimeMillis() - t > TIME_OUT) {
+				throw fail("The worker has failed start on timeout: " + TIME_OUT + " ms");
+			} else {
+				Thread.sleep(100L);
+			}
+		}
+	}
+
+	private void shutdownWorkerAndWait() throws InterruptedException {
+		final long TIME_OUT = 3000L;
+		workerManager.onApplicationEvent(mock(ContextClosedEvent.class));
+		long t = System.currentTimeMillis();
+		while (workerManager.isUp()) {
+			if (System.currentTimeMillis() - t > TIME_OUT) {
+				throw fail("The worker has failed to shut down on timeout: " + TIME_OUT + " ms");
+			} else {
+				Thread.sleep(100L);
+			}
+		}
+	}
+
+	@Test
+	public void testResolveDotnetVersion() {
+		String version = WorkerManager.resolveDotNetVersion();
+		System.out.println("Dotnet version is: " + version);
+		assertThat(version).isNotEmpty();
+	}
+
+	@Test
+	public void startUp() throws Exception {
+		//shutting the service down
+		workerManager.onApplicationEvent(mock(ContextClosedEvent.class));
+		assertThat(workerManager.isUp()).isFalse();
+		reset(workerNodeService);
+
+		workerManager.onApplicationEvent(mock(ContextRefreshedEvent.class));
+		Thread.sleep(1000L); // must sleep some time since the start up is being processed in a new thread
+		verify(workerNodeService,atLeastOnce()).up(CREDENTIAL_UUID, "version", "123");
+		assertThat(workerManager.isUp()).isTrue();
+	}
+
+	@Test
+	public void startUpWrongVersion() throws Exception {
+
+		//shutting the service down
+		workerManager.onApplicationEvent(mock(ContextClosedEvent.class));
+		assertThat(workerManager.isUp()).isFalse();
+		reset(workerNodeService);
+
+		reset(engineVersionService);
+		when(engineVersionService.getEngineVersionId()).thenReturn("666");
+
+		//starting it again
+		workerManager.onApplicationEvent(mock(ContextRefreshedEvent.class));
+		Thread.sleep(1000L); // must sleep some time since the start up is being processed in a new thread
+		assertThat(workerManager.isUp()).isFalse();
+
+		reset(engineVersionService);
+		when(engineVersionService.getEngineVersionId()).thenReturn("123");
+	}
+
+
+	@Test
+	public void startUpWithFailure() throws Exception {
+		//shutting the service down
+		workerManager.onApplicationEvent(mock(ContextClosedEvent.class));
+		assertThat(workerManager.isUp()).isFalse();
+		reset(workerNodeService);
+
+		doThrow(new RuntimeException("try 1"))
+				.doThrow(new RuntimeException("try 2"))
+				.doThrow(new RuntimeException("try 3"))
+				.doReturn("1")
+				.when(workerNodeService).up(CREDENTIAL_UUID, "version", "123");
+
+		//start again
+		workerManager.onApplicationEvent(mock(ContextRefreshedEvent.class));
+
+		Thread.sleep(2000L); // must sleep some time since the start up is being processed in a new thread
+		verify(workerNodeService, times(4)).up(CREDENTIAL_UUID, "version", "123");
+		assertThat(workerManager.isUp()).isTrue();
+	}
+
+	@Test(timeout = 10000)
+	public void testKeepAliveFailTriggerRecovery() {
+		doThrow(new RuntimeException("Network Error")).when(workerNodeService).keepAlive(CREDENTIAL_UUID);
+		for (int i = 0; i < 5; i++) {
+			workerManager.workerKeepAlive();
+		}
+		verify(workerRecoveryManager, times(1)).doRecovery();
+
+		reset(workerNodeService);
+	}
+
+	@Test
+	public void shutDown() {
+		assertThat(workerManager.isUp()).isTrue();
+		reset(workerNodeService);
+
+		//shut down
+		workerManager.onApplicationEvent(mock(ContextClosedEvent.class));
+		assertThat(workerManager.isUp()).isFalse();
+	}
+
+	@Configuration
+	static class Configurator {
+
+        @Bean
+        SynchronizationManager synchronizationManager(){
+            return new SynchronizationManagerImpl();
+        }
+
+		@Bean
+		WorkerManager workerManager() {
+			return new WorkerManager();
+		}
+
+		@Bean
+		String workerUuid() {
+			return CREDENTIAL_UUID;
+		}
+
+		@Bean
+		WorkerNodeService workerNodeService() {
+			return mock(WorkerNodeService.class);
+		}
+
+		@Bean
+		WorkerConfigurationService workerConfigurationService() {
+			return mock(WorkerConfigurationService.class);
+		}
+
+		@Bean
+		WorkerRecoveryManager workerRecoveryManager() {
+			return mock(WorkerRecoveryManager.class);
+		}
+
+		@Bean
+		Integer numberOfExecutionThreads() {
+			return 2;
+		}
+
+		@Bean
+		Double pollingMemoryRatio() {
+			return 0.2D;
+		}
+
+		@Bean
+		Long initStartUpSleep() {
+			return 10L;
+		}
+
+		@Bean
+		Long maxStartUpSleep() {
+			return 100L;
+		}
+
+		@Bean
+		WorkerConfigurationUtils workerConfigurationUtils() {
+			WorkerConfigurationUtils workerConfigurationUtils = mock(WorkerConfigurationUtils.class);
+			doReturn(mock(LinkedBlockingQueue.class)).when(workerConfigurationUtils).getBlockingQueue(anyInt(), anyInt());
+			return workerConfigurationUtils;
+		}
+
+		@Bean
+		WorkerStateUpdateService workerStateUpdateService() {
+			return mock(WorkerStateUpdateService.class);
+		}
+
+		@Bean
+		Integer inBufferCapacity() {
+			return 20;
+		}
+
+		@Bean
+		WorkerVersionService workerVersionService() {
+			WorkerVersionService service =  mock(WorkerVersionService.class);
+			when(service.getWorkerVersion()).thenReturn("version");
+			when(service.getWorkerVersionId()).thenReturn("123");
+			return service;
+		}
+
+		@Bean
+		EngineVersionService engineVersionService() {
+			EngineVersionService service =  mock(EngineVersionService.class);
+			when(service.getEngineVersionId()).thenReturn("123");
+			return service;
+		}
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

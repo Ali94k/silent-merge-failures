@@ -1,0 +1,38 @@
+# P2 — Whole-Driver End-to-End Cost-Model Evaluation
+# detectors frozen at driver commit 9e25b4e; corpus = P1 164 pos / 193 ctl
+# configs scored: driver-auto
+# cost unit = per file (Schesch); FP x10, FN/TN x1, CRASH/TIMEOUT x1
+# oracle = hybrid (test-label when output==Mergiraf ref; else dev-match)
+
+## Cost-model table — positives (Tests_failed)
+  config              n   TP   FP   TN   FN  CR    cost  cost/n  med_rt
+  driver-auto       232    3  170   54    5   0    1759    7.58    87.0
+
+## Cost-model table — controls (Tests_passed)
+  config              n   TP   FP   TN   FN  CR    cost  cost/n  med_rt
+  driver-auto       239  219    0   17    3   0      20    0.08    91.8
+
+## Cost-model table — POOLED
+  config              n   TP   FP   TN   FN  CR    cost  cost/n  med_rt
+  driver-auto       471  222  170   71    8   0    1779    3.78    90.0
+
+## Three-outcome decomposition (per merge, any-file)
+  config            arm merges  accept  textual  semantic  crash
+  driver-auto       pos    180     123       45        12      0
+  driver-auto       ctl    195     175       15         5      0
+
+## Routing distribution — driver-auto (cluster → effective backend, per file)
+  files with a routing line : 471/471
+  cluster      : {'SYMBOL_CASCADE': 76, 'NONE': 229, 'INTRA_BODY': 79, 'MIGRATE_DECL': 47, 'LOCAL_DECL_EDIT': 40}
+  chosen route : {'mergiraf': 242, 'git': 229}
+  effective    : {'mergiraf': 242, 'git': 229}  (after crash-fallback)
+  crash-fell-back to git    : 0
+  FP (silent-wrong) by effective backend:
+    git                 61 FP / 229
+    mergiraf           109 FP / 242
+
+## Detection delta — what the detection layer adds (per file)
+
+## Cross-check — driver-mergiraf reproduces Stage C (Stage-C R-definition)
+  (driver-mergiraf not scored this run)
+

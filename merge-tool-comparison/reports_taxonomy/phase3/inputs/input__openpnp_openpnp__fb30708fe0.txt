@@ -1,0 +1,930 @@
+UNIT openpnp_openpnp__fb30708fe0
+repo: openpnp_openpnp   merge: fb30708fe028868f7cb02e9d333d9683354309a0   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/main/java/org/openpnp/machine/reference/driver/GcodeDriver.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -57,16 +57,17 @@
+         COMMAND_CONFIRM_REGEX,
+         POSITION_REPORT_REGEX,
+         COMMAND_ERROR_REGEX,
+         CONNECT_COMMAND,
+         ENABLE_COMMAND,
+         DISABLE_COMMAND,
+         POST_VISION_HOME_COMMAND,
+         HOME_COMMAND("Id", "Name"),
++        HOME_COMPLETE_REGEX(true),
+         PUMP_ON_COMMAND,
+         PUMP_OFF_COMMAND,
+         MOVE_TO_COMMAND(true, "Id", "Name", "FeedRate", "X", "Y", "Z", "Rotation"),
+         MOVE_TO_COMPLETE_REGEX(true),
+         PICK_COMMAND(true, "Id", "Name", "VacuumLevelPartOn", "VacuumLevelPartOff"),
+         PLACE_COMMAND(true, "Id", "Name"),
+         ACTUATE_BOOLEAN_COMMAND(true, "Id", "Name", "Index", "BooleanValue", "True", "False"),
+         ACTUATE_DOUBLE_COMMAND(true, "Id", "Name", "Index", "DoubleValue", "IntegerValue"),
+@@ -280,17 +281,39 @@
+ 
+     @Override
+     public void home(ReferenceHead head) throws Exception {
+         // Home is sent with an infinite timeout since it's tough to tell how long it will
+         // take.
+         String command = getCommand(null, CommandType.HOME_COMMAND);
+         command = substituteVariable(command, "Id", head.getId());
+         command = substituteVariable(command, "Name", head.getName());
+-        sendGcode(command, -1);
++        long timeout = -1;
++        List<String> responses = sendGcode(command, timeout);
++
++        // Check home complete response against user's regex
++        String homeCompleteRegex = getCommand(null, CommandType.HOME_COMPLETE_REGEX);
++        if (homeCompleteRegex != null) {
++            if (timeout == -1) {
++                timeout = Long.MAX_VALUE;
++            }
++            if (!containsMatch(responses, homeCompleteRegex)) {
++                long t = System.currentTimeMillis();
++                boolean done = false;
++                while (!done && System.currentTimeMillis() - t < timeout) {
++                    done = containsMatch(sendCommand(null, 250), homeCompleteRegex);
++                }
++                if (!done) {
++                    // Should never get here but just in case.
++                    throw new Exception("Timed out waiting for home to complete.");
++                }
++            }
++        }
++
++
+ 
+         // We need to specially handle X and Y axes to support the non-squareness factor.
+         Axis xAxis = null;
+         Axis yAxis = null;
+         double xHomeCoordinateNonSquare = 0;
+         double yHomeCoordinate = 0;
+         for (Axis axis : axes) {
+             if (axis.getType() == Axis.Type.X) {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -47,17 +47,17 @@
+ import org.simpleframework.xml.Element;
+ import org.simpleframework.xml.ElementList;
+ import org.simpleframework.xml.Root;
+ import org.simpleframework.xml.core.Commit;
+ 
+ import com.google.common.base.Joiner;
+ 
+ @Root
+-public class GcodeDriver extends AbstractSerialPortDriver implements Named, Runnable {
++public class GcodeDriver extends AbstractCommunications implements Named, Runnable {
+     public enum CommandType {
+         COMMAND_CONFIRM_REGEX,
+         POSITION_REPORT_REGEX,
+         COMMAND_ERROR_REGEX,
+         CONNECT_COMMAND,
+         ENABLE_COMMAND,
+         DISABLE_COMMAND,
+         POST_VISION_HOME_COMMAND,
+@@ -202,17 +202,17 @@
+         commands = new ArrayList<>();
+         commands.add(new Command(null, CommandType.COMMAND_CONFIRM_REGEX, "^ok.*"));
+         commands.add(new Command(null, CommandType.CONNECT_COMMAND, "G21 ; Set millimeters mode\nG90 ; Set absolute positioning mode\nM82 ; Set absolute mode for extruder"));
+         commands.add(new Command(null, CommandType.HOME_COMMAND, "G28 ; Home all axes"));
+         commands.add(new Command(null, CommandType.MOVE_TO_COMMAND, "G0 {X:X%.4f} {Y:Y%.4f} {Z:Z%.4f} {Rotation:E%.4f} F{FeedRate:%.0f} ; Send standard Gcode move\nM400 ; Wait for moves to complete before returning"));
+     }
+ 
+     public synchronized void connect() throws Exception {
+-        super.connect();
++        super.comms.connect();
+ 
+         connected = false;
+         readerThread = new Thread(this);
+         readerThread.setDaemon(true);
+         readerThread.start();
+ 
+         // Wait a bit while the controller starts up
+         Thread.sleep(connectWaitTimeMilliseconds);
+@@ -783,27 +783,27 @@
+                 readerThread.join(3000);
+             }
+         }
+         catch (Exception e) {
+             Logger.error("disconnect()", e);
+         }
+ 
+         try {
+-            super.disconnect();
++            super.comms.disconnect();
+         }
+         catch (Exception e) {
+             Logger.error("disconnect()", e);
+         }
+         disconnectRequested = false;
+     }
+ 
+     @Override
+     public void close() throws IOException {
+-        super.close();
++        super.comms.close();
+ 
+         for (ReferenceDriver driver : subDrivers) {
+             driver.close();
+         }
+     }
+ 
+     protected List<String> sendGcode(String gCode) throws Exception {
+         return sendGcode(gCode, timeoutMilliseconds);
+@@ -834,19 +834,18 @@
+         // Read any responses that might be queued up so that when we wait
+         // for a response to a command we actually wait for the one we expect.
+         responseQueue.drainTo(responses);
+ 
+         Logger.debug("sendCommand({}, {})...", command, timeout);
+ 
+         // Send the command, if one was specified
+         if (command != null) {
+-            Logger.trace("[{}] >> {}", portName, command);
+-            output.write(command.getBytes());
+-            output.write("\n".getBytes());
++            Logger.trace("[{}] >> {}", comms.getConnectionName(), command);
++            comms.writeLine(command);
+         }
+ 
+         // Collect responses till we find one with the confirmation or we timeout. Return
+         // the collected responses.
+         if (timeout == -1) {
+             timeout = Long.MAX_VALUE;
+         }
+         long t = System.currentTimeMillis();
+@@ -886,35 +885,35 @@
+         if (command != null && !found) {
+             throw new Exception("Timeout waiting for response to " + command);
+         }
+ 
+         // Read any additional responses that came in after the initial one.
+         responseQueue.drainTo(responses);
+ 
+         Logger.debug("sendCommand({} {}, {}) => {}",
+-                new Object[] {portName, command, timeout == Long.MAX_VALUE ? -1 : timeout, responses});
++                new Object[] {comms.getConnectionName(), command, timeout == Long.MAX_VALUE ? -1 : timeout, responses});
+         return responses;
+     }
+ 
+     public void run() {
+         while (!disconnectRequested) {
+             String line;
+             try {
+-                line = readLine().trim();
++                line = comms.readLine().trim();
+             }
+             catch (TimeoutException ex) {
+                 continue;
+             }
+             catch (IOException e) {
+                 Logger.error("Read error", e);
+                 return;
+             }
+             line = line.trim();
+-            Logger.trace("[{}] << {}", portName, line);
++            Logger.trace("[{}] << {}", comms.getConnectionName(), line);
+             if (!processPositionReport(line)) {
+                 responseQueue.offer(line);
+             }
+         }
+     }
+ 
+     private boolean processPositionReport(String line) {
+         if (getCommand(null, CommandType.POSITION_REPORT_REGEX) == null) {
+@@ -992,17 +991,17 @@
+     }
+ 
+     @Override
+     public PropertySheet[] getPropertySheets() {
+         return new PropertySheet[] {
+                 new PropertySheetWizardAdapter(new GcodeDriverGcodes(this), "Gcode"),
+                 new PropertySheetWizardAdapter(new GcodeDriverSettings(this), "General Settings"),
+                 new PropertySheetWizardAdapter(new GcodeDriverConsole(this), "Console"),
+-                new PropertySheetWizardAdapter(super.getConfigurationWizard(), "Serial")
++                new PropertySheetWizardAdapter(super.getConfigurationWizard(), "Communications")
+         };
+     }
+     
+     @Override
+     public Action[] getPropertySheetHolderActions() {
+         if (parent == null) {
+             return new Action[] {addSubDriverAction};
+         }
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package org.openpnp.machine.reference.driver;
+        // ... 1 lines elided ...
+import java.awt.event.ActionEvent;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.JOptionPane;
+
+import org.openpnp.gui.MainFrame;
+import org.openpnp.gui.support.Icons;
+import org.openpnp.gui.support.PropertySheetWizardAdapter;
+import org.openpnp.machine.reference.ReferenceActuator;
+import org.openpnp.machine.reference.ReferenceDriver;
+import org.openpnp.machine.reference.ReferenceHead;
+import org.openpnp.machine.reference.ReferenceHeadMountable;
+import org.openpnp.machine.reference.ReferenceMachine;
+import org.openpnp.machine.reference.ReferenceNozzle;
+import org.openpnp.machine.reference.ReferenceNozzleTip;
+import org.openpnp.machine.reference.ReferencePasteDispenser;
+import org.openpnp.machine.reference.driver.wizards.GcodeDriverConsole;
+import org.openpnp.machine.reference.driver.wizards.GcodeDriverGcodes;
+import org.openpnp.machine.reference.driver.wizards.GcodeDriverSettings;
+import org.openpnp.model.Configuration;
+import org.openpnp.model.LengthUnit;
+import org.openpnp.model.Location;
+import org.openpnp.model.Named;
+import org.openpnp.model.Part;
+import org.openpnp.spi.Head;
+import org.openpnp.spi.HeadMountable;
+import org.openpnp.spi.Nozzle;
+import org.openpnp.spi.PropertySheetHolder;
+import org.openpnp.spi.base.SimplePropertySheetHolder;
+import org.pmw.tinylog.Logger;
+import org.simpleframework.xml.Attribute;
+import org.simpleframework.xml.Element;
+import org.simpleframework.xml.ElementList;
+import org.simpleframework.xml.Root;
+import org.simpleframework.xml.core.Commit;
+
+import com.google.common.base.Joiner;
+
+@Root
+public class GcodeDriver extends AbstractCommunications implements Named, Runnable {
+    public enum CommandType {
+        COMMAND_CONFIRM_REGEX,
+        POSITION_REPORT_REGEX,
+        COMMAND_ERROR_REGEX,
+        CONNECT_COMMAND,
+        ENABLE_COMMAND,
+        DISABLE_COMMAND,
+        POST_VISION_HOME_COMMAND,
+        HOME_COMMAND("Id", "Name"),
+        HOME_COMPLETE_REGEX(true),
+        PUMP_ON_COMMAND,
+        PUMP_OFF_COMMAND,
+        MOVE_TO_COMMAND(true, "Id", "Name", "FeedRate", "X", "Y", "Z", "Rotation"),
+        MOVE_TO_COMPLETE_REGEX(true),
+        PICK_COMMAND(true, "Id", "Name", "VacuumLevelPartOn", "VacuumLevelPartOff"),
+        PLACE_COMMAND(true, "Id", "Name"),
+        ACTUATE_BOOLEAN_COMMAND(true, "Id", "Name", "Index", "BooleanValue", "True", "False"),
+        ACTUATE_DOUBLE_COMMAND(true, "Id", "Name", "Index", "DoubleValue", "IntegerValue"),
+        ACTUATOR_READ_COMMAND(true, "Id", "Name", "Index"),
+        ACTUATOR_READ_REGEX(true),
+        PRE_DISPENSE_COMMAND(false, "DispenseTime"),
+        DISPENSE_COMMAND(false, "DispenseTime"),
+        POST_DISPENSE_COMMAND(false, "DispenseTime");
+
+        final boolean headMountable;
+        final String[] variableNames;
+
+        private CommandType() {
+            this(false);
+        }
+
+        private CommandType(boolean headMountable) {
+            this(headMountable, new String[] {});
+        }
+
+        private CommandType(String... variableNames) {
+            this(false, variableNames);
+        }
+
+        private CommandType(boolean headMountable, String... variableNames) {
+            this.headMountable = headMountable;
+            this.variableNames = variableNames;
+        }
+
+        public boolean isHeadMountable() {
+            return headMountable;
+        }
+    }
+
+    public static class Command {
+        // ... 15 lines elided ...
+        public void setCommand(String text) {
+        // ... 9 lines elided ...
+        public String getCommand() {
+        // ... 39 lines elided ...
+    public ArrayList<Command> commands = new ArrayList<>();
+
+    @ElementList(required = false)
+    protected List<GcodeDriver> subDrivers = new ArrayList<>();
+
+    @ElementList(required = false)
+    protected List<Axis> axes = new ArrayList<>();
+    
+    @Attribute(required = false)
+    protected String name = "GcodeDriver";
+
+    private Thread readerThread;
+    private boolean disconnectRequested;
+    private boolean connected;
+    private LinkedBlockingQueue<String> responseQueue = new LinkedBlockingQueue<>();
+    private Set<Nozzle> pickedNozzles = new HashSet<>();
+    private GcodeDriver parent = null;
+    
+    @Commit
+    public void commit() {
+        for (GcodeDriver driver : subDrivers) {
+            driver.parent = this;
+        }
+    }
+    
+    public void createDefaults() {
+        axes = new ArrayList<>();
+        axes.add(new Axis("x", Axis.Type.X, 0, "*"));
+        axes.add(new Axis("y", Axis.Type.Y, 0, "*"));
+        axes.add(new Axis("z", Axis.Type.Z, 0, "*"));
+        axes.add(new Axis("rotation", Axis.Type.Rotation, 0, "*"));
+
+        commands = new ArrayList<>();
+        commands.add(new Command(null, CommandType.COMMAND_CONFIRM_REGEX, "^ok.*"));
+        commands.add(new Command(null, CommandType.CONNECT_COMMAND, "G21 ; Set millimeters mode\nG90 ; Set absolute positioning mode\nM82 ; Set absolute mode for extruder"));
+        commands.add(new Command(null, CommandType.HOME_COMMAND, "G28 ; Home all axes"));
+        commands.add(new Command(null, CommandType.MOVE_TO_COMMAND, "G0 {X:X%.4f} {Y:Y%.4f} {Z:Z%.4f} {Rotation:E%.4f} F{FeedRate:%.0f} ; Send standard Gcode move\nM400 ; Wait for moves to complete before returning"));
+    }
+
+    public synchronized void connect() throws Exception {
+        super.comms.connect();
+
+        connected = false;
+        readerThread = new Thread(this);
+        readerThread.setDaemon(true);
+        readerThread.start();
+
+        // Wait a bit while the controller starts up
+        Thread.sleep(connectWaitTimeMilliseconds);
+
+        // Consume any startup messages
+        try {
+            while (!sendCommand(null, 250).isEmpty()) {
+                
+            }
+        }
+        catch (Exception e) {
+
+        }
+
+        // Disable the machine
+        setEnabled(false);
+
+        // Send startup Gcode
+        sendGcode(getCommand(null, CommandType.CONNECT_COMMAND));
+
+        connected = true;
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) throws Exception {
+        if (enabled && !connected) {
+            connect();
+        }
+        if (connected) {
+            if (enabled) {
+                sendGcode(getCommand(null, CommandType.ENABLE_COMMAND));
+            }
+            else {
+                sendGcode(getCommand(null, CommandType.DISABLE_COMMAND));
+            }
+        }
+
+        for (ReferenceDriver driver : subDrivers) {
+            driver.setEnabled(enabled);
+        }
+    }
+
+    @Override
+    public void dispense(ReferencePasteDispenser dispenser,Location startLocation,Location endLocation,long dispenseTimeMilliseconds) throws Exception {
+        Logger.debug("dispense({}, {}, {}, {})", new Object[] {dispenser, startLocation, endLocation, dispenseTimeMilliseconds});
+
+        String command = getCommand(null, CommandType.PRE_DISPENSE_COMMAND);
+        command = substituteVariable(command, "DispenseTime", dispenseTimeMilliseconds);
+
+        sendGcode(command);
+
+        for (ReferenceDriver driver: subDrivers )
+        {
+            driver.dispense(dispenser,startLocation,endLocation,dispenseTimeMilliseconds);
+        }
+
+        command = getCommand(null, CommandType.DISPENSE_COMMAND);
+        command = substituteVariable(command, "DispenseTime", dispenseTimeMilliseconds);
+        sendGcode(command);
+
+        command = getCommand(null, CommandType.POST_DISPENSE_COMMAND);
+        command = substituteVariable(command, "DispenseTime", dispenseTimeMilliseconds);
+        sendGcode(command);
+    }
+
+    @Override
+    public void home(ReferenceHead head) throws Exception {
+        // Home is sent with an infinite timeout since it's tough to tell how long it will
+        // take.
+        String command = getCommand(null, CommandType.HOME_COMMAND);
+        command = substituteVariable(command, "Id", head.getId());
+        command = substituteVariable(command, "Name", head.getName());
+        long timeout = -1;
+        List<String> responses = sendGcode(command, timeout);
+
+        // Check home complete response against user's regex
+        String homeCompleteRegex = getCommand(null, CommandType.HOME_COMPLETE_REGEX);
+        if (homeCompleteRegex != null) {
+            if (timeout == -1) {
+                timeout = Long.MAX_VALUE;
+            }
+            if (!containsMatch(responses, homeCompleteRegex)) {
+                long t = System.currentTimeMillis();
+                boolean done = false;
+                while (!done && System.currentTimeMillis() - t < timeout) {
+                    done = containsMatch(sendCommand(null, 250), homeCompleteRegex);
+                }
+                if (!done) {
+                    // Should never get here but just in case.
+                    throw new Exception("Timed out waiting for home to complete.");
+                }
+            }
+        }
+
+
+
+        // We need to specially handle X and Y axes to support the non-squareness factor.
+        Axis xAxis = null;
+        Axis yAxis = null;
+        double xHomeCoordinateNonSquare = 0;
+        double yHomeCoordinate = 0;
+        for (Axis axis : axes) {
+            if (axis.getType() == Axis.Type.X) {
+                xAxis = axis;
+                xHomeCoordinateNonSquare = axis.getHomeCoordinate();
+            }
+            if (axis.getType() == Axis.Type.Y) {
+                yAxis = axis;
+                yHomeCoordinate = axis.getHomeCoordinate();
+            }
+        }
+        // Compensate non-squareness factor: 
+        // We are homing to the native controller's non-square coordinate system, this does not
+        // match OpenPNP's square coordinate system, if the controller's Y home is non-zero. 
+        // The two coordinate systems coincide at Y0 only, see the non-squareness 
+        // transformation. It is not a good idea to change the transformation i.e. for the coordinate 
+        // systems to coincide at Y home, as this would break coordinates captured before this change. 
+        // In order to home the square internal coordinate system we need to account for the 
+        // non-squareness X offset here.  
+        // NOTE this changes nothing in the behavior or the coordinate system of the machine. It just
+        // sets the internal X coordinate correctly immediately after homing, so we can capture the 
+        // home location correctly. Without this compensation the discrepancy between internal and 
+        // machines coordinates was resolved with the first move, as it is done in absolute mode. 
+        double xHomeCoordinateSquare = xHomeCoordinateNonSquare - nonSquarenessFactor*yHomeCoordinate;
+        
+        for (Axis axis : axes) {
+            if (axis == xAxis) {
+            	// for X use the coordinate adjusted for non-squareness.
+            	axis.setCoordinate(xHomeCoordinateSquare);
+            }
+            else {
+            	// otherwise just use the standard coordinate.
+            	axis.setCoordinate(axis.getHomeCoordinate());
+            }
+        }
+        // ... 35 lines elided ...
+    public Axis getAxis(HeadMountable hm, Axis.Type type) {
+        // ... 9 lines elided ...
+    public Command getCommand(HeadMountable hm, CommandType type, boolean checkDefaults) {
+        // ... 23 lines elided ...
+    public String getCommand(HeadMountable hm, CommandType type) {
+        // ... 7 lines elided ...
+    public void setCommand(HeadMountable hm, CommandType type, String text) {
+        // ... 18 lines elided ...
+    public Location getLocation(ReferenceHeadMountable hm) {
+        // ... 33 lines elided ...
+    public void moveTo(ReferenceHeadMountable hm, Location location, double speed)
+        // ... 188 lines elided ...
+    private boolean containsMatch(List<String> responses, String regex) {
+        // ... 9 lines elided ...
+    public void pick(ReferenceNozzle nozzle) throws Exception {
+        // ... 21 lines elided ...
+    public void place(ReferenceNozzle nozzle) throws Exception {
+        // ... 23 lines elided ...
+    public void actuate(ReferenceActuator actuator, boolean on) throws Exception {
+        // ... 15 lines elided ...
+    public void actuate(ReferenceActuator actuator, double value) throws Exception {
+        // ... 14 lines elided ...
+    public String actuatorRead(ReferenceActuator actuator) throws Exception {
+        // ... 15 lines elided ...
+
+        command = substituteVariable(command, "Id", actuator.getId());
+        command = substituteVariable(command, "Name", actuator.getName());
+        command = substituteVariable(command, "Index", actuator.getIndex());
+
+        List<String> responses = sendGcode(command);
+
+        for (String line : responses) {
+            if (line.matches(regex)) {
+                Logger.trace("actuatorRead response: {}", line);
+                Matcher matcher = Pattern.compile(regex).matcher(line);
+                matcher.matches();
+
+                try {
+                    String s = matcher.group("Value");
+                    return s;
+                }
+                catch (Exception e) {
+                    throw new Exception("Failed to read Actuator " + actuator.getName(), e);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public synchronized void disconnect() {
+        disconnectRequested = true;
+        connected = false;
+
+        try {
+            if (readerThread != null && readerThread.isAlive()) {
+                readerThread.join(3000);
+            }
+        }
+        catch (Exception e) {
+            Logger.error("disconnect()", e);
+        }
+
+        try {
+            super.comms.disconnect();
+        }
+        catch (Exception e) {
+            Logger.error("disconnect()", e);
+        }
+        disconnectRequested = false;
+    }
+
+    @Override
+    public void close() throws IOException {
+        super.comms.close();
+
+        for (ReferenceDriver driver : subDrivers) {
+            driver.close();
+        }
+    }
+
+    protected List<String> sendGcode(String gCode) throws Exception {
+        return sendGcode(gCode, timeoutMilliseconds);
+    }
+
+    protected List<String> sendGcode(String gCode, long timeout) throws Exception {
+        if (gCode == null) {
+            return new ArrayList<>();
+        }
+        List<String> responses = new ArrayList<>();
+        for (String command : gCode.split("\n")) {
+            command = command.trim();
+            if (command.length() == 0) {
+                continue;
+            }
+            responses.addAll(sendCommand(command, timeout));
+        }
+        return responses;
+    }
+
+    public List<String> sendCommand(String command) throws Exception {
+        return sendCommand(command, timeoutMilliseconds);
+    }
+
+    public List<String> sendCommand(String command, long timeout) throws Exception {
+        List<String> responses = new ArrayList<>();
+
+        // Read any responses that might be queued up so that when we wait
+        // for a response to a command we actually wait for the one we expect.
+        responseQueue.drainTo(responses);
+
+        Logger.debug("sendCommand({}, {})...", command, timeout);
+
+        // Send the command, if one was specified
+        if (command != null) {
+            Logger.trace("[{}] >> {}", comms.getConnectionName(), command);
+            comms.writeLine(command);
+        }
+
+        // Collect responses till we find one with the confirmation or we timeout. Return
+        // the collected responses.
+        if (timeout == -1) {
+            timeout = Long.MAX_VALUE;
+        }
+        long t = System.currentTimeMillis();
+        boolean found = false;
+        boolean foundError = false;
+        String errorResponse = "";
+        // Loop until we've timed out
+        while (System.currentTimeMillis() - t < timeout) {
+            // Wait to see if a response came in. We wait up until the number of millis remaining
+            // in the timeout.
+            String response = responseQueue.poll(timeout - (System.currentTimeMillis() - t),
+                    TimeUnit.MILLISECONDS);
+            // If no response yet, try again.
+            if (response == null) {
+                continue;
+            }
+            // Store the response that was received
+            responses.add(response);
+            // If the response is an ok or error we're done
+            if (response.matches(getCommand(null, CommandType.COMMAND_CONFIRM_REGEX))) {
+                found = true;
+                break;
+            }
+
+            if (getCommand(null, CommandType.COMMAND_ERROR_REGEX) != null) {
+                if (response.matches(getCommand(null, CommandType.COMMAND_ERROR_REGEX))) {
+                    foundError = true;
+                    errorResponse = response;
+                    break;
+                }
+            }
+        }
+        // If a command was specified and no confirmation was found it's a timeout error.
+        if (command != null & foundError) {
+            throw new Exception("Controller raised an error: " + errorResponse);
+        }
+        if (command != null && !found) {
+            throw new Exception("Timeout waiting for response to " + command);
+        }
+
+        // Read any additional responses that came in after the initial one.
+        responseQueue.drainTo(responses);
+
+        Logger.debug("sendCommand({} {}, {}) => {}",
+                new Object[] {comms.getConnectionName(), command, timeout == Long.MAX_VALUE ? -1 : timeout, responses});
+        return responses;
+    }
+
+    public void run() {
+        while (!disconnectRequested) {
+            String line;
+            try {
+                line = comms.readLine().trim();
+            }
+            catch (TimeoutException ex) {
+                continue;
+            }
+            catch (IOException e) {
+                Logger.error("Read error", e);
+                return;
+            }
+            line = line.trim();
+            Logger.trace("[{}] << {}", comms.getConnectionName(), line);
+            if (!processPositionReport(line)) {
+                responseQueue.offer(line);
+            }
+        }
+    }
+
+    private boolean processPositionReport(String line) {
+        if (getCommand(null, CommandType.POSITION_REPORT_REGEX) == null) {
+            return false;
+        }
+
+        if (!line.matches(getCommand(null, CommandType.POSITION_REPORT_REGEX))) {
+            return false;
+        }
+
+        Logger.trace("Position report: {}", line);
+        Matcher matcher =
+                Pattern.compile(getCommand(null, CommandType.POSITION_REPORT_REGEX)).matcher(line);
+        matcher.matches();
+        for (Axis axis : axes) {
+            try {
+                String s = matcher.group(axis.getName());
+                Double d = Double.valueOf(s);
+                axis.setCoordinate(d);
+            }
+            catch (Exception e) {
+                Logger.warn("Error processing position report for axis {}: {}", axis.getName(), e);
+            }
+        }
+
+        ReferenceMachine machine = ((ReferenceMachine) Configuration.get().getMachine());
+        for (Head head : Configuration.get().getMachine().getHeads()) {
+            machine.fireMachineHeadActivity(head);
+        }
+        return true;
+    }
+
+    /**
+     * Find matches of variables in the format {Name:Format} and replace them with the specified
+     * value formatted using String.format with the specified Format. Format is optional and
+        // ... 2 lines elided ...
+    static protected String substituteVariable(String command, String name, Object value) {
+        // ... 4 lines elided ...
+        Matcher matcher = Pattern.compile("\\{(\\w+)(?::(.+?))?\\}").matcher(command);
+        while (matcher.find()) {
+            String n = matcher.group(1);
+            if (!n.equals(name)) {
+                continue;
+            }
+            String format = matcher.group(2);
+            if (format == null) {
+                format = "%s";
+            }
+            String v = "";
+            if (value != null) {
+                v = String.format((Locale) null, format, value);
+            }
+            matcher.appendReplacement(sb, v);
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+    
+    @Override
+    public String getPropertySheetHolderTitle() {
+        return getName() == null ? "GcodeDriver" : getName();
+    }
+
+    @Override
+    public PropertySheetHolder[] getChildPropertySheetHolders() {
+        ArrayList<PropertySheetHolder> children = new ArrayList<>();
+        if (parent == null) {
+            children.add(new SimplePropertySheetHolder("Sub-Drivers", subDrivers));
+        }
+        return children.toArray(new PropertySheetHolder[] {});
+    }
+
+    @Override
+    public PropertySheet[] getPropertySheets() {
+        return new PropertySheet[] {
+                new PropertySheetWizardAdapter(new GcodeDriverGcodes(this), "Gcode"),
+                new PropertySheetWizardAdapter(new GcodeDriverSettings(this), "General Settings"),
+                new PropertySheetWizardAdapter(new GcodeDriverConsole(this), "Console"),
+                new PropertySheetWizardAdapter(super.getConfigurationWizard(), "Communications")
+        };
+    }
+    
+    @Override
+    public Action[] getPropertySheetHolderActions() {
+        if (parent == null) {
+            return new Action[] {addSubDriverAction};
+        }
+        else {
+            return new Action[] {deleteSubDriverAction};
+        }
+    }
+    
+    public Action addSubDriverAction = new AbstractAction() {
+        {
+            putValue(SMALL_ICON, Icons.add);
+            putValue(NAME, "Add Sub-Driver...");
+            putValue(SHORT_DESCRIPTION, "Add a new sub-driver.");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent arg0) {
+            GcodeDriver driver = new GcodeDriver();
+            driver.commands.add(new Command(null, CommandType.COMMAND_CONFIRM_REGEX, "^ok.*"));
+            driver.parent = GcodeDriver.this;
+            subDrivers.add(driver);
+            fireIndexedPropertyChange("subDrivers", subDrivers.size() - 1, null, driver);
+        }
+    };
+
+    public Action deleteSubDriverAction = new AbstractAction() {
+        {
+            putValue(SMALL_ICON, Icons.delete);
+            putValue(NAME, "Delete Sub-Driver...");
+            putValue(SHORT_DESCRIPTION, "Delete the selected sub-driver.");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent arg0) {
+            int ret = JOptionPane.showConfirmDialog(MainFrame.get(),
+        // ... 9 lines elided ...
+    public LengthUnit getUnits() {
+        // ... 3 lines elided ...
+    public void setUnits(LengthUnit units) {
+        // ... 3 lines elided ...
+    public double getBacklashOffsetX() {
+        // ... 3 lines elided ...
+    public void setBacklashOffsetX(double BacklashOffsetX) {
+        // ... 3 lines elided ...
+    public double getBacklashOffsetY() {
+        // ... 3 lines elided ...
+    public void setBacklashOffsetY(double BacklashOffsetY) {
+        // ... 3 lines elided ...
+    public double getBacklashFeedRateFactor() {
+        // ... 3 lines elided ...
+    public void setBacklashFeedRateFactor(double BacklashFeedRateFactor) {
+        // ... 3 lines elided ...
+    public void setNonSquarenessFactor(double NonSquarenessFactor) {
+        // ... 3 lines elided ...
+    public double getNonSquarenessFactor() {
+        // ... 3 lines elided ...
+    public int getMaxFeedRate() {
+        // ... 3 lines elided ...
+    public void setMaxFeedRate(int maxFeedRate) {
+        // ... 3 lines elided ...
+    public int getTimeoutMilliseconds() {
+        // ... 3 lines elided ...
+    public void setTimeoutMilliseconds(int timeoutMilliseconds) {
+        // ... 3 lines elided ...
+    public int getConnectWaitTimeMilliseconds() {
+        // ... 3 lines elided ...
+    public void setConnectWaitTimeMilliseconds(int connectWaitTimeMilliseconds) {
+        // ... 3 lines elided ...
+    public String getName() {
+        // ... 3 lines elided ...
+    public void setName(String name) {
+        // ... 4 lines elided ...
+    public boolean isVisualHomingEnabled() {
+        // ... 3 lines elided ...
+    public void setVisualHomingEnabled(boolean visualHomingEnabled) {
+        // ... 3 lines elided ...
+    public static class Axis {
+        public enum Type {
+        // ... 40 lines elided ...
+        public String getName() {
+        // ... 3 lines elided ...
+        public void setName(String name) {
+        // ... 3 lines elided ...
+        public Type getType() {
+        // ... 3 lines elided ...
+        public void setType(Type type) {
+        // ... 3 lines elided ...
+        public double getCoordinate() {
+        // ... 3 lines elided ...
+        public void setCoordinate(double coordinate) {
+        // ... 3 lines elided ...
+        public double getHomeCoordinate() {
+        // ... 3 lines elided ...
+        public void setHomeCoordinate(double homeCoordinate) {
+        // ... 3 lines elided ...
+        public double getTransformedCoordinate(HeadMountable hm) {
+        // ... 6 lines elided ...
+        public Set<String> getHeadMountableIds() {
+        // ... 3 lines elided ...
+        public void setHeadMountableIds(Set<String> headMountableIds) {
+        // ... 3 lines elided ...
+        public AxisTransform getTransform() {
+        // ... 3 lines elided ...
+        public void setTransform(AxisTransform transform) {
+        // ... 3 lines elided ...
+        public String getPreMoveCommand() {
+        // ... 3 lines elided ...
+        public void setPreMoveCommand(String preMoveCommand) {
+        // ... 4 lines elided ...
+    public interface AxisTransform {
+        // ... 9 lines elided ...
+        public double toTransformed(Axis axis, HeadMountable hm, double rawCoordinate);
+        // ... 10 lines elided ...
+        public double toRaw(Axis axis, HeadMountable hm, double transformedCoordinate);
+        // ... 7 lines elided ...
+    public static class NegatingTransform implements AxisTransform {
+        // ... 4 lines elided ...
+        public double toTransformed(Axis axis, HeadMountable hm, double rawCoordinate) {
+        // ... 7 lines elided ...
+        public double toRaw(Axis axis, HeadMountable hm, double transformedCoordinate) {
+        // ... 6 lines elided ...
+    public static class CamTransform implements AxisTransform {
+        // ... 13 lines elided ...
+        public double toTransformed(Axis axis, HeadMountable hm, double rawCoordinate) {
+        // ... 9 lines elided ...
+        public double toRaw(Axis axis, HeadMountable hm, double transformedCoordinate) {
+        // ... 10 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

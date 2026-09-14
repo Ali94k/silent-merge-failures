@@ -1,0 +1,681 @@
+UNIT imixs_imixs-workflow__23b86de5b4
+repo: imixs_imixs-workflow   merge: 23b86de5b49165af8f4ebb9e867e797c1e0efbd4   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: imixs-workflow-index-lucene/src/main/java/org/imixs/workflow/engine/lucene/LuceneIndexService.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -35,24 +35,18 @@
+ import java.util.ArrayList;
+ import java.util.Calendar;
+ import java.util.Collection;
+ import java.util.Date;
+ import java.util.List;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ 
+-import javax.ejb.LocalBean;
+-import javax.ejb.Stateless;
+-import javax.ejb.TransactionAttribute;
+-import javax.ejb.TransactionAttributeType;
+-import javax.enterprise.event.Event;
+-import javax.inject.Inject;
+-import javax.persistence.EntityManager;
+-import javax.persistence.PersistenceContext;
++import jakarta.enterprise.event.Event;
++import jakarta.inject.Inject;
+ 
+ import org.apache.lucene.analysis.Analyzer;
+ import org.apache.lucene.analysis.standard.ClassicAnalyzer;
+ import org.apache.lucene.document.Document;
+ import org.apache.lucene.document.Field.Store;
+ import org.apache.lucene.document.SortedDocValuesField;
+ import org.apache.lucene.document.StringField;
+ import org.apache.lucene.document.TextField;
+@@ -73,24 +67,29 @@
+ import org.imixs.workflow.engine.DocumentService;
+ import org.imixs.workflow.engine.EventLogService;
+ import org.imixs.workflow.engine.adminp.AdminPService;
+ import org.imixs.workflow.engine.index.IndexEvent;
+ import org.imixs.workflow.engine.index.SchemaService;
+ import org.imixs.workflow.engine.jpa.EventLog;
+ import org.imixs.workflow.exceptions.IndexException;
+ 
++import jakarta.ejb.Stateless;
++import jakarta.ejb.TransactionAttribute;
++import jakarta.ejb.TransactionAttributeType;
++import jakarta.persistence.EntityManager;
++import jakarta.persistence.PersistenceContext;
++
+ /**
+  * This session ejb provides functionality to maintain a local Lucene index.
+  * 
+  * @version 1.0
+  * @author rsoika
+  */
+ @Stateless
+-@LocalBean
+ public class LuceneIndexService {
+ 
+     public static final int EVENTLOG_ENTRY_FLUSH_COUNT = 16;
+ 
+     public static final String ANONYMOUS = "ANONYMOUS";
+     public static final String DEFAULT_ANALYZER = "org.apache.lucene.analysis.standard.ClassicAnalyzer";
+     public static final String DEFAULT_INDEX_DIRECTORY = "imixs-workflow-index";
+     public static final String TAXONOMY_INDEXFIELD_PRAFIX = ".taxonomy";
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -284,19 +284,23 @@
+                             e);
+                 } catch (IOException e) {
+                     throw new IndexException(IndexException.INVALID_INDEX, "Unable to close lucene taxonomyWriter: ",
+                             e);
+                 }
+             }
+         }
+ 
+-        if (logger.isLoggable(Level.FINE)) {
+-            logger.fine("... update index block in " + (System.currentTimeMillis() - ltime) + " ms (" + documents.size()
+-                    + " workitems total)");
++        long updateTime = (System.currentTimeMillis() - ltime);
++        if (updateTime > 5000) {
++            logger.warning("... update index block in took " + (updateTime) + " ms ! (" + documents.size()
++                    + " documents in total)");
++        } else if (logger.isLoggable(Level.FINE)) {
++            logger.fine(
++                    "... update index block in " + (updateTime) + " ms (" + documents.size() + " documents in total)");
+         }
+     }
+ 
+     /**
+      * This method flushes a given count of eventLogEntries. The method return true
+      * if no more eventLogEntries exist.
+      * 
+      * @param count the max size of a eventLog engries to remove.
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+ *  
+ *  Copyright (C) 2001-2020 Imixs Software Solutions GmbH,  
+ *  http://www.imixs.com
+ *  
+ *  This program is free software; you can redistribute it and/or 
+ *  modify it under the terms of the GNU General Public License 
+ *  as published by the Free Software Foundation; either version 2 
+ *  of the License, or (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ *  General Public License for more details.
+ *  
+ *  You can receive a copy of the GNU General Public
+ *  License at http://www.gnu.org/licenses/gpl.html
+ *  
+ *  Project: 
+ *      https://www.imixs.org
+ *      https://github.com/imixs/imixs-workflow
+ *  
+ *  Contributors:  
+ *      Imixs Software Solutions GmbH - Project Management
+ *      Ralph Soika - Software Developer
+ */
+
+package org.imixs.workflow.engine.lucene;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
+
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.standard.ClassicAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.facet.FacetField;
+import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
+import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.imixs.workflow.ItemCollection;
+import org.imixs.workflow.WorkflowKernel;
+import org.imixs.workflow.engine.DocumentService;
+import org.imixs.workflow.engine.EventLogService;
+import org.imixs.workflow.engine.adminp.AdminPService;
+import org.imixs.workflow.engine.index.IndexEvent;
+import org.imixs.workflow.engine.index.SchemaService;
+import org.imixs.workflow.engine.jpa.EventLog;
+import org.imixs.workflow.exceptions.IndexException;
+
+import jakarta.ejb.Stateless;
+import jakarta.ejb.TransactionAttribute;
+import jakarta.ejb.TransactionAttributeType;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
+/**
+ * This session ejb provides functionality to maintain a local Lucene index.
+ * 
+ * @version 1.0
+ * @author rsoika
+ */
+@Stateless
+public class LuceneIndexService {
+
+    public static final int EVENTLOG_ENTRY_FLUSH_COUNT = 16;
+
+    public static final String ANONYMOUS = "ANONYMOUS";
+    public static final String DEFAULT_ANALYZER = "org.apache.lucene.analysis.standard.ClassicAnalyzer";
+    public static final String DEFAULT_INDEX_DIRECTORY = "imixs-workflow-index";
+    public static final String TAXONOMY_INDEXFIELD_PRAFIX = ".taxonomy";
+
+    @PersistenceContext(unitName = "org.imixs.workflow.jpa")
+    private EntityManager manager;
+
+    private SimpleDateFormat luceneDateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
+
+    @Inject
+    @ConfigProperty(name = "lucence.indexDir", defaultValue = DEFAULT_INDEX_DIRECTORY)
+    private String luceneIndexDir;
+
+    @Inject
+    @ConfigProperty(name = "lucence.analyzerClass", defaultValue = DEFAULT_ANALYZER)
+    private String luceneAnalyzerClass;
+
+    @Inject
+    private LuceneItemAdapter luceneItemAdapter;
+
+    private static Logger logger = Logger.getLogger(LuceneIndexService.class.getName());
+
+    @Inject
+    private AdminPService adminPService;
+
+    @Inject
+    private EventLogService eventLogService;
+
+    @Inject
+    private SchemaService schemaService;
+
+    @Inject
+    protected Event<IndexEvent> indexEvents;
+
+    private boolean bRebuildIndex; // indicator if we have triggered a rebuild index job.
+        // ... 1 lines elided ...
+    public String getLuceneIndexDir() {
+        // ... 4 lines elided ...
+    public void setLuceneIndexDir(String luceneIndexDir) {
+        // ... 5 lines elided ...
+    public String getLuceneAnalyzerClass() {
+        // ... 3 lines elided ...
+    public void setLuceneAnalyzerClass(String luceneAnalyzerClass) {
+        // ... 21 lines elided ...
+    public boolean flushEventLog(int junkSize) {
+        // ... 40 lines elided ...
+    public void rebuildIndex(Directory indexDir) throws IOException {
+        // ... 32 lines elided ...
+    public void indexDocuments(Collection<ItemCollection> documents) {
+        // ... 10 lines elided ...
+                    // create term
+                    Term term = new Term("$uniqueid", workitem.getItemValueString("$uniqueid"));
+                    logger.finest("......lucene add/update uncommitted workitem '"
+                            + workitem.getItemValueString(WorkflowKernel.UNIQUEID) + "' to index...");
+
+                    // awriter.updateDocument(term, createDocument(workitem));
+                    Document lucenedoc = createDocument(workitem);
+                    updateLuceneIndex(term, lucenedoc, indexWriter, taxonomyWriter);
+                }
+            }
+        } catch (IOException luceneEx) {
+            logger.warning("lucene error: " + luceneEx.getMessage());
+            throw new IndexException(IndexException.INVALID_INDEX, "Unable to update lucene search index", luceneEx);
+        } finally {
+            // close writer!
+            if (indexWriter != null) {
+                logger.finest("......lucene close IndexWriter...");
+                try {
+                    indexWriter.close();
+                } catch (CorruptIndexException e) {
+                    throw new IndexException(IndexException.INVALID_INDEX, "Unable to close lucene IndexWriter: ", e);
+                } catch (IOException e) {
+                    throw new IndexException(IndexException.INVALID_INDEX, "Unable to close lucene IndexWriter: ", e);
+                }
+            }
+            // close taxonomyWriter!
+            if (taxonomyWriter != null) {
+                logger.finest("......lucene close taxonomyWriter...");
+                try {
+                    taxonomyWriter.close();
+                } catch (CorruptIndexException e) {
+                    throw new IndexException(IndexException.INVALID_INDEX, "Unable to close lucene taxonomyWriter: ",
+                            e);
+                } catch (IOException e) {
+                    throw new IndexException(IndexException.INVALID_INDEX, "Unable to close lucene taxonomyWriter: ",
+                            e);
+                }
+            }
+        }
+
+        long updateTime = (System.currentTimeMillis() - ltime);
+        if (updateTime > 5000) {
+            logger.warning("... update index block in took " + (updateTime) + " ms ! (" + documents.size()
+                    + " documents in total)");
+        } else if (logger.isLoggable(Level.FINE)) {
+            logger.fine(
+                    "... update index block in " + (updateTime) + " ms (" + documents.size() + " documents in total)");
+        }
+    }
+
+    /**
+     * This method flushes a given count of eventLogEntries. The method return true
+     * if no more eventLogEntries exist.
+     * 
+     * @param count the max size of a eventLog engries to remove.
+     * @return true if the cache was totally flushed.
+     */
+    protected boolean flushEventLogByCount(int count) {
+        Date lastEventDate = null;
+        boolean cacheIsEmpty = true;
+        DirectoryTaxonomyWriter taxonomyWriter = null;
+        IndexWriter indexWriter = null;
+        long l = System.currentTimeMillis();
+        logger.finest("......flush eventlog cache....");
+
+        List<EventLog> events = eventLogService.findEventsByTopic(count + 1, DocumentService.EVENTLOG_TOPIC_INDEX_ADD,
+                DocumentService.EVENTLOG_TOPIC_INDEX_REMOVE);
+
+        if (events != null && events.size() > 0) {
+            try {
+                indexWriter = createIndexWriter();
+                taxonomyWriter = createTaxonomyWriter();
+                int _counter = 0;
+                for (EventLog eventLogEntry : events) {
+                    Term term = new Term("$uniqueid", eventLogEntry.getRef());
+                    // lookup the Document Entity...
+                    org.imixs.workflow.engine.jpa.Document doc = manager
+                            .find(org.imixs.workflow.engine.jpa.Document.class, eventLogEntry.getRef());
+
+                    // if the document was found we add/update the index. Otherwise we remove the
+                    // document form the index.
+                    if (doc != null && DocumentService.EVENTLOG_TOPIC_INDEX_ADD.equals(eventLogEntry.getTopic())) {
+                        // add workitem to search index....
+                        long l2 = System.currentTimeMillis();
+                        ItemCollection workitem = new ItemCollection();
+                        workitem.setAllItems(doc.getData());
+                        if (!workitem.getItemValueBoolean(DocumentService.NOINDEX)) {
+        // ... 84 lines elided ...
+    private void updateLuceneIndex(Term term, Document lucenedoc, IndexWriter indexWriter,
+        // ... 13 lines elided ...
+    public FacetsConfig getFacetsConfig() {
+        // ... 23 lines elided ...
+    protected Document createDocument(ItemCollection document) {
+        // ... 131 lines elided ...
+    protected void addItemValues(final Document doc, final ItemCollection workitem, final String _itemName,
+        // ... 51 lines elided ...
+    protected IndexWriter createIndexWriter() throws IOException {
+        // ... 22 lines elided ...
+    protected DirectoryTaxonomyWriter createTaxonomyWriter() throws IOException {
+        // ... 15 lines elided ...
+    public Directory createIndexDirectory() throws IOException {
+        // ... 21 lines elided ...
+    public Directory createTaxonomyDirectory() throws IOException {
+        // ... 18 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -283,23 +283,19 @@
+                             e);
+                 } catch (IOException e) {
+                     throw new IndexException(IndexException.INVALID_INDEX, "Unable to close lucene taxonomyWriter: ",
+                             e);
+                 }
+             }
+         }
+ 
+-        long updateTime = (System.currentTimeMillis() - ltime);
+-        if (updateTime > 5000) {
+-            logger.warning("... update index block in took " + (updateTime) + " ms ! (" + documents.size()
+-                    + " documents in total)");
+-        } else if (logger.isLoggable(Level.FINE)) {
+-            logger.fine(
+-                    "... update index block in " + (updateTime) + " ms (" + documents.size() + " documents in total)");
++        if (logger.isLoggable(Level.FINE)) {
++            logger.fine("... update index block in " + (System.currentTimeMillis() - ltime) + " ms (" + documents.size()
++                    + " workitems total)");
+         }
+     }
+ 
+     /**
+      * This method flushes a given count of eventLogEntries. The method return true
+      * if no more eventLogEntries exist.
+      * 
+      * @param count the max size of a eventLog engries to remove.
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: imixs-workflow-index-lucene/src/main/java/org/imixs/workflow/engine/lucene/LuceneUpdateService.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -25,21 +25,24 @@
+  *      Imixs Software Solutions GmbH - Project Management
+  *      Ralph Soika - Software Developer
+  */
+ 
+ package org.imixs.workflow.engine.lucene;
+ 
+ import java.util.List;
+ import java.util.logging.Logger;
+-import javax.ejb.Singleton;
+-import javax.inject.Inject;
++
++import jakarta.inject.Inject;
++
+ import org.imixs.workflow.ItemCollection;
+ import org.imixs.workflow.engine.index.UpdateService;
+ import org.imixs.workflow.exceptions.IndexException;
++
++import jakarta.ejb.Singleton;
+ 
+ /**
+  * The LuceneUpdateService provides methods to write Imixs Workitems into a
+  * Lucene search index. With the method <code>addWorkitem()</code> a
+  * ItemCollection can be added to a lucene search index. The service init method
+  * reads the property file 'imixs.properties' from the current classpath to
+  * determine the configuration.
+  * 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -25,16 +25,18 @@
+  *      Imixs Software Solutions GmbH - Project Management
+  *      Ralph Soika - Software Developer
+  */
+ 
+ package org.imixs.workflow.engine.lucene;
+ 
+ import java.util.List;
+ import java.util.logging.Logger;
++
++import javax.ejb.AccessTimeout;
+ import javax.ejb.Singleton;
+ import javax.inject.Inject;
+ import org.imixs.workflow.ItemCollection;
+ import org.imixs.workflow.engine.index.UpdateService;
+ import org.imixs.workflow.exceptions.IndexException;
+ 
+ /**
+  * The LuceneUpdateService provides methods to write Imixs Workitems into a
+@@ -49,25 +51,28 @@
+  * searchable after a workitem was updated
+  * <li>The property "IndexFieldList" lists all fields which should be indexed as
+  * keywords by the lucene search engine
+  * </ul>
+  * 
+  * The singleton pattern is used to avoid conflicts within multi-thread
+  * scenarios. The service is used by the LucenPlugin to update the lucene index
+  * during a workflow processing step.
+- * 
++ * <p>
++ * Since version 5.2.15 we increase the default access timeout from 5000ms to
++ * 30000ms (30sec)
+  * 
+  * @see http://stackoverflow.com/questions/34880347/why-did-lucene-indexwriter-
+  *      did-not-update-the-index-when-called-from-a-web-modul
+  * @see LucenePlugin
+  * @version 1.2
+  * @author rsoika
+  */
+ @Singleton
++@AccessTimeout(value = 30000) // set to 30sec to support slow io (e.g ceph)
+ public class LuceneUpdateService implements UpdateService {
+ 
+     @Inject
+     private LuceneIndexService luceneIndexService;
+ 
+     private static Logger logger = Logger.getLogger(LuceneUpdateService.class.getName());
+ 
+     /**
+@@ -97,11 +102,17 @@
+         // flush eventlog (see issue #411)
+         int flushCount = 0;
+         while (luceneIndexService.flushEventLog(2048) == false) {
+             // repeat flush....
+             flushCount = +2048;
+             logger.info("...flush event log: " + flushCount + " entries updated in "
+                     + (System.currentTimeMillis() - ltime) + "ms ...");
+         }
++        // print warning if updateIndex took longer than 5 seconds
++        long updateTime=(System.currentTimeMillis() - ltime);
++        if (updateTime>5000) {
++            logger.warning("...Slow lucene updateIndex take " + (updateTime) + "ms !");
++            
++        }
+     }
+ 
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*  
+ *  Imixs-Workflow 
+ *  
+ *  Copyright (C) 2001-2020 Imixs Software Solutions GmbH,  
+ *  http://www.imixs.com
+ *  
+ *  This program is free software; you can redistribute it and/or 
+ *  modify it under the terms of the GNU General Public License 
+ *  as published by the Free Software Foundation; either version 2 
+ *  of the License, or (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ *  General Public License for more details.
+ *  
+ *  You can receive a copy of the GNU General Public
+ *  License at http://www.gnu.org/licenses/gpl.html
+ *  
+ *  Project: 
+ *      https://www.imixs.org
+ *      https://github.com/imixs/imixs-workflow
+ *  
+ *  Contributors:  
+ *      Imixs Software Solutions GmbH - Project Management
+ *      Ralph Soika - Software Developer
+ */
+
+package org.imixs.workflow.engine.lucene;
+
+import java.util.List;
+import java.util.logging.Logger;
+
+import jakarta.inject.Inject;
+import javax.ejb.AccessTimeout;
+import org.imixs.workflow.ItemCollection;
+import org.imixs.workflow.engine.index.UpdateService;
+import org.imixs.workflow.exceptions.IndexException;
+
+import jakarta.ejb.Singleton;
+
+/**
+ * The LuceneUpdateService provides methods to write Imixs Workitems into a
+ * Lucene search index. With the method <code>addWorkitem()</code> a
+ * ItemCollection can be added to a lucene search index. The service init method
+ * reads the property file 'imixs.properties' from the current classpath to
+ * determine the configuration.
+ * 
+ * <ul>
+ * <li>The property "IndexDir" defines the location of the lucene index
+ * <li>The property "FulltextFieldList" lists all fields which should be
+ * searchable after a workitem was updated
+ * <li>The property "IndexFieldList" lists all fields which should be indexed as
+ * keywords by the lucene search engine
+ * </ul>
+ * 
+ * The singleton pattern is used to avoid conflicts within multi-thread
+ * scenarios. The service is used by the LucenPlugin to update the lucene index
+ * during a workflow processing step.
+ * <p>
+ * Since version 5.2.15 we increase the default access timeout from 5000ms to
+ * 30000ms (30sec)
+ * 
+ * @see http://stackoverflow.com/questions/34880347/why-did-lucene-indexwriter-
+ *      did-not-update-the-index-when-called-from-a-web-modul
+ * @see LucenePlugin
+ * @version 1.2
+ * @author rsoika
+ */
+@Singleton
+@AccessTimeout(value = 30000) // set to 30sec to support slow io (e.g ceph)
+public class LuceneUpdateService implements UpdateService {
+
+    @Inject
+    private LuceneIndexService luceneIndexService;
+
+    private static Logger logger = Logger.getLogger(LuceneUpdateService.class.getName());
+
+    /**
+     * This method adds a collection of documents to the Lucene index. The documents
+     * are added immediately to the index. Calling this method within a running
+     * transaction leads to a uncommitted reads in the index. For transaction
+     * control, it is recommended to use instead the the method updateDocumetns()
+     * which takes care of uncommitted reads.
+     * <p>
+     * This method is used by the JobHandlerRebuildIndex only.
+     * 
+     * @param documents of ItemCollections to be indexed
+     * @throws IndexException
+     */
+    @Override
+    public void updateIndex(List<ItemCollection> documents) {
+        luceneIndexService.indexDocuments(documents);
+
+    }
+
+    /**
+     * This method flush the event log.
+     */
+    @Override
+    public void updateIndex() {
+        long ltime = System.currentTimeMillis();
+        // flush eventlog (see issue #411)
+        int flushCount = 0;
+        while (luceneIndexService.flushEventLog(2048) == false) {
+            // repeat flush....
+            flushCount = +2048;
+            logger.info("...flush event log: " + flushCount + " entries updated in "
+                    + (System.currentTimeMillis() - ltime) + "ms ...");
+        }
+        // print warning if updateIndex took longer than 5 seconds
+        long updateTime=(System.currentTimeMillis() - ltime);
+        if (updateTime>5000) {
+            logger.warning("...Slow lucene updateIndex take " + (updateTime) + "ms !");
+            
+        }
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -27,17 +27,17 @@
+  */
+ 
+ package org.imixs.workflow.engine.lucene;
+ 
+ import java.util.List;
+ import java.util.logging.Logger;
+ 
+ import jakarta.inject.Inject;
+-import javax.ejb.AccessTimeout;
++
+ import org.imixs.workflow.ItemCollection;
+ import org.imixs.workflow.engine.index.UpdateService;
+ import org.imixs.workflow.exceptions.IndexException;
+ 
+ import jakarta.ejb.Singleton;
+ 
+ /**
+  * The LuceneUpdateService provides methods to write Imixs Workitems into a
+@@ -52,28 +52,25 @@
+  * searchable after a workitem was updated
+  * <li>The property "IndexFieldList" lists all fields which should be indexed as
+  * keywords by the lucene search engine
+  * </ul>
+  * 
+  * The singleton pattern is used to avoid conflicts within multi-thread
+  * scenarios. The service is used by the LucenPlugin to update the lucene index
+  * during a workflow processing step.
+- * <p>
+- * Since version 5.2.15 we increase the default access timeout from 5000ms to
+- * 30000ms (30sec)
++ * 
+  * 
+  * @see http://stackoverflow.com/questions/34880347/why-did-lucene-indexwriter-
+  *      did-not-update-the-index-when-called-from-a-web-modul
+  * @see LucenePlugin
+  * @version 1.2
+  * @author rsoika
+  */
+ @Singleton
+-@AccessTimeout(value = 30000) // set to 30sec to support slow io (e.g ceph)
+ public class LuceneUpdateService implements UpdateService {
+ 
+     @Inject
+     private LuceneIndexService luceneIndexService;
+ 
+     private static Logger logger = Logger.getLogger(LuceneUpdateService.class.getName());
+ 
+     /**
+@@ -103,17 +100,11 @@
+         // flush eventlog (see issue #411)
+         int flushCount = 0;
+         while (luceneIndexService.flushEventLog(2048) == false) {
+             // repeat flush....
+             flushCount = +2048;
+             logger.info("...flush event log: " + flushCount + " entries updated in "
+                     + (System.currentTimeMillis() - ltime) + "ms ...");
+         }
+-        // print warning if updateIndex took longer than 5 seconds
+-        long updateTime=(System.currentTimeMillis() - ltime);
+-        if (updateTime>5000) {
+-            logger.warning("...Slow lucene updateIndex take " + (updateTime) + "ms !");
+-            
+-        }
+     }
+ 
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package javax.ejb does not exist
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

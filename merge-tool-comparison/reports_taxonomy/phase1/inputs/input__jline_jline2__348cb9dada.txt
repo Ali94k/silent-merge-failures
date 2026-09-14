@@ -1,0 +1,1034 @@
+UNIT jline_jline2__348cb9dada
+repo: jline_jline2   merge: 348cb9dadabbe9a315ffcf37b9221cf098e3cfeb   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/2: src/main/java/jline/console/ConsoleReader.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -220,22 +220,23 @@
+     }
+ 
+     public ConsoleReader(final @Nullable String appName, final InputStream in, final OutputStream out, final @Nullable Terminal term, final @Nullable String encoding)
+         throws IOException
+     {
+         this.appName = appName != null ? appName : "JLine";
+         this.encoding = encoding != null ? encoding : Configuration.getEncoding();
+         this.terminal = term != null ? term : TerminalFactory.get();
+-        this.out = new OutputStreamWriter(terminal.wrapOutIfNeeded(out), this.encoding);
++        String outEncoding = terminal.getOutputEncoding() != null? terminal.getOutputEncoding() : this.encoding;
++        this.out = new OutputStreamWriter(terminal.wrapOutIfNeeded(out), outEncoding);
+         setInput( in );
+ 
+         this.inputrcUrl = getInputRc();
+ 
+-        consoleKeys = new ConsoleKeys(appName, inputrcUrl);
++        consoleKeys = new ConsoleKeys(this.appName, inputrcUrl);
+     }
+ 
+     private URL getInputRc() throws IOException {
+         String path = Configuration.getString(JLINE_INPUTRC);
+         if (path == null) {
+             File f = new File(Configuration.getUserHome(), INPUT_RC);
+             if (!f.exists()) {
+                 f = new File(DEFAULT_INPUT_RC);
+@@ -559,16 +560,26 @@
+         buf.buffer.setLength(sameIndex); // the new length
+         putString(buffer.substring(sameIndex)); // append the differences
+     }
+ 
+     private void setBuffer(final CharSequence buffer) throws IOException {
+         setBuffer(String.valueOf(buffer));
+     }
+ 
++    private void setBufferKeepPos(final String buffer) throws IOException {
++        int pos = buf.cursor;
++        setBuffer(buffer);
++        setCursorPosition(pos);
++    }
++
++    private void setBufferKeepPos(final CharSequence buffer) throws IOException {
++        setBufferKeepPos(String.valueOf(buffer));
++    }
++
+     /**
+      * Output put the prompt + the current buffer
+      */
+     public final void drawLine() throws IOException {
+         String prompt = getPrompt();
+         if (prompt != null) {
+             print(prompt);
+         }
+@@ -596,21 +607,28 @@
+      *
+      * @return the former contents of the buffer.
+      */
+     final String finishBuffer() throws IOException { // FIXME: Package protected because used by tests
+         String str = buf.buffer.toString();
+         String historyLine = str;
+ 
+         if (expandEvents) {
+-            str = expandEvents(str);
+-            // all post-expansion occurrences of '!' must have been escaped, so re-add escape to each
+-            historyLine = str.replace("!", "\\!");
+-            // only leading '^' results in expansion, so only re-add escape for that case
+-            historyLine = historyLine.replaceAll("^\\^", "\\\\^");
++            try {
++                str = expandEvents(str);
++                // all post-expansion occurrences of '!' must have been escaped, so re-add escape to each
++                historyLine = str.replace("!", "\\!");
++                // only leading '^' results in expansion, so only re-add escape for that case
++                historyLine = historyLine.replaceAll("^\\^", "\\\\^");
++            } catch(IllegalArgumentException e) {
++                Log.error("Could not expand event", e);
++                beep();
++                buf.clear();
++                str = "";
++            }
+         }
+ 
+         // we only add it to the history if the buffer is not empty
+         // and if mask is null, since having a mask typically means
+         // the string was a password. We clear the mask after this call
+         if (str.length() > 0) {
+             if (mask == null && isHistoryEnabled()) {
+                 history.add(historyLine);
+@@ -673,16 +691,28 @@
+                                 }
+                                 String sc = str.substring(i + 1, i1);
+                                 i = i1;
+                                 idx = searchBackwards(sc);
+                                 if (idx < 0) {
+                                     throw new IllegalArgumentException("!?" + sc + ": event not found");
+                                 } else {
+                                     rep = history.get(idx).toString();
++                                }
++                                break;
++                            case '$':
++                                if (history.size() == 0) {
++                                    throw new IllegalArgumentException("!$: event not found");
++                                }
++                                String previous = history.get(history.index() - 1).toString().trim();
++                                int lastSpace = previous.lastIndexOf(' ');
++                                if(lastSpace != -1) {
++                                    rep = previous.substring(lastSpace+1);
++                                } else {
++                                    rep = previous;
+                                 }
+                                 break;
+                             case ' ':
+                             case '\t':
+                                 sb.append('!');
+                                 sb.append(c);
+                                 break;
+                             case '-':
+@@ -1166,34 +1196,46 @@
+         return ok;
+     }
+ 
+     /**
+      * Performs the vi "delete-to" action, deleting characters between a given
+      * span of the input line.
+      * @param startPos The start position
+      * @param endPos The end position.
++     * @param isChange If true, then the delete is part of a change operationg
++     *    (e.g. "c$" is change-to-end-of line, so we first must delete to end 
++     *    of line to start the change
+      * @return true if it succeeded, false otherwise
+      * @throws IOException
+      */
+-    private boolean viDeleteTo(int startPos, int endPos) throws IOException {
++    private boolean viDeleteTo(int startPos, int endPos, boolean isChange) throws IOException {
+         if (startPos == endPos) {
+             return true;
+         }
+ 
+         if (endPos < startPos) {
+             int tmp = endPos;
+             endPos = startPos;
+             startPos = tmp;
+         }
+ 
+         setCursorPosition(startPos);
+         buf.cursor = startPos;
+         buf.buffer.delete(startPos, endPos);
+         drawBuffer(endPos - startPos);
++        
++        // If we are doing a delete operation (e.g. "d$") then don't leave the
++        // cursor dangling off the end. In reality the "isChange" flag is silly
++        // what is really happening is that if we are in "move-mode" then the
++        // cursor can't be moved off the end of the line, but in "edit-mode" it
++        // is ok, but I have no easy way of knowing which mode we are in.
++        if (! isChange && startPos > 0 && startPos == buf.length()) {
++            moveCursor(-1);
++        }
+         return true;
+     }
+ 
+     /**
+      * Implement the "vi" yank-to operation.  This operation allows you
+      * to yank the contents of the current line based upon a move operation,
+      * for exaple "yw" yanks the current word, "3yw" yanks 3 words, etc.
+      *
+@@ -2356,29 +2398,27 @@
+                     switch ( ((Operation) o )) {
+                         case ABORT:
+                             state = State.NORMAL;
+                             buf.clear();
+                             buf.buffer.append(searchTerm);
+                             break;
+ 
+                         case REVERSE_SEARCH_HISTORY:
+-                        case HISTORY_SEARCH_BACKWARD:
+                             state = State.SEARCH;
+                             if (searchTerm.length() == 0) {
+                                 searchTerm.append(previousSearchTerm);
+                             }
+ 
+                             if (searchIndex > 0) {
+                                 searchIndex = searchBackwards(searchTerm.toString(), searchIndex);
+                             }
+                             break;
+ 
+                         case FORWARD_SEARCH_HISTORY:
+-                        case HISTORY_SEARCH_FORWARD:
+                             state = State.FORWARD_SEARCH;
+                             if (searchTerm.length() == 0) {
+                                 searchTerm.append(previousSearchTerm);
+                             }
+ 
+                             if (searchIndex > -1 && searchIndex < history.size() - 1) {
+                                 searchIndex = searchForwards(searchTerm.toString(), searchIndex);
+                             }
+@@ -2543,16 +2583,17 @@
+                                 break;
+ 
+                             case INTERRUPT:
+                                 if (handleUserInterrupt) {
+                                     println();
+                                     flush();
+                                     String partialLine = buf.buffer.toString();
+                                     buf.clear();
++                                    history.moveToEnd();
+                                     throw new UserInterruptException(partialLine);
+                                 }
+                                 break;
+ 
+                             /*
+                              * VI_MOVE_ACCEPT_LINE is the result of an ENTER
+                              * while in move mode. This is the same as a normal
+                              * ACCEPT_LINE, except that we need to enter
+@@ -2646,18 +2687,53 @@
+ 
+                             case END_OF_HISTORY:
+                                 success = history.moveToLast();
+                                 if (success) {
+                                     setBuffer(history.current());
+                                 }
+                                 break;
+ 
++                            case HISTORY_SEARCH_BACKWARD:
++                                searchTerm = new StringBuffer(buf.upToCursor());
++                                searchIndex = searchBackwards(searchTerm.toString(), history.index(), true);
++
++                                if (searchIndex == -1) {
++                                    beep();
++                                } else {
++                                    // Maintain cursor position while searching.
++                                    success = history.moveTo(searchIndex);
++                                    if (success) {
++                                        setBufferKeepPos(history.current());
++                                    }
++                                }
++                                break;
++
++                            case HISTORY_SEARCH_FORWARD:
++                                searchTerm = new StringBuffer(buf.upToCursor());
++                                int index = history.index() + 1;
++
++                                if (index == history.size()) {
++                                    history.moveToEnd();
++                                    setBufferKeepPos(searchTerm.toString());
++                                } else if (index < history.size()) {
++                                    searchIndex = searchForwards(searchTerm.toString(), index, true);
++                                    if (searchIndex == -1) {
++                                        beep();
++                                    } else {
++                                        // Maintain cursor position while searching.
++                                        success = history.moveTo(searchIndex);
++                                        if (success) {
++                                            setBufferKeepPos(history.current());
++                                        }
++                                    }
++                                }
++                                break;
++
+                             case REVERSE_SEARCH_HISTORY:
+-                            case HISTORY_SEARCH_BACKWARD:
+                                 if (searchTerm != null) {
+                                     previousSearchTerm = searchTerm.toString();
+                                 }
+                                 searchTerm = new StringBuffer(buf.buffer);
+                                 state = State.SEARCH;
+                                 if (searchTerm.length() > 0) {
+                                     searchIndex = searchBackwards(searchTerm.toString());
+                                     if (searchIndex == -1) {
+@@ -2667,17 +2743,16 @@
+                                             searchIndex > -1 ? history.get(searchIndex).toString() : "");
+                                 } else {
+                                     searchIndex = -1;
+                                     printSearchStatus("", "");
+                                 }
+                                 break;
+ 
+                             case FORWARD_SEARCH_HISTORY:
+-                            case HISTORY_SEARCH_FORWARD:
+                                 if (searchTerm != null) {
+                                     previousSearchTerm = searchTerm.toString();
+                                 }
+                                 searchTerm = new StringBuffer(buf.buffer);
+                                 state = State.FORWARD_SEARCH;
+                                 if (searchTerm.length() > 0) {
+                                     searchIndex = searchForwards(searchTerm.toString());
+                                     if (searchIndex == -1) {
+@@ -2817,16 +2892,20 @@
+                                     repeatCount = (repeatCount * 10) + sb.charAt(0) - '0';
+                                     isArgDigit = true;
+                                 }
+                                 else {
+                                     success = setCursorPosition(0);
+                                 }
+                                 break;
+ 
++                            case VI_FIRST_PRINT:
++                                success = setCursorPosition(0) && viNextWord(1);
++                                break;
++
+                             case VI_PREV_WORD:
+                                 success = viPreviousWord(count);
+                                 break;
+ 
+                             case VI_NEXT_WORD:
+                                 success = viNextWord(count);
+                                 break;
+ 
+@@ -2879,16 +2958,21 @@
+                                     success = setCursorPosition(0) && killLine();
+                                     state = origState = State.NORMAL;
+                                     consoleKeys.setKeyMap(KeyMap.VI_INSERT);
+                                 }
+                                 else {
+                                     state = State.VI_CHANGE_TO;
+                                 }
+                                 break;
++                            
++                            case VI_KILL_WHOLE_LINE:
++                                success = setCursorPosition(0) && killLine();
++                                consoleKeys.setKeyMap(KeyMap.VI_INSERT);
++                                break;
+ 
+                             case VI_PUT:
+                                 success = viPut(count);
+                                 break;
+ 
+                             case VI_CHAR_SEARCH: {
+                                  // ';' and ',' don't need another character. They indicate repeat next or repeat prev.
+                                 int searchChar = (c != ';' && c != ',')
+@@ -2906,35 +2990,44 @@
+                                 break;
+ 
+                             case VI_CHANGE_CHAR:
+                                 success = viChangeChar(count,
+                                     pushBackChar.isEmpty()
+                                         ? readCharacter()
+                                         : pushBackChar.pop());
+                                 break;
++                            
++                            case VI_DELETE_TO_EOL:
++                                success = viDeleteTo(buf.cursor, buf.buffer.length(), false);
++                                break;
++                                
++                            case VI_CHANGE_TO_EOL:
++                                success = viDeleteTo(buf.cursor, buf.buffer.length(), true);
++                                consoleKeys.setKeyMap(KeyMap.VI_INSERT);
++                                break;
+ 
+                             case EMACS_EDITING_MODE:
+                                 consoleKeys.setKeyMap(KeyMap.EMACS);
+                                 break;
+ 
+                             default:
+                                 break;
+                         }
+ 
+                         /*
+                          * If we were in a yank-to, delete-to, move-to
+                          * when this operation started, then fall back to
+                          */
+                         if (origState != State.NORMAL) {
+                             if (origState == State.VI_DELETE_TO) {
+-                                success = viDeleteTo(cursorStart, buf.cursor);
++                                success = viDeleteTo(cursorStart, buf.cursor, false);
+                             }
+                             else if (origState == State.VI_CHANGE_TO) {
+-                                success = viDeleteTo(cursorStart, buf.cursor);
++                                success = viDeleteTo(cursorStart, buf.cursor, true);
+                                 consoleKeys.setKeyMap(KeyMap.VI_INSERT);
+                             }
+                             else if (origState == State.VI_YANK_TO) {
+                                 success = viYankTo(cursorStart, buf.cursor);
+                             }
+                             state = State.NORMAL;
+                         }
+ 
+@@ -3292,39 +3385,24 @@
+     //
+ 
+     /**
+      * Issue a delete.
+      *
+      * @return true if successful
+      */
+     public final boolean delete() throws IOException {
+-        return delete(1) == 1;
+-    }
+-
+-    // FIXME: delete(int) only used by above + the return is always 1 and num is ignored
+-
+-    /**
+-     * Issue <em>num</em> deletes.
+-     *
+-     * @return the number of characters backed up
+-     */
+-    private int delete(final int num) throws IOException {
+-        // TODO: Try to use jansi for this
+-
+-        /* Commented out because of DWA-2949:
+-        if (buf.cursor == 0) {
+-            return 0;
+-        }
+-        */
++        if (buf.cursor == buf.buffer.length()) {
++          return false;
++        }
+ 
+         buf.buffer.delete(buf.cursor, buf.cursor + 1);
+         drawBuffer(1);
+ 
+-        return 1;
++        return true;
+     }
+ 
+     /**
+      * Kill the buffer ahead of the current cursor position.
+      *
+      * @return true if successful
+      */
+     public boolean killLine() throws IOException {
+@@ -3706,16 +3784,20 @@
+      * @param searchTerm substring to search for.
+      * @return index where the substring has been found, or -1 else.
+      */
+     public int searchForwards(String searchTerm) {
+         return searchForwards(searchTerm, history.index());
+     }
+ 
+     public int searchForwards(String searchTerm, int startIndex, boolean startsWith) {
++        if (startIndex >= history.size()) {
++            startIndex = history.size() - 1;
++        }
++
+         ListIterator<History.Entry> it = history.entries(startIndex);
+ 
+         if (searchIndex != -1 && it.hasNext()) {
+             it.next();
+         }
+ 
+         while (it.hasNext()) {
+             History.Entry e = it.next();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -141,16 +141,18 @@
+     private char  charSearchLastInvokeChar = 0; // Most recent invocation key
+     private char  charSearchFirstInvokeChar = 0;// First character that invoked
+ 
+     /**
+      * The vi yank buffer
+      */
+     private String yankBuffer = "";
+ 
++    private KillRing killRing = new KillRing();
++
+     private String encoding;
+ 
+     private boolean recording;
+ 
+     private String macro = "";
+ 
+     private String appName;
+ 
+@@ -468,17 +470,30 @@
+      *
+      * @return false if we failed (e.g., the buffer was empty)
+      */
+     protected final boolean resetLine() throws IOException {
+         if (buf.cursor == 0) {
+             return false;
+         }
+ 
+-        backspaceAll();
++        StringBuilder killed = new StringBuilder();
++
++        while (buf.cursor > 0) {
++            char c = buf.current();
++            if (c == 0) {
++                break;
++            }
++
++            killed.append(c);
++            backspace();
++        }
++
++        String copy = killed.reverse().toString();
++        killRing.addBackwards(copy);
+ 
+         return true;
+     }
+ 
+     int getCursorPosition() {
+         // FIXME: does not handle anything but a line with a prompt absolute position
+         return promptLen + buf.cursor;
+     }
+@@ -1472,29 +1487,50 @@
+      * of the word before it.  If the user is not on a word or whitespace
+      * it deletes up to the end of the previous word.
+      *
+      * @param count Number of times to perform the operation
+      * @return true if it worked, false if you tried to delete too many words
+      * @throws IOException
+      */
+     private boolean unixWordRubout(int count) throws IOException {
++        boolean success = true;
++        StringBuilder killed = new StringBuilder();
++
+         for (; count > 0; --count) {
+-            if (buf.cursor == 0)
+-                return false;
+-
+-            while (isWhitespace(buf.current()) && backspace()) {
+-                // nothing
+-            }
+-            while (!isWhitespace(buf.current()) && backspace()) {
+-                // nothing
+-            }
+-        }
+-
+-        return true;
++            if (buf.cursor == 0) {
++                success = false;
++                break;
++            }
++
++            while (isWhitespace(buf.current())) {
++                char c = buf.current();
++                if (c == 0) {
++                    break;
++                }
++
++                killed.append(c);
++                backspace();
++            }
++
++            while (!isWhitespace(buf.current())) {
++                char c = buf.current();
++                if (c == 0) {
++                    break;
++                }
++
++                killed.append(c);
++                backspace();
++            }
++        }
++
++        String copy = killed.reverse().toString();
++        killRing.addBackwards(copy);
++
++        return success;
+     }
+ 
+     private String insertComment(boolean isViMode) throws IOException {
+         String comment = this.getCommentBegin ();
+         setCursorPosition(0);
+         putString(comment);
+         if (isViMode) {
+             consoleKeys.setKeyMap(KeyMap.VI_INSERT);
+@@ -1784,35 +1820,64 @@
+             case '(': return  3;
+             case ')': return -3;
+             default:
+                 return 0;
+         }
+     }
+ 
+     private boolean deletePreviousWord() throws IOException {
+-        while (isDelimiter(buf.current()) && backspace()) {
+-            // nothing
+-        }
+-
+-        while (!isDelimiter(buf.current()) && backspace()) {
+-            // nothing
+-        }
+-
++        StringBuilder killed = new StringBuilder();
++        char c;
++
++        while (isDelimiter((c = buf.current()))) {
++            if (c == 0) {
++                break;
++            }
++
++            killed.append(c);
++            backspace();
++        }
++
++        while (!isDelimiter((c = buf.current()))) {
++            if (c == 0) {
++                break;
++            }
++
++            killed.append(c);
++            backspace();
++        }
++
++        String copy = killed.reverse().toString();
++        killRing.addBackwards(copy);
+         return true;
+     }
+ 
+     private boolean deleteNextWord() throws IOException {
+-        while (isDelimiter(buf.nextChar()) && delete()) {
+-
+-        }
+-
+-        while (!isDelimiter(buf.nextChar()) && delete()) {
+-            // nothing
+-        }
++        StringBuilder killed = new StringBuilder();
++        char c;
++
++        while (isDelimiter((c = buf.nextChar()))) {
++            if (c == 0) {
++                break;
++            }
++            killed.append(c);
++            delete();
++        }
++
++        while (!isDelimiter((c = buf.nextChar()))) {
++            if (c == 0) {
++                break;
++            }
++            killed.append(c);
++            delete();
++        }
++
++        String copy = killed.toString();
++        killRing.add(copy);
+ 
+         return true;
+     }
+ 
+     private boolean capitalizeWord() throws IOException {
+         boolean first = true;
+         int i = 1;
+         char c;
+@@ -2245,16 +2310,32 @@
+                 }
+                 sb.appendCodePoint(c);
+ 
+                 if (recording) {
+                     macro += new String(new int[]{c}, 0, 1);
+                 }
+ 
+                 Object o = getKeys().getBound( sb );
++                /*
++                 * The kill ring keeps record of whether or not the
++                 * previous command was a yank or a kill. We reset
++                 * that state here if needed.
++                 */
++                if (!recording && !(o instanceof KeyMap)) {
++                    if (o != Operation.YANK_POP && o != Operation.YANK) {
++                        killRing.resetLastYank();
++                    }
++                    if (o != Operation.KILL_LINE && o != Operation.KILL_WHOLE_LINE
++                        && o != Operation.BACKWARD_KILL_WORD && o != Operation.KILL_WORD
++                        && o != Operation.UNIX_LINE_DISCARD && o != Operation.UNIX_WORD_RUBOUT) {
++                        killRing.resetLastKill();
++                    }
++                }
++
+                 if (o == Operation.DO_LOWERCASE_VERSION) {
+                     sb.setLength( sb.length() - 1);
+                     sb.append( Character.toLowerCase( (char) c ));
+                     o = getKeys().getBound( sb );
+                 }
+ 
+                 /*
+                  * A KeyMap indicates that the key that was struck has a
+@@ -2457,17 +2538,16 @@
+                     /*
+                      * Default success to true. You only need to explicitly
+                      * set it if something goes wrong.
+                      */
+                     success = true;
+ 
+                     if (o instanceof Operation) {
+                         Operation op = (Operation)o;
+-
+                         /*
+                          * Current location of the cursor (prior to the operation).
+                          * These are used by vi *-to operation (e.g. delete-to)
+                          * so we know where we came from.
+                          */
+                         int     cursorStart = buf.cursor;
+                         State   origState   = state;
+ 
+@@ -2508,16 +2588,24 @@
+                             case POSSIBLE_COMPLETIONS:
+                                 printCompletionCandidates();
+                                 break;
+ 
+                             case BEGINNING_OF_LINE:
+                                 success = setCursorPosition(0);
+                                 break;
+ 
++                            case YANK:
++                                success = yank();
++                                break;
++
++                            case YANK_POP:
++                                success = yankPop();
++                                break;
++
+                             case KILL_LINE: // CTRL-K
+                                 success = killLine();
+                                 break;
+ 
+                             case KILL_WHOLE_LINE:
+                                 success = setCursorPosition(0) && killLine();
+                                 break;
+ 
+@@ -2629,19 +2717,21 @@
+ 
+                             case UNIX_WORD_RUBOUT:
+                                 success = unixWordRubout(count);
+                                 break;
+ 
+                             case BACKWARD_KILL_WORD:
+                                 success = deletePreviousWord();
+                                 break;
++
+                             case KILL_WORD:
+                                 success = deleteNextWord();
+                                 break;
++
+                             case BEGINNING_OF_HISTORY:
+                                 success = history.moveToFirst();
+                                 if (success) {
+                                     setBuffer(history.current());
+                                 }
+                                 break;
+ 
+                             case END_OF_HISTORY:
+@@ -3330,23 +3420,56 @@
+     public boolean killLine() throws IOException {
+         int cp = buf.cursor;
+         int len = buf.buffer.length();
+ 
+         if (cp >= len) {
+             return false;
+         }
+ 
+-        int num = buf.buffer.length() - cp;
++        int num = len - cp;
+         clearAhead(num, 0);
+ 
+-        for (int i = 0; i < num; i++) {
+-            buf.buffer.deleteCharAt(len - i - 1);
+-        }
+-
++        char[] killed = new char[num];
++        buf.buffer.getChars(cp, (cp + num), killed, 0);
++        buf.buffer.delete(cp, (cp + num));
++
++        String copy = new String(killed);
++        killRing.add(copy);
++
++        return true;
++    }
++
++    public boolean yank() throws IOException {
++        String yanked = killRing.yank();
++
++        if (yanked == null) {
++            return false;
++        }
++        putString(yanked);
++        return true;
++    }
++
++    public boolean yankPop() throws IOException {
++        if (!killRing.lastYank()) {
++            return false;
++        }
++        String current = killRing.yank();
++        if (current == null) {
++            // This shouldn't happen.
++            return false;
++        }
++        backspace(current.length());
++        String yanked = killRing.yankPop();
++        if (yanked == null) {
++            // This shouldn't happen.
++            return false;
++        }
++
++        putString(yanked);
+         return true;
+     }
+ 
+     /**
+      * Clear the screen by issuing the ANSI "clear screen" code.
+      */
+     public boolean clearScreen() throws IOException {
+         if (!terminal.isAnsiSupported()) {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/jline/console/ConsoleReaderTestSupport.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -112,16 +112,17 @@
+         assertEquals(expected, prevLine);
+     }
+ 
+     private String getKeyForAction(final Operation key) {
+         switch (key) {
+             case BACKWARD_WORD:        return "\u001Bb";
+             case BEGINNING_OF_LINE:    return "\033[H";
+             case END_OF_LINE:          return "\u0005";
++            case KILL_WORD:            return "\u001Bd";
+             case UNIX_WORD_RUBOUT:     return "\u0017";
+             case ACCEPT_LINE:          return "\n";
+             case PREVIOUS_HISTORY:     return "\033[A";
+             case NEXT_HISTORY:         return "\033[B";
+             case BACKWARD_CHAR:        return "\u0002";
+             case COMPLETE:             return "\011";
+             case BACKWARD_DELETE_CHAR: return "\010";
+             case VI_EOF_MAYBE:         return "\004";
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -55,62 +55,62 @@
+ 
+         console.setInput(new ByteArrayInputStream(buffer.getBytes()));
+ 
+         // run it through the reader
+         String line;
+         while ((line = console.readLine((String) null)) != null) {
+             //System.err.println("Read line: " + line);
+         }
+-        
++
+         assertEquals(expected, console.getCursorBuffer().toString());
+     }
+-    
++
+     protected void assertPosition(int pos, final Buffer buffer, final boolean clear) throws IOException {
+         // clear current buffer, if any
+         if (clear) {
+             console.finishBuffer();
+             console.getHistory().clear();
+         }
+ 
+         console.setInput(new ByteArrayInputStream(buffer.getBytes()));
+ 
+         // run it through the reader
+         String line;
+         while ((line = console.readLine((String) null)) != null) {
+             //System.err.println("Read line: " + line);
+         }
+-        
++
+         assertEquals(pos, console.getCursorPosition ());
+     }
+-    
++
+     /**
+      * This is used to check the contents of the last completed
+      * line of input in the input buffer.
+-     * 
++     *
+      * @param expected The expected contents of the line.
+      * @param buffer The buffer
+      * @param clear If true, the current buffer of the console
+      *    is cleared.
+      * @throws IOException
+      */
+-    protected void assertLine(final String expected, final Buffer buffer, 
++    protected void assertLine(final String expected, final Buffer buffer,
+             final boolean clear) throws IOException {
+         // clear current buffer, if any
+         if (clear) {
+             console.finishBuffer();
+             console.getHistory().clear();
+         }
+ 
+         console.setInput(new ByteArrayInputStream(buffer.getBytes()));
+ 
+         String line;
+         String prevLine = null;
+         while ((line = console.readLine((String) null)) != null) {
+-            
++
+             prevLine = line;
+         }
+ 
+         assertEquals(expected, prevLine);
+     }
+ 
+     private String getKeyForAction(final Operation key) {
+         switch (key) {
+@@ -120,16 +120,20 @@
+             case UNIX_WORD_RUBOUT:     return "\u0017";
+             case ACCEPT_LINE:          return "\n";
+             case PREVIOUS_HISTORY:     return "\033[A";
+             case NEXT_HISTORY:         return "\033[B";
+             case BACKWARD_CHAR:        return "\u0002";
+             case COMPLETE:             return "\011";
+             case BACKWARD_DELETE_CHAR: return "\010";
+             case VI_EOF_MAYBE:         return "\004";
++            case BACKWARD_KILL_WORD:   return new String(new char[]{27, 127});
++            case YANK:                 return "\u0019";
++            case YANK_POP:             return new String(new char[]{27, 121});
++            case KILL_WORD:            return new String(new char[]{27, 100});
+         }
+         throw new IllegalArgumentException(key.toString());
+     }
+ 
+     protected class Buffer
+     {
+         private final ByteArrayOutputStream out = new ByteArrayOutputStream();
+ 
+@@ -147,79 +151,79 @@
+ 
+         public Buffer op(final Operation op) {
+             return append(getKeyForAction(op));
+         }
+ 
+         public Buffer ctrlA() {
+             return append("\001");
+         }
+-        
++
+         /**
+          * Generate a CTRL-X sequence where 'X' is the control character
+          * you wish to generate.
+          * @param let The letter of the control character. Valid values are
+          *   'A' through 'Z'.
+          * @return The modified buffer.
+          */
+         public Buffer ctrl(char let) {
+-            
++
+             if (let < 'A' || let > 'Z')
+                 throw new RuntimeException("Cannot generate CTRL code for "
+                     + "char '" + let + "' (" + ((int)let) + ")");
+-            
++
+             int ch = (((int)let) - 'A') + 1;
+-            
++
+             return append((char)ch);
+         }
+-        
++
+         public Buffer enter() {
+             return ctrl('J');
+         }
+-        
++
+         public Buffer CR() {
+         	return ctrl('M');
+         }
+ 
+         public Buffer ctrlU() {
+             return append("\025");
+         }
+ 
+         public Buffer tab() {
+             return op(Operation.COMPLETE);
+         }
+-        
++
+         public Buffer escape() {
+             return append("\033");
+         }
+ 
+         public Buffer back() {
+             return op(Operation.BACKWARD_DELETE_CHAR);
+         }
+-        
++
+         public Buffer back(int n) {
+             for (int i = 0; i < n; i++)
+                 op(Operation.BACKWARD_DELETE_CHAR);
+             return this;
+         }
+ 
+         public Buffer left() {
+             return append("\033[D");
+         }
+-        
++
+         public Buffer left(int n) {
+             for (int i = 0; i < n; i++)
+                 append("\033[D");
+             return this;
+         }
+ 
+         public Buffer right() {
+             return append("\033[C");
+         }
+-        
++
+         public Buffer right(int n) {
+             for (int i = 0; i < n; i++)
+                 append("\033[C");
+             return this;
+         }
+ 
+         public Buffer up() {
+             return append(getKeyForAction(Operation.PREVIOUS_HISTORY));
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

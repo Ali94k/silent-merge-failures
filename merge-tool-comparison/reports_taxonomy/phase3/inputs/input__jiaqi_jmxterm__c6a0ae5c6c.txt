@@ -1,0 +1,1701 @@
+UNIT jiaqi_jmxterm__c6a0ae5c6c
+repo: jiaqi_jmxterm   merge: c6a0ae5c6c5b3141e5c0207f44d4757919f94696   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: src/main/java/org/cyclopsgroup/jmxterm/boot/CliMain.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -78,39 +78,43 @@
+         if (options.isNonInteractive()) {
+           input = new InputStreamCommandInput(System.in);
+         } else {
+           LineReaderImpl consoleReader = (LineReaderImpl) LineReaderBuilder.builder().build();
+           File historyFile = new File(System.getProperty("user.home"), ".jmxterm_history");
+           consoleReader.setVariable(LineReader.HISTORY_FILE, historyFile);
+           History history = consoleReader.getHistory();
+           history.load();
+-          Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+-            @Override
+-            public void run() {
+-              try {
+-                history.save();
+-              } catch (IOException e) {
+-                System.err.println("Failed to flush command history! " + e);
+-              }
+-            }
+-          }));
++          Runtime.getRuntime()
++              .addShutdownHook(
++                  new Thread(
++                      new Runnable() {
++                        @Override
++                        public void run() {
++                          try {
++                            history.save();
++                          } catch (IOException e) {
++                            System.err.println("Failed to flush command history! " + e);
++                          }
++                        }
++                      }));
+           input = new JlineCommandInput(consoleReader, COMMAND_PROMPT);
+         }
+       } else {
+         File inputFile = new File(options.getInput());
+         if (!inputFile.isFile()) {
+           throw new FileNotFoundException("File " + inputFile + " is not a valid file");
+         }
+         input = new FileCommandInput(new File(options.getInput()));
+       }
+       try {
+         CommandCenter commandCenter = new CommandCenter(output, input);
+         if (input instanceof JlineCommandInput) {
+-          ((JlineCommandInput) input).getConsole()
++          ((JlineCommandInput) input)
++              .getConsole()
+               .setCompleter(new ConsoleCompletor(commandCenter));
+         }
+         if (options.getUrl() != null) {
+           Map<String, Object> env = new HashMap<>();
+           if (options.getUser() != null) {
+             String password = options.getPassword();
+             if (password == null) {
+               password = input.readMaskedString("Authentication password: ");
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -75,16 +75,17 @@
+     try {
+       CommandInput input;
+       if (options.getInput().equals(CliMainOptions.STDIN)) {
+         if (options.isNonInteractive()) {
+           input = new InputStreamCommandInput(System.in);
+         } else {
+           LineReaderImpl consoleReader = (LineReaderImpl) LineReaderBuilder.builder().build();
+           File historyFile = new File(System.getProperty("user.home"), ".jmxterm_history");
++          output.printMessage("Delete " + historyFile.getAbsolutePath() + " if you encounter error right after launching me.");
+           consoleReader.setVariable(LineReader.HISTORY_FILE, historyFile);
+           History history = consoleReader.getHistory();
+           history.load();
+           Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+             @Override
+             public void run() {
+               try {
+                 history.save();
+--- MERGED RESULT (mergiraf; full) ---
+package org.cyclopsgroup.jmxterm.boot;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Map;
+import javax.management.remote.JMXConnector;
+import javax.rmi.ssl.SslRMIClientSocketFactory;
+import org.apache.commons.lang3.StringUtils;
+import org.cyclopsgroup.jcli.ArgumentProcessor;
+import org.cyclopsgroup.jcli.GnuParser;
+import org.cyclopsgroup.jmxterm.SyntaxUtils;
+import org.cyclopsgroup.jmxterm.cc.CommandCenter;
+import org.cyclopsgroup.jmxterm.cc.ConsoleCompletor;
+import org.cyclopsgroup.jmxterm.io.CommandInput;
+import org.cyclopsgroup.jmxterm.io.CommandOutput;
+import org.cyclopsgroup.jmxterm.io.FileCommandInput;
+import org.cyclopsgroup.jmxterm.io.FileCommandOutput;
+import org.cyclopsgroup.jmxterm.io.InputStreamCommandInput;
+import org.cyclopsgroup.jmxterm.io.JlineCommandInput;
+import org.cyclopsgroup.jmxterm.io.PrintStreamCommandOutput;
+import org.cyclopsgroup.jmxterm.io.VerboseLevel;
+import org.jline.reader.History;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.impl.LineReaderImpl;
+
+/**
+ * Main class invoked directly from command line
+ *
+ * @author <a href="mailto:jiaqi.guo@gmail.com">Jiaqi Guo</a>
+ */
+public class CliMain {
+  private static final PrintWriter STDOUT_WRITER = new PrintWriter(System.out, true);
+
+  private static final String COMMAND_PROMPT = "$> ";
+
+  public static final void main(String[] args) throws Exception {
+    System.exit(new CliMain().execute(args));
+  }
+
+  /**
+   * Execute main class
+   *
+   * @param args Command line arguments
+   * @return Exit code
+   * @throws Exception Allow any exceptions
+   */
+  int execute(String[] args) throws Exception {
+    ArgumentProcessor<CliMainOptions> ap =
+        ArgumentProcessor.newInstance(CliMainOptions.class, new GnuParser());
+    CliMainOptions options = new CliMainOptions();
+    ap.process(args, options);
+    if (options.isHelp()) {
+      ap.printHelp(STDOUT_WRITER);
+      return 0;
+    }
+
+    VerboseLevel verboseLevel;
+    if (options.getVerboseLevel() != null) {
+      verboseLevel = VerboseLevel.valueOf(options.getVerboseLevel().toUpperCase());
+    } else {
+      verboseLevel = null;
+    }
+
+    CommandOutput output;
+    if (StringUtils.equals(options.getOutput(), CliMainOptions.STDOUT)) {
+      output = new PrintStreamCommandOutput(System.out, System.err);
+    } else {
+      File outputFile = new File(options.getOutput());
+      output = new FileCommandOutput(outputFile, options.isAppendToOutput());
+    }
+    try {
+      CommandInput input;
+      if (options.getInput().equals(CliMainOptions.STDIN)) {
+        if (options.isNonInteractive()) {
+          input = new InputStreamCommandInput(System.in);
+        } else {
+          LineReaderImpl consoleReader = (LineReaderImpl) LineReaderBuilder.builder().build();
+          File historyFile = new File(System.getProperty("user.home"), ".jmxterm_history");
+          output.printMessage("Delete " + historyFile.getAbsolutePath() + " if you encounter error right after launching me.");
+          consoleReader.setVariable(LineReader.HISTORY_FILE, historyFile);
+          History history = consoleReader.getHistory();
+          history.load();
+          Runtime.getRuntime()
+              .addShutdownHook(
+                  new Thread(
+                      new Runnable() {
+                        @Override
+                        public void run() {
+                          try {
+                            history.save();
+                          } catch (IOException e) {
+                            System.err.println("Failed to flush command history! " + e);
+                          }
+                        }
+                      }));
+          input = new JlineCommandInput(consoleReader, COMMAND_PROMPT);
+        }
+      } else {
+        File inputFile = new File(options.getInput());
+        if (!inputFile.isFile()) {
+          throw new FileNotFoundException("File " + inputFile + " is not a valid file");
+        }
+        input = new FileCommandInput(new File(options.getInput()));
+      }
+      try {
+        CommandCenter commandCenter = new CommandCenter(output, input);
+        if (input instanceof JlineCommandInput) {
+          ((JlineCommandInput) input)
+              .getConsole()
+              .setCompleter(new ConsoleCompletor(commandCenter));
+        }
+        if (options.getUrl() != null) {
+          Map<String, Object> env = new HashMap<>();
+          if (options.getUser() != null) {
+            String password = options.getPassword();
+            if (password == null) {
+              password = input.readMaskedString("Authentication password: ");
+            }
+            String[] credentials = {options.getUser(), password};
+            env.put(JMXConnector.CREDENTIALS, credentials);
+          }
+          if (options.isSecureRmiRegistry()) {
+            // Required to prevent "java.rmi.ConnectIOException: non-JRMP server at remote endpoint"
+            // error
+            env.put("com.sun.jndi.rmi.factory.socket", new SslRMIClientSocketFactory());
+          }
+          commandCenter.connect(
+              SyntaxUtils.getUrl(options.getUrl(), commandCenter.getProcessManager()),
+              env.isEmpty() ? null : env);
+        }
+        if (verboseLevel != null) {
+          commandCenter.setVerboseLevel(verboseLevel);
+        }
+        if (verboseLevel != VerboseLevel.SILENT) {
+          output.printMessage("Welcome to JMX terminal. Type \"help\" for available commands.");
+        }
+        String line;
+        int exitCode = 0;
+        int lineNumber = 0;
+        while ((line = input.readLine()) != null) {
+          lineNumber++;
+          if (!commandCenter.execute(line) && options.isExitOnFailure()) {
+            exitCode = -lineNumber;
+            break;
+          }
+          if (commandCenter.isClosed()) {
+            break;
+          }
+        }
+        commandCenter.close();
+        return exitCode;
+      } finally {
+        input.close();
+      }
+    } finally {
+      output.close();
+    }
+  }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -75,17 +75,20 @@
+     try {
+       CommandInput input;
+       if (options.getInput().equals(CliMainOptions.STDIN)) {
+         if (options.isNonInteractive()) {
+           input = new InputStreamCommandInput(System.in);
+         } else {
+           LineReaderImpl consoleReader = (LineReaderImpl) LineReaderBuilder.builder().build();
+           File historyFile = new File(System.getProperty("user.home"), ".jmxterm_history");
+-          output.printMessage("Delete " + historyFile.getAbsolutePath() + " if you encounter error right after launching me.");
++          output.printMessage(
++              "Delete "
++                  + historyFile.getAbsolutePath()
++                  + " if you encounter error right after launching me.");
+           consoleReader.setVariable(LineReader.HISTORY_FILE, historyFile);
+           History history = consoleReader.getHistory();
+           history.load();
+           Runtime.getRuntime()
+               .addShutdownHook(
+                   new Thread(
+                       new Runnable() {
+                         @Override
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/main/java/org/cyclopsgroup/jmxterm/cmd/InfoCommand.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,48 +1,51 @@
+ package org.cyclopsgroup.jmxterm.cmd;
+ 
+-import org.apache.commons.lang3.StringUtils;
+-import org.apache.commons.lang3.Validate;
+-import org.apache.commons.lang3.builder.CompareToBuilder;
+-import org.cyclopsgroup.jcli.annotation.Cli;
+-import org.cyclopsgroup.jcli.annotation.Option;
+-import org.cyclopsgroup.jmxterm.Command;
+-import org.cyclopsgroup.jmxterm.Session;
+-
++import java.io.IOException;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.Collections;
++import java.util.Comparator;
++import java.util.List;
++import java.util.regex.Pattern;
+ import javax.management.JMException;
+ import javax.management.MBeanAttributeInfo;
+ import javax.management.MBeanFeatureInfo;
+ import javax.management.MBeanInfo;
+ import javax.management.MBeanNotificationInfo;
+ import javax.management.MBeanOperationInfo;
+ import javax.management.MBeanParameterInfo;
+ import javax.management.MBeanServerConnection;
+ import javax.management.ObjectName;
+-import java.io.IOException;
+-import java.util.ArrayList;
+-import java.util.Arrays;
+-import java.util.Collections;
+-import java.util.Comparator;
+-import java.util.List;
+-import java.util.regex.Pattern;
++import org.apache.commons.lang3.StringUtils;
++import org.apache.commons.lang3.Validate;
++import org.apache.commons.lang3.builder.CompareToBuilder;
++import org.cyclopsgroup.jcli.annotation.Cli;
++import org.cyclopsgroup.jcli.annotation.Option;
++import org.cyclopsgroup.jmxterm.Command;
++import org.cyclopsgroup.jmxterm.Session;
+ 
+ /**
+  * Command that displays attributes and operations of an MBean
+- * 
++ *
+  * @author <a href="mailto:jiaqi.guo@gmail.com">Jiaqi Guo</a>
+  */
+-@Cli(name = "info", description = "Display detail information about an MBean",
++@Cli(
++    name = "info",
++    description = "Display detail information about an MBean",
+     note = "If -b option is not specified, current selected MBean is applied")
+ public class InfoCommand extends Command {
+   private static final Comparator<MBeanFeatureInfo> INFO_COMPARATOR =
+       new Comparator<MBeanFeatureInfo>() {
+         public int compare(MBeanFeatureInfo o1, MBeanFeatureInfo o2) {
+-          return new CompareToBuilder().append(o1.getName(), o2.getName())
+-              .append(o1.hashCode(), o2.hashCode()).toComparison();
++          return new CompareToBuilder()
++              .append(o1.getName(), o2.getName())
++              .append(o1.hashCode(), o2.hashCode())
++              .toComparison();
+         }
+       };
+ 
+   private static final String TEXT_ATTRIBUTES = "# attributes";
+ 
+   private static final String TEXT_NOTIFICATIONS = "# notifications";
+ 
+   private static final String TEXT_OPERATIONS = "# operations";
+@@ -65,37 +68,45 @@
+       return;
+     }
+     int index = 0;
+     session.output.println(TEXT_ATTRIBUTES);
+     List<MBeanAttributeInfo> infos = new ArrayList<MBeanAttributeInfo>(Arrays.asList(attrInfos));
+     Collections.sort(infos, INFO_COMPARATOR);
+     for (MBeanAttributeInfo attr : infos) {
+       String rw = "" + (attr.isReadable() ? "r" : "") + (attr.isWritable() ? "w" : "");
+-      session.output
+-          .println(String.format("  %%%-3d - %s (%s, %s)" + (showDescription ? ", %s" : ""),
+-              index++, attr.getName(), attr.getType(), rw, attr.getDescription()));
++      session.output.println(
++          String.format(
++              "  %%%-3d - %s (%s, %s)" + (showDescription ? ", %s" : ""),
++              index++,
++              attr.getName(),
++              attr.getType(),
++              rw,
++              attr.getDescription()));
+     }
+   }
+ 
+   private void displayNotifications(MBeanInfo info) {
+     Session session = getSession();
+     MBeanNotificationInfo[] notificationInfos = info.getNotifications();
+     if (notificationInfos.length == 0) {
+       session.output.printMessage("there's no notifications");
+       return;
+     }
+     int index = 0;
+     session.output.println(TEXT_NOTIFICATIONS);
+     for (MBeanNotificationInfo notification : notificationInfos) {
+-      session.output.println(String.format("  %%%-3d - %s(%s)" + (showDescription ? ", %s" : ""),
+-          index++, notification.getName(), StringUtils.join(notification.getNotifTypes(), ","),
+-          notification.getDescription()));
+-    }
+-
++      session.output.println(
++          String.format(
++              "  %%%-3d - %s(%s)" + (showDescription ? ", %s" : ""),
++              index++,
++              notification.getName(),
++              StringUtils.join(notification.getNotifTypes(), ","),
++              notification.getDescription()));
++    }
+   }
+ 
+   private void displayOperations(MBeanInfo info) {
+     Session session = getSession();
+     MBeanOperationInfo[] operationInfos = info.getOperations();
+     if (operationInfos.length == 0) {
+       session.output.printMessage("there's no operations");
+       return;
+@@ -106,19 +117,24 @@
+     session.output.println(TEXT_OPERATIONS);
+     int index = 0;
+     for (MBeanOperationInfo op : operations) {
+       MBeanParameterInfo[] paramInfos = op.getSignature();
+       List<String> paramTypes = new ArrayList<String>(paramInfos.length);
+       for (MBeanParameterInfo paramInfo : paramInfos) {
+         paramTypes.add(paramInfo.getType() + " " + paramInfo.getName());
+       }
+-      session.output.println(String.format("  %%%-3d - %s %s(%s)" + (showDescription ? ", %s" : ""),
+-          index++, op.getReturnType(), op.getName(), StringUtils.join(paramTypes, ','),
+-          op.getDescription()));
++      session.output.println(
++          String.format(
++              "  %%%-3d - %s %s(%s)" + (showDescription ? ", %s" : ""),
++              index++,
++              op.getReturnType(),
++              op.getName(),
++              StringUtils.join(paramTypes, ','),
++              op.getDescription()));
+     }
+   }
+ 
+   private void displaySingleOperation(MBeanInfo info) {
+     Session session = getSession();
+     MBeanOperationInfo[] operationInfos = info.getOperations();
+     if (operationInfos.length == 0) {
+       session.output.printMessage("there's no operations");
+@@ -132,28 +148,37 @@
+       if (StringUtils.equals(opName, operation)) {
+         found = true;
+         MBeanParameterInfo[] paramInfos = op.getSignature();
+         List<String> paramTypes = new ArrayList<String>(paramInfos.length);
+         StringBuilder paramsDesc =
+             new StringBuilder("             parameters:" + System.lineSeparator());
+         for (MBeanParameterInfo paramInfo : paramInfos) {
+           String parameter = paramInfo.getName();
+-          paramsDesc.append(String.format("                 + %-20s : %s" + System.lineSeparator(),
+-              parameter, paramInfo.getDescription()));
++          paramsDesc.append(
++              String.format(
++                  "                 + %-20s : %s" + System.lineSeparator(),
++                  parameter,
++                  paramInfo.getDescription()));
+           paramTypes.add(paramInfo.getType() + " " + parameter);
+         }
+-        session.output.println(String.format("  %%%-3d - %s %s(%s), %s", index++,
+-            op.getReturnType(), opName, StringUtils.join(paramTypes, ','), op.getDescription()));
++        session.output.println(
++            String.format(
++                "  %%%-3d - %s %s(%s), %s",
++                index++,
++                op.getReturnType(),
++                opName,
++                StringUtils.join(paramTypes, ','),
++                op.getDescription()));
+         session.output.println(paramsDesc.toString());
+       }
+     }
+     if (!found) {
+-      session.output
+-          .printMessage(String.format("The operation '%s' is not found in the bean.", operation));
++      session.output.printMessage(
++          String.format("The operation '%s' is not found in the bean.", operation));
+     }
+   }
+ 
+   @Override
+   public void execute() throws IOException, JMException {
+     Session session = getSession();
+     String beanName = BeanCommand.getBeanName(bean, domain, session);
+     if (beanName == null) {
+@@ -183,52 +208,51 @@
+         }
+       }
+     } else {
+       session.output.printMessage("operation = " + operation);
+       displaySingleOperation(info);
+     }
+   }
+ 
+-  /**
+-   * @param bean Bean for which information is displayed
+-   */
++  /** @param bean Bean for which information is displayed */
+   @Option(name = "b", longName = "bean", description = "Name of MBean")
+   public final void setBean(String bean) {
+     this.bean = bean;
+   }
+ 
+   /**
+    * Given domain
+-   * 
++   *
+    * @param domain Domain name
+    */
+   @Option(name = "d", longName = "domain", description = "Domain for bean")
+   public final void setDomain(String domain) {
+     this.domain = domain;
+   }
+ 
+-  /**
+-   * @param showDescription True to show detail description
+-   */
++  /** @param showDescription True to show detail description */
+   @Option(name = "e", longName = "detail", description = "Show description")
+   public final void setShowDescription(boolean showDescription) {
+     this.showDescription = showDescription;
+   }
+ 
+-  /**
+-   * @param type Type of detail to display
+-   */
+-  @Option(name = "t", longName = "type",
+-      description = "Types(a|o|u) to display, for example aon for all attributes, operations and notifications")
++  /** @param type Type of detail to display */
++  @Option(
++      name = "t",
++      longName = "type",
++      description =
++          "Types(a|o|u) to display, for example aon for all attributes, operations and notifications")
+   public void setType(String type) {
+     Validate.isTrue(StringUtils.isNotEmpty(type), "Type can't be NULL");
+     Validate.isTrue(Pattern.matches("^a?o?n?$", type), "Type must be a?|o?|n?");
+     this.type = type;
+   }
+ 
+-  @Option(name = "o", longName = "op",
++  @Option(
++      name = "o",
++      longName = "op",
+       description = "Show a single operation with more details (including parameters information)")
+   public void setOperation(String operation) {
+     Validate.isTrue(StringUtils.isNotEmpty(operation), "Operation can't be NULL");
+     this.operation = operation;
+   }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -103,22 +103,25 @@
+     List<MBeanOperationInfo> operations =
+         new ArrayList<MBeanOperationInfo>(Arrays.asList(operationInfos));
+     Collections.sort(operations, INFO_COMPARATOR);
+     session.output.println(TEXT_OPERATIONS);
+     int index = 0;
+     for (MBeanOperationInfo op : operations) {
+       MBeanParameterInfo[] paramInfos = op.getSignature();
+       List<String> paramTypes = new ArrayList<String>(paramInfos.length);
++      List<String> paramDescriptions = new ArrayList<String>(paramInfos.length);
+       for (MBeanParameterInfo paramInfo : paramInfos) {
+-        paramTypes.add(paramInfo.getType() + " " + paramInfo.getName());
++        paramTypes.add(paramInfo.getType() + " "            + paramInfo.getName());
++        paramDescriptions.add("       " + paramInfo.getName() + ": " + paramInfo.getDescription());
+       }
+-      session.output.println(String.format("  %%%-3d - %s %s(%s)" + (showDescription ? ", %s" : ""),
+-          index++, op.getReturnType(), op.getName(), StringUtils.join(paramTypes, ','),
+-          op.getDescription()));
++      final String parameters = StringUtils.join(paramTypes, ',');
++      final String parametersDesc = paramDescriptions.isEmpty() ? "" : '\n' + StringUtils.join(paramDescriptions, '\n');
++      session.output.println(String.format("  %%%-3d - %s %s(%s)" + (showDescription ? ", %s%s" : ""),
++          index++, op.getReturnType(), op.getName(), parameters, op.getDescription(), parametersDesc));
+     }
+   }
+ 
+   private void displaySingleOperation(MBeanInfo info) {
+     Session session = getSession();
+     MBeanOperationInfo[] operationInfos = info.getOperations();
+     if (operationInfos.length == 0) {
+       session.output.printMessage("there's no operations");
+@@ -160,16 +163,19 @@
+       throw new IllegalArgumentException(
+           "Please specify a bean using either -b option or bean command");
+     }
+     ObjectName name = new ObjectName(beanName);
+     MBeanServerConnection con = session.getConnection().getServerConnection();
+     MBeanInfo info = con.getMBeanInfo(name);
+     session.output.printMessage("mbean = " + beanName);
+     session.output.printMessage("class name = " + info.getClassName());
++    if (this.showDescription) {
++      session.output.printMessage("description: " + info.getDescription());
++    }
+     if (operation == null) {
+       for (char t : type.toCharArray()) {
+         switch (t) {
+           case 'a':
+             displayAttributes(info);
+             break;
+           case 'o':
+             displayOperations(info);
+--- MERGED RESULT (mergiraf; full) ---
+package org.cyclopsgroup.jmxterm.cmd;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.regex.Pattern;
+import javax.management.JMException;
+import javax.management.MBeanAttributeInfo;
+import javax.management.MBeanFeatureInfo;
+import javax.management.MBeanInfo;
+import javax.management.MBeanNotificationInfo;
+import javax.management.MBeanOperationInfo;
+import javax.management.MBeanParameterInfo;
+import javax.management.MBeanServerConnection;
+import javax.management.ObjectName;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
+import org.apache.commons.lang3.builder.CompareToBuilder;
+import org.cyclopsgroup.jcli.annotation.Cli;
+import org.cyclopsgroup.jcli.annotation.Option;
+import org.cyclopsgroup.jmxterm.Command;
+import org.cyclopsgroup.jmxterm.Session;
+
+/**
+ * Command that displays attributes and operations of an MBean
+ *
+ * @author <a href="mailto:jiaqi.guo@gmail.com">Jiaqi Guo</a>
+ */
+@Cli(
+    name = "info",
+    description = "Display detail information about an MBean",
+    note = "If -b option is not specified, current selected MBean is applied")
+public class InfoCommand extends Command {
+  private static final Comparator<MBeanFeatureInfo> INFO_COMPARATOR =
+      new Comparator<MBeanFeatureInfo>() {
+        public int compare(MBeanFeatureInfo o1, MBeanFeatureInfo o2) {
+          return new CompareToBuilder()
+              .append(o1.getName(), o2.getName())
+              .append(o1.hashCode(), o2.hashCode())
+              .toComparison();
+        }
+      };
+
+  private static final String TEXT_ATTRIBUTES = "# attributes";
+
+  private static final String TEXT_NOTIFICATIONS = "# notifications";
+
+  private static final String TEXT_OPERATIONS = "# operations";
+
+  private String bean;
+
+  private String domain;
+
+  private boolean showDescription;
+
+  private String type = "aon";
+
+  private String operation;
+
+  private void displayAttributes(MBeanInfo info) {
+    Session session = getSession();
+    MBeanAttributeInfo[] attrInfos = info.getAttributes();
+    if (attrInfos.length == 0) {
+      session.output.printMessage("there is no attribute");
+      return;
+    }
+    int index = 0;
+    session.output.println(TEXT_ATTRIBUTES);
+    List<MBeanAttributeInfo> infos = new ArrayList<MBeanAttributeInfo>(Arrays.asList(attrInfos));
+    Collections.sort(infos, INFO_COMPARATOR);
+    for (MBeanAttributeInfo attr : infos) {
+      String rw = "" + (attr.isReadable() ? "r" : "") + (attr.isWritable() ? "w" : "");
+      session.output.println(
+          String.format(
+              "  %%%-3d - %s (%s, %s)" + (showDescription ? ", %s" : ""),
+              index++,
+              attr.getName(),
+              attr.getType(),
+              rw,
+              attr.getDescription()));
+    }
+  }
+
+  private void displayNotifications(MBeanInfo info) {
+    Session session = getSession();
+    MBeanNotificationInfo[] notificationInfos = info.getNotifications();
+    if (notificationInfos.length == 0) {
+      session.output.printMessage("there's no notifications");
+      return;
+    }
+    int index = 0;
+    session.output.println(TEXT_NOTIFICATIONS);
+    for (MBeanNotificationInfo notification : notificationInfos) {
+      session.output.println(
+          String.format(
+              "  %%%-3d - %s(%s)" + (showDescription ? ", %s" : ""),
+              index++,
+              notification.getName(),
+              StringUtils.join(notification.getNotifTypes(), ","),
+              notification.getDescription()));
+    }
+  }
+
+  private void displayOperations(MBeanInfo info) {
+    Session session = getSession();
+    MBeanOperationInfo[] operationInfos = info.getOperations();
+    if (operationInfos.length == 0) {
+      session.output.printMessage("there's no operations");
+      return;
+    }
+    List<MBeanOperationInfo> operations =
+        new ArrayList<MBeanOperationInfo>(Arrays.asList(operationInfos));
+    Collections.sort(operations, INFO_COMPARATOR);
+    session.output.println(TEXT_OPERATIONS);
+    int index = 0;
+    for (MBeanOperationInfo op : operations) {
+      MBeanParameterInfo[] paramInfos = op.getSignature();
+      List<String> paramTypes = new ArrayList<String>(paramInfos.length);
+      List<String> paramDescriptions = new ArrayList<String>(paramInfos.length);
+      for (MBeanParameterInfo paramInfo : paramInfos) {
+        paramTypes.add(paramInfo.getType() + " "            + paramInfo.getName());
+        paramDescriptions.add("       " + paramInfo.getName() + ": " + paramInfo.getDescription());
+      }
+      final String parameters = StringUtils.join(paramTypes, ',');
+      final String parametersDesc = paramDescriptions.isEmpty() ? "" : '\n' + StringUtils.join(paramDescriptions, '\n');
+      session.output.println(
+          String.format(
+              "  %%%-3d - %s %s(%s)" + (showDescription ? ", %s%s" : ""),
+              index++,
+              op.getReturnType(),
+              op.getName(), parameters, op.getDescription(), parametersDesc));
+    }
+  }
+
+  private void displaySingleOperation(MBeanInfo info) {
+    Session session = getSession();
+    MBeanOperationInfo[] operationInfos = info.getOperations();
+    if (operationInfos.length == 0) {
+      session.output.printMessage("there's no operations");
+      return;
+    }
+    session.output.println(TEXT_OPERATIONS);
+    int index = 0;
+    boolean found = false;
+    for (MBeanOperationInfo op : operationInfos) {
+      String opName = op.getName();
+      if (StringUtils.equals(opName, operation)) {
+        found = true;
+        MBeanParameterInfo[] paramInfos = op.getSignature();
+        List<String> paramTypes = new ArrayList<String>(paramInfos.length);
+        StringBuilder paramsDesc =
+            new StringBuilder("             parameters:" + System.lineSeparator());
+        for (MBeanParameterInfo paramInfo : paramInfos) {
+          String parameter = paramInfo.getName();
+          paramsDesc.append(
+              String.format(
+                  "                 + %-20s : %s" + System.lineSeparator(),
+                  parameter,
+                  paramInfo.getDescription()));
+          paramTypes.add(paramInfo.getType() + " " + parameter);
+        }
+        session.output.println(
+            String.format(
+                "  %%%-3d - %s %s(%s), %s",
+                index++,
+                op.getReturnType(),
+                opName,
+                StringUtils.join(paramTypes, ','),
+                op.getDescription()));
+        session.output.println(paramsDesc.toString());
+      }
+    }
+    if (!found) {
+      session.output.printMessage(
+          String.format("The operation '%s' is not found in the bean.", operation));
+    }
+  }
+
+  @Override
+  public void execute() throws IOException, JMException {
+    Session session = getSession();
+    String beanName = BeanCommand.getBeanName(bean, domain, session);
+    if (beanName == null) {
+      throw new IllegalArgumentException(
+          "Please specify a bean using either -b option or bean command");
+    }
+    ObjectName name = new ObjectName(beanName);
+    MBeanServerConnection con = session.getConnection().getServerConnection();
+    MBeanInfo info = con.getMBeanInfo(name);
+    session.output.printMessage("mbean = " + beanName);
+    session.output.printMessage("class name = " + info.getClassName());
+    if (this.showDescription) {
+      session.output.printMessage("description: " + info.getDescription());
+    }
+    if (operation == null) {
+      for (char t : type.toCharArray()) {
+        switch (t) {
+          case 'a':
+            displayAttributes(info);
+            break;
+          case 'o':
+            displayOperations(info);
+            break;
+          case 'n':
+            displayNotifications(info);
+            break;
+          default:
+            throw new IllegalArgumentException(
+                "Unrecognizable character " + t + " in type option " + type);
+        }
+      }
+    } else {
+      session.output.printMessage("operation = " + operation);
+      displaySingleOperation(info);
+    }
+  }
+
+  /** @param bean Bean for which information is displayed */
+  @Option(name = "b", longName = "bean", description = "Name of MBean")
+  public final void setBean(String bean) {
+    this.bean = bean;
+  }
+
+  /**
+   * Given domain
+   *
+   * @param domain Domain name
+   */
+  @Option(name = "d", longName = "domain", description = "Domain for bean")
+  public final void setDomain(String domain) {
+    this.domain = domain;
+  }
+
+  /** @param showDescription True to show detail description */
+  @Option(name = "e", longName = "detail", description = "Show description")
+  public final void setShowDescription(boolean showDescription) {
+    this.showDescription = showDescription;
+  }
+
+  /** @param type Type of detail to display */
+  @Option(
+      name = "t",
+      longName = "type",
+      description =
+          "Types(a|o|u) to display, for example aon for all attributes, operations and notifications")
+  public void setType(String type) {
+    Validate.isTrue(StringUtils.isNotEmpty(type), "Type can't be NULL");
+    Validate.isTrue(Pattern.matches("^a?o?n?$", type), "Type must be a?|o?|n?");
+    this.type = type;
+  }
+
+  @Option(
+      name = "o",
+      longName = "op",
+      description = "Show a single operation with more details (including parameters information)")
+  public void setOperation(String operation) {
+    Validate.isTrue(StringUtils.isNotEmpty(operation), "Operation can't be NULL");
+    this.operation = operation;
+  }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -116,27 +116,31 @@
+     Collections.sort(operations, INFO_COMPARATOR);
+     session.output.println(TEXT_OPERATIONS);
+     int index = 0;
+     for (MBeanOperationInfo op : operations) {
+       MBeanParameterInfo[] paramInfos = op.getSignature();
+       List<String> paramTypes = new ArrayList<String>(paramInfos.length);
+       List<String> paramDescriptions = new ArrayList<String>(paramInfos.length);
+       for (MBeanParameterInfo paramInfo : paramInfos) {
+-        paramTypes.add(paramInfo.getType() + " "            + paramInfo.getName());
++        paramTypes.add(paramInfo.getType() + " " + paramInfo.getName());
+         paramDescriptions.add("       " + paramInfo.getName() + ": " + paramInfo.getDescription());
+       }
+-      final String parameters = StringUtils.join(paramTypes, ',');
+-      final String parametersDesc = paramDescriptions.isEmpty() ? "" : '\n' + StringUtils.join(paramDescriptions, '\n');
++      String parameters = StringUtils.join(paramTypes, ',');
++      String parametersDesc =
++          paramDescriptions.isEmpty() ? "" : '\n' + StringUtils.join(paramDescriptions, '\n');
+       session.output.println(
+           String.format(
+               "  %%%-3d - %s %s(%s)" + (showDescription ? ", %s%s" : ""),
+               index++,
+               op.getReturnType(),
+-              op.getName(), parameters, op.getDescription(), parametersDesc));
++              op.getName(),
++              parameters,
++              op.getDescription(),
++              parametersDesc));
+     }
+   }
+ 
+   private void displaySingleOperation(MBeanInfo info) {
+     Session session = getSession();
+     MBeanOperationInfo[] operationInfos = info.getOperations();
+     if (operationInfos.length == 0) {
+       session.output.printMessage("there's no operations");
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/test/java/org/cyclopsgroup/jmxterm/cmd/InfoCommandTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,278 +1,284 @@
+ package org.cyclopsgroup.jmxterm.cmd;
+ 
++import static org.junit.Assert.assertEquals;
++
++import java.io.StringWriter;
++import javax.management.MBeanAttributeInfo;
++import javax.management.MBeanInfo;
++import javax.management.MBeanOperationInfo;
++import javax.management.MBeanParameterInfo;
++import javax.management.MBeanServerConnection;
++import javax.management.ObjectName;
+ import org.cyclopsgroup.jmxterm.MockSession;
+ import org.cyclopsgroup.jmxterm.Session;
+ import org.jmock.Expectations;
+ import org.jmock.Mockery;
+ import org.jmock.lib.legacy.ClassImposteriser;
+ import org.junit.Before;
+ import org.junit.Test;
+ 
+-import javax.management.MBeanAttributeInfo;
+-import javax.management.MBeanInfo;
+-import javax.management.MBeanOperationInfo;
+-import javax.management.MBeanParameterInfo;
+-import javax.management.MBeanServerConnection;
+-import javax.management.ObjectName;
+-import java.io.StringWriter;
+-
+-import static org.junit.Assert.assertEquals;
+-
+ /**
+  * Test for {@link InfoCommand}
+- * 
++ *
+  * @author <a href="mailto:jiaqi.guo@gmail.com">Jiaqi Guo</a>
+  */
+ public class InfoCommandTest {
+   private InfoCommand command;
+ 
+   private Mockery context;
+ 
+   private StringWriter output;
+ 
+-  /**
+-   * Set up objects to test
+-   */
++  /** Set up objects to test */
+   @Before
+   public void setUp() {
+     command = new InfoCommand();
+     output = new StringWriter();
+     context = new Mockery();
+     context.setImposteriser(ClassImposteriser.INSTANCE);
+   }
+ 
+   /**
+    * Test how attributes are displayed
+-   * 
++   *
+    * @throws Exception
+    */
+   @Test
+   public void testExecuteWithShowingAttributes() throws Exception {
+     command.setBean("a:type=x");
+     command.setType("a");
+     final MBeanServerConnection con = context.mock(MBeanServerConnection.class);
+     final MBeanInfo beanInfo = context.mock(MBeanInfo.class);
+     final MBeanAttributeInfo attributeInfo = context.mock(MBeanAttributeInfo.class);
+     Session session = new MockSession(output, con);
+-    context.checking(new Expectations() {
+-      {
+-        atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
+-        will(returnValue(beanInfo));
+-        allowing(beanInfo).getClassName();
+-        will(returnValue("bogus class"));
+-        oneOf(beanInfo).getAttributes();
+-        will(returnValue(new MBeanAttributeInfo[] {attributeInfo}));
+-        atLeast(1).of(attributeInfo).isReadable();
+-        will(returnValue(true));
+-        atLeast(1).of(attributeInfo).isWritable();
+-        will(returnValue(false));
+-        atLeast(1).of(attributeInfo).getName();
+-        will(returnValue("b"));
+-        atLeast(1).of(attributeInfo).getType();
+-        will(returnValue("int"));
+-        allowing(attributeInfo).getDescription();
+-        will(returnValue("bingo"));
+-      }
+-    });
+-    command.setSession(session);
+-    command.execute();
+-    context.assertIsSatisfied();
+-    assertEquals("# attributes" + System.lineSeparator() + "  %0   - b (int, r)",
+-        output.toString().trim());
+-  }
+-
+-  /**
+-   * Test execution and show available options
+-   * 
++    context.checking(
++        new Expectations() {
++          {
++            atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
++            will(returnValue(beanInfo));
++            allowing(beanInfo).getClassName();
++            will(returnValue("bogus class"));
++            oneOf(beanInfo).getAttributes();
++            will(returnValue(new MBeanAttributeInfo[] {attributeInfo}));
++            atLeast(1).of(attributeInfo).isReadable();
++            will(returnValue(true));
++            atLeast(1).of(attributeInfo).isWritable();
++            will(returnValue(false));
++            atLeast(1).of(attributeInfo).getName();
++            will(returnValue("b"));
++            atLeast(1).of(attributeInfo).getType();
++            will(returnValue("int"));
++            allowing(attributeInfo).getDescription();
++            will(returnValue("bingo"));
++          }
++        });
++    command.setSession(session);
++    command.execute();
++    context.assertIsSatisfied();
++    assertEquals(
++        "# attributes" + System.lineSeparator() + "  %0   - b (int, r)", output.toString().trim());
++  }
++
++  /**
++   * Test execution and show available options
++   *
+    * @throws Exception
+    */
+   @Test
+   public void testExecuteWithShowingOperations() throws Exception {
+     command.setBean("a:type=x");
+     command.setType("o");
+     final MBeanServerConnection con = context.mock(MBeanServerConnection.class);
+     final MBeanInfo beanInfo = context.mock(MBeanInfo.class);
+     final MBeanOperationInfo opInfo = context.mock(MBeanOperationInfo.class);
+     final MBeanParameterInfo paramInfo = context.mock(MBeanParameterInfo.class);
+     Session session = new MockSession(output, con);
+-    context.checking(new Expectations() {
+-      {
+-        atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
+-        will(returnValue(beanInfo));
+-        allowing(beanInfo).getClassName();
+-        will(returnValue("bogus class"));
+-        oneOf(beanInfo).getOperations();
+-        will(returnValue(new MBeanOperationInfo[] {opInfo}));
+-        allowing(opInfo).getDescription();
+-        will(returnValue("bingo"));
+-        oneOf(opInfo).getSignature();
+-        will(returnValue(new MBeanParameterInfo[] {paramInfo}));
+-        oneOf(paramInfo).getType();
+-        will(returnValue(String.class.getName()));
+-        oneOf(paramInfo).getName();
+-        will(returnValue("a"));
+-        oneOf(opInfo).getReturnType();
+-        will(returnValue("int"));
+-        atLeast(1).of(opInfo).getName();
+-        will(returnValue("x"));
+-      }
+-    });
+-    command.setSession(session);
+-    command.execute();
+-    context.assertIsSatisfied();
+-    assertEquals("# operations" + System.lineSeparator() + "  %0   - int x(java.lang.String a)",
++    context.checking(
++        new Expectations() {
++          {
++            atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
++            will(returnValue(beanInfo));
++            allowing(beanInfo).getClassName();
++            will(returnValue("bogus class"));
++            oneOf(beanInfo).getOperations();
++            will(returnValue(new MBeanOperationInfo[] {opInfo}));
++            allowing(opInfo).getDescription();
++            will(returnValue("bingo"));
++            oneOf(opInfo).getSignature();
++            will(returnValue(new MBeanParameterInfo[] {paramInfo}));
++            oneOf(paramInfo).getType();
++            will(returnValue(String.class.getName()));
++            oneOf(paramInfo).getName();
++            will(returnValue("a"));
++            oneOf(opInfo).getReturnType();
++            will(returnValue("int"));
++            atLeast(1).of(opInfo).getName();
++            will(returnValue("x"));
++          }
++        });
++    command.setSession(session);
++    command.execute();
++    context.assertIsSatisfied();
++    assertEquals(
++        "# operations" + System.lineSeparator() + "  %0   - int x(java.lang.String a)",
+         output.toString().trim());
+   }
+ 
+   /**
+    * Test execution and show available options
+-   * 
++   *
+    * @throws Exception
+    */
+   @Test
+   public void testExecuteWithShowingSpecificOperation() throws Exception {
+     command.setBean("a:type=x");
+     command.setOperation("x");
+     final MBeanServerConnection con = context.mock(MBeanServerConnection.class);
+     final MBeanInfo beanInfo = context.mock(MBeanInfo.class);
+     final MBeanOperationInfo opInfo = context.mock(MBeanOperationInfo.class);
+     final MBeanParameterInfo paramInfo = context.mock(MBeanParameterInfo.class);
+     Session session = new MockSession(output, con);
+-    context.checking(new Expectations() {
+-
+-      {
+-        atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
+-        will(returnValue(beanInfo));
+-        allowing(beanInfo).getClassName();
+-        will(returnValue("bogus class"));
+-        oneOf(beanInfo).getOperations();
+-        will(returnValue(new MBeanOperationInfo[] {opInfo}));
+-        allowing(opInfo).getDescription();
+-        will(returnValue("bingo"));
+-        oneOf(opInfo).getSignature();
+-        will(returnValue(new MBeanParameterInfo[] {paramInfo}));
+-        oneOf(paramInfo).getType();
+-        will(returnValue(String.class.getName()));
+-        oneOf(paramInfo).getName();
+-        will(returnValue("myfakeparameter"));
+-        oneOf(paramInfo).getDescription();
+-        will(returnValue("My param description"));
+-        oneOf(opInfo).getReturnType();
+-        will(returnValue("int"));
+-        atLeast(1).of(opInfo).getName();
+-        will(returnValue("x"));
+-      }
+-    });
++    context.checking(
++        new Expectations() {
++
++          {
++            atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
++            will(returnValue(beanInfo));
++            allowing(beanInfo).getClassName();
++            will(returnValue("bogus class"));
++            oneOf(beanInfo).getOperations();
++            will(returnValue(new MBeanOperationInfo[] {opInfo}));
++            allowing(opInfo).getDescription();
++            will(returnValue("bingo"));
++            oneOf(opInfo).getSignature();
++            will(returnValue(new MBeanParameterInfo[] {paramInfo}));
++            oneOf(paramInfo).getType();
++            will(returnValue(String.class.getName()));
++            oneOf(paramInfo).getName();
++            will(returnValue("myfakeparameter"));
++            oneOf(paramInfo).getDescription();
++            will(returnValue("My param description"));
++            oneOf(opInfo).getReturnType();
++            will(returnValue("int"));
++            atLeast(1).of(opInfo).getName();
++            will(returnValue("x"));
++          }
++        });
+     command.setSession(session);
+     command.execute();
+     context.assertIsSatisfied();
+     StringBuilder result = new StringBuilder("# operations").append(System.lineSeparator());
+-    result.append("  %0   - int x(java.lang.String myfakeparameter), bingo")
++    result
++        .append("  %0   - int x(java.lang.String myfakeparameter), bingo")
+         .append(System.lineSeparator());
+     result.append("             parameters:").append(System.lineSeparator());
+     result.append("                 + myfakeparameter      : My param description");
+     assertEquals(result.toString(), output.toString().trim());
+   }
+ 
+   /**
+    * Test execution and show available options
+-   * 
++   *
+    * @throws Exception
+    */
+   @Test
+   public void testExecuteWithShowingNonExistingOperation() throws Exception {
+     command.setBean("a:type=x");
+     command.setOperation("y");
+     final MBeanServerConnection con = context.mock(MBeanServerConnection.class);
+     final MBeanInfo beanInfo = context.mock(MBeanInfo.class);
+     final MBeanOperationInfo opInfo = context.mock(MBeanOperationInfo.class);
+     Session session = new MockSession(output, con);
+-    context.checking(new Expectations() {
+-
+-      {
+-        atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
+-        will(returnValue(beanInfo));
+-        allowing(beanInfo).getClassName();
+-        will(returnValue("bogus class"));
+-        oneOf(beanInfo).getOperations();
+-        will(returnValue(new MBeanOperationInfo[] {opInfo}));
+-        atLeast(1).of(opInfo).getName();
+-        will(returnValue("x"));
+-      }
+-    });
++    context.checking(
++        new Expectations() {
++
++          {
++            atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
++            will(returnValue(beanInfo));
++            allowing(beanInfo).getClassName();
++            will(returnValue("bogus class"));
++            oneOf(beanInfo).getOperations();
++            will(returnValue(new MBeanOperationInfo[] {opInfo}));
++            atLeast(1).of(opInfo).getName();
++            will(returnValue("x"));
++          }
++        });
+     command.setSession(session);
+     command.execute();
+     context.assertIsSatisfied();
+     assertEquals("# operations", output.toString().trim());
+   }
+ 
+   /**
+    * Test execution and show available options
+-   * 
++   *
+    * @throws Exception
+    */
+   @Test
+   public void testExecuteWithShowingMultipleMatchingOperations() throws Exception {
+     command.setBean("a:type=x");
+     command.setOperation("x");
+     final MBeanServerConnection con = context.mock(MBeanServerConnection.class);
+     final MBeanInfo beanInfo = context.mock(MBeanInfo.class);
+     final MBeanOperationInfo opInfo1 = context.mock(MBeanOperationInfo.class);
+     final MBeanOperationInfo opInfo2 = context.mock(MBeanOperationInfo.class, "mockOpInfo2");
+     final MBeanParameterInfo paramInfo1 = context.mock(MBeanParameterInfo.class);
+     final MBeanParameterInfo paramInfo2 = context.mock(MBeanParameterInfo.class, "mockParamInfo2");
+     Session session = new MockSession(output, con);
+-    context.checking(new Expectations() {
+-
+-      {
+-        atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
+-        will(returnValue(beanInfo));
+-        allowing(beanInfo).getClassName();
+-        will(returnValue("bogus class"));
+-        oneOf(beanInfo).getOperations();
+-        will(returnValue(new MBeanOperationInfo[] {opInfo1, opInfo2}));
+-        allowing(opInfo1).getDescription();
+-        will(returnValue("bingo"));
+-        oneOf(opInfo1).getSignature();
+-        will(returnValue(new MBeanParameterInfo[] {paramInfo1}));
+-        oneOf(paramInfo1).getType();
+-        will(returnValue(String.class.getName()));
+-        oneOf(paramInfo1).getName();
+-        will(returnValue("a"));
+-        oneOf(paramInfo1).getDescription();
+-        will(returnValue("My param description"));
+-        oneOf(opInfo1).getReturnType();
+-        will(returnValue("int"));
+-        atLeast(1).of(opInfo1).getName();
+-        will(returnValue("x"));
+-
+-        allowing(opInfo2).getDescription();
+-        will(returnValue("pilou"));
+-        oneOf(opInfo2).getSignature();
+-        will(returnValue(new MBeanParameterInfo[] {paramInfo2}));
+-        oneOf(paramInfo2).getType();
+-        will(returnValue(Double.TYPE.getName()));
+-        oneOf(paramInfo2).getName();
+-        will(returnValue("b"));
+-        oneOf(paramInfo2).getDescription();
+-        will(returnValue("My param 2 description"));
+-        oneOf(opInfo2).getReturnType();
+-        will(returnValue("void"));
+-        atLeast(1).of(opInfo2).getName();
+-        will(returnValue("x"));
+-      }
+-    });
++    context.checking(
++        new Expectations() {
++
++          {
++            atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
++            will(returnValue(beanInfo));
++            allowing(beanInfo).getClassName();
++            will(returnValue("bogus class"));
++            oneOf(beanInfo).getOperations();
++            will(returnValue(new MBeanOperationInfo[] {opInfo1, opInfo2}));
++            allowing(opInfo1).getDescription();
++            will(returnValue("bingo"));
++            oneOf(opInfo1).getSignature();
++            will(returnValue(new MBeanParameterInfo[] {paramInfo1}));
++            oneOf(paramInfo1).getType();
++            will(returnValue(String.class.getName()));
++            oneOf(paramInfo1).getName();
++            will(returnValue("a"));
++            oneOf(paramInfo1).getDescription();
++            will(returnValue("My param description"));
++            oneOf(opInfo1).getReturnType();
++            will(returnValue("int"));
++            atLeast(1).of(opInfo1).getName();
++            will(returnValue("x"));
++
++            allowing(opInfo2).getDescription();
++            will(returnValue("pilou"));
++            oneOf(opInfo2).getSignature();
++            will(returnValue(new MBeanParameterInfo[] {paramInfo2}));
++            oneOf(paramInfo2).getType();
++            will(returnValue(Double.TYPE.getName()));
++            oneOf(paramInfo2).getName();
++            will(returnValue("b"));
++            oneOf(paramInfo2).getDescription();
++            will(returnValue("My param 2 description"));
++            oneOf(opInfo2).getReturnType();
++            will(returnValue("void"));
++            atLeast(1).of(opInfo2).getName();
++            will(returnValue("x"));
++          }
++        });
+     command.setSession(session);
+     command.execute();
+     context.assertIsSatisfied();
+     StringBuilder result = new StringBuilder("# operations").append(System.lineSeparator());
+     result.append("  %0   - int x(java.lang.String a), bingo").append(System.lineSeparator());
+     result.append("             parameters:").append(System.lineSeparator());
+-    result.append("                 + a                    : My param description")
+-        .append(System.lineSeparator()).append(System.lineSeparator());
++    result
++        .append("                 + a                    : My param description")
++        .append(System.lineSeparator())
++        .append(System.lineSeparator());
+     result.append("  %1   - void x(double b), pilou").append(System.lineSeparator());
+     result.append("             parameters:").append(System.lineSeparator());
+     result.append("                 + b                    : My param 2 description");
+     assertEquals(result.toString(), output.toString().trim());
+   }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -104,18 +104,20 @@
+         oneOf(beanInfo).getOperations();
+         will(returnValue(new MBeanOperationInfo[] {opInfo}));
+         allowing(opInfo).getDescription();
+         will(returnValue("bingo"));
+         oneOf(opInfo).getSignature();
+         will(returnValue(new MBeanParameterInfo[] {paramInfo}));
+         oneOf(paramInfo).getType();
+         will(returnValue(String.class.getName()));
+-        oneOf(paramInfo).getName();
++        atLeast(1).of(paramInfo).getName();
+         will(returnValue("a"));
++        oneOf(paramInfo).getDescription();
++        will(returnValue("a-desc"));
+         oneOf(opInfo).getReturnType();
+         will(returnValue("int"));
+         atLeast(1).of(opInfo).getName();
+         will(returnValue("x"));
+       }
+     });
+     command.setSession(session);
+     command.execute();
+--- MERGED RESULT (mergiraf; full) ---
+package org.cyclopsgroup.jmxterm.cmd;
+
+import static org.junit.Assert.assertEquals;
+
+import java.io.StringWriter;
+import javax.management.MBeanAttributeInfo;
+import javax.management.MBeanInfo;
+import javax.management.MBeanOperationInfo;
+import javax.management.MBeanParameterInfo;
+import javax.management.MBeanServerConnection;
+import javax.management.ObjectName;
+import org.cyclopsgroup.jmxterm.MockSession;
+import org.cyclopsgroup.jmxterm.Session;
+import org.jmock.Expectations;
+import org.jmock.Mockery;
+import org.jmock.lib.legacy.ClassImposteriser;
+import org.junit.Before;
+import org.junit.Test;
+
+/**
+ * Test for {@link InfoCommand}
+ *
+ * @author <a href="mailto:jiaqi.guo@gmail.com">Jiaqi Guo</a>
+ */
+public class InfoCommandTest {
+  private InfoCommand command;
+
+  private Mockery context;
+
+  private StringWriter output;
+
+  /** Set up objects to test */
+  @Before
+  public void setUp() {
+    command = new InfoCommand();
+    output = new StringWriter();
+    context = new Mockery();
+    context.setImposteriser(ClassImposteriser.INSTANCE);
+  }
+
+  /**
+   * Test how attributes are displayed
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testExecuteWithShowingAttributes() throws Exception {
+    command.setBean("a:type=x");
+    command.setType("a");
+    final MBeanServerConnection con = context.mock(MBeanServerConnection.class);
+    final MBeanInfo beanInfo = context.mock(MBeanInfo.class);
+    final MBeanAttributeInfo attributeInfo = context.mock(MBeanAttributeInfo.class);
+    Session session = new MockSession(output, con);
+    context.checking(
+        new Expectations() {
+          {
+            atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
+            will(returnValue(beanInfo));
+            allowing(beanInfo).getClassName();
+            will(returnValue("bogus class"));
+            oneOf(beanInfo).getAttributes();
+            will(returnValue(new MBeanAttributeInfo[] {attributeInfo}));
+            atLeast(1).of(attributeInfo).isReadable();
+            will(returnValue(true));
+            atLeast(1).of(attributeInfo).isWritable();
+            will(returnValue(false));
+            atLeast(1).of(attributeInfo).getName();
+            will(returnValue("b"));
+            atLeast(1).of(attributeInfo).getType();
+            will(returnValue("int"));
+            allowing(attributeInfo).getDescription();
+            will(returnValue("bingo"));
+          }
+        });
+    command.setSession(session);
+    command.execute();
+    context.assertIsSatisfied();
+    assertEquals(
+        "# attributes" + System.lineSeparator() + "  %0   - b (int, r)", output.toString().trim());
+  }
+
+  /**
+   * Test execution and show available options
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testExecuteWithShowingOperations() throws Exception {
+    command.setBean("a:type=x");
+    command.setType("o");
+    final MBeanServerConnection con = context.mock(MBeanServerConnection.class);
+    final MBeanInfo beanInfo = context.mock(MBeanInfo.class);
+    final MBeanOperationInfo opInfo = context.mock(MBeanOperationInfo.class);
+    final MBeanParameterInfo paramInfo = context.mock(MBeanParameterInfo.class);
+    Session session = new MockSession(output, con);
+    context.checking(
+        new Expectations() {
+          {
+            atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
+            will(returnValue(beanInfo));
+            allowing(beanInfo).getClassName();
+            will(returnValue("bogus class"));
+            oneOf(beanInfo).getOperations();
+            will(returnValue(new MBeanOperationInfo[] {opInfo}));
+            allowing(opInfo).getDescription();
+            will(returnValue("bingo"));
+            oneOf(opInfo).getSignature();
+            will(returnValue(new MBeanParameterInfo[] {paramInfo}));
+            oneOf(paramInfo).getType();
+            will(returnValue(String.class.getName()));
+            atLeast(1).of(paramInfo).getName();
+            will(returnValue("a"));
+            oneOf(paramInfo).getDescription();
+            will(returnValue("a-desc"));
+            oneOf(opInfo).getReturnType();
+            will(returnValue("int"));
+            atLeast(1).of(opInfo).getName();
+            will(returnValue("x"));
+          }
+        });
+    command.setSession(session);
+    command.execute();
+    context.assertIsSatisfied();
+    assertEquals(
+        "# operations" + System.lineSeparator() + "  %0   - int x(java.lang.String a)",
+        output.toString().trim());
+  }
+
+  /**
+   * Test execution and show available options
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testExecuteWithShowingSpecificOperation() throws Exception {
+    command.setBean("a:type=x");
+    command.setOperation("x");
+    final MBeanServerConnection con = context.mock(MBeanServerConnection.class);
+    final MBeanInfo beanInfo = context.mock(MBeanInfo.class);
+    final MBeanOperationInfo opInfo = context.mock(MBeanOperationInfo.class);
+    final MBeanParameterInfo paramInfo = context.mock(MBeanParameterInfo.class);
+    Session session = new MockSession(output, con);
+    context.checking(
+        new Expectations() {
+
+          {
+            atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
+            will(returnValue(beanInfo));
+            allowing(beanInfo).getClassName();
+            will(returnValue("bogus class"));
+            oneOf(beanInfo).getOperations();
+            will(returnValue(new MBeanOperationInfo[] {opInfo}));
+            allowing(opInfo).getDescription();
+            will(returnValue("bingo"));
+            oneOf(opInfo).getSignature();
+            will(returnValue(new MBeanParameterInfo[] {paramInfo}));
+            oneOf(paramInfo).getType();
+            will(returnValue(String.class.getName()));
+            oneOf(paramInfo).getName();
+            will(returnValue("myfakeparameter"));
+            oneOf(paramInfo).getDescription();
+            will(returnValue("My param description"));
+            oneOf(opInfo).getReturnType();
+            will(returnValue("int"));
+            atLeast(1).of(opInfo).getName();
+            will(returnValue("x"));
+          }
+        });
+    command.setSession(session);
+    command.execute();
+    context.assertIsSatisfied();
+    StringBuilder result = new StringBuilder("# operations").append(System.lineSeparator());
+    result
+        .append("  %0   - int x(java.lang.String myfakeparameter), bingo")
+        .append(System.lineSeparator());
+    result.append("             parameters:").append(System.lineSeparator());
+    result.append("                 + myfakeparameter      : My param description");
+    assertEquals(result.toString(), output.toString().trim());
+  }
+
+  /**
+   * Test execution and show available options
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testExecuteWithShowingNonExistingOperation() throws Exception {
+    command.setBean("a:type=x");
+    command.setOperation("y");
+    final MBeanServerConnection con = context.mock(MBeanServerConnection.class);
+    final MBeanInfo beanInfo = context.mock(MBeanInfo.class);
+    final MBeanOperationInfo opInfo = context.mock(MBeanOperationInfo.class);
+    Session session = new MockSession(output, con);
+    context.checking(
+        new Expectations() {
+
+          {
+            atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
+            will(returnValue(beanInfo));
+            allowing(beanInfo).getClassName();
+            will(returnValue("bogus class"));
+            oneOf(beanInfo).getOperations();
+            will(returnValue(new MBeanOperationInfo[] {opInfo}));
+            atLeast(1).of(opInfo).getName();
+            will(returnValue("x"));
+          }
+        });
+    command.setSession(session);
+    command.execute();
+    context.assertIsSatisfied();
+    assertEquals("# operations", output.toString().trim());
+  }
+
+  /**
+   * Test execution and show available options
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testExecuteWithShowingMultipleMatchingOperations() throws Exception {
+    command.setBean("a:type=x");
+    command.setOperation("x");
+    final MBeanServerConnection con = context.mock(MBeanServerConnection.class);
+    final MBeanInfo beanInfo = context.mock(MBeanInfo.class);
+    final MBeanOperationInfo opInfo1 = context.mock(MBeanOperationInfo.class);
+    final MBeanOperationInfo opInfo2 = context.mock(MBeanOperationInfo.class, "mockOpInfo2");
+    final MBeanParameterInfo paramInfo1 = context.mock(MBeanParameterInfo.class);
+    final MBeanParameterInfo paramInfo2 = context.mock(MBeanParameterInfo.class, "mockParamInfo2");
+    Session session = new MockSession(output, con);
+    context.checking(
+        new Expectations() {
+
+          {
+            atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
+            will(returnValue(beanInfo));
+            allowing(beanInfo).getClassName();
+            will(returnValue("bogus class"));
+            oneOf(beanInfo).getOperations();
+            will(returnValue(new MBeanOperationInfo[] {opInfo1, opInfo2}));
+            allowing(opInfo1).getDescription();
+            will(returnValue("bingo"));
+            oneOf(opInfo1).getSignature();
+            will(returnValue(new MBeanParameterInfo[] {paramInfo1}));
+            oneOf(paramInfo1).getType();
+            will(returnValue(String.class.getName()));
+            oneOf(paramInfo1).getName();
+            will(returnValue("a"));
+            oneOf(paramInfo1).getDescription();
+            will(returnValue("My param description"));
+            oneOf(opInfo1).getReturnType();
+            will(returnValue("int"));
+            atLeast(1).of(opInfo1).getName();
+            will(returnValue("x"));
+
+            allowing(opInfo2).getDescription();
+            will(returnValue("pilou"));
+            oneOf(opInfo2).getSignature();
+            will(returnValue(new MBeanParameterInfo[] {paramInfo2}));
+            oneOf(paramInfo2).getType();
+            will(returnValue(Double.TYPE.getName()));
+            oneOf(paramInfo2).getName();
+            will(returnValue("b"));
+            oneOf(paramInfo2).getDescription();
+            will(returnValue("My param 2 description"));
+            oneOf(opInfo2).getReturnType();
+            will(returnValue("void"));
+            atLeast(1).of(opInfo2).getName();
+            will(returnValue("x"));
+          }
+        });
+    command.setSession(session);
+    command.execute();
+    context.assertIsSatisfied();
+    StringBuilder result = new StringBuilder("# operations").append(System.lineSeparator());
+    result.append("  %0   - int x(java.lang.String a), bingo").append(System.lineSeparator());
+    result.append("             parameters:").append(System.lineSeparator());
+    result
+        .append("                 + a                    : My param description")
+        .append(System.lineSeparator())
+        .append(System.lineSeparator());
+    result.append("  %1   - void x(double b), pilou").append(System.lineSeparator());
+    result.append("             parameters:").append(System.lineSeparator());
+    result.append("                 + b                    : My param 2 description");
+    assertEquals(result.toString(), output.toString().trim());
+  }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -83,20 +83,20 @@
+    * Test execution and show available options
+    *
+    * @throws Exception
+    */
+   @Test
+   public void testExecuteWithShowingOperations() throws Exception {
+     command.setBean("a:type=x");
+     command.setType("o");
+-    final MBeanServerConnection con = context.mock(MBeanServerConnection.class);
+-    final MBeanInfo beanInfo = context.mock(MBeanInfo.class);
+-    final MBeanOperationInfo opInfo = context.mock(MBeanOperationInfo.class);
+-    final MBeanParameterInfo paramInfo = context.mock(MBeanParameterInfo.class);
++    MBeanServerConnection con = context.mock(MBeanServerConnection.class);
++    MBeanInfo beanInfo = context.mock(MBeanInfo.class);
++    MBeanOperationInfo opInfo = context.mock(MBeanOperationInfo.class);
++    MBeanParameterInfo paramInfo = context.mock(MBeanParameterInfo.class);
+     Session session = new MockSession(output, con);
+     context.checking(
+         new Expectations() {
+           {
+             atLeast(1).of(con).getMBeanInfo(new ObjectName("a:type=x"));
+             will(returnValue(beanInfo));
+             allowing(beanInfo).getClassName();
+             will(returnValue("bogus class"));
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

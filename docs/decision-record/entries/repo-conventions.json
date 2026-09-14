@@ -1,0 +1,1632 @@
+{
+  "entries": [
+    {
+      "slug": "source-of-truth-is-the-code",
+      "title": "Source of truth is the source code, not the documentation",
+      "date_from": "2026-04-15",
+      "date_to": "2026-06-24",
+      "decision": "The two thesis subprojects (merge-tool-comparison and semantic_merge_driver) live in one private repo, and the declared source of truth for each is the source code in its subfolder plus semantic_merge_driver/initial architecture.md as the target pipeline. Everything derived \u2014 plan documents, tool-evaluation write-ups, STATUS/CLAUDE/README/ARCHITECTURE, generated diagrams \u2014 is subordinate: when a derived doc disagrees with the code, the code wins and the doc is reconciled to it (commit 6892637 did exactly that for five stale claims), and a review diagram is drawn from the code as it actually runs rather than from the target architecture doc.",
+      "rationale_recorded": true,
+      "rationale": "Declared at repo founding as the per-project source of truth, with all docs to be aligned to it; the tool-evaluation document was then explicitly scoped as non-authoritative because \"Source of truth remains source code\"; and by 2026-05-26 two stale claims predating the session showed the derived docs had drifted from the code, so they were reconciled with the code kept as source of truth. CLAUDE.md's designation of source code as the authoritative input is what forced the 2026-06-24 architecture diagram to reflect the running code rather than the target spec.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-01",
+        "preB:pre-commits-02",
+        "preB:pre-commits-04",
+        "preA:pre-tool-evaluation-findings-16",
+        "a:e1df1610-31",
+        "a:ce56e78d-01"
+      ],
+      "evidence": [
+        {
+          "text": "Source of truth per project:",
+          "line": 11,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "So the derived docs had drifted from the code before today; they're now reconciled with STATUS/CLAUDE (and the code remains the source of truth).",
+          "line": 1405,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "since CLAUDE.md says source code is the authoritative input.",
+          "line": 5,
+          "file": "2026-06-24_ce56e78d.txt"
+        }
+      ],
+      "artifacts": [
+        "f764605",
+        "semantic_merge_driver/initial architecture.md",
+        "CLAUDE.md",
+        "6892637",
+        "docs/plans/tool-evaluation-findings.md"
+      ],
+      "actors": "ali",
+      "actors_note": "The founding declaration and the 2026-05-26 reconciliation instruction are Ali's; the two restatements (scoping the tool-evaluation doc, grounding the 2026-06-24 diagram in the code) are Claude applying the standing rule, which is why two sources record 'claude'.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "root-docs-authoritative-superseded-archived",
+      "title": "Root-level docs are authoritative; superseded material is archived, never deleted",
+      "date_from": "2026-04-16",
+      "date_to": "2026-07-18",
+      "decision": "Authoritative documentation lives at repo root \u2014 README.md (overview + docs map), ARCHITECTURE.md, STATUS.md, CLAUDE.md, later THREATS_TO_VALIDITY.md \u2014 replacing outdated per-project READMEs. Superseded designs and completed working documents are moved to docs/historical/ or kept in place under an explicit marker rather than deleted: the pre-revert RefMerge architecture went to docs/historical/, the obsolete temp-git-repo sketch stayed below an OBSOLETE marker, the finished Stage-C handoff was committed with a COMPLETED banner, execution-sequence.md is to move to docs/historical/ once its four plans complete or are abandoned, and docs/historical/ itself is left untouched by later renames. STATUS and THREATS are maintained as \"what is, not what should be\".",
+      "rationale_recorded": true,
+      "rationale": "Superseded designs are kept for thesis writing, and keeping the obsolete sketch below a marker preserves M0-reasoning traceability; the Stage-C handoff was committed because its sibling p1-stage-a-handoff.md is already tracked as an audit-trail record, with the banner added so it cannot be misread as live work. docs/historical/ is preserved untouched per a CLAUDE.md standing rule. Only broken duplicates, empty dirs and regenerable Joern temp output were actually deleted.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "semantic_merge_driver/ARCHITECTURE.md as authoritative design"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preB:pre-commits-05",
+        "preA:pre-commits-03",
+        "preA:pre-commits-38",
+        "preB:pre-commits-38",
+        "a:fb0fa5c5-47",
+        "preA:pre-execution-sequence-26",
+        "a:dc3bc182-sub-sub-agent-a74c7a-10"
+      ],
+      "evidence": [
+        {
+          "text": "Adds root-level docs aligned to declared source of truth (source code +",
+          "line": 32,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "Archived (superseded designs, kept for thesis writing):",
+          "line": 46,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "Its sibling `p1-stage-a-handoff.md` is tracked as an audit-trail record, so committing it is consistent",
+          "line": 62,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "c7fc7e1",
+        "976e4b0",
+        "e3094ce",
+        "docs/historical/ARCHITECTURE-refmerge.md",
+        "STATUS.md",
+        "CLAUDE.md",
+        "THREATS_TO_VALIDITY.md",
+        "outputs/p1-stage-c-adjudication-handoff.md"
+      ],
+      "actors": "ali",
+      "actors_note": "Sources split between 'ali' and 'unclear': the never-delete/archive rule is recorded in the transcript era as a CLAUDE.md standing rule and the 2026-06-24 banner call was Ali's, while the plan-era archive commits record no explicit actor.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "stale-docs-fixed-in-the-same-commit",
+      "title": "A commit fixes the docs it stales; wrong claims are retracted, out-of-scope staleness is flagged",
+      "date_from": "2026-05-06",
+      "date_to": "2026-07-02",
+      "decision": "When a change makes a tracked document stale, the same commit updates it (rm2-integration.md's \"R1, R2 pending\" was corrected inside the R2 commit; the P6 doc-consistency sweep across STATUS, README \u00d72 and ARCHITECTURE \u00d73 landed in the #29 closing commit). Claims found to be wrong are retracted explicitly rather than quietly reworded \u2014 the recon doc's `-bd` flag claim was withdrawn after verification, the generator docstring's \"strict-wins: 6\" was corrected to 3, the hardcoded \"v1\" report header was fixed before the v2 write-ups. Staleness discovered outside the change's scope is flagged rather than fixed in it.",
+      "rationale_recorded": true,
+      "rationale": "The doc \"still says 'R1, R2 pending' \u2014 stale now\", and R3 had already been marked done there the same way; P6 \"belongs in the same commit-wave as the #29 close-out ... the natural 'everything is now consistent' pass\". The strict-win correction was forced by arithmetic on the committed data (six is impossible when Spork misses only 5 cases, 2 of them shared), and the `-bd` retraction by running RefactoringMiner -h in both images. The STATUS headline-number staleness was flagged instead of fixed because it was genuine but out of scope, and flagging keeps the change scoped rather than expanding it.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:20b53f98-28",
+        "a:20b53f98-17",
+        "a:fb0fa5c5-41",
+        "a:3302d287-01",
+        "a:bfc672b4-42",
+        "preA:pre-rm2-vs-rm3-differences-04"
+      ],
+      "evidence": [
+        {
+          "text": "But `rm2-integration.md` still says \"R1, R2 pending\" \u2014 stale now. Updating it for consistency (R3 was marked done there the same way).",
+          "line": 206,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "I noticed a genuine out-of-scope doc staleness while regenerating the report \u2014 flagging it rather than expanding this change.",
+          "line": 212,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "Six is impossible: Spork only misses 5 cases total, 2 shared.",
+          "line": 42,
+          "file": "2026-05-27_3302d287.txt"
+        }
+      ],
+      "artifacts": [
+        "2b95aa3",
+        "45a87e6",
+        "5290434",
+        "docs/plans/rm2-integration.md",
+        "docs/plans/rm2-integration-recon.md",
+        "STATUS.md",
+        "README.md",
+        "ARCHITECTURE.md"
+      ],
+      "actors": "claude",
+      "actors_note": "Claude drove the updates and corrections; two sources record 'joint' because Ali ruled the P6 ordering and approved the docstring fix, and one plan-era correction records no actor.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "status-threats-disclosure-waits-for-gate",
+      "title": "STATUS/THREATS disclosure of new work waits for its planned stage gate",
+      "date_from": "2026-06-12",
+      "date_to": "2026-07-16",
+      "decision": "Where a plan schedules when a result becomes public in the self-assessment docs, the docs stay deliberately silent until that gate: STATUS.md and THREATS_TO_VALIDITY.md were left untouched through Stages A and B and updated with measured R1/R2 values only when Stage C triggered it, and STATUS.md says nothing about the new detector lane because that disclosure is scheduled for S-D6.",
+      "rationale_recorded": true,
+      "rationale": "The plan specified Stage C as the trigger for the STATUS/THREATS update, and the S-D plan schedules lane disclosure at S-D6; the Stage-C edit was layered over Ali's uncommitted edits without touching them.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "STATUS/THREATS deliberately left untouched during Stages A and B"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-40",
+        "b:f0d70a59-23"
+      ],
+      "evidence": [
+        {
+          "text": "Updated per the plan's Stage-C trigger: [STATUS.md](STATUS.md) (strategies table + measured soundness paragraph), [THREATS_TO_VALIDITY.md](THREATS_TO_VALIDITY.md) (constructive-side bullet + new summary row 14 \u2014 layered carefully over your uncommitted edits, which I did not touch",
+          "line": 642,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "STATUS.md correctly says nothing yet \u2014 that disclosure is scheduled for S-D6 per the plan",
+          "line": 262,
+          "file": "2026-07-16_f0d70a59.txt"
+        }
+      ],
+      "artifacts": [
+        "STATUS.md",
+        "THREATS_TO_VALIDITY.md",
+        "merge-tool-comparison/ISSUES.md #29"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "review-flagged-cleanups-awaiting-ruling",
+      "title": "Review-flagged cleanups batched as one low-risk pass, awaiting a ruling",
+      "date_from": "2026-06-24",
+      "date_to": "2026-07-16",
+      "decision": "The 2026-06-24 project review proposed a batch of low-risk cleanups to run in one pass \u2014 delete dead `semantic_merge_driver/strategies/abstract_strategy.py` and the unwired `scala_queries/infinite_loop.sc`, remove debug prints, refresh stale headers (STATUS test count 122\u2192151 plus date, `detect_validate.py` \"four strategies\"\u2192five) \u2014 while decision-bearing items were to be handled separately, and separately proposed a reproducibility manifest mapping each headline claim \u2192 command \u2192 `reports_*` directory. A later review added the stale `detector_tune_run.py` module docstring to the same queue.",
+      "rationale_recorded": true,
+      "rationale": "The batched items are low-risk and fast and \"remove the things a reviewer would flag first\", whereas the routing flip and the raw_results.json question carry decisions. The deletions are justified as dead code (abstract_strategy.py is 0 LOC and imported nowhere; the .sc query is superseded by the inline `_QUERY`), the header refreshes because collection now shows 151 tests and all five detectors run, and the docstring fix because a reader adding a fourth lane would trust the stale top-of-file contract and reintroduce the vacuous-run gap the smoke guard exists to prevent.",
+      "status": "proposed",
+      "status_note": "S12 (2026-07-26): still awaiting the ruling \u2014 strategies/abstract_strategy.py and scala_queries/infinite_loop.sc both still exist, and detect_validate.py still says 'four strategies' (:3,:20) \u2014 though that last item was separately ruled a frozen-instrument non-fix in ISSUES.md #31, the deletion batch itself was never answered.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:ce56e78d-15",
+        "a:ce56e78d-12",
+        "b:ce56e78d-17",
+        "a:acf7e1d0-sub-agent-a88268-08",
+        "a:ce56e78d-05"
+      ],
+      "evidence": [
+        {
+          "text": "Want me to do the safe cleanups (2's debug-print removal, 3, 4, 6) in one pass, and handle 1 and 5 separately since they carry decisions?",
+          "line": 149,
+          "file": "2026-06-24_ce56e78d.txt"
+        },
+        {
+          "text": "**Delete** `abstract_strategy.py` (dead) and `scala_queries/infinite_loop.sc` (unwired) \u2014 or confirm intent.",
+          "line": 144,
+          "file": "2026-06-24_ce56e78d.txt"
+        },
+        {
+          "text": "**Write a reproducibility manifest.** 12 `reports_*` dirs exist; map each headline claim \u2192 command \u2192 report dir in one file.",
+          "line": 41,
+          "file": "2026-06-24_ce56e78d.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/abstract_strategy.py",
+        "scala_queries/infinite_loop.sc",
+        "STATUS.md",
+        "merge-tool-comparison/tools/detect_validate.py",
+        "merge-tool-comparison/tools/detector_tune_run.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "gitignore-regenerable-keep-evidence",
+      "title": "Gitignore anything regenerable; keep only evidence and irreplaceable binaries",
+      "date_from": "2026-04-15",
+      "date_to": "2026-07-08",
+      "decision": "Version control excludes anything re-creatable: Python venvs, data/repos/ (~2.1 GB), data/schesch-dataset/ (661 MB), caches, .claude/worktrees/, *.cpg.bin, *.log, the local-only docs/plans/m3.5-review.md review brief, the on-disk scenario tags produced by the R1 tagger, data/scenarios_expanded/ and data/results_expanded/, the seeded scenario data dirs, and the whole top-level /workspace/ scratch tree. Keynote (*.key) files are kept. Committed reports are the exception and stay tracked as evidence.",
+      "rationale_recorded": true,
+      "rationale": "Stated at founding as keeping the repo small, the datasets being re-cloneable from Zenodo, with Keynote files preserved per the user's standing rule. Each later application repeats the same test: the scenario JSONs and their tags are regenerable via load-dataset plus the tagger, the 60 expanded scenarios via select_materialize.py, the scenario dirs from a seed \u2014 so the canonical convention (data gitignored, reports/results.* kept) is mirrored, and the call was flagged to Ali as overridable. /workspace/ additionally held a CPG whose `bin1` suffix escaped the existing `*.cpg.bin` pattern and a `mergedataset` clone that is its own git repo (would commit as a broken gitlink) carrying GPL-3.0 content the gitignore already documents as kept out.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-02",
+        "preA:pre-commits-62",
+        "a:20b53f98-15",
+        "a:e1df1610-15",
+        "a:bfc672b4-19",
+        "a:5c9bc50d-01",
+        "a:42acccac-03"
+      ],
+      "evidence": [
+        {
+          "text": "Gitignored to keep repo small:",
+          "line": 15,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "I mirrored that: **gitignored `data/scenarios_expanded/` + `data/results_expanded/`**",
+          "line": 858,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "added top-level `/workspace/` to [.gitignore](.gitignore). It contained only scratch that must not be committed",
+          "line": 23,
+          "file": "2026-07-08_5c9bc50d.txt"
+        }
+      ],
+      "artifacts": [
+        "f764605",
+        "675bafd",
+        "0bdf979",
+        "cbac926",
+        "7086844",
+        "b1793e5",
+        ".gitignore"
+      ],
+      "actors": "ali",
+      "actors_note": "The policy and the Keynote carve-out are Ali's (2026-04-15 gitignore commits); the five later applications in the transcript era were Claude's calls under it, one explicitly offered back to Ali as overridable.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "run-log-committed-despite-log-ignore",
+      "title": "Report-directory run.log is force-added despite the global *.log ignore",
+      "date_from": "2026-07-03",
+      "date_to": null,
+      "decision": "A report directory's run.log is force-included in the commit as an exception to the repository-wide `*.log` ignore pattern; logs inside a reports_* directory are treated as artifacts, not noise.",
+      "rationale_recorded": true,
+      "rationale": "The exclusion was noticed as silent, and precedent was checked before overriding: reports_whole_driver already has committed logs.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:7b3b2669-10"
+      ],
+      "evidence": [
+        {
+          "text": "`run.log` was silently excluded by the global `*.log` ignore. Checking precedent (reports_whole_driver has committed logs):",
+          "line": 102,
+          "file": "2026-07-03_7b3b2669.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_rm2_recall/",
+        "b194bb3"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "large-result-caches-committed-as-evidence",
+      "title": "Large raw result caches are committed as auditable evidence, once final",
+      "date_from": "2026-06-16",
+      "date_to": "2026-07-22",
+      "decision": "Multi-megabyte raw_results.json caches are tracked rather than gitignored: the 9.9 MB reports_detection/full/raw_results.json was kept in the commit on Ali's ruling, and that became the standing precedent \u2014 Stage-C's tracked caches are cited when later tune runs and the S-D7 rerun commit their raw JSON caches, excluding only transient queue-claim directories. The timing rule is that only the final cache lands: the 27 MB partial cache was held out of the 2026-06-24 checkpoint commit (which carried durable code plus the 21 KB human-readable partial reports) and the 9.7 MB phase3/inputs directory was deferred to one commit at end of session. The open commit-or-ignore question raised about reports_whole_driver/raw_results.json in the 2026-06-24 review was answered this way the same day.",
+      "rationale_recorded": true,
+      "rationale": "Keeping the cache \"makes the post-fix run resumable and the numbers auditable\", consistent with the repo policy of keeping reports_* as evidence. Holding a partial cache back is argued from the opposite side of the same test: the current file is a partial cache that the run overwrites/grows, so committing it now \"would put a throwaway blob in history\"; phase3/inputs is deferred because it is large and regenerates deterministically.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:bfc672b4-34",
+        "a:fb0fa5c5-06",
+        "a:ce56e78d-14",
+        "b:f0d70a59-13",
+        "a:06ec13eb-08",
+        "a:9e4b6896-06"
+      ],
+      "evidence": [
+        {
+          "text": "I'd keep it: it makes the post-fix run resumable and the numbers auditable.",
+          "line": 707,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "But the current `raw_results.json` is a **27 MB partial cache** that tonight's run overwrites/grows \u2014 committing it now would put a throwaway blob in history.",
+          "line": 327,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "S-D5 precedent: caches are tracked. Committing everything except transient queue-claim dirs (logs are gitignored already):",
+          "line": 114,
+          "file": "2026-07-22_06ec13eb.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_detection/full/raw_results.json",
+        "reports_whole_driver/raw_results.json",
+        "0ec0ea3",
+        "597e535",
+        "a1f017f",
+        "9b21914"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the originating call is Ali's (Claude put keep-vs-ignore to him and he ruled \"keep full/raw_results.json\"), while the four later applications are Claude following that precedent, so they record 'claude'.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "report-dirs-are-preserved-evidence",
+      "title": "Committed reports_* directories are preserved evidence; new runs get their own directory",
+      "date_from": "2026-05-06",
+      "date_to": "2026-07-03",
+      "decision": "Every experimental run writes into its own reports_* directory and the committed outputs there are treated as preserved evidence rather than build products: the expanded corpus went to data/scenarios_expanded/, data/results_expanded/ and reports_expanded/ leaving the canonical artifacts untouched and reported separately; when results.csv is regenerated, results.json and results.tex are regenerated in the same commit so no tracked report is left stale; the post-3d results.csv was committed as the honest interim state; both the generator and its 1.78 MB standalone HTML output are committed following the pilot pattern; a FINDINGS.md follows the house style of reports_migrate_decl/FINDINGS.md; and committed sample fixtures are not regenerated when regeneration is byte-identical.",
+      "rationale_recorded": true,
+      "rationale": "reports/results.csv is a preserved thesis artifact and the expanded set is deliberately tool-discriminating, so conflating it with the canonical 50 would misreport; results.json and .tex \"are also tracked and would be left stale\" and ISSUES #23 explicitly covers JSON/LaTeX. The pilot committed both generator and HTML, so that pattern is followed. Re-running the toy fixtures on RM 2.4.0 produced diff-exit-0 identical output, so there was nothing to update. Tier D's results were committed as interim because the transforms are conservative and no semantic-change risk surfaced across 82 tests plus n=50 spot-checks.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-11",
+        "a:20b53f98-16",
+        "b:7b3b2669-08",
+        "a:0e14484d-07",
+        "preA:pre-comparator-3d-extended-ast-transforms-21",
+        "preA:pre-rm2-vs-rm3-differences-10"
+      ],
+      "evidence": [
+        {
+          "text": "outputs to `data/results_expanded/` + `reports_expanded/`, leaving the canonical artifacts untouched",
+          "line": 749,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "`results.json` and `.tex` are also tracked and would be left stale (ISSUES #23 explicitly covers JSON/LaTeX too). Regenerating all formats",
+          "line": 202,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "`reports/results.csv` post-3d Tier D committed as the current honest interim state.",
+          "line": 430,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_expanded/",
+        "merge-tool-comparison/reports/results.csv",
+        "merge-tool-comparison/reports/results.json",
+        "merge-tool-comparison/reports/results.tex",
+        "merge-tool-comparison/reports_rm2_recall/FINDINGS.md",
+        "86d8a6c",
+        "docs/plans/rm2-recon-samples/toy-rename.json"
+      ],
+      "actors": "claude",
+      "actors_note": "Mostly Claude's calls; the FINDINGS.md style requirement was Ali's instruction and one plan-era source records no actor.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "presentation-artifact-conventions",
+      "title": "Presentation binaries are tracked, never renamed or deleted, and named by month precedent",
+      "date_from": "2026-06-09",
+      "date_to": "2026-06-18",
+      "decision": "Keynote and PowerPoint binaries are committed to the repo (both extensions are already tracked); a file that looks like a macOS Finder duplicate (`thesis_progress_late_may2026 3.key`) is committed unchanged in place rather than renamed, moved or dropped, with an offer to amend if the name was accidental. A second deck in the same month is named by the existing precedent (`thesis_progress_late_jun2026.pptx`, notes `next_presentation_notes_late_jun2026.md`) rather than rolling to the next month, and the deck build script reuses the previous version's helpers, palette and layout coordinates verbatim.",
+      "rationale_recorded": true,
+      "rationale": "`.key` and `.pptx` are already tracked, so committing new ones follows precedent; the \" 3\" file has no tracked base version, so it is not a duplicate of anything in the repo and committing it as-is honours the never-delete-`.key` rule. The deck name follows the `may2026`/`late_may2026` precedent, and v4's coordinates are proven to render cleanly, which substitutes for a pixel render that could not be done locally.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "proposed name thesis_progress_jul2026"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:42acccac-02",
+        "a:42acccac-04",
+        "a:12c77ea5-05",
+        "a:12c77ea5-04"
+      ],
+      "evidence": [
+        {
+          "text": "`.key` and `.pptx` are both tracked already, so committing the new ones follows precedent.",
+          "line": 15,
+          "file": "2026-06-09_42acccac.txt"
+        },
+        {
+          "text": "There's no base `thesis_progress_late_may2026.key` tracked, so it's not a dup of anything in the repo \u2014 I committed it as-is (honoring the never-delete-`.key` rule).",
+          "line": 40,
+          "file": "2026-06-09_42acccac.txt"
+        },
+        {
+          "text": "Following the `may2026`/`late_may2026` naming precedent, the second June deck is `thesis_progress_late_jun2026.pptx`.",
+          "line": 70,
+          "file": "2026-06-18_12c77ea5.txt"
+        }
+      ],
+      "artifacts": [
+        "20b6e45",
+        "merge-tool-comparison/thesis_progress_late_may2026 3.key",
+        "presentation/thesis_progress_late_jun2026.pptx",
+        "presentation/build_deck_v5.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "small-ordered-green-commits",
+      "title": "Work lands as small ordered commits, each reviewable and each leaving the tree green",
+      "date_from": "2026-05-15",
+      "date_to": "2026-06-09",
+      "decision": "Multi-part work is decomposed into small commits landed in order \u2014 six for Tier D (3d.1\u20133d.6), eleven for Tier E \u2014 each one reviewable, each leaving the tree in a working state with the full suite re-run per phase. A true bug fix is separated out and lands first, ahead of any new feature commit. An uncommitted working tree is split along work-stream lines rather than committed as one mixed commit (weave / research / presentation).",
+      "rationale_recorded": true,
+      "rationale": "Each phase is one reviewable commit leaving the tree in a working state; the D.1 fix \"lands FIRST as a separate small commit, before any new transforms\" for easier rollback isolation if the tier has issues, and the D.1 risk mitigation requires re-running the full suite per phase. The three-way split was chosen because the uncommitted work comprised three independent work streams.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3d-extended-ast-transforms-16",
+        "preA:pre-comparator-3e-tier-e-transforms-19",
+        "preA:pre-comparator-3e-tier-e-transforms-02",
+        "a:42acccac-01"
+      ],
+      "evidence": [
+        {
+          "text": "Six small commits, landed in order. Each phase is one reviewable commit; each leaves the tree in a working state.",
+          "line": 135,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        },
+        {
+          "text": "It lands FIRST as a separate small commit, before any new transforms. Easier rollback isolation if Tier E has issues.",
+          "line": 128,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        },
+        {
+          "text": "Clean scan, clear convention. Three independent work streams \u2014 I'll make three commits.",
+          "line": 17,
+          "file": "2026-06-09_42acccac.txt"
+        }
+      ],
+      "artifacts": [
+        "99a5f90",
+        "9333692",
+        "ac9114e",
+        "1eff174",
+        "9e90b23",
+        "1c6eb87",
+        "a86b560",
+        "8868ec6",
+        "20b6e45"
+      ],
+      "actors": "claude",
+      "actors_note": "Two plan-document sources record no actor ('unclear'); the two attributed sources are Claude's.",
+      "corroboration": "both",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "one-branch-one-pr-per-phase",
+      "title": "Each integration phase is one branch and one PR with explicit acceptance criteria",
+      "date_from": "2026-04-21",
+      "date_to": "2026-04-25",
+      "decision": "The Mergiraf and Spork integrations are executed as clean tracked incremental steps: each phase is a single branch and a single reviewable commit/PR with explicit acceptance criteria, work stops between phases for re-evaluation, and rollback is `git revert` of the merge commit or dropping the branch (for Spork S2, an env-flag flip with no code change).",
+      "rationale_recorded": true,
+      "rationale": "Big-bang merges had already been rejected once \u2014 this is stated as why the prior RefMerge/Mergiraf architecture was reverted.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "commit-directly-to-main",
+      "sources": [
+        "preB:pre-mergiraf-integration-08",
+        "preA:pre-spork-driver-integration-16"
+      ],
+      "evidence": [
+        {
+          "text": "**Clean tracked incremental steps.** Each phase is one reviewable commit / PR, not a big-bang merge.",
+          "line": 24,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "(This is *why* the prior RefMerge/Mergiraf architecture was reverted;",
+          "line": 24,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "Each phase is **one branch, one PR**, with explicit acceptance criteria. Stop between phases; re-evaluate.",
+          "line": 97,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "CLAUDE.md",
+        "docs/plans/spork-driver-integration.md"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "commit-directly-to-main",
+      "title": "Programme work commits directly to main, not on feature branches",
+      "date_from": "2026-06-20",
+      "date_to": "2026-07-11",
+      "decision": "Work in the ISSUES #29 and #30 programmes is staged and committed directly to `main` in incremental commits referencing the issue number, with unrelated working-tree files (presentation decks, handoff documents) deliberately left alone; input dumps such as phase1/inputs/ are tracked in git.",
+      "rationale_recorded": true,
+      "rationale": "Stated as following the repo's own conventions and precedent: the ISSUES #29 direct-to-main convention, then \"the whole #30 program has committed directly to main\" and \"the entire #30 lineage does\", with the brief directing #30-referenced commits; S1 having committed the g0_pilot input dumps is the precedent for tracking phase1/inputs/.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "one-branch-one-pr-per-phase"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:0e14484d-09",
+        "a:788e483b-05",
+        "a:9e4b6896-33"
+      ],
+      "evidence": [
+        {
+          "text": "following the repo's `ISSUES #29` direct-to-main convention; leaving the unrelated `presentation/` and handoff files alone",
+          "line": 199,
+          "file": "2026-06-20_0e14484d.txt"
+        },
+        {
+          "text": "S1 committed the g0_pilot input dumps, so tracking `phase1/inputs/` follows precedent, and the whole #30 program has committed directly to `main`",
+          "line": 206,
+          "file": "2026-07-09_788e483b.txt"
+        },
+        {
+          "text": "This program commits directly to `main` (the entire #30 lineage does), and the brief directs `#30`-referenced commits.",
+          "line": 117,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [
+        "86d8a6c",
+        "3f817b9",
+        "b604bfc",
+        "a8734c7",
+        "merge-tool-comparison/ISSUES.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "push-only-on-instruction-after-review",
+      "title": "Commit and push only on explicit instruction, and only after a review pass",
+      "date_from": "2026-05-19",
+      "date_to": "2026-07-16",
+      "decision": "Claude does not commit or push on its own initiative: readiness questions are answered without committing, finished commits are left local (\"ahead N of origin/main\") until Ali asks, and the pre-push review belongs to Ali. Before any commit or push, a review pass is run \u2014 git state audited (tracked vs ignored, parallel commits), reported numbers re-verified against committed data, tests re-run, and for the S-D1 commits a five-area self-review (list integrity, script re-read, firewall audit, manifest/ISSUES coherence, GD1 number re-derivation from specs.csv). Pushing is preceded by verifying a clean tree and fast-forward status.",
+      "rationale_recorded": true,
+      "rationale": "Stated as the standing rule: \"I commit/push only on explicit instruction\"; commits were left unpushed because \"that wasn't asked\" and because \"S-D1 precedent: pre-push review is yours\". The pre-commit audit is justified by permanence \u2014 \"this is going to the remote, so let me audit before touching anything permanent\" \u2014 and numbers were re-verified \"so the permanent issue is accurate\".",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-35",
+        "b:506d875b-14",
+        "b:f0d70a59-24",
+        "b:20b53f98-25",
+        "a:e1df1610-16",
+        "b:506d875b-10"
+      ],
+      "evidence": [
+        {
+          "text": "Nothing is committed or pushed yet (you asked a readiness question, and the standing rule is I commit/push only on explicit instruction).",
+          "line": 697,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "Tree clean, not pushed (S-D1 precedent: pre-push review is yours)",
+          "line": 67,
+          "file": "2026-07-16_f0d70a59.txt"
+        },
+        {
+          "text": "review you work again before commit and push",
+          "line": 169,
+          "file": "2026-07-15_506d875b.txt"
+        }
+      ],
+      "artifacts": [
+        "cbac926",
+        "2b95aa3",
+        "eabaddd",
+        "cf59d37",
+        "1b99a6a",
+        "b40d26c",
+        "d5a202e..c14670a",
+        "7086844"
+      ],
+      "actors": "ali",
+      "actors_note": "Sources disagree: two record Claude stating or applying the standing rule, four record Ali instructing the review or authorising the push. The gate itself is Ali's.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "commit-before-head-snapshotting-runs",
+      "title": "Commit before running anything that snapshots HEAD",
+      "date_from": "2026-07-03",
+      "date_to": "2026-07-16",
+      "decision": "Code is committed before running a tool that captures the commit state: the tagger and its tests are committed before building the AWS deployment bundle, and the detector lane is committed before the tune harness runs.",
+      "rationale_recorded": true,
+      "rationale": "The bundle is built with `git archive HEAD`, so uncommitted files would not ship; committing the lane first makes the tune cache keys carry the true lane commit sha.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:7b3b2669-09",
+        "a:f0d70a59-09"
+      ],
+      "evidence": [
+        {
+          "text": "Committing the tool + tests so the bundle's `git archive HEAD` includes them.",
+          "line": 70,
+          "file": "2026-07-03_7b3b2669.txt"
+        },
+        {
+          "text": "Committing the lane first so the tune cache keys carry the true lane commit, then running.",
+          "line": 53,
+          "file": "2026-07-16_f0d70a59.txt"
+        }
+      ],
+      "artifacts": [
+        "c9ca9f8",
+        "9f871b1",
+        "merge-tool-comparison/reports_detectors/tune_d1/runs.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "flag-unilateral-commit-time-calls",
+      "title": "List the calls made without asking when committing on Ali's behalf",
+      "date_from": "2026-06-09",
+      "date_to": null,
+      "decision": "When committing on the user's behalf, explicitly enumerate the judgement calls made without asking \u2014 here the `research/.DS_Store` exclusion and the spaced `.key` filename \u2014 with a stated remedy path (\"rename or `git mv` it and I'll amend\").",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "proposed",
+      "status_note": "S12 (2026-07-26): not repo-checkable \u2014 the practice lives in session commit reports, no CLAUDE.md standing rule exists, and no artifact can settle whether later commits enumerated their unilateral calls. Stays a recommendation about working practice.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:42acccac-05"
+      ],
+      "evidence": [
+        {
+          "text": "Two things I decided rather than asked, flagging for your awareness:",
+          "line": 37,
+          "file": "2026-06-09_42acccac.txt"
+        }
+      ],
+      "artifacts": [
+        "8868ec6",
+        "20b6e45"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "unreviewed-and-draft-content-excluded",
+      "title": "Unreviewed and draft content is held out of commits and the omission is recorded",
+      "date_from": "2026-06-11",
+      "date_to": "2026-06-16",
+      "decision": "Content Claude has not reviewed, and content whose labels are proposals rather than Ali's ruling, is excluded from a commit and the exclusion is reported: THREATS_TO_VALIDITY.md was left out of the Stage-B freeze commit because of a 98-line unreviewed pre-session edit, and at the later commit Ali ruled that THREATS be reviewed first and that everything be committed and pushed except hit_adjudications_draft.md, with the commit message recording the omission and ISSUES #29 staying in_progress.",
+      "rationale_recorded": true,
+      "rationale": "Claude would not fold a large pre-session edit it had not reviewed into a commit, so review came first; the adjudication draft is excluded because the labels are proposals, not Ali's ruling. Already-decided content (the ISSUES #28 entry) was allowed to ride along.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-18",
+        "a:bfc672b4-34"
+      ],
+      "evidence": [
+        {
+          "text": "**THREATS_TO_VALIDITY.md was left uncommitted** \u2014 it has a 98-line pre-session edit I didn't review; worth a look when you're next in there.",
+          "line": 393,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "fix header; commit and push everything but adjudication",
+          "line": 733,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "843e5f5",
+        "2354099",
+        "THREATS_TO_VALIDITY.md",
+        "hit_adjudications_draft.md"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the Stage-B exclusion was Claude's call, the resolution (review THREATS, exclude the draft, commit and push the rest) was Ali's ruling on options Claude put.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "diagrams-scratch-unless-a-file-asked",
+      "title": "Generated diagrams stay scratch unless a file is asked for, then self-contained under docs/",
+      "date_from": "2026-05-18",
+      "date_to": "2026-06-24",
+      "decision": "A diagram generated in conversation is not written into any tracked document \u2014 the Mermaid project-state diagram went to /tmp only and nothing was committed. When Ali does ask for a browsable file, the artifact is saved as a fully self-contained page with its own light/dark colours and no external assets (docs/driver-file-graph.html), whose nodes are real source files with verbatim snippets and whose edges are actual import/call/data-flow links.",
+      "rationale_recorded": true,
+      "rationale": "CLAUDE.md says never to create or modify docs unless asked, and the request was \"generate a diagram\", not \"add it to X\". When the file was asked for, the reason given was that the rendered diagrams are inline chat widgets that do not exist as files, so a standalone self-contained page is what opens directly in any browser.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:20b53f98-25",
+        "a:ce56e78d-16",
+        "b:ce56e78d-15"
+      ],
+      "evidence": [
+        {
+          "text": "I deliberately did not write it to a document because CLAUDE.md says never to create/modify docs unless you ask",
+          "line": 406,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "The diagrams I rendered are inline chat widgets \u2014 they don't exist as files yet. Let me save the interactive file-graph as a standalone, self-contained HTML page (its own colors, light + dark) that opens directly in any browser.",
+          "line": 167,
+          "file": "2026-06-24_ce56e78d.txt"
+        }
+      ],
+      "artifacts": [
+        "/tmp/project-state.mmd",
+        "/tmp/project-state.svg",
+        "docs/driver-file-graph.html"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the 2026-05-18 refusal to persist the diagram was Claude's, while the file-graph decisions are recorded as joint (Ali asked for a graph, judged html/css the better medium and asked for a browsable path).",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "test-suite-shaping-conventions",
+      "title": "Test-suite conventions: no redundant integration tests, keep extra coverage, scope collection",
+      "date_from": "2026-05-15",
+      "date_to": "2026-07-03",
+      "decision": "New transform tiers add unit tests only where the contract is not already covered \u2014 Tier E shipped 30 unit tests and zero new integration tests because Tier C's 3-test wiring contract plus Tier D's 2 tests already cover it. Tests that the plan said to migrate are kept as-is when that leaves more coverage, even at the cost of overshooting the planned suite size (82 tests versus a 74\u201380 target, 16 new instead of 23). Logic that is hard to test through `main()` is extracted into a standalone testable function first. Pytest collection is scoped to `tests/` so cloned upstream repositories under data/repos/ and data/schesch-dataset/ stop contributing test files.",
+      "rationale_recorded": true,
+      "rationale": "Tier E's transforms reach `contents_match` via the same Tier 3 path, so the existing wiring tests already cover the contract. The suite overshoot was accepted as \"net positive \u2014 more coverage retained\". Collection scoping was proposed because the cloned corpus produced 16 collection errors that \"are noise but mask real failures\", and was then executed on 2026-07-03 (commit c9ca9f8) when collection picked up cloned repos' own tests.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "\u00a77 plan that Tier C paren/else-if tests migrate to D.1/D.2 and that Tier D adds 23 unit tests for a 74-80 test suite"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3e-tier-e-transforms-16",
+        "preA:pre-comparator-3d-extended-ast-transforms-20",
+        "a:8740dbd3-25",
+        "a:ce56e78d-13",
+        "a:7b3b2669-08"
+      ],
+      "evidence": [
+        {
+          "text": "already cover Tier E's contract \u2014 its transforms reach `contents_match` via the same Tier 3 path.",
+          "line": 283,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        },
+        {
+          "text": "slightly over because some Tier C `strip_redundant_parens` and `flatten_else_if` tests stayed as-is rather than migrating; net positive \u2014 more coverage retained",
+          "line": 419,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        },
+        {
+          "text": "Collection picked up cloned repos' own tests \u2014 scope to `tests/`:",
+          "line": 68,
+          "file": "2026-07-03_7b3b2669.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tests/test_ast_normalize.py",
+        "merge-tool-comparison/tests/test_comparator.py",
+        "merge-tool-comparison/pyproject.toml",
+        "merge-tool-comparison/tools/detect_validate.py",
+        "c9ca9f8"
+      ],
+      "actors": "claude",
+      "actors_note": "One plan-era source (Tier E's test plan) records no actor; the rest are Claude's calls.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "strategy-addition-conventions",
+      "title": "Naming and checklist conventions for adding a strategy",
+      "date_from": "2026-04-16",
+      "date_to": null,
+      "decision": "The RefMerge architecture plan fixes conventions for new detection work: strategies at strategies/<tool>_strategies/<detection_type>.py with classes named <Tool><DetectionType>Strategy, tests at tests/test_<strategy_name>.py with data under tests/data/<category>/, Joern CPG queries in scala_queries/<strategy_name>.sc rather than inline strings in Python; and any new step follows the nine-point \u00a77.4 procedure (read the architecture doc and interfaces, check driver and plugin_loader, implement as a MergeStrategy subclass, add test scenarios, add error handling and timeouts, run the full suite, record metrics and latency, compare against the previous step before proceeding).",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): three of the four conventions demonstrably govern the tree \u2014 layout strategies/<tool>_strategies/<detection_type>.py holds for all seven lanes, classes are named <Tool><DetectionType>Strategy (JoernInfiniteLoopStrategy, RM2RenameConflictStrategy, \u2026), tests are tests/test_<strategy>.py. The scala-queries-in-.sc clause did not survive: infinite_loop.sc is unwired (query inline in the lane) and later Joern lanes inline their queries.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-21",
+        "preA:pre-architecture-refmerge-22",
+        "preA:pre-architecture-refmerge-12"
+      ],
+      "evidence": [
+        {
+          "text": "### 7.3 File Naming Conventions",
+          "line": 902,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "### 7.4 When Implementing a New Step",
+          "line": 910,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "Move Scala queries from inline strings to `scala_queries/*.sc` files",
+          "line": 627,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        }
+      ],
+      "artifacts": [
+        "scala_queries/",
+        "strategies/",
+        "tests/data/"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "strategy-selection-in-yaml-config",
+      "title": "Enabled strategies are configured in YAML, not hardcoded and not env vars",
+      "date_from": "2026-04-16",
+      "date_to": "2026-04-22",
+      "decision": "Strategy selection moves out of driver.py into config/strategies.yaml, which is the single source of truth for enabled strategies and also carries merge backend configuration; it is loaded through a new core/config.py with no environment variables, and the hardcoded `strategies=[\"JoernInfiniteLoop\"]` literal is removed from driver main(). The same Step-0 cleanup also required requirements.txt to list the actual dependencies.",
+      "rationale_recorded": true,
+      "rationale": "The hardcoded strategy list made the second implemented strategy unreachable.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "hardcoded strategies=[\"JoernInfiniteLoop\"] literal in core/driver.py"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preB:pre-architecture-refmerge-21",
+        "preA:pre-commits-13"
+      ],
+      "evidence": [
+        {
+          "text": "config/strategies.yaml: single source of truth for enabled strategies",
+          "line": 128,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "strategies=[\"JoernInfiniteLoop\"] literal that made the second",
+          "line": 131,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "- Update `config/strategies.yaml` to include merge backend configuration",
+          "line": 404,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        }
+      ],
+      "artifacts": [
+        "044051f",
+        "config/strategies.yaml",
+        "core/config.py",
+        "requirements.txt"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "adapter-phases-add-only-new-files",
+      "title": "A new tool adapter phase adds only new files; the evaluation core is untouched",
+      "date_from": "2026-04-21",
+      "date_to": "2026-04-25",
+      "decision": "The first phase of a tool integration (Mergiraf P1, Weave W1) adds only new files \u2014 the adapter, its tests, and one config/tools.yaml entry \u2014 and must not edit comparator.py, metrics.py, runner.py or plugin_loader.py; rollback is deleting the adapter file and the tools.yaml entry.",
+      "rationale_recorded": true,
+      "rationale": "The plugin loader auto-discovers adapters via `pkgutil.walk_packages()`, so no wiring edits are needed; this is the smallest possible change that produces a new tool row in the current reports, and removing the two additions restores prior behaviour exactly.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): held \u2014 the commit introducing both comparator adapters (e334cb3) adds src/tools/mergiraf.py, src/tools/weave.py, their tests and one config/tools.yaml block, and touches none of comparator.py, metrics.py, runner.py or plugin_loader.py.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-08",
+        "preA:pre-weave-integration-22"
+      ],
+      "evidence": [
+        {
+          "text": "**Files NOT touched:** `comparator.py`, `metrics.py`, `runner.py`, `plugin_loader.py`. The plugin loader auto-discovers the new adapter via `pkgutil.walk_packages()`.",
+          "line": 79,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "Removing `src/tools/weave.py` and the `config/tools.yaml` entry restores prior behaviour exactly.",
+          "line": 249,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/tools/mergiraf.py",
+        "merge-tool-comparison/src/tools/weave.py",
+        "merge-tool-comparison/config/tools.yaml"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "plan-files-gated-single-owner",
+      "title": "Each plan file is independently gated and owns its components alone",
+      "date_from": "2026-04-25",
+      "date_to": "2026-05-14",
+      "decision": "Plan documents are kept modular: Spork's promotion stays in its own spork-driver-integration.md rather than becoming a Mergiraf P7 or Weave W6 sub-phase; a component has exactly one owning phase (language_detect.py moved from S2 to R4a); and a documentation block that another plan owes is deferred until its gate resolves rather than written speculatively (mergiraf-integration.md's \"3b Tier C outcome\" subsection waits for ISSUES.md #2 to reach `resolved`).",
+      "rationale_recorded": true,
+      "rationale": "Spork's promotion has different gates (ISSUES.md #2 resolution), different scope (Java-only) and a different dispatch axis (language, not just cluster), so burying it would mix concerns and hide the language-axis decision; language_detect.py was reassigned so it has a single owner; the deferred outcome block is tied to the resolved-status transition, which did not happen.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "language_detect.py owned by S2",
+        "Phase 3b.5 requirement to append a '3b Tier C outcome' block to mergiraf-integration.md"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-spork-driver-integration-15",
+        "preB:pre-commits-19",
+        "preA:pre-comparator-3b-ast-normalize-27"
+      ],
+      "evidence": [
+        {
+          "text": "**Why a separate plan file rather than a sub-phase of the Mergiraf or Weave plans?** Because Spork's promotion has different gates (ISSUES.md #2 resolution), different scope (Java-only), and a different dispatch axis (language, not just cluster).",
+          "line": 228,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        },
+        {
+          "text": "ownership transferred from S2 to R4a (single owner).",
+          "line": 184,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "`mergiraf-integration.md \u00a7Phase 3.5` outcome block also deferred \u2014 to be added when (and if) ISSUES.md #2 reaches `resolved`.",
+          "line": 530,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/spork-driver-integration.md",
+        "docs/plans/mergiraf-integration.md",
+        "core/language_detect.py"
+      ],
+      "actors": "unclear",
+      "actors_note": "Sources disagree: the language_detect ownership transfer is recorded as Ali's, the other two plan-era decisions record no actor.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "findings-recorded-in-durable-artifacts",
+      "title": "Findings, deferrals and deviations go into durable artifacts, not just the commit message",
+      "date_from": "2026-05-14",
+      "date_to": "2026-07-22",
+      "decision": "Anything that would otherwise survive only in a commit message or in chat is written into a durable artifact: the \u03b3 diagnostic observations went into docs/plans/stage-gamma-fp-diagnostic.md as well as the commit message; a publishable finding dropped by a scope decision was recorded as ISSUES.md #26 (Low, deferred) with the concrete path to produce it later; and run-time deviations from a plan are recorded in the run notes \u2014 the derived-target env-gate replacement as a paste-time patch to the kickoff prompt, the Docker image provisioning split as a one-sentence reasoned deviation-within-intent \u2014 with no amendment to the plan document itself.",
+      "rationale_recorded": true,
+      "rationale": "The acceptance wording had said \"in the commit message\"; the doc was added for permanence per Ali's \"Doc + commit\" decision. The ISSUES entry was created because R0 recon had designated the recall delta a publishable finding, the scope decision killed it, and no deferral tracker existed anywhere in ISSUES.md or STATUS.md \u2014 \"a previously-planned publishable finding was silently dropped with no tracker.\" No reason was recorded for choosing run notes over a plan amendment for the two 2026-07-22 deviations.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-51",
+        "a:20b53f98-23",
+        "a:68c24033-04",
+        "a:68c24033-08"
+      ],
+      "evidence": [
+        {
+          "text": "A previously-planned publishable finding was silently dropped with no tracker.",
+          "line": 253,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "also in stage-gamma-fp-diagnostic.md for permanence per user's \"Doc +",
+          "line": 888,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "Record the split in your run notes as a one-sentence reasoned deviation-within-intent of the build-on-instance standing rule (drift-risk images shipped, pinned images built). No amendment.",
+          "line": 86,
+          "file": "2026-07-22_68c24033.txt"
+        }
+      ],
+      "artifacts": [
+        "10c8a54",
+        "docs/plans/stage-gamma-fp-diagnostic.md",
+        "merge-tool-comparison/ISSUES.md",
+        "eabaddd",
+        "merge-tool-comparison/reports_detectors/whole_driver_flagon/RUN_NOTES.md"
+      ],
+      "actors": "ali",
+      "actors_note": "Three sources record Ali (the \"Doc + commit\" decision and both 2026-07-22 run-note instructions); the ISSUES #26 deferral tracker is recorded as joint.",
+      "corroboration": "both",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "handoff-through-committed-artifacts",
+      "title": "Sessions hand off through committed artifacts only, never through chat",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-15",
+      "decision": "State passes between sessions only through committed artifacts: prompts committed as files with marked slots ({PHASE1_TAGS}, {FROZEN_CODEBOOK}), a per-phase resumable cache keyed by custom_id, scenarios.csv, labels CSV and summary.txt under reports_taxonomy/, plus memory files (MEMORY.md and the per-topic memory notes) carrying non-obvious operational detail for the next stage. At a gate the user brings only summary stats, artifact paths and a ruling, and Claude reads the files from the repo; artifacts produced outside the tree are relocated into the artifacts directory where they belong; the protocol document itself is placed beside its existing precedent at repo-root outputs/. Stage state lives in the ISSUES entry with each session appending its close-out, writing sessions and implementation sessions never mix, and any protocol change after data exists must be a dated sanctioned amendment in the doc, never a silent edit.",
+      "rationale_recorded": true,
+      "rationale": "\"Don't hand results back through chat \u2014 500 units of output won't fit in a message and provenance suffers\"; committed prompts let the thesis cite \"labels produced by prompt X at commit Y with model Z\". Tracking state in ISSUES means any future session can regenerate the next kickoff prompt from ISSUES plus the plan file alone, so \"this conversation stops being a load-bearing artifact\"; and the write-up citing committed FINDINGS means late implementation integrates as one new section without reopening finished chapters. The protocol was placed at repo-root outputs/ because the brief's path pointed at a directory that does not exist and that location sits beside the p1-plan precedent.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "brief path merge-tool-comparison/outputs/taxonomy-protocol.md"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-14",
+        "a:cfe6365a-08",
+        "b:4c7b0828-34",
+        "b:788e483b-12",
+        "a:92a3e464-25",
+        "a:cfe6365a-17"
+      ],
+      "evidence": [
+        {
+          "text": "Don't hand results back through chat \u2014 500 units of output won't fit in a message and provenance suffers.",
+          "line": 713,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "**Track state in ISSUES, not in chat.** Open the detector-cycle issue (#31) with the stage checklist; each session appends its close-out there, same as #30 did.",
+          "line": 1645,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "- Handoff between sessions is committed artifacts only: prompts committed as",
+          "line": 49,
+          "file": "2026-07-08_cfe6365a.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_taxonomy/",
+        "merge-tool-comparison/prompts_taxonomy/",
+        "outputs/taxonomy-protocol.md",
+        "outputs/detector-cycle-plan.md",
+        "MEMORY.md",
+        "ISSUES #31"
+      ],
+      "actors": "claude",
+      "actors_note": "One source (the taxonomy brief setting out the handoff rule) is recorded as Ali's; the rest are Claude's applications of it.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "parallel-sessions-sync-through-origin",
+      "title": "Parallel sessions keep hands off the tree and coordinate via the committed prompt",
+      "date_from": "2026-07-22",
+      "date_to": null,
+      "decision": "While another session owns the working tree, this session makes no commits and no repo edits (read-only checks and Q&A only), with narrow exceptions taken only when the tree is verifiably clean. The parallel-run coordination rules are added to the committed S-D8 kickoff prompt as a dated PARALLEL-RUN NOTE (commit df58669) and pushed with the other session's commit so both sync through origin.",
+      "rationale_recorded": true,
+      "rationale": "So the S-D7 session has the working tree to itself, everything from S-D5/S-D6 already being pushed so it starts from clean, current main; and the parallel-run rules belong in the committed prompt because they did not exist when it was instantiated \u2014 the tree was clean at that moment, making a small atomic edit safe for the concurrently running session.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-27",
+        "a:2e726dc0-26"
+      ],
+      "evidence": [
+        {
+          "text": "From this session I'll keep hands off the working tree \u2014 no commits, no repo edits \u2014 so the S-D7 session has it to itself",
+          "line": 839,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "Yes \u2014 the parallel-run rules belong in the committed prompt (they didn't exist when it was instantiated).",
+          "line": 890,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [
+        "df58669",
+        "ISSUES.md"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the read-only commitment is recorded as Claude's, the prompt patch as joint (raised with Ali and agreed).",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "finder-agent-output-contract",
+      "title": "Review finder agents return at most 6 conclusions as a bare JSON array",
+      "date_from": "2026-07-16",
+      "date_to": "2026-07-18",
+      "decision": "Each angle of a multi-angle code review is run by a finder agent under a fixed contract: return at most 6 candidate findings as a JSON array with keys file, line, summary, failure_scenario, and the final message is only the array (an empty array being the expected result when nothing qualifies); report conclusions, not file dumps, with no code excerpt longer than three lines. Angles are given an explicit method (for the removed-behaviour angle: for every line the diff deletes or replaces, name the invariant it enforced and verify the new code re-establishes it, with specific paths enumerated) and an explicit scope \u2014 findings must be actionable within the session's constraints, and untracked new files are added to every finder's scope by hand.",
+      "rationale_recorded": true,
+      "rationale": "Untracked files do not appear in `git diff`, so a diff-scoped review would have skipped the new lane and its test file entirely. The actionability scope is argued from the guardrails: the module deliberately avoids importing strategy classes to prevent loader double-registration, and the frozen-plan guardrail forbids changes to existing lanes, so a recommendation requiring those edits cannot be executed.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-a36a1c-02",
+        "a:82dd479f-sub-sub-agent-a46641-01",
+        "a:dc3bc182-sub-agent-a7bb0f-02",
+        "b:acf7e1d0-19",
+        "a:acf7e1d0-sub-agent-ad3e5a-01"
+      ],
+      "evidence": [
+        {
+          "text": "Return up to 6 candidate findings as a JSON array with keys: file, line, summary, failure_scenario (quote the CLAUDE.md path and rule).",
+          "line": 7,
+          "file": "2026-07-16_82dd479f_sub-agent-a36a1c.txt"
+        },
+        {
+          "text": "You are reporting conclusions, not file dumps. No code excerpts longer than 3 lines.",
+          "line": 11,
+          "file": "2026-07-18_dc3bc182_sub-agent-a7bb0f.txt"
+        },
+        {
+          "text": "The two new files are untracked, so they don't appear in `git diff` \u2014 including them explicitly in every finder's scope.",
+          "line": 76,
+          "file": "2026-07-16_acf7e1d0.txt"
+        }
+      ],
+      "artifacts": [
+        "scratchpad/sd4_diff.txt",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py"
+      ],
+      "actors": "claude",
+      "actors_note": "Sources disagree: the agent briefs are Claude's, one report-format brief is recorded as Ali's, and two record no actor.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "convention-findings-need-quoted-rule",
+      "title": "A convention violation counts only with the exact rule and the exact line quoted",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "The CLAUDE.md-conventions angle of a review may report a violation only if it can quote both the exact rule text from a CLAUDE.md file and the exact diff line breaking it; style preferences and spirit-of-the-doc inferences are excluded. The applicable rule files are those that both exist and are ancestors of the changed files \u2014 repo root, semantic_merge_driver/, merge-tool-comparison/ and ~/.claude/ are all checked, and in practice only the repo-root CLAUDE.md applied.",
+      "rationale_recorded": true,
+      "rationale": "Only clear violations of explicit rules count, and the exact-quote requirement is stated as the bar, with style preferences and spirit-of-the-doc inferences explicitly ruled out. No reason was recorded for restricting rule files to existing ancestors.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-a36a1c-01",
+        "a:acf7e1d0-sub-sub-agent-aaed4d-01",
+        "a:acf7e1d0-sub-sub-agent-aaed4d-02"
+      ],
+      "evidence": [
+        {
+          "text": "Only flag when you can quote the exact rule AND the exact diff line breaking it. No style preferences, no spirit-of-the-doc inferences.",
+          "line": 5,
+          "file": "2026-07-16_82dd479f_sub-agent-a36a1c.txt"
+        },
+        {
+          "text": "only apply files that exist and are ancestors of changed files",
+          "line": 3,
+          "file": "2026-07-16_acf7e1d0_sub-agent-aaed4d.txt"
+        },
+        {
+          "text": "I reviewed the repo-root `CLAUDE.md` (the only applicable file \u2014 no `CLAUDE.md`/`CLAUDE.local.md` exists in `semantic_merge_driver/`, `merge-tool-comparison/`, or `~/.claude/`)",
+          "line": 23,
+          "file": "2026-07-16_acf7e1d0_sub-agent-aaed4d.txt"
+        }
+      ],
+      "artifacts": [
+        "CLAUDE.md",
+        "~/.claude/CLAUDE.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "duplication-accepted-over-frozen-lane-edits",
+      "title": "Duplication is accepted rather than edit a frozen lane or diverge from the ABC",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "In the S-D detector work, duplication and cross-module private access are deliberately left in place rather than refactored: SignatureStaleCallStrategy keeps its own `_inconclusive`, its own `_declared_arities`, and its reaches into other lanes' private members (`self._rm2._run_rm2_pair`, `view._in_excluded`, `view._qualified_or_case`, the `_ipu` helpers); no shared RM2Runner is extracted and no `_FileView` helper is promoted to public. The test-side `_patch_rm2` is classified as a drift risk rather than a removable duplicate. The inherited `base_content: str = None` annotation is left uncorrected.",
+      "rationale_recorded": true,
+      "rationale": "Reusing `self._rm2._inconclusive` would emit the wrong strategy name and message; the existing declaration helpers return booleans with no arity, and adding arity or factoring a shared module-level helper would mean editing the frozen rename/text lanes, which the session guardrail forbids \u2014 so the duplication is \"unavoidable within constraints, not a finding\". The public-ish alternatives also cannot supply what the lane needs (`_rm2_renames` drops Add/Remove-Parameter records; `_FileView.occurrences()` cannot count arity). `_patch_rm2` patches a different method with different signature/return conventions, so it is a genuine near-duplicate rather than a droppable copy. The `base_content` annotation stays because consistency with the project ABC wins and the ABC itself is the offender.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:acf7e1d0-13",
+        "a:acf7e1d0-07",
+        "a:acf7e1d0-sub-agent-ad3e5a-04",
+        "a:acf7e1d0-sub-agent-ad3e5a-05",
+        "a:acf7e1d0-sub-agent-ad3e5a-06",
+        "a:f0d70a59-17"
+      ],
+      "evidence": [
+        {
+          "text": "Every less-fragile alternative (extract a shared `RM2Runner`, promote `_FileView` scan helpers to public) requires editing the frozen lane files, which the stated constraint forbids this session.",
+          "line": 203,
+          "file": "2026-07-16_acf7e1d0.txt"
+        },
+        {
+          "text": "It cannot reuse `self._rm2._inconclusive` (would emit the wrong strategy name/message), and factoring a shared module-level helper would require editing the frozen rename lane. Not actionable under the stated guardrail.",
+          "line": 52,
+          "file": "2026-07-16_acf7e1d0_sub-agent-ad3e5a.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py",
+        "semantic_merge_driver/strategies/rm2_strategies/rename_conflict.py",
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "test-helper-reuse-proposals",
+      "title": "Test files should import the docker probe and call the production pair helper",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Two test-side reuse fixes were recommended for tests/test_signature_stale_call.py: import `_image_available` (or the `needs_image` skipif marker) from tests/test_rename_conflict.py instead of keeping a byte-for-byte copy, and replace the local `_rm2_pair()` helper with a call to the production `strategy._rm2._run_rm2_pair(...)`, which the test can already reach through its own instance. Both are actionable without editing any frozen lane.",
+      "rationale_recorded": true,
+      "rationale": "The two probe copies are identical today, so when the RM2 image tag or docker flags change one copy gets updated and the other silently keeps gating on the old contract, producing divergent CI signal that looks like flakiness; and the docker command line is otherwise maintained in three places, so a change to the invocation would fix production while the \"contract pin\" integration tests keep exercising a call shape production no longer uses.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): ruled, one each way \u2014 the substantive rec landed: the test's _rm2_pair (:1617) now drives the production runner (SignatureStaleCallStrategy()._rm2._run_rm2_pair, :1623; ISSUES.md #31: 'contract probes now exercise the PRODUCTION RM2 runner'). The _image_available copy (:1605) was deliberately kept: ISSUES.md #31 'per-suite test-helper copies kept (project test idiom \u2026 RM2_IMAGE imported from the lane module in both suites so tag bumps propagate)'. Nothing pending.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:acf7e1d0-sub-agent-ad3e5a-02",
+        "a:acf7e1d0-sub-agent-ad3e5a-03"
+      ],
+      "evidence": [
+        {
+          "text": "someone updates one copy's probe and the other silently keeps gating on the old contract",
+          "line": 29,
+          "file": "2026-07-16_acf7e1d0_sub-agent-ad3e5a.txt"
+        },
+        {
+          "text": "The docker command line is now maintained in three places (production `_run_rm2_pair`, this helper, and note the rename suite inlines it too).",
+          "line": 34,
+          "file": "2026-07-16_acf7e1d0_sub-agent-ad3e5a.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/tests/test_signature_stale_call.py",
+        "semantic_merge_driver/tests/test_rename_conflict.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "repo-review-scoping-and-verdicts",
+      "title": "Repo reviews inventory only real source and tag every file with one of six verdicts",
+      "date_from": "2026-06-24",
+      "date_to": "2026-07-18",
+      "decision": "A whole-repo state review inventories and sizes only real source files \u2014 excluding virtualenvs, worktrees, caches, build artifacts, the metals database and gitignored data such as the 113 workspace/*.cpg.bin Joern scratch dirs \u2014 giving ~4,744 LOC for the driver and ~7,736 for the comparator, and classifies every file it reads with one of six verdict tags: solid, partial, dated, dead, stale, dirty.",
+      "rationale_recorded": true,
+      "rationale": "The raw directory listing is dominated by worktrees and venv/build artifacts, which would swamp the primary source picture; the verdict tags are stated as grounded in reading the actual source. No reason was recorded for the six-tag vocabulary itself.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:ce56e78d-09",
+        "a:ce56e78d-10",
+        "a:dc3bc182-sub-agent-a7bb0f-04"
+      ],
+      "evidence": [
+        {
+          "text": "Verdict tags: **solid** (no action) \u00b7 **partial** (works, narrow-by-design, documented) \u00b7 **dated** (inconsistent with its peers) \u00b7 **dead** (unused) \u00b7 **stale** (content lag) \u00b7 **dirty** (uncommitted).",
+          "line": 75,
+          "file": "2026-06-24_ce56e78d.txt"
+        },
+        {
+          "text": "let me inventory the actual source files (excluding venvs, worktrees, caches, gitignored data) and size them before reading.",
+          "line": 55,
+          "file": "2026-06-24_ce56e78d.txt"
+        },
+        {
+          "text": "The output includes many worktrees. Let me focus on the primary (non-worktree) files.",
+          "line": 15,
+          "file": "2026-07-18_dc3bc182_sub-agent-a7bb0f.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/",
+        "merge-tool-comparison/"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "decisions-md-scope-and-provenance",
+      "title": "DECISIONS.md: methodology included, provenance per entry, coverage stated, not authoritative",
+      "date_from": "2026-07-25",
+      "date_to": null,
+      "decision": "docs/DECISIONS.md covers design, architecture and methodology decisions grouped into 11 themes with a clickable index, an open-decisions table, and Decision / Why / Status / Source per entry. Every entry carries a provenance tag \u2014 [chat] with session id and date where a transcript survives (52 entries), [reconstructed] where it was rebuilt from commit messages and docs/plans/ for the 2026-04-15 \u2192 05-16 window (12 entries). Where an entry overlaps ISSUES.md, STATUS.md, THREATS_TO_VALIDITY.md or docs/plans/, those stay authoritative and the record must not re-derive them. The document states its own reading coverage and names every file not read in full.",
+      "rationale_recorded": true,
+      "rationale": "Git history starts 2026-04-15 with 59 commits (~36% of the project) predating the first surviving transcript, so those decisions exist only in commit messages and docs and must be flagged as reconstructions rather than recorded rationale. The value of the document is the reasoning that exists only in chat, so duplicating what the authoritative docs already state adds nothing and risks divergence. Coverage is stated in the document so the gap is on the record rather than hidden \u2014 \"Report coverage honestly. An audited 80% beats a claimed 100%.\"",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:c4c4d030-02",
+        "a:c4c4d030-03",
+        "a:c4c4d030-04",
+        "b:c4c4d030-20"
+      ],
+      "evidence": [
+        {
+          "text": "**Provenance is labelled per entry**, as you asked:",
+          "line": 21,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "those stay authoritative \u2014 this is an index and rationale archive, not a replacement.",
+          "line": 32,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "- Report coverage honestly. An audited 80% beats a claimed 100%.",
+          "line": 159,
+          "file": "2026-07-25_c4c4d030.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/DECISIONS.md",
+        "docs/plans/",
+        "docs/historical/",
+        "ISSUES.md",
+        "STATUS.md",
+        "THREATS_TO_VALIDITY.md"
+      ],
+      "actors": "claude",
+      "actors_note": "Sources disagree: the per-entry provenance labelling is recorded as joint (\"as you asked\"), the scope, boundary and coverage-section choices as Claude's.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "decisions-md-v2-improvements",
+      "title": "v2 of the decision record should add supersession fields and a JSON sidecar",
+      "date_from": "2026-07-25",
+      "date_to": null,
+      "decision": "For the next version of the decision record, add explicit Superseded-by / Revises fields to the entry format so a revised or reversed decision records the arc on itself, and emit a machine-readable decisions.json alongside docs/DECISIONS.md mapping decision \u2192 date \u2192 source file \u2192 quote.",
+      "rationale_recorded": true,
+      "rationale": "v1 handled revised decisions inconsistently (the 66.7%\u219290.7% correction sat inside another entry's notes), and explicit fields make the design-evolution narrative for Ch. 4/8 fall out mechanically; the JSON sidecar is the claims-ledger substrate and makes the Ch. 9 contribution-delineation table a query rather than a writing task.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): realized by the v2 rebuild \u2014 entry.schema.json carries supersedes/superseded_by on every entry, and the machine-readable layer exists as docs/decision-record/entries/*.json (decision \u2192 date \u2192 sources \u2192 verbatim quotes with file:line) plus numbering.json, which is the decisions.json this entry asked for in substance.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:c4c4d030-15",
+        "a:c4c4d030-16"
+      ],
+      "evidence": [
+        {
+          "text": "**Add a supersession field.** v1 handles revised decisions inconsistently",
+          "line": 164,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "**Emit a machine-readable sidecar** \u2014 `decisions.json` alongside the markdown.",
+          "line": 166,
+          "file": "2026-07-25_c4c4d030.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/DECISIONS.md",
+        "decisions.json"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "no-cross-project-imports",
+      "title": "The taxonomy is duplicated as a parity-tested copy, not imported across subprojects",
+      "date_from": "2026-05-18",
+      "date_to": null,
+      "decision": "merge-tool-comparison/src/evaluation/categorizer.py holds its own copy of the driver's cluster taxonomy rather than importing it from semantic_merge_driver/, with tests/test_categorizer.py::test_taxonomy_parity failing on drift; `categorizer.cluster_of` is kept parity-locked to `RefactoringClusterClassifier.cluster(base, ours, theirs)`.",
+      "rationale_recorded": true,
+      "rationale": "So that a \"tool X wins in cluster C\" result computed offline in the comparison project is directly actionable by the runtime router, which can compute C from the same inputs. No reason was recorded in the plan source for preferring a copy over a cross-project import; the parity test is what guards the duplication.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-02",
+        "a:dc624d63-03"
+      ],
+      "evidence": [
+        {
+          "text": "Taxonomy is a parity-tested copy in `merge-tool-comparison/src/evaluation/categorizer.py` (not a cross-project import).",
+          "line": 6,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "`categorizer.cluster_of` is a parity-locked copy of that exact function (`test_taxonomy_parity` fails on drift).",
+          "line": 27,
+          "file": "2026-05-18_dc624d63.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/categorizer.py",
+        "merge-tool-comparison/tests/test_categorizer.py",
+        "semantic_merge_driver/core/refactoring_classifier.py"
+      ],
+      "actors": "unclear",
+      "actors_note": "Sources disagree: the plan-era decision records no actor; the transcript-era restatement of the parity lock is Claude's. The second source is placed primary in another theme and is cited here only as confirmation.",
+      "corroboration": "both",
+      "provenance": "mixed",
+      "confidence": "medium"
+    }
+  ],
+  "not_promoted": [
+    {
+      "uid": "preA:pre-rm2-integration-recon-12",
+      "reason": "Narrow plan-stated requirement to record one recall caveat in a single commit message (status proposed); the general convention it instances is carried by findings-recorded-in-durable-artifacts."
+    },
+    {
+      "uid": "preA:pre-scope-tier-options-07",
+      "reason": "Plan-stated mechanics for pinning the scope tier (a one-line edit to execution-sequence.md \u00a72 \u03b5), status proposed with no evidence in the slice that the pin was executed; the independently-gated rationale it rests on is carried by plan-files-gated-single-owner."
+    },
+    {
+      "uid": "a:fb0fa5c5-44",
+      "reason": "Proposed handoff-prompt instruction (fresh sessions verify the stated background against the docs) with no ratification visible; the doc/code-mismatch rule it applies is carried by source-of-truth-is-the-code."
+    },
+    {
+      "uid": "b:ce56e78d-16",
+      "reason": "The driver-first scoping is already implicit in diagrams-scratch-unless-a-file-asked; the companion comparator graph and index.html were offered and never built (proposed, no ruling)."
+    },
+    {
+      "uid": "b:82dd479f-13",
+      "reason": "Minor accepted cost \u2014 a CLAUDE.md pointer one directory level off was deliberately left because the S-D5 prompt's relative path resolves; establishes no convention."
+    },
+    {
+      "uid": "a:5c9bc50d-02",
+      "reason": "No-op consequence of adding /workspace/ to .gitignore (the duplicate CPG file is left on disk as deletable scratch); carries no independent convention beyond gitignore-regenerable-keep-evidence."
+    },
+    {
+      "uid": "a:92a3e464-18",
+      "reason": "Narrow tool-level choice of which of two scripts writes a manifest field; the frozen-artifact discipline it rests on is carried by handoff-through-committed-artifacts."
+    }
+  ],
+  "cross_theme": [
+    {
+      "slug": "source-of-truth-is-the-code",
+      "other_theme": null,
+      "other_uid": "a:20b53f98-01",
+      "relation": "depends-on",
+      "note": "The mandatory Phase-0 plan-validation memo (\"CODE wins per CLAUDE.md\", plans are hypotheses) is placed primary in another theme but is the strongest transcript-era statement of this rule; whoever owns it should link back here."
+    },
+    {
+      "slug": "no-cross-project-imports",
+      "other_theme": null,
+      "other_uid": "a:dc624d63-03",
+      "relation": "depends-on",
+      "note": "The parity-lock rationale (offline cluster results must be actionable by the runtime router) is owned by the taxonomy/classifier theme; cited here as the transcript-era confirmation that the copy is still parity-locked."
+    },
+    {
+      "slug": "strategy-selection-in-yaml-config",
+      "other_theme": null,
+      "other_uid": null,
+      "relation": "duplicates",
+      "note": "config/strategies.yaml as the single source of truth for enabled strategies and backends may also be recorded in a driver-architecture or configuration theme; reconcile if so."
+    },
+    {
+      "slug": "adapter-phases-add-only-new-files",
+      "other_theme": null,
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "Rests on the plugin loader's pkgutil.walk_packages() auto-discovery, which is an architecture decision likely owned by a tool-integration or comparator theme."
+    },
+    {
+      "slug": "test-suite-shaping-conventions",
+      "other_theme": null,
+      "other_uid": "a:20b53f98-22",
+      "relation": "depends-on",
+      "note": "The Docker-free tests/test_cli.py decision (also-placed here) is the clearest statement of the project's add-a-test-for-what-you-changed rule; if its owning theme states a general testing convention, these two should be linked."
+    },
+    {
+      "slug": "duplication-accepted-over-frozen-lane-edits",
+      "other_theme": null,
+      "other_uid": "a:82dd479f-sub-sub-agent-aca92e-01",
+      "relation": "depends-on",
+      "note": "The accepted-idiom rule (verbose, comment-heavy detector code is not a defect) is placed in another theme but is the same class of accepted cost as these duplication rulings."
+    },
+    {
+      "slug": "finder-agent-output-contract",
+      "other_theme": null,
+      "other_uid": "a:82dd479f-sub-sub-agent-aca92e-07",
+      "relation": "depends-on",
+      "note": "The FULL_SUITE/LANES derivation proposal came out of the same multi-angle review run and is placed in another theme; it is an instance of what this contract produces."
+    }
+  ],
+  "notes": "Density: 133 primary sources \u2192 34 entries (126 sources promoted, 7 not promoted), about 3.7 sources per entry, below the 5\u20139 calibration band. This is deliberate and, I think, right for this theme: repo-conventions is not one argument restated but a large set of narrow, separately-citable rules (what is gitignored, what a commit contains, where a doc lives, how a review agent is briefed, what a plan file owns). Merging further would have produced entries like \"git hygiene\" that a reader could not act on. Where the same position genuinely recurred I merged hard \u2014 gitignore-regenerable-keep-evidence folds seven applications of one rule, push-only-on-instruction-after-review folds six, handoff-through-committed-artifacts six.\n\nJudgment calls S10z should check:\n(1) one-branch-one-pr-per-phase is marked superseded by commit-directly-to-main. The two plan-era sources explicitly require a branch and PR per phase; the three transcript-era sources explicitly commit direct to main citing the #29/#30 convention. I kept the surviving half of the older rule (small, ordered, green commits) as its own adopted entry so the supersession does not swallow it.\n(2) a:ce56e78d-14 was extracted status=open (\"commit the 28 MB raw_results.json or gitignore it\"). I folded it into large-result-caches-committed-as-evidence because the same day's checkpoint session (a:fb0fa5c5-06) answered it for the same file \u2014 hold the partial, commit the final. If S10z disagrees that this counts as resolution, the honest fallback is to split it back out as an open entry.\n(3) Two entries deliberately carry a source extraction marked \"proposed\" into an adopted entry, in both cases because a later in-slice source shows the thing landed: pytest testpaths (a:ce56e78d-13 \u2192 a:7b3b2669-08, commit c9ca9f8) and strategy selection in YAML (preB:pre-architecture-refmerge-21 \u2192 preA:pre-commits-13, commit 044051f). The unconfirmed half of the latter (populating requirements.txt) is flagged in the decision text rather than asserted.\n(4) Plan-status downgrades applied as instructed: strategy-addition-conventions and adapter-phases-add-only-new-files stay proposed despite being stated in a settled voice, and strategy-addition-conventions carries the counter-evidence (the 2026-06-24 review found the .sc query file unwired and the query inline) in its status_note.\n(5) Several entries needed actors_note because a rule set by Ali was then applied repeatedly by Claude (gitignore, caches, push gate, source of truth). I attributed the entry to whoever made the originating call and explained the split rather than taking a majority.",
+  "theme": "repo-conventions",
+  "slice_primary_total": 133
+}

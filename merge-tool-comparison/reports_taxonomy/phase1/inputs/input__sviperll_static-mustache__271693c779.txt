@@ -1,0 +1,588 @@
+UNIT sviperll_static-mustache__271693c779
+repo: sviperll_static-mustache   merge: 271693c779061cde2069af7507b5721c208da8e4   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: static-mustache-examples/src/main/java/com/github/sviperll/staticmustache/examples/Main.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -31,13 +31,13 @@
+ 
+ import com.github.sviperll.staticmustache.Renderable;
+ import com.github.sviperll.staticmustache.Renderer;
+ import java.io.IOException;
+ 
+ public class Main {
+     public static void main(String[] args) throws IOException {
+         User user = new User("Victor", 29, null, new String[] {"aaa", "bbb", "ccc"}, new int[] {1,2,3,4,5});
+-        Renderable renderable = new RenderableUserAdapter(user);
++        Renderable<Text> renderable = new RenderableUserAdapter(user);
+         Renderer renderer = renderable.createRenderer(System.out);
+         renderer.render();
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -30,14 +30,18 @@
+ package com.github.sviperll.staticmustache.examples;
+ 
+ import com.github.sviperll.staticmustache.Renderable;
+ import com.github.sviperll.staticmustache.Renderer;
+ import java.io.IOException;
+ 
+ public class Main {
+     public static void main(String[] args) throws IOException {
+-        User user = new User("Victor", 29, null, new String[] {"aaa", "bbb", "ccc"}, new int[] {1,2,3,4,5});
++        User user = new User("Victor", 29, null, new String[] {"aaa", "bbb", "ccc"}, new int[] {1,2,3,4,5}, true);
+         Renderable renderable = new RenderableUserAdapter(user);
+         Renderer renderer = renderable.createRenderer(System.out);
+         renderer.render();
++        User user1 = new User("Victor", 29, null, new String[] {}, new int[] {1,2,3,4,5}, true);
++        Renderable renderable1 = new RenderableUserAdapter(user1);
++        Renderer renderer1 = renderable1.createRenderer(System.out);
++        renderer1.render();
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (c) 2014, Victor Nazarov <asviraspossible@gmail.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ *  1. Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *
+ *  2. Redistributions in binary form must reproduce the above copyright notice,
+ *     this list of conditions and the following disclaimer in the documentation and/or
+ *     other materials provided with the distribution.
+ *
+ *  3. Neither the name of the copyright holder nor the names of its contributors
+ *     may be used to endorse or promote products derived from this software
+ *     without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ *  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.github.sviperll.staticmustache.examples;
+
+import com.github.sviperll.staticmustache.Renderable;
+import com.github.sviperll.staticmustache.Renderer;
+import java.io.IOException;
+
+public class Main {
+    public static void main(String[] args) throws IOException {
+        User user = new User("Victor", 29, null, new String[] {"aaa", "bbb", "ccc"}, new int[] {1,2,3,4,5}, true);
+        Renderable<Text> renderable = new RenderableUserAdapter(user);
+        Renderer renderer = renderable.createRenderer(System.out);
+        renderer.render();
+        User user1 = new User("Victor", 29, null, new String[] {}, new int[] {1,2,3,4,5}, true);
+        Renderable renderable1 = new RenderableUserAdapter(user1);
+        Renderer renderer1 = renderable1.createRenderer(System.out);
+        renderer1.render();
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -35,13 +35,13 @@
+ 
+ public class Main {
+     public static void main(String[] args) throws IOException {
+         User user = new User("Victor", 29, null, new String[] {"aaa", "bbb", "ccc"}, new int[] {1,2,3,4,5}, true);
+         Renderable<Text> renderable = new RenderableUserAdapter(user);
+         Renderer renderer = renderable.createRenderer(System.out);
+         renderer.render();
+         User user1 = new User("Victor", 29, null, new String[] {}, new int[] {1,2,3,4,5}, true);
+-        Renderable renderable1 = new RenderableUserAdapter(user1);
++        Renderable<Text> renderable1 = new RenderableUserAdapter(user1);
+         Renderer renderer1 = renderable1.createRenderer(System.out);
+         renderer1.render();
+     }
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: static-mustache-examples/src/main/java/com/github/sviperll/staticmustache/examples/User.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -31,24 +31,24 @@
+ 
+ import com.github.sviperll.staticmustache.GenerateRenderableAdapter;
+ import com.github.sviperll.staticmustache.Renderable;
+ 
+ /**
+  *
+  * @author Victor Nazarov <asviraspossible@gmail.com>
+  */
+-@GenerateRenderableAdapter(template = "user.mustache")
++@GenerateRenderableAdapter(template = "user.mustache", templateFormat = Text.class)
+ public class User {
+     final String name;
+     final int age;
+-    final Renderable card;
++    final Renderable<Text> card;
+     final String[] array;
+     final int[] array1;
+ 
+-    public User(String name, int age, Renderable card, String[] array, int[] array1) {
++    public User(String name, int age, Renderable<Text> card, String[] array, int[] array1) {
+         this.name = name;
+         this.age = age;
+         this.card = card;
+         this.array = array;
+         this.array1 = array1;
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -38,17 +38,19 @@
+  */
+ @GenerateRenderableAdapter(template = "user.mustache")
+ public class User {
+     final String name;
+     final int age;
+     final Renderable card;
+     final String[] array;
+     final int[] array1;
++    final boolean cardEnabled;
+ 
+-    public User(String name, int age, Renderable card, String[] array, int[] array1) {
++    public User(String name, int age, Renderable card, String[] array, int[] array1, boolean cardEnabled) {
+         this.name = name;
+         this.age = age;
+         this.card = card;
+         this.array = array;
+         this.array1 = array1;
++        this.cardEnabled = cardEnabled;
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (c) 2014, Victor Nazarov <asviraspossible@gmail.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ *  1. Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *
+ *  2. Redistributions in binary form must reproduce the above copyright notice,
+ *     this list of conditions and the following disclaimer in the documentation and/or
+ *     other materials provided with the distribution.
+ *
+ *  3. Neither the name of the copyright holder nor the names of its contributors
+ *     may be used to endorse or promote products derived from this software
+ *     without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ *  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.github.sviperll.staticmustache.examples;
+
+import com.github.sviperll.staticmustache.GenerateRenderableAdapter;
+import com.github.sviperll.staticmustache.Renderable;
+
+/**
+ *
+ * @author Victor Nazarov <asviraspossible@gmail.com>
+ */
+@GenerateRenderableAdapter(template = "user.mustache", templateFormat = Text.class)
+public class User {
+    final String name;
+    final int age;
+    final Renderable<Text> card;
+    final String[] array;
+    final int[] array1;
+    final boolean cardEnabled;
+
+    public User(String name, int age, Renderable<Text> card, String[] array, int[] array1, boolean cardEnabled) {
+        this.name = name;
+        this.age = age;
+        this.card = card;
+        this.array = array;
+        this.array1 = array1;
+        this.cardEnabled = cardEnabled;
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: static-mustache/src/main/java/com/github/sviperll/staticmustache/context/TemplateCompilerContext.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -24,49 +24,48 @@
+  *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  *   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+  *  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ package com.github.sviperll.staticmustache.context;
+ 
+-import java.util.logging.Level;
+-import java.util.logging.Logger;
+ import javax.lang.model.element.TypeElement;
+ 
+ /**
+  *
+  * @author Victor Nazarov <asviraspossible@gmail.com>
+  */
+ public class TemplateCompilerContext {
+-    public static TemplateCompilerContext createInstace(RenderingCodeGenerator typeProcessor, TypeElement element, String data, String writer) {
+-        RenderingContext fieldContext = new DeclaredTypeRenderingContext(typeProcessor, element, "data");
+-        return new TemplateCompilerContext(typeProcessor, "writer", fieldContext);
++    public static TemplateCompilerContext createInstace(RenderingCodeGenerator codeGenerator, TypeElement element,
++                                                        ContextVariables variables) {
++        RenderingContext fieldContext = new DeclaredTypeRenderingContext(codeGenerator, element, variables.data());
++        return new TemplateCompilerContext(codeGenerator, variables, fieldContext);
+     }
+     private final EnclosedRelation enclosedRelation;
+-    private final String writerExpression;
+     private final RenderingContext context;
+     private final RenderingCodeGenerator generator;
++    private final ContextVariables variables;
+ 
+-    TemplateCompilerContext(RenderingCodeGenerator processor, String writerExpression, RenderingContext field) {
+-        this(processor, writerExpression, field, null);
++    TemplateCompilerContext(RenderingCodeGenerator processor, ContextVariables variables, RenderingContext field) {
++        this(processor, variables, field, null);
+     }
+ 
+-    private TemplateCompilerContext(RenderingCodeGenerator processor, String writerExpression, RenderingContext field, EnclosedRelation parent) {
++    private TemplateCompilerContext(RenderingCodeGenerator processor, ContextVariables variables, RenderingContext field, EnclosedRelation parent) {
+         this.enclosedRelation = parent;
+-        this.writerExpression = writerExpression;
+         this.context = field;
+         this.generator = processor;
++        this.variables = variables;
+     }
+ 
+     private String renderingCodeBody() throws ContextException {
+         RenderingData entry = context.thisCurrentData();
+         try {
+-            return generator.generateRenderingCode(entry.type(), entry.expression(), writerExpression);
++            return generator.generateRenderingCode(entry.type(), entry.expression(), variables.writer());
+         } catch (TypeException ex) {
+             throw new ContextException("Unable to render field", ex);
+         }
+     }
+ 
+     public String renderingCode() throws ContextException {
+         return startOfRenderingCode() + renderingCodeBody() + endOfRenderingCode();
+     }
+@@ -76,28 +75,28 @@
+     }
+ 
+     public String endOfRenderingCode() {
+         return context.endOfRenderingCode();
+     }
+ 
+     public TemplateCompilerContext createChild(String name) throws ContextException {
+         if (name.equals(".")) {
+-            return new TemplateCompilerContext(generator, writerExpression, new OwnedRenderingContext(context), new EnclosedRelation(name, this));
++            return new TemplateCompilerContext(generator, variables, new OwnedRenderingContext(context), new EnclosedRelation(name, this));
+         } else {
+             RenderingData entry = context.getDataOrDefault(name, null);
+             if (entry == null)
+                 throw new ContextException("Field not found in current context: " + name);
+             RenderingContext enclosedField;
+             try {
+                 enclosedField = generator.createRenderingContext(entry.type(), entry.expression(), new OwnedRenderingContext(context));
+             } catch (TypeException ex) {
+                 throw new ContextException("Can't use " + name + " for rendering", ex);
+             }
+-            return new TemplateCompilerContext(generator, writerExpression, enclosedField, new EnclosedRelation(name, this));
++            return new TemplateCompilerContext(generator, variables, enclosedField, new EnclosedRelation(name, this));
+         }
+     }
+ 
+     public boolean isEnclosed() {
+         return enclosedRelation != null;
+     }
+ 
+     public String currentEnclosedContextName() {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -24,18 +24,16 @@
+  *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  *   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+  *  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ package com.github.sviperll.staticmustache.context;
+ 
+-import java.util.logging.Level;
+-import java.util.logging.Logger;
+ import javax.lang.model.element.TypeElement;
+ 
+ /**
+  *
+  * @author Victor Nazarov <asviraspossible@gmail.com>
+  */
+ public class TemplateCompilerContext {
+     public static TemplateCompilerContext createInstace(RenderingCodeGenerator typeProcessor, TypeElement element, String data, String writer) {
+@@ -53,47 +51,64 @@
+ 
+     private TemplateCompilerContext(RenderingCodeGenerator processor, String writerExpression, RenderingContext field, EnclosedRelation parent) {
+         this.enclosedRelation = parent;
+         this.writerExpression = writerExpression;
+         this.context = field;
+         this.generator = processor;
+     }
+ 
+-    private String renderingCodeBody() throws ContextException {
+-        RenderingData entry = context.thisCurrentData();
++    private String sectionBodyRenderingCode() throws ContextException {
++        RenderingData entry = context.currentData();
+         try {
+             return generator.generateRenderingCode(entry.type(), entry.expression(), writerExpression);
+         } catch (TypeException ex) {
+             throw new ContextException("Unable to render field", ex);
+         }
+     }
+ 
+     public String renderingCode() throws ContextException {
+-        return startOfRenderingCode() + renderingCodeBody() + endOfRenderingCode();
++        return beginSectionRenderingCode() + sectionBodyRenderingCode() + endSectionRenderingCode();
+     }
+ 
+-    public String startOfRenderingCode() {
+-        return context.startOfRenderingCode();
++    public String beginSectionRenderingCode() {
++        return context.beginSectionRenderingCode();
+     }
+ 
+-    public String endOfRenderingCode() {
+-        return context.endOfRenderingCode();
++    public String endSectionRenderingCode() {
++        return context.endSectionRenderingCode();
+     }
+ 
+-    public TemplateCompilerContext createChild(String name) throws ContextException {
++    public TemplateCompilerContext getChild(String name) throws ContextException {
+         if (name.equals(".")) {
+             return new TemplateCompilerContext(generator, writerExpression, new OwnedRenderingContext(context), new EnclosedRelation(name, this));
+         } else {
+             RenderingData entry = context.getDataOrDefault(name, null);
+             if (entry == null)
+                 throw new ContextException("Field not found in current context: " + name);
+             RenderingContext enclosedField;
+             try {
+                 enclosedField = generator.createRenderingContext(entry.type(), entry.expression(), new OwnedRenderingContext(context));
++            } catch (TypeException ex) {
++                throw new ContextException("Can't use " + name + " for rendering", ex);
++            }
++            return new TemplateCompilerContext(generator, writerExpression, enclosedField, new EnclosedRelation(name, this));
++        }
++    }
++
++    public TemplateCompilerContext getInvertedChild(String name) throws ContextException {
++        if (name.equals(".")) {
++            throw new ContextException("Current section can't be inverted");
++        } else {
++            RenderingData entry = context.getDataOrDefault(name, null);
++            if (entry == null)
++                throw new ContextException("Field not found in current context: " + name);
++            RenderingContext enclosedField;
++            try {
++                enclosedField = generator.createInvertedRenderingContext(entry.type(), entry.expression(), new OwnedRenderingContext(context));
+             } catch (TypeException ex) {
+                 throw new ContextException("Can't use " + name + " for rendering", ex);
+             }
+             return new TemplateCompilerContext(generator, writerExpression, enclosedField, new EnclosedRelation(name, this));
+         }
+     }
+ 
+     public boolean isEnclosed() {
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (c) 2014, Victor Nazarov <asviraspossible@gmail.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ *  1. Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *
+ *  2. Redistributions in binary form must reproduce the above copyright notice,
+ *     this list of conditions and the following disclaimer in the documentation and/or
+ *     other materials provided with the distribution.
+ *
+ *  3. Neither the name of the copyright holder nor the names of its contributors
+ *     may be used to endorse or promote products derived from this software
+ *     without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *   LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ *  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.github.sviperll.staticmustache.context;
+
+import javax.lang.model.element.TypeElement;
+
+/**
+ *
+ * @author Victor Nazarov <asviraspossible@gmail.com>
+ */
+public class TemplateCompilerContext {
+    public static TemplateCompilerContext createInstace(RenderingCodeGenerator codeGenerator, TypeElement element,
+                                                        ContextVariables variables) {
+        RenderingContext fieldContext = new DeclaredTypeRenderingContext(codeGenerator, element, variables.data());
+        return new TemplateCompilerContext(codeGenerator, variables, fieldContext);
+    }
+    private final EnclosedRelation enclosedRelation;
+    private final RenderingContext context;
+    private final RenderingCodeGenerator generator;
+    private final ContextVariables variables;
+
+    TemplateCompilerContext(RenderingCodeGenerator processor, ContextVariables variables, RenderingContext field) {
+        this(processor, variables, field, null);
+    }
+
+    private TemplateCompilerContext(RenderingCodeGenerator processor, ContextVariables variables, RenderingContext field, EnclosedRelation parent) {
+        this.enclosedRelation = parent;
+        this.context = field;
+        this.generator = processor;
+        this.variables = variables;
+    }
+
+    private String sectionBodyRenderingCode() throws ContextException {
+        RenderingData entry = context.currentData();
+        try {
+            return generator.generateRenderingCode(entry.type(), entry.expression(), variables.writer());
+        } catch (TypeException ex) {
+            throw new ContextException("Unable to render field", ex);
+        }
+    }
+
+    public String renderingCode() throws ContextException {
+        return beginSectionRenderingCode() + sectionBodyRenderingCode() + endSectionRenderingCode();
+    }
+
+    public String beginSectionRenderingCode() {
+        return context.beginSectionRenderingCode();
+    }
+
+    public String endSectionRenderingCode() {
+        return context.endSectionRenderingCode();
+    }
+
+    public TemplateCompilerContext getChild(String name) throws ContextException {
+        if (name.equals(".")) {
+            return new TemplateCompilerContext(generator, variables, new OwnedRenderingContext(context), new EnclosedRelation(name, this));
+        } else {
+            RenderingData entry = context.getDataOrDefault(name, null);
+            if (entry == null)
+                throw new ContextException("Field not found in current context: " + name);
+            RenderingContext enclosedField;
+            try {
+                enclosedField = generator.createRenderingContext(entry.type(), entry.expression(), new OwnedRenderingContext(context));
+            } catch (TypeException ex) {
+                throw new ContextException("Can't use " + name + " for rendering", ex);
+            }
+            return new TemplateCompilerContext(generator, writerExpression, enclosedField, new EnclosedRelation(name, this));
+        }
+    }
+
+    public TemplateCompilerContext getInvertedChild(String name) throws ContextException {
+        if (name.equals(".")) {
+            throw new ContextException("Current section can't be inverted");
+        } else {
+            RenderingData entry = context.getDataOrDefault(name, null);
+            if (entry == null)
+                throw new ContextException("Field not found in current context: " + name);
+            RenderingContext enclosedField;
+            try {
+                enclosedField = generator.createInvertedRenderingContext(entry.type(), entry.expression(), new OwnedRenderingContext(context));
+            } catch (TypeException ex) {
+                throw new ContextException("Can't use " + name + " for rendering", ex);
+            }
+            return new TemplateCompilerContext(generator, variables, enclosedField, new EnclosedRelation(name, this));
+        }
+    }
+
+    public boolean isEnclosed() {
+        return enclosedRelation != null;
+    }
+
+    public String currentEnclosedContextName() {
+        return enclosedRelation.name();
+    }
+
+    public TemplateCompilerContext parentContext() {
+        return enclosedRelation.parentContext();
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -86,17 +86,17 @@
+             if (entry == null)
+                 throw new ContextException("Field not found in current context: " + name);
+             RenderingContext enclosedField;
+             try {
+                 enclosedField = generator.createRenderingContext(entry.type(), entry.expression(), new OwnedRenderingContext(context));
+             } catch (TypeException ex) {
+                 throw new ContextException("Can't use " + name + " for rendering", ex);
+             }
+-            return new TemplateCompilerContext(generator, writerExpression, enclosedField, new EnclosedRelation(name, this));
++            return new TemplateCompilerContext(generator, variables, enclosedField, new EnclosedRelation(name, this));
+         }
+     }
+ 
+     public TemplateCompilerContext getInvertedChild(String name) throws ContextException {
+         if (name.equals(".")) {
+             throw new ContextException("Current section can't be inverted");
+         } else {
+             RenderingData entry = context.getDataOrDefault(name, null);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

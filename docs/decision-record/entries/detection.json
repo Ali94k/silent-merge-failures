@@ -1,0 +1,2184 @@
+{
+  "entries": [
+    {
+      "slug": "fail-closed-on-analysis-error",
+      "title": "Strategies fail closed on internal errors instead of returning is_clean=True",
+      "date_from": "2026-04-16",
+      "date_to": "2026-07-16",
+      "decision": "Every analysis strategy must report is_clean=False with a CRITICAL \"analysis inconclusive\" issue when it fails internally, rather than silently accepting the merge. Applied to the Joern strategies for CalledProcessError and FileNotFoundError (044051f), extended in the \u03b2.1 fix to check process.returncode after each shelled joern query (51aa3f2, infinite_loop.py:37 / invalid_loop_bounds.py:78), required of the RM2 R3 lane from day one rather than letting it inherit the residual fail-silent path, and refined in the later D2 lane into two conventions: missing inputs abstain clean, infra/RM2 failures emit the fail-closed inconclusive result.",
+      "rationale_recorded": true,
+      "rationale": "Fail-open was diagnosed as a defect in the Step 0 audit \u2014 a strategy returning is_clean=True on error silently accepts a merge it never analysed. FileNotFoundError was added because \"joern-parse not on PATH\" previously escaped the strategy-level handler entirely; the returncode check was added because a crashed Joern query yields empty stdout that parsed as zero issues and reported is_clean=True, a fail-silent path distinct from the already-fixed exception path. The D2 lane split the two conventions along precedent: missing inputs follow D1's experimental-lane abstention, tool failures follow the rename lane's \u03b2-pattern.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "baseline fail-open behaviour in core/driver.py and the Joern strategies"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-06",
+        "preA:pre-commits-12",
+        "preA:pre-execution-sequence-05",
+        "preA:pre-execution-sequence-07",
+        "preA:pre-commits-39",
+        "preB:pre-rm2-integration-27",
+        "a:acf7e1d0-05"
+      ],
+      "evidence": [
+        {
+          "text": "**Fail closed**: All strategies must reject (report issue) on internal errors, never silently accept",
+          "line": 877,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "A crashed Joern query yields empty stdout \u2192 parsed as zero issues \u2192 reported `is_clean=True`.",
+          "line": 30,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        }
+      ],
+      "artifacts": [
+        "044051f",
+        "51aa3f2",
+        "strategies/joern_strategies/infinite_loop.py",
+        "strategies/joern_strategies/invalid_loop_bounds.py",
+        "semantic_merge_driver/tests/test_fail_closed.py",
+        "ISSUES.md #24",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py"
+      ],
+      "actors": "unclear",
+      "actors_note": "The plan- and commit-era sources do not attribute the rule; only the 2026-07-16 D2 refinement is attributed (Claude).",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "classifier-fails-closed-to-none",
+      "title": "Classifier and tagger fail closed to Cluster.NONE; empty RM2 output is a normal result",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-18",
+      "decision": "RefactoringClusterClassifier.cluster() never raises: missing Docker, FileNotFoundError, CalledProcessError, non-zero returncode, malformed JSON and timeout all return Cluster.NONE, which routes to the Mergiraf default backend; the empirical tagger mirrors this by returning an empty refactoring set for the pair. Separately, `refactorings: []` with exit 0 is a normal path, not an error: R1 writes an empty axis, R3 returns is_clean=True, R4a returns NONE. NONE therefore conflates \"Docker error\" with \"no refactorings detected\".",
+      "rationale_recorded": true,
+      "rationale": "Both failure and no-signal cases route to the Mergiraf default anyway (rm2-integration.md \u00a71.3), so conflating them costs nothing at the dispatch level; and absence of a rename signal is not evidence of conflict, so there is nothing to act on. Fail-closed matches the \u03b2-stage pattern the Joern strategies adopted. In the tagger the same behaviour means a missing Docker image degrades a scenario to NONE rather than aborting the verification run.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-17",
+        "preA:pre-rm2-integration-20",
+        "preA:pre-commits-41",
+        "preA:pre-rm2-integration-18",
+        "a:20b53f98-12"
+      ],
+      "evidence": [
+        {
+          "text": "Fail-closed: missing Docker, non-zero rc, malformed JSON, timeout \u2014",
+          "line": 620,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "no detected renames \u2192 return `is_clean=True` with empty issues list. Correct semantics \u2014 there is no rename signal to act on, and absence of evidence is not evidence of conflict.",
+          "line": 263,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/refactoring_classifier.py",
+        "merge-tool-comparison/tools/rm2_tag.py",
+        "docs/plans/rm2-integration.md \u00a71.3",
+        "b37479c"
+      ],
+      "actors": "unclear",
+      "actors_note": "The plan and commit records do not attribute the classifier decisions; the 2026-05-18 tagger mirror is attributed to Claude.",
+      "corroboration": "both",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "rm2-called-pairwise-per-branch",
+      "title": "Three-way refactoring information is built from pairwise RM2 calls against base, per branch",
+      "date_from": "2026-04-16",
+      "date_to": "2026-05-18",
+      "decision": "RefactoringMiner is only ever invoked pairwise against the base (originally `-bf base changed`, later detectAtDirectories), so every consumer calls it several times and combines the result sets: R1 three calls per scenario, R4a two per merge, R3 one per merge. Tagging runs on the ours and theirs axes rather than the resolution axis alone, and the evaluation computes the refactoring cluster on ours\u222atheirs.",
+      "rationale_recorded": true,
+      "rationale": "RM2's API is pairwise only and there is no \"3-way RM2 mode\" to wait for, so set algebra over pairwise output is where three-way semantics is implemented and the merge intelligence lives in the consuming strategies. Per-branch axes are required by the R4 gate and finding D2; computing the cluster on ours\u222atheirs rather than the plan's resolution axis makes the evidence dispatch-faithful and non-circular, which is also why the transcript-era session accepted the doubled RM2 cost for that axis.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "R1 tagging on the resolution axis only"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-25",
+        "preA:pre-rm2-integration-05",
+        "preA:pre-commits-10",
+        "preA:pre-scope-tier-options-15",
+        "a:dc624d63-02"
+      ],
+      "evidence": [
+        {
+          "text": "There is no \"3-way RM2 mode\" to wait for \u2014 the decomposition pattern is the design.",
+          "line": 37,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "cluster is computed on `ours\u222atheirs` (deviation from the plan's `resolution`",
+          "line": 37,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        }
+      ],
+      "artifacts": [
+        "core/rm_astdiff.py",
+        "merge-tool-comparison/tools/rm2_tag.py",
+        "src/evaluation/categorizer.py",
+        "77d988a"
+      ],
+      "actors": "unclear",
+      "actors_note": "Plan- and commit-era sources are unattributed; the cited transcript-era acceptance of the doubled cost is Claude's.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "adopt-rm-astdiff-over-gumtree",
+      "title": "Adopt RM-ASTDiff (RefactoringMiner 3.0) instead of GumTree plus RefactoringMiner 2.0",
+      "date_from": "2026-04-16",
+      "date_to": null,
+      "decision": "The RefMerge architecture plan adopts RefactoringMiner 3.0 / RM-ASTDiff as the single pre-merge tool for both AST differencing and refactoring detection, replacing a GumTree diffing stage plus a separate RefactoringMiner 2.0 pass.",
+      "rationale_recorded": true,
+      "rationale": "RM-ASTDiff unifies AST differencing and refactoring detection in one pass, breaks GumTree's one-to-one mapping constraint (1-to-n and n-to-1), uses language-specific semantic clues for full inter-file mapping precision and covers 100+ refactoring types versus 40; running two tools is \"computationally wasteful when RM-ASTDiff does both, better, in one pass\".",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "pin-refactoringminer-2-4-0",
+      "sources": [
+        "preA:pre-architecture-refmerge-01"
+      ],
+      "evidence": [
+        {
+          "text": "**Why RM-ASTDiff instead of GumTree + RefactoringMiner 2.0:**",
+          "line": 196,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "Running GumTree for AST differencing and then a separate RefactoringMiner pass for refactoring detection is computationally wasteful when RM-ASTDiff does both, better, in one pass.",
+          "line": 197,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        }
+      ],
+      "artifacts": [
+        "core/rm_astdiff.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "pin-refactoringminer-2-4-0",
+      "title": "Use RefactoringMiner 2.x pinned at 2.4.0, with RM 3.x out of thesis scope",
+      "date_from": "2026-04-22",
+      "date_to": "2026-07-18",
+      "decision": "RefactoringMiner 2.0 is the starting point rather than 3.0/RM-ASTDiff, pinned at release 2.4.0 (last 2.x, published 2023-03-04, consumed as the GitHub release ZIP) and used with the default `detectAtDirectories` detection rather than RM-ASTDiff. RM 3.x is out of thesis scope; R1's per-scenario tags are drawn from the 2.4.0 detector catalog only, and RM2 survives in the design as a runtime cluster classifier and rename detector, not as RefMerge's merge engine.",
+      "rationale_recorded": true,
+      "rationale": "2.0 is simpler and \"does one thing\", is a widely cited stable JAR and aligns with the adjacent literature, whereas 3.0 unifies two concerns, has less track record and needs an adapter; the plan's non-goal was to avoid RM-ASTDiff unless R0 showed plain RM2 insufficient, and the toy fixture and F-harness showed no insufficiency. 2.4.0 satisfies R0's \"2.4+ recommended\" criterion, and the rm2-vs-rm3 comparison was written so \"why didn't we use the newer one?\" has a concrete answer: identical wrapper API and JSON output, 2.4.0 about 1s faster per call, and both versions land in the same 50\u201380% F-harness bracket so the Path D selection is unaffected. The accepted cost is a detector roster roughly three years old, losing `Replace Generic With Diamond` (one scenario drops out of the active set, 5/10 \u2192 4/10). A 3.x catalog would not match the pinned tool's output, since scenarios that are \"no-refactoring\" on 2.4.0 may become active on 3.x.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "adopt-rm-astdiff-over-gumtree",
+        "the R0 wrapper's RefactoringMiner 3.0.13 pin"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-tool-evaluation-findings-05",
+        "preA:pre-rm2-integration-recon-02",
+        "preA:pre-rm2-integration-recon-01",
+        "preB:pre-rm2-integration-recon-01",
+        "preA:pre-rm2-vs-rm3-differences-01",
+        "preA:pre-rm2-vs-rm3-differences-02",
+        "preA:pre-rm2-vs-rm3-differences-06",
+        "a:dc3bc182-sub-sub-agent-a74c7a-08"
+      ],
+      "evidence": [
+        {
+          "text": "Recommendation: start with 2.0.** Simpler, matches the principle of \"specialized tool doing one thing,\"",
+          "line": 155,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        },
+        {
+          "text": "This doc exists so that \"why didn't we use the newer one?\" has a concrete answer pointing at observed deltas, not just a date or a version-string preference.",
+          "line": 10,
+          "file": "2026-05-06_pre-rm2-vs-rm3-differences.txt"
+        },
+        {
+          "text": "We're pinning to the 2.x line knowingly, accepting that the detector roster is ~3 years older than what RM 3.x offers (\u00a76).",
+          "line": 208,
+          "file": "2026-05-06_pre-rm2-vs-rm3-differences.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/rm2-integration-recon.md",
+        "docs/plans/rm2-vs-rm3-differences.md",
+        "RefactoringMiner-2.4.0.zip",
+        "5e687ce",
+        "merge-tool-comparison/docker/refactoring_miner/"
+      ],
+      "actors": "unclear",
+      "actors_note": "The recon and difference documents are unattributed; the initial \"start with 2.0\" recommendation is Claude's.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "require-migration-table-for-rm3-port",
+      "title": "Any future port of the cluster taxonomy to RM 3.x needs an explicit label migration table",
+      "date_from": "2026-05-06",
+      "date_to": null,
+      "decision": "If the cluster taxonomy is ever ported from RM 2.x to RM 3.x, the mapping must use an explicit label migration table rather than string-equality lookup on refactoring type names.",
+      "rationale_recorded": true,
+      "rationale": "Some 2.x labels may not exist verbatim on 3.x \u2014 `Extract And Move Method` appears on 2.4.0 but not on 3.0.13, which may split or relabel the same detection \u2014 so name equality is unsafe.",
+      "status": "proposed",
+      "status_note": "S12 (2026-07-26): condition never fired \u2014 the RM 3.x port never happened (core/refactoring_classifier.py TYPE_TO_CLUSTERS at :79 still keys RM2 type names; RM 3.x is out of thesis scope per the adopted pin). The migration-table rule remains the recorded requirement for any future port.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-vs-rm3-differences-07"
+      ],
+      "evidence": [
+        {
+          "text": "Some 2.x labels may not exist verbatim on 3.x \u2014 the cluster mapping needs an explicit migration table, not a string-equality lookup.",
+          "line": 157,
+          "file": "2026-05-06_pre-rm2-vs-rm3-differences.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/rm2-vs-rm3-differences.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "select-path-d-dual-mode-tagging",
+      "title": "Select Path D dual-mode tagging and accept file-level blindness to cross-file refactorings",
+      "date_from": "2026-05-05",
+      "date_to": "2026-05-13",
+      "decision": "R1 runs the tagger in dual mode (file-level plus project-level) while R4a uses file-level detection at runtime, staging each file to its basename in two single-file temp directories mirroring rm2_fharness.py. Cross-file Extract/Move refactorings \u2014 Extract And Move Method, Extract Class, Move Attribute/Method/Class \u2014 are therefore systematically missed and fall through to the NONE cluster.",
+      "rationale_recorded": true,
+      "rationale": "The F-harness measured file-level recall of project-level inside the 50\u201380% bracket (75.0% with RM 3.0.13, 66.7% with 2.4.0, n=10), and the R1 decision table maps that bracket to Path D, described as the most defensible; the bracket also bounds the wide confidence interval of the n=10 point estimate. File-level detection by construction cannot see the destination file, so those refactorings are undetectable at this API surface, and NONE routes to the Mergiraf default \u2014 the safe choice \u2014 so the miss is tolerable.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-recon-10",
+        "preB:pre-commits-25",
+        "preA:pre-commits-22",
+        "preA:pre-commits-42"
+      ],
+      "evidence": [
+        {
+          "text": "**Decision: Path D.** 66.7% recall sits in the 50-80% bracket.",
+          "line": 112,
+          "file": "2026-05-05_pre-rm2-integration-recon.txt"
+        },
+        {
+          "text": "Extract/Move refactorings are systematically missed by file-level \u2192 fall",
+          "line": 247,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/rm2-integration.md",
+        "tools/rm2_fharness.py",
+        "713b337",
+        "b37479c",
+        "core/refactoring_classifier.py"
+      ],
+      "actors": "unclear",
+      "actors_note": "Mostly unattributed plan/commit records; one commit-era source attributes the Path D selection to Ali.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "file-level-recall-remeasured-at-n-50",
+      "title": "Withdraw the 66.7% file-level recall figure; n=50 measures 90.7% and the design stands",
+      "date_from": "2026-07-03",
+      "date_to": null,
+      "decision": "Project-level tagging was implemented as an opt-in `--project-level` mode of tools/rm2_tag.py reusing the git-worktree machinery of tools/rm2_fharness.py, and the R0 recon claim that file-level RM2 recall is 66.7% of project-level was replaced by the n=50 measurement of 90.7% [83.8, 94.9] pooled (98/108; ours 81.6%, theirs 98.3%), with the n=10 figure recorded as an outlier artifact. No code or design change follows: file-level RM2 remains the runtime design.",
+      "rationale_recorded": true,
+      "rationale": "The sole gap-driver of the n=10 sample (ab0oo_javaprslib, four cross-file refactorings) reproduces exactly in the larger run \u2014 it was the extreme, not the norm. File-level is a strict subset (only-file = 0 across 108 occurrences), so the errors are misses only and never spurious; cluster impact is 2/50 flips with just 1/50 a false-NONE, which fails safe to the conservative git backend, so the number strengthens rather than undermines the file-level R4a design.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the R0 recon's 66.7% n=10 file-level recall figure"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:7b3b2669-02",
+        "a:7b3b2669-11",
+        "a:7b3b2669-13"
+      ],
+      "evidence": [
+        {
+          "text": "file-level RM2 recall is 90.7% [83.8, 94.9] of project-level at n=50 \u2014 the n=10 figure of 66.7% was an outlier artifact.",
+          "line": 104,
+          "file": "2026-07-03_7b3b2669.txt"
+        },
+        {
+          "text": "no code change recommended \u2014 the number *strengthens* the file-level R4a design.",
+          "line": 112,
+          "file": "2026-07-03_7b3b2669.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/rm2_tag.py",
+        "merge-tool-comparison/reports_rm2_recall/FINDINGS.md",
+        "merge-tool-comparison/ISSUES.md #26",
+        "THREATS_TO_VALIDITY.md \u00a73",
+        "c9ca9f8"
+      ],
+      "actors": "joint",
+      "actors_note": "Ali chose the opt-in project-level mode reusing the existing harness; Claude produced the measurement, the withdrawal and the no-code-change recommendation.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "seven-cluster-merge-difficulty-taxonomy",
+      "title": "Adopt a seven-cluster taxonomy keyed on kind of three-way merge difficulty",
+      "date_from": "2026-05-13",
+      "date_to": null,
+      "decision": "The RM2 cluster taxonomy is reframed on one principled criterion \u2014 kind of three-way merge difficulty \u2014 with the clusters MIGRATE_DECL, INTRA_BODY, SYMBOL_CASCADE, CONTAINER_MOVE, HIERARCHY_RESHAPE, LOCAL_DECL_EDIT, NONE and a hardest-for-line-merge-first precedence order, and these identifiers become code symbols in R4a. The 98-entry display-name \u2192 frozenset[Cluster] map is derived by reflection over org.refactoringminer.api.RefactoringType inside the pinned Docker image, with a drift-detection test asserting 98 entries and a test showing unknown types degrade gracefully.",
+      "rationale_recorded": true,
+      "rationale": "The previous taxonomy mixed lexical and structural criteria, whereas \"what makes each refactoring hard for a line-based merger\" is precisely the question the composition pipeline's dispatch is meant to answer. Reflection plus the 98-entry assertion proves graceful degradation if RM2 grows the enum: an unknown type contributes NONE and is dominated by any known higher-priority cluster.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the previous mixed lexical/structural cluster taxonomy"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-37",
+        "preA:pre-commits-43"
+      ],
+      "evidence": [
+        {
+          "text": "structural criteria to one principled criterion: **kind of 3-way merge",
+          "line": 511,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "Added test_unknown_type_dominated_by_known: proves graceful",
+          "line": 654,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "976e4b0",
+        "b37479c",
+        "docs/plans/rm2-integration.md",
+        "core/refactoring_classifier.py",
+        "tests/test_cluster_classifier.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "empirical-cluster-equals-runtime-cluster",
+      "title": "Keep a parity-tested copy of the runtime taxonomy so empirical clusters equal runtime clusters",
+      "date_from": "2026-05-18",
+      "date_to": "2026-05-20",
+      "decision": "categorizer.py carries a byte-exact copy of the driver's Cluster enum, 98-entry TYPE_TO_CLUSTERS and PRECEDENCE, guarded by a parity test that imports the driver module by file path \u2014 chosen over the sys.path cross-project import recommended in Phase 0; the test pytest.skips when the driver source is absent and hard-fails only on real drift. The tagger stages files basename-only to replicate R4a's _detect_pair. The unconditional claim \"empirical cluster == runtime cluster\" was withdrawn as overstated once the tagger's RM2_TIMEOUT_SECONDS = 300 was found to diverge from R4a's 120, and the tagger timeout was then aligned to 120s so the claim holds by construction. A separate assessment \u2014 that nothing had ever run the classifier over the real 50 scenarios \u2014 was also retracted.",
+      "rationale_recorded": true,
+      "rationale": "Staging basename-only makes the empirical cluster equal the runtime cluster the dispatcher would assign. Hard-coupling the two projects' filesystem layout would turn the whole merge-tool-comparison suite red for an unrelated reason if the subproject were checked out alone, and parity unverifiable is not parity violated. Fixing the timeout divergence at the root makes the equivalence claim true rather than merely caveated. And because the tagger's docstring states it mirrors _detect_pair exactly, the per-cluster pivot already in reports/results.csv is the runtime cluster distribution over the 50 \u2014 so the proposed classifier-over-the-50 runner was not the missing step.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the Phase 0 recommendation to import the taxonomy from semantic_merge_driver via a sys.path shim",
+        "R2's hard-fail test_driver_source_present assertion (2b95aa3)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:20b53f98-08",
+        "a:20b53f98-19",
+        "a:20b53f98-11",
+        "a:20b53f98-20",
+        "a:20b53f98-21",
+        "a:e1df1610-01"
+      ],
+      "evidence": [
+        {
+          "text": "Stage files **basename-only** to match R4a's `_detect_pair` exactly, so the empirical cluster == the runtime cluster.",
+          "line": 127,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "**3. \"Empirical cluster == runtime cluster\" is overstated.** Confirmed divergence: tagger `RM2_TIMEOUT_SECONDS = 300` vs R4a runtime `= 120`.",
+          "line": 251,
+          "file": "2026-05-18_20b53f98.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/categorizer.py",
+        "merge-tool-comparison/tests/test_categorizer.py",
+        "merge-tool-comparison/tools/rm2_tag.py",
+        "merge-tool-comparison/reports/results.csv",
+        "eabaddd",
+        "cbac926"
+      ],
+      "actors": "joint",
+      "actors_note": "Ali chose the parity-tested copy and the skip-when-absent test against Claude's recommendations; the basename staging, the withdrawal and the timeout fix are Claude's.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "reject-only-on-critical-severity",
+      "title": "The driver rejects a merge only on CRITICAL issues; WARNING does not block",
+      "date_from": "2026-04-16",
+      "date_to": null,
+      "decision": "The driver's verdict filters all collected issues to severity == 'CRITICAL'; if any exist it reports them and returns exit 1, otherwise exit 0. WARNING-level issues do not block a merge.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "abandoned",
+      "status_note": "S12 (2026-07-26): never implemented \u2014 core/driver.py:83-101 blocks on ANY issue regardless of severity (all_clean flips on every non-clean result; no severity filter exists). The 'Critical Logic Bugs Found' message is cosmetic. Under shipped code a WARNING-severity issue does block, contra this plan rule.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-10"
+      ],
+      "evidence": [
+        {
+          "text": "critical_issues = [i for i in all_issues if i.severity == 'CRITICAL']",
+          "line": 302,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        }
+      ],
+      "artifacts": [
+        "core/driver.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "strategy-enablement-via-yaml",
+      "title": "Strategy enablement comes from a YAML config file, not environment variables",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "Open question 1 is resolved with a YAML file at semantic_merge_driver/config/strategies.yaml loaded via PyYAML in core/config.py's load_enabled_strategies(); schema `enabled: [StrategyName, ...]`, absent or null loads all discovered strategies, an empty list runs none, and no environment variables are used. driver.py main() calls the loader instead of a literal strategy list.",
+      "rationale_recorded": true,
+      "rationale": "It is forward-compatible \u2014 R3 adds one line to the list \u2014 and it replaces the hardcoded single strategy so R3 (Method Rename) inherits a working multi-strategy path by default.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the hardcoded single strategy list in core/driver.py"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-06"
+      ],
+      "evidence": [
+        {
+          "text": "**Decision on open question 1 (resolved):** YAML file at `config/strategies.yaml`, loaded via PyYAML. No env vars.",
+          "line": 50,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/config/strategies.yaml",
+        "semantic_merge_driver/core/config.py",
+        "requirements.txt (pyyaml>=6.0)"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "atomic-update-hybrid-strategy",
+      "title": "Atomic-update invariants get a hybrid RM-ASTDiff plus Joern structural strategy",
+      "date_from": "2026-04-16",
+      "date_to": null,
+      "decision": "Atomic update / invariant violations are given their own structural_strategies/atomic_update_check.py combining RM-ASTDiff edit information (which branch modified which field) with Joern CPG analysis locating the validation methods that enforce the invariant, rather than being a pure CPG strategy.",
+      "rationale_recorded": true,
+      "rationale": "The invariant category needs both which-branch-changed-what edit information and detection of the assertion/validation methods that enforce the invariant, so neither tool alone suffices.",
+      "status": "abandoned",
+      "status_note": "S12 (2026-07-26): never built \u2014 no atomic_update_check.py or structural_strategies/ directory exists; the strategies tree is joern/rm2/text lanes only. The census later found Atomic Updates has no empirical counterpart, and the category was descoped.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-19"
+      ],
+      "evidence": [
+        {
+          "text": "This strategy uses a combination of RM-ASTDiff edit information",
+          "line": 740,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        }
+      ],
+      "artifacts": [
+        "strategies/structural_strategies/atomic_update_check.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "r0-recon-closes-two-open-questions",
+      "title": "R0 declares the -bc equivalence question moot and defers coverage validation to R1",
+      "date_from": "2026-05-05",
+      "date_to": null,
+      "decision": "Two R0 open questions are closed rather than pursued: the wrapper uses `detectAtDirectories` (Path API form) exclusively on both the file-level and project-tree axes and never invokes the CLI `-bc` form, so the detectAtDirectories-vs-`-bc` equivalence question is moot; and R0 deliberately does not enumerate the full 2.4.0 refactoring-type roster, deferring coverage validation to R1 once the tagger runs across the Schesch n=50, with detector types added only in 3.0.x out of scope along with the version pin.",
+      "rationale_recorded": true,
+      "rationale": "Since the CLI `-bc` form is never invoked the equivalence question does not arise; the question that matters for Path B/C/D selection is file-level versus project-level recall using the same API, which the F-harness measures. Full coverage validation belongs to R1 because only then does the tagger run across the whole scenario set, and the 2.4.0 roster is the published TSE-2020 set with later additions excluded by the pin.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-recon-15",
+        "preA:pre-rm2-integration-recon-16"
+      ],
+      "evidence": [
+        {
+          "text": "**Moot for this pipeline** \u2014 the wrapper exclusively uses `detectAtDirectories` (Path API form) on both axes",
+          "line": 143,
+          "file": "2026-05-05_pre-rm2-integration-recon.txt"
+        },
+        {
+          "text": "R0 did not exhaustively enumerate the refactoring types RM 2.4.0 supports \u2014 full coverage validation belongs to R1 once the tagger runs across the Schesch n=50.",
+          "line": 133,
+          "file": "2026-05-05_pre-rm2-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/rm2-integration-recon.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "parse-only-structured-rm2-fields",
+      "title": "Consume only structured RM2 JSON fields; never parse descriptions or assume location[0]",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-05",
+      "decision": "The Docker wrapper emits one JSON document per invocation on stdout with `directories` (left/right absolute paths) and `refactorings` as an array of `Refactoring.toJSON()` elements matching Appendix B of the integration plan. Downstream code consumes only `type`, `leftSideLocations[].codeElement`, `rightSideLocations[].codeElement`, `filePath` and `startLine`/`endLine`; human-readable `description` strings must not be parsed, and code must not assume index `[0]` for anything other than simple renames.",
+      "rationale_recorded": true,
+      "rationale": "Field names are stable across RM2 2.x while descriptions are human-readable; the location fields are lists, and Extract Method has one left location and multiple right locations, so `[0]` is not general.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-29",
+        "preB:pre-rm2-integration-recon-08"
+      ],
+      "evidence": [
+        {
+          "text": "descriptions are human-readable and should **not** be parsed.",
+          "line": 443,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "Do not assume `[0]` for types other than simple renames.",
+          "line": 473,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/docker/refactoring_miner/DirPairMain.java",
+        "docs/plans/rm2-integration.md Appendix B"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "rename-conflict-lane-from-rm2-metadata",
+      "title": "Detect rename conflicts from RM refactoring metadata, scoped to within-file stale callers",
+      "date_from": "2026-04-16",
+      "date_to": "2026-06-11",
+      "decision": "Rename conflicts are detected from RefactoringMiner metadata rather than by inspecting the merged file: the strategy cross-references the per-branch refactoring lists for dangling references, lost changes, stale imports and naming conflicts, and the shipped RM2RenameConflictStrategy runs RM2 file-level on (base, merged), filters to {Rename Method, Rename Class}, scans the merged file for stale callers and emits CRITICAL issues, failing closed on every error path. base_content reaches strategies through the already-optional second positional parameter of MergeStrategy.analyze. Scope is within-file only; cross-file stale callers are tracked as a follow-up. Stage B widened the lane to Variable/Parameter/Attribute renames with per-branch RM2 on (base,ours)/(base,theirs) for half-applied renames, a mixed-state guard so wholly-dropped renames stay clean, a declaration guard and comment/string stripping.",
+      "rationale_recorded": true,
+      "rationale": "The strategy operates on refactoring metadata, not the merged file, because cross-referencing the detected refactorings on both branches is what identifies conflicting operations \u2014 a metadata lookup with no CPG cost that catches the Method Rename category before Joern runs. The lane reuses RM2 already in the toolchain for R4a's classifier and is independent of the R1/R2/R4a/R4b and Mergiraf tracks. Project-level RM2 on (base, merged) would require synthesising a project tree by overlaying the merged file over a base checkout \u2014 messy and not worth the latency \u2014 so cross-file detection waits for evidence that it is a frequent miss. The Stage-B widening was designed against codeElement shapes probed on the real RM2 2.4.0 image first, including the negative finding that static-final constant renames are not reported.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-18",
+        "preB:pre-tool-evaluation-findings-18",
+        "preA:pre-commits-52",
+        "preA:pre-commits-54",
+        "preA:pre-rm2-integration-21",
+        "preB:pre-commits-59",
+        "b:bfc672b4-42"
+      ],
+      "evidence": [
+        {
+          "text": "This strategy operates on the refactoring metadata, not on the merged",
+          "line": 572,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "Within-file scope only; cross-file stale callers tracked as a",
+          "line": 964,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "strategies/rm2_strategies/rename_conflict.py",
+        "core/driver.py",
+        "core/interfaces.py",
+        "0d52fdb",
+        "docs/plans/rm2-integration.md"
+      ],
+      "actors": "unclear",
+      "actors_note": "The plan and most commit records are unattributed; one commit-era source attributes the within-file scoping to Ali, and the Stage-B widening is Claude's.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "regex-call-site-scan-with-joern-escape-hatch",
+      "title": "Ship regex call-site detection for the rename lane with Joern as the documented escape hatch",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "Stale callers are detected with the regex `\\b<old_name>\\s*\\(`, knowingly false-positive on old names in string literals and comments, missing method references (`Foo::foo`), and for Rename Class catching only constructor calls rather than type declarations, static-member access or extends clauses. Upgrading to a Joern call-site query is deferred and triggered only by a precision complaint on realistic scenarios.",
+      "rationale_recorded": true,
+      "rationale": "Acceptable for the MVP per the plan's regex-precision risk row: ship regex first and upgrade only if R3 shows precision problems on realistic scenarios, with the Joern call-site query kept as the documented escape hatch.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-53",
+        "preA:pre-rm2-integration-22"
+      ],
+      "evidence": [
+        {
+          "text": "false-positives on old-name in string literals / comments. Acceptable",
+          "line": 1002,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "Acceptable for MVP per the plan's regex-precision risk row; upgrade-to-Joern remains the documented escape hatch.",
+          "line": 240,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/rm2_strategies/rename_conflict.py",
+        "0d52fdb"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "rename-class-codeelement-is-an-fqn",
+      "title": "Correct the Rename Class codeElement shape and pin it with a probe test",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "RM2 2.4.0's Rename Class `codeElement` is a fully-qualified class name as a single token (`com.example.OldName`), not the declaration string (`public class OldName`) the original implementation assumed; `_extract_identifier` now takes the last dot-separated component after the last whitespace token, and an image-gated shape-probe test pins the contract.",
+      "rationale_recorded": true,
+      "rationale": "The old extractor returned the whole FQN, so the regex never matched at call sites because callers write `new OldName(...)` rather than the FQN. The shape-probe test exists so that a shape change on a future RM2 upgrade is detected rather than silently mis-parsed.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the assumption that Rename Class codeElement is a declaration string"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-55",
+        "preA:pre-rm2-integration-23"
+      ],
+      "evidence": [
+        {
+          "text": "**Actual RM2 2.4.0 output:** codeElement for Rename Class is the",
+          "line": 1027,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "fully-qualified class name as one token, e.g. `\"com.example.OldName\"` (NOT `\"public class OldName\"` as the original implementation assumed)",
+          "line": 238,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "c099187",
+        "strategies/rm2_strategies/rename_conflict.py",
+        "semantic_merge_driver/tests/test_rename_conflict.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "stage-b-prioritises-coverage-over-fp-fixes",
+      "title": "Stage B widens coverage before fixing false positives, and widens nothing for DFI or loop bounds",
+      "date_from": "2026-06-11",
+      "date_to": null,
+      "decision": "Stage-B priority order is fixed as: (1) widen R3 \u2014 RM2 rename types beyond Method/Class, per-branch RM2 on base\u2192ours and base\u2192theirs with a merged-consistency scan, plus a cheap unresolved-identifier check; (2) JoernInfiniteLoop false-positive fixes, namely flagging only loops absent from both parents, restricting the query to WHILE/DO/FOR, and adding exit-path awareness; (3) explicitly no DFI or loop-bounds widening. Change-Return-Type detection is skipped as pilot-overfit and kept on record as a refuted design.",
+      "rationale_recorded": true,
+      "rationale": "The adjudicated base rates put 8 of 13 attributable misses in the #6 rename/decl-change family with 5 compile errors, and zero misses in the already-covered categories #3/#5, so coverage widening beats FP-fixing and there is zero evidence in 23 real misses for DFI or loop bounds; a single-file unresolved-identifier check alone catches the confirmed compile errors. The three InfiniteLoop changes would have zeroed all five pilot false positives, and the other detectors produced no false alarms. Change-Return-Type was judged pilot-overfit and retained as thesis material \u2014 a refuted detector design with a named cause.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:bfc672b4-05",
+        "a:bfc672b4-07",
+        "a:bfc672b4-03",
+        "a:bfc672b4-13"
+      ],
+      "evidence": [
+        {
+          "text": "Notably **zero** misses fall in the already-covered categories #3/#5 \u2014 coverage widening beats FP-fixing.",
+          "line": 138,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "make `JoernInfiniteLoop` differential (only flag loops absent from both parents \u2014 would have zeroed all 5 FPs), restrict its query to WHILE/DO/FOR, add exit-path awareness. The other detectors need no FP fixes.",
+          "line": 112,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/ISSUES.md #29",
+        "semantic_merge_driver/strategies/joern_strategies/infinite_loop.py",
+        "reports_detection/pilot/FINDINGS.md",
+        "merge-tool-comparison/reports_detection/pilot_v2/FINDINGS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "joern-unresolved-reference-differential-only",
+      "title": "Add JoernUnresolvedReference as a differential-only detector that abstains without parents",
+      "date_from": "2026-06-11",
+      "date_to": null,
+      "decision": "A new strategy JoernUnresolvedReference flags identifiers unresolved in the merged file but resolvable in both parents (refsTo-based), abstains entirely when parents are missing, fails closed once analysis has started, and is enabled in strategies.yaml. No Stage-B detector is implemented without first probing what RM2 2.4.0 and Joern actually report for the new refactoring and query shapes.",
+      "rationale_recorded": true,
+      "rationale": "The detector targets the four confirmed compile-error shapes among the adjudicated misses, and abstaining without parents is deliberate because the detector is differential by construction. Probing first means the design is grounded in verified tool behaviour rather than assumption \u2014 including negative findings such as static-final constant renames not being reported and `<operator>.throw` being confirmed.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-10",
+        "a:bfc672b4-09"
+      ],
+      "evidence": [
+        {
+          "text": "differential-only \u2014 flags identifiers unresolved in merged but resolvable in both parents (`refsTo`-based, probe-verified no phantom locals)",
+          "line": 261,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "All probes done \u2014 `<operator>.throw` confirmed. The Stage-B design is fully grounded in verified tool behavior.",
+          "line": 238,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py",
+        "semantic_merge_driver/config/strategies.yaml"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "unresolved-reference-as-template-and-tiers",
+      "title": "Make JoernUnresolvedReference the primary detector and reorganise strategies into yield tiers",
+      "date_from": "2026-06-11",
+      "date_to": null,
+      "decision": "Two architecture recommendations from the Stage-B close-out: designate JoernUnresolvedReference \"first among equals\" in the gate \u2014 the one detector to ship if only one could be \u2014 and make its differential-only, abstain-without-parents design the template new detectors follow; and reorganise strategies/ from one-file-per-taxonomy-category into cost/yield tiers (Tier 0 parse/compile sanity, Tier 1 generic differential name-resolution consistency, Tier 2 declaration-change consistency via per-branch RM2, Tier 3 category-specific queries kept as labelled low-yield coverage).",
+      "rationale_recorded": true,
+      "rationale": "JoernUnresolvedReference produced 7 file-flags with zero false positives and zero crashes and independently corroborated 5 of the RM2 hits, while every detector that skipped merge-induced filtering died of false positives. All observed true positives flow through the generic name-resolution lane, so the per-category layout does not reflect the measured cost/yield structure \u2014 the cheapest check would have caught the largest catchable share.",
+      "status": "proposed",
+      "status_note": "S12 (2026-07-26): split outcome \u2014 the template half was realized in practice (the differential/abstain design is the shipped standard: the D3 widening extended exactly this lane, and every new lane follows the differential template per ISSUES #31), but the strategies/ cost/yield-tier reorganisation never happened: the tree is still one-directory-per-tool (joern_strategies/, rm2_strategies/, text_strategies/) as of 2026-07-26.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-33",
+        "a:bfc672b4-24"
+      ],
+      "evidence": [
+        {
+          "text": "Architecturally it earns \"first among equals\" status in the gate: if you had to ship exactly one detector, it's this one. Its differential-only design (abstain without parents) also sets the template new detectors should follow.",
+          "line": 677,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "Today `strategies/` is laid out one-file-per-category (#3, #5, #6). The findings suggest the real structure is cost/yield tiers:",
+          "line": 477,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/",
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "harden-unresolved-identifier-lane",
+      "title": "Harden the unresolved-identifier lane against parser artifacts by keying on name only",
+      "date_from": "2026-06-11",
+      "date_to": null,
+      "decision": "After the first v2 attempt flagged 4 of the first 7 positives, exclude `$`-prefixed synthetics, re-key the identifier lane by name only instead of by (method, name), and restrict the type lane to named-method parameters.",
+      "rationale_recorded": true,
+      "rationale": "Inspection showed all four flags were parser artifacts rather than merge semantics: javasrc2cpg's auto-numbered lowering temporaries (`$obj178`) and lambda method names (`<lambda>20`) shift between file versions, defeating (method, name) differential keys.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "drop-the-type-resolution-lane",
+      "sources": [
+        "a:bfc672b4-11"
+      ],
+      "evidence": [
+        {
+          "text": "inspection showed all four were **parser artifacts, not merge semantics**: javasrc2cpg's auto-numbered lowering temporaries (`$obj178`) and lambda method names (`<lambda>20`) shift between file versions, defeating `(method, name)` differential keys",
+          "line": 291,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "drop-the-type-resolution-lane",
+      "title": "Drop the type-resolution lane; import-deletion breakage is out of v2 scope",
+      "date_from": "2026-06-11",
+      "date_to": null,
+      "decision": "The type lane is removed from JoernUnresolvedReference, leaving it identifier-lane only, and the jnr test is rewritten to document the abstention: import-deletion breakage is explicitly out of v2 scope.",
+      "rationale_recorded": true,
+      "rationale": "javasrc2cpg's type inference proved version-unstable on real files \u2014 the lane flagged \"import merged away\" on a merged file byte-identical to the developer's resolution that demonstrably compiled. The general lesson recorded is that a detector lane survives only if it is stable under the parser's per-version quirks, not merely correct on fixtures.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "harden-unresolved-identifier-lane"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-12"
+      ],
+      "evidence": [
+        {
+          "text": "import-deletion breakage is explicitly out of v2 scope because javasrc2cpg's type inference proved version-unstable on real files \u2014 the lane flagged \"import merged away\" on a merged file that was byte-identical to the developer's resolution and demonstrably compiled",
+          "line": 308,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "each detector lane survives only if it's stable under the parser's per-version quirks, not just correct on fixtures",
+          "line": 310,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "legacy-joern-detectors-are-heuristics",
+      "title": "Record the legacy Joern detectors as heuristics that fire nothing in the wild",
+      "date_from": "2026-07-18",
+      "date_to": null,
+      "decision": "The pre-Stage-B detectors are documented for what they are: the category-#3 strategy (joern_strategies/taint_check.py, named JoernDataFlowInterference) is a line-ordered clear-then-read \"stale read\" heuristic, not taint or dataflow analysis, and its name is conceded as aspirational; loop coverage is limited to constant-literal conditions (while(1)/while(true)) and start>end dead FOR loops, so the canonical continue-skips-increment case with a non-literal condition is out of scope. On 443 real files categories #3 and #5 produced 0 detections and 0 false positives, with all detection mass in the #6 rename/declaration family (R1 = 0/193, R2 = 11 causal/164 = 6.7%). ResearchSummary.xml's claim of only two strategies is withdrawn: seven concrete strategy classes exist, wired via config/strategies.yaml, with abstract_strategy.py and scala_queries/infinite_loop.sc empty stubs.",
+      "rationale_recorded": true,
+      "rationale": "Established by primary-source reads of the code rather than the documentation: reading taint_check.py shows a line-ordered heuristic despite the filename; the two loop detectors only handle literal conditions and dead ranges, so a non-literal continue case falls outside what they can flag; and the in-the-wild measurement shows all detection mass is the #6 family, contradicting the assumption that the dataflow and loop detectors were the centrepiece.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "ResearchSummary.xml's claim that the system has two detection strategies",
+        "the characterisation of category #3 detection as dataflow/taint analysis"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "b:dc3bc182-sub-sub-agent-a74c7a-11",
+        "b:dc3bc182-sub-sub-agent-a7bb0f-04",
+        "b:dc3bc182-sub-sub-agent-a7bb0f-05",
+        "b:dc3bc182-sub-sub-agent-a7bb0f-06",
+        "a:dc3bc182-sub-sub-agent-ab4c4f-11"
+      ],
+      "evidence": [
+        {
+          "text": "#3 is explicitly a \"line-ordering heuristic,\" not real dataflow",
+          "line": 31,
+          "file": "2026-07-18_dc3bc182_sub-agent-a74c7a.txt"
+        },
+        {
+          "text": "fire **0 detections and 0 FPs on 443 real files**; all detection mass is the #6 rename family.",
+          "line": 74,
+          "file": "2026-07-18_dc3bc182_sub-agent-ab4c4f.txt"
+        }
+      ],
+      "artifacts": [
+        "strategies/joern_strategies/taint_check.py",
+        "strategies/joern_strategies/infinite_loop.py",
+        "strategies/joern_strategies/invalid_loop_bounds.py",
+        "ResearchSummary.xml",
+        "STATUS.md",
+        "ISSUES.md #29"
+      ],
+      "actors": "claude",
+      "actors_note": "Two of the five retrospective sub-agent findings are unattributed in the record; the other three are Claude's, and all five come from Claude-run primary-source reads.",
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "modernise-the-legacy-joern-detectors",
+      "title": "Upgrade the stale-read detector to a Joern DDG query and bring loop bounds to v2 parity",
+      "date_from": "2026-06-24",
+      "date_to": null,
+      "decision": "Two remedies recommended for the weakest detectors: replace the line-ordering heuristic in the stale-read (category #3) detector with a real Joern DDG reachability query using `reachableBy` on the already-built CPG; and strip the `--- START JOERN ANALYSIS ---` / `[DEBUG]` / `print(output)` stdout noise from invalid_loop_bounds.py and bring it to v2 differential parity with its three peers, or explicitly document why it stays non-differential.",
+      "rationale_recorded": true,
+      "rationale": "The CPG is already built, so the DDG change is modest effort and closes the biggest FP/FN credibility gap in the detection layer, directly answering whether this is real dataflow analysis. invalid_loop_bounds.py is the weakest, FP-prone detector \u2014 pre-Stage-B vintage left un-modernised, lacking the merge-induced filter its peers have \u2014 and the most likely to draw a committee question.",
+      "status": "superseded",
+      "status_note": "S12 (2026-07-26): neither remedy was applied \u2014 taint_check.py contains no reachableBy query (0 occurrences), and invalid_loop_bounds.py still carries the '--- START JOERN ANALYSIS ---'/[DEBUG]/print(output) noise at :34/:59/:95. The detector cycle deliberately targeted the census mass instead, and the 2026-07-18 decision recorded the legacy detectors as fire-nothing heuristics \u2014 that recording is the superseding disposition.",
+      "supersedes": [],
+      "superseded_by": "legacy-joern-detectors-are-heuristics",
+      "sources": [
+        "a:ce56e78d-07",
+        "a:ce56e78d-11"
+      ],
+      "evidence": [
+        {
+          "text": "**Upgrade the stale-read detector from line-ordering to a real Joern DDG reachability query.**",
+          "line": 47,
+          "file": "2026-06-24_ce56e78d.txt"
+        },
+        {
+          "text": "**not differential** (no merge-induced filter like its 3 peers); `WARNING` severity. Pre-Stage-B vintage left un-modernized.",
+          "line": 99,
+          "file": "2026-06-24_ce56e78d.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/taint_check.py",
+        "semantic_merge_driver/strategies/joern_strategies/invalid_loop_bounds.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "post-fix-run-for-var-lane-defects",
+      "title": "Fix the two var-lane FP defects and re-run, with tests proven discriminating, across two rounds",
+      "date_from": "2026-06-20",
+      "date_to": "2026-07-02",
+      "decision": "The two confirmed var-lane defects behind all four R1 false positives \u2014 matches immediately followed by `(` not being skipped, and `\\n` not excluded from the char-literal class \u2014 are fixed and a separately labelled post-fix run is produced: the cached verdicts of the four untouched detectors are migrated to the new commit as exact carry-over and only the RM2RenameConflict lane is recomputed. Each fix ships with a regression test demonstrated to fail on pre-fix code and pass post-fix. When round 1 exposed two residual one-character guard defects (generics wildcard, lambda parameters) they were fixed and a second run was made, disclosed as \"round 2\", documenting the trail frozen 4/193 \u2192 round-1 3/193 \u2192 round-2 0/193; the tcurdt detection was retired as defect-dependent, making post-fix R2 11/164 rather than the predicted 12/164.",
+      "rationale_recorded": true,
+      "rationale": "The outcome was predictable because the fixes can only remove matches, and carry-over made the run cheap (~1 h rather than 9 h) while avoiding injecting Joern's margin nondeterminism; leaving known one-line defects in shipped code behind a \"plausibly ~0%\" hypothesis invites the committee question \"the run was cheap \u2014 why didn't you do it?\". The discriminating-test requirement is the standard the 2026-05-16 audit demanded: a test that passes on both pre- and post-fix code proves nothing. The tcurdt flag had to be retired because, although the merge really fails, the flag existed only because of the missing call-site exclusion and cannot be claimed post-fix.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the prediction that post-fix R2 would stay at 12/164"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:0e14484d-11",
+        "a:fb0fa5c5-37",
+        "b:fb0fa5c5-59",
+        "b:fb0fa5c5-58",
+        "a:fb0fa5c5-39",
+        "b:fb0fa5c5-57"
+      ],
+      "evidence": [
+        {
+          "text": "leaving one-line defects in shipped code with a \"plausibly ~0%\" hypothesis invites the obvious committee question: *\"the run was cheap \u2014 why didn't you do it?\"*",
+          "line": 2064,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "Two regression tests **proven discriminating** (fail on pre-fix code, pass post-fix) \u2014 the exact standard the 2026-05-16 audit demanded",
+          "line": 2089,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "ISSUES.md #29",
+        "5ed92a2",
+        "f964354",
+        "45a87e6",
+        "merge-tool-comparison/ISSUES.md:696",
+        "tools/detect_validate.py"
+      ],
+      "actors": "joint",
+      "actors_note": "Claude identified the defects and produced the runs; the decisions to do the post-fix run at all and to disclose a second round were taken with Ali.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "detector-cycle-scoped-to-three-lanes",
+      "title": "Scope the detector cycle to two new lanes plus one widening, targeting the census mass",
+      "date_from": "2026-07-15",
+      "date_to": "2026-07-18",
+      "decision": "The D1\u2013D3 cycle builds exactly three things and no more: D1 ImportPruneUsage (pure-textual differential) for stale-usage-of-pruned-import (12.7% census mass), D2 SignatureStaleCall (RM2 arity-primary) for stale-caller-of-changed-signature (10.2%), and D3 a flag-gated textual widening of JoernUnresolvedReference for gap-inventory shapes S1/S1b/S2/S3 (~8%). Overlapping-edit-interleaving, stale-expectation-of-changed-behavior and all categories at or below 2.2% are excluded. The frozen plan carries only shape sketches and non-negotiable guard lists (and no shapes at all for D3); parsing approach, AST/tree-sitter versus Joern choices, data structures and lane wiring are left to the build sessions reading specs.csv and gap_inventory.md.",
+      "rationale_recorded": true,
+      "rationale": "The two largest census categories had no detection logic at all and the driver detected only slices of the renamed/removed group, so that is where the lanes go. Interleaving detection carries high FP risk against the zero-FP bar, \"which is the layer's whole differentiator\"; behavioural shapes are out of reach by mechanism, not by effort; small categories give near-vacuous confidence intervals; and every added detector is added FP surface, so three focused lanes beat six speculative ones. Implementation detail was withheld from the frozen plan because it was not knowable at pre-registration time without guessing, and guessed implementation detail in a frozen document would have been a liability \u2014 either wrong and needing amendments, or wrong and silently obeyed.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-24",
+        "a:dc3bc182-sub-sub-agent-a495a0-06",
+        "a:4c7b0828-35"
+      ],
+      "evidence": [
+        {
+          "text": "## How many: 2 new detectors + 1 widening \u2014 not more",
+          "line": 1527,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "Every added detector is added FP surface; three focused lanes beat six speculative ones.",
+          "line": 1539,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "the gap the taxonomy exposed: the two largest census categories had *no detection logic at all*, and the driver detected only slices of the renamed/removed group.",
+          "line": 62,
+          "file": "2026-07-18_dc3bc182_sub-agent-a495a0.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md",
+        "ISSUES.md #31",
+        "10b7528",
+        "reports_detectors/specs/specs.csv",
+        "reports_detectors/specs/gap_inventory.md"
+      ],
+      "actors": "claude",
+      "actors_note": "The retrospective summary source is unattributed; the plan decisions are Claude's, frozen with Ali's ratification of the plan document.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "no-llm-detector-lane",
+      "title": "No LLM-backed detector lane; detectors are deterministic static analysis with a zero-FP bar",
+      "date_from": "2026-07-15",
+      "date_to": "2026-07-18",
+      "decision": "Detectors D1\u2013D3 must be deterministic static-analysis code in strategies/; there is no LLM-backed detector lane and no Batch API use in the build or the evaluation, and every detector must clear a standing zero-false-positive bar on controls before passing its gate.",
+      "rationale_recorded": true,
+      "rationale": "Circularity is the fatal objection: the held-out labels were produced by `claude-opus-4-8` closed coding, so an Opus-based detector evaluated against Opus-produced labels is the model grading its own homework. Architecturally an LLM lane is nondeterministic, costs money per merge, needs network at merge time and has unknown FP behaviour \u2014 a different and weaker thesis. The rule is encoded in the plan with its rationale so no later session re-invents the shortcut.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-25",
+        "a:dc3bc182-sub-sub-agent-a495a0-09"
+      ],
+      "evidence": [
+        {
+          "text": "**Circularity, the fatal one:**",
+          "line": 1583,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "the no-LLM-detector rule (\u00a72 N1) is encoded with the circularity rationale so no session re-invents that shortcut",
+          "line": 1729,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md \u00a72 N1",
+        "merge-tool-comparison/reports_detectors/"
+      ],
+      "actors": "claude",
+      "actors_note": "The retrospective summary source is unattributed; the ruling itself is Claude's.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "fixture-spec-extraction-batch-carve-out",
+      "title": "One narrow carve-out: a Batch API pass for fixture and spec extraction on derivation data",
+      "date_from": "2026-07-15",
+      "date_to": null,
+      "decision": "A single cheap Batch API pass over the roughly 70 attributed derivation units is permitted, before the build, to extract machine-readable fixture and spec details (the exact pruned import and stale usage line; the exact old/new signature and stale call site) \u2014 the only sanctioned LLM use inside the detector cycle.",
+      "rationale_recorded": true,
+      "rationale": "It is methodologically clean because it is development-side tooling on derivation data (derivation split only \u2014 firewall), not measurement, and it plausibly saves half a day to a day of the build for a couple of dollars.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:4c7b0828-32"
+      ],
+      "evidence": [
+        {
+          "text": "One narrow slot: **fixture and spec extraction before the build.** A single cheap batch over the ~70 attributed derivation units (derivation split only \u2014 firewall)",
+          "line": 1588,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "It's methodologically clean because it's *development-side tooling on derivation data*, not measurement.",
+          "line": 1588,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_detectors/specs/specs.csv"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "d2-restricted-to-arity-change-shape",
+      "title": "Restrict D2 to the same-file arity-change shape and document the rest as false negatives",
+      "date_from": "2026-07-16",
+      "date_to": "2026-07-18",
+      "decision": "D2 SignatureStaleCall detects arity changes only. The finding that arity changed in just 7 of 14 D2 spec units (5 of 9 in the file-local target set) was first raised as an open flag for the S-D3 session rather than decided at plan time; S-D3 then resolved it by shipping arity-only and documenting the return-type, parameter-type and throws shapes (4 of 8 usable derivation units) as false negatives, with the standing honest framing \"partial \u2014 arity-mismatch shape\".",
+      "rationale_recorded": true,
+      "rationale": "Plan \u00a72 makes arity the primary signal and orders FN over FP; detecting the non-arity shapes needs type-level reasoning that a single-file, classpath-less view cannot do reliably, and would revive the javasrc2cpg type-inference approach Stage B built and dropped for nondeterminism, while GD2/GD3 demand literally zero flags on the controls. The resulting half-category recall ceiling is therefore not a failure mode but the designed FN cost of the conservative bias. The split was recorded as a paste-time fact so it would not be rediscovered, with the call left to the session that owned it.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-36",
+        "a:506d875b-13",
+        "a:acf7e1d0-02",
+        "a:dc3bc182-sub-sub-agent-a495a0-10"
+      ],
+      "evidence": [
+        {
+          "text": "That's not a failure mode \u2014 it's the designed FN cost of the conservative bias, and it gets the standing honest framing (\"partial \u2014 arity-mismatch shape\").",
+          "line": 151,
+          "file": "2026-07-15_506d875b.txt"
+        },
+        {
+          "text": "Resolved: those shapes are documented FNs; typing arguments file-locally would revive the dropped Stage-B type-inference approach.",
+          "line": 54,
+          "file": "2026-07-16_acf7e1d0.txt"
+        }
+      ],
+      "artifacts": [
+        "ISSUES #31",
+        "reports_detectors/specs/specs.csv",
+        "reports_detectors/specs/gap_inventory.md",
+        "outputs/detector-cycle-plan.md \u00a72"
+      ],
+      "actors": "claude",
+      "actors_note": "The retrospective summary source is unattributed; the flag and the resolution are Claude's.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "file-local-reach-is-the-ceiling",
+      "title": "Declare cross-file shapes out of file-local reach and record them as the FN ceiling",
+      "date_from": "2026-07-16",
+      "date_to": "2026-07-22",
+      "decision": "The detection layer's evidence horizon is a single file, because git merge drivers run per file and the driver's analyze() is per-file. Units whose changed declaration and stale calls live in different files are declared out of reach rather than pursued; D3's scope was cut to file-local shapes after GD1 machine-scored 37/48 = 77.1% (Amendment 2, rescored 37/39 = 94.9% PASS), with cross-file S4 (class relocation) and S5 (external API rename, e.g. javax\u2192jakarta) excluded by construction and recorded as the documented FN ceiling. A sub-shape rejected list (bare type positions merged-side, `this.`-qualified method calls, type-parameter shadowing, partial overload removals) is documented in the lane header as deliberately uncovered, and every close-out must list the inventoried shapes deliberately not covered together with the reason. D2's measured zero positives on the Stage-C instrument is reported as this ceiling being honest and predicted, the lane credited as existence-proven by the one developer-confirmed control catch.",
+      "rationale_recorded": true,
+      "rationale": "Cross-file shapes are out of file-local reach by construction, so no amount of effort inside the lane reaches them, and the session prompts' own guard lists already suppress cross-file targets the file-local view cannot type. The reporting rule follows the plan's \u00a72 rejected-list logic applied at shape level: FP risk beats coverage. D2's zero is kept and reported rather than fixed or removed because the ceiling was measured and predicted, and the yubico control catch supplies the existence proof that the shape occurs catchably in the wild.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:acf7e1d0-03",
+        "a:dc3bc182-sub-sub-agent-a495a0-08",
+        "a:06ec13eb-16",
+        "a:82dd479f-13",
+        "a:82dd479f-04"
+      ],
+      "evidence": [
+        {
+          "text": "the driver's `analyze()` is per-file (git merge drivers run per file), and the prompt's own guard list suppresses \"cross-file targets the file-local view cannot type\"",
+          "line": 55,
+          "file": "2026-07-16_acf7e1d0.txt"
+        },
+        {
+          "text": "S4/S5 cross-file shapes (out of file-local reach by construction)",
+          "line": 295,
+          "file": "2026-07-16_82dd479f.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detectors/",
+        "ISSUES.md #31",
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py",
+        "outputs/detector-cycle-plan.md \u00a72",
+        "9580e1f"
+      ],
+      "actors": "joint",
+      "actors_note": "Claude drew the reach boundaries and reported the measured zero; the requirement to record uncovered shapes and their reasons came from Ali's session prompt.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "widen-unresolved-reference-behind-a-flag",
+      "title": "Widen JoernUnresolvedReference with a flag-gated textual differential, fixed at the shared root",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "The four in-reach gap shapes (bare and `this.`-qualified field references, removed methods still called, removed inner types still constructed) are covered by a flag-gated textual removed/renamed-declaration differential added inside the existing JoernUnresolvedReference lane, with flag-off behaviour byte-identical to before; the arrow-matching regex is converted to lookahead form and `_widened_issues` plus the usage scanner rewired to a (names, offsets) pair; the false-positive vectors surfaced by the review (multi-declarators, `case ->` phantoms, lambda scope-blindness, JLS 6.5.2 receiver re-binding, label positions, Java-14 multi-label case, bare-position remover absorption) are repaired in the shared helper `_qualified_or_case` rather than locally, with D1's full lane suite re-run against the shared change. RM2RenameConflict is deliberately not touched.",
+      "rationale_recorded": true,
+      "rationale": "The headline target is the Joern both-parents-guard self-defeat: when one side removes or renames a field the old name is unresolvable in that parent, so the \"resolvable in both parents\" rule suppresses exactly the merge-induced case it exists to catch. Flag-gating with byte-identical flag-off behaviour is what satisfies the session's regression floor, and the genuinely Joern-invisible shapes (`this.`-qualified, calls, types) are what drove the widening. The consuming arrow regex swallowed multi-parameter lambdas whole, missing the second parameter as an enumerator. Fixing at the shared root means the D1 lane inherits the correction instead of each lane carrying its own patch. No inventoried gap shape is an RM2-record shape, so the rename lane needs no change.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:506d875b-13",
+        "a:82dd479f-09",
+        "a:82dd479f-05",
+        "a:82dd479f-10",
+        "a:82dd479f-12",
+        "a:dc3bc182-sub-sub-agent-a495a0-07"
+      ],
+      "evidence": [
+        {
+          "text": "The headline S-D4 target is the **Joern both-parents-guard self-defeat**: when one side *removes or renames* a field, the old name is unresolvable in that parent, so the \"resolvable in both parents\" rule suppresses exactly the merge-induced case it exists to catch.",
+          "line": 137,
+          "file": "2026-07-15_506d875b.txt"
+        },
+        {
+          "text": "Flag-off behavior byte-identical.",
+          "line": 199,
+          "file": "2026-07-16_82dd479f.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py",
+        "732d8ff",
+        "merge-tool-comparison/reports_detectors/tune_d3/review_record.md",
+        "reports_detectors/specs/gap_inventory.md",
+        "ISSUES #31"
+      ],
+      "actors": "claude",
+      "actors_note": "One retrospective summary source is unattributed; the design and fixes are Claude's.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "flag-on-widened-issues-ride-along",
+      "title": "Let flag-ON widened issues ride along after the fail-closed inconclusive Issue",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "In _fail_closed(), when SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS is ON, widened issues are appended after the single \"inconclusive\" Issue; flag-OFF the shape is unchanged. The consequence is accepted rather than coded around: verdict_of's \"genuine issues win\" rule reclassifies a Joern-broken file from UNANALYZABLE to FLAG in the flag-ON arm, so such files no longer count toward the UNANALYZABLE target-0 line or the G0 abort threshold; this is documented as deliberate and carried to S-D5 as a harness-accounting note.",
+      "rationale_recorded": true,
+      "rationale": "The mixed-verdict semantics are deliberate and flag-OFF behaviour is verified unchanged (widened is empty and tests pin it), so the accounting risk \u2014 Joern breakage under-reported as detections \u2014 is handled by a note to S-D5 rather than a lane change.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-08",
+        "a:82dd479f-sub-sub-agent-a46641-04"
+      ],
+      "evidence": [
+        {
+          "text": "now appends widened issues after the inconclusive Issue when the flag is ON",
+          "line": 37,
+          "file": "2026-07-16_82dd479f_sub-agent-a46641.txt"
+        },
+        {
+          "text": "the flag-ON mixed-verdict semantics are deliberate, with an S-D5 note",
+          "line": 173,
+          "file": "2026-07-16_82dd479f.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py:264"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "correct-the-gap-inventory-baseline-claim",
+      "title": "Correct the gap inventory: the baseline lane already fires on the bare-receiver shapes",
+      "date_from": "2026-07-16",
+      "date_to": "2026-07-18",
+      "decision": "An addendum to the gap inventory records \u2014 and the refuted claim is struck from the lane module header \u2014 that the pre-existing lane already flags the bare-receiver S1/S1b minimal shapes (absent \u2260 unresolved), so the datastax/jline-shaped units should be expected as baseline-arm catches in S-D5; D3's incremental-recall claim is narrowed to the yandex `this.`-qualified units plus S2 and S3.",
+      "rationale_recorded": true,
+      "rationale": "Established by execution probes against the engine \u2014 including a live-Joern probe \u2014 which showed the existing lane fires on those shapes, so the inventory's assumption that they were missed does not hold and they cannot count as D3-added recall.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the gap inventory's claim that the existing lanes miss the bare-receiver S1/S1b shapes"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-11",
+        "a:dc3bc182-sub-sub-agent-a495a0-12"
+      ],
+      "evidence": [
+        {
+          "text": "the existing lane already fires on the bare-receiver S1/S1b minimal shapes (absent \u2260 unresolved), so those two units may be baseline-arm catches in S-D5",
+          "line": 202,
+          "file": "2026-07-16_82dd479f.txt"
+        },
+        {
+          "text": "a live-Joern probe correction found the datastax/jline bare-receiver shapes **already fire the baseline lane**, so D3's added recall must come from the yandex `this.`-qualified / S2 / S3 units.",
+          "line": 68,
+          "file": "2026-07-18_dc3bc182_sub-agent-a495a0.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detectors/specs/gap_inventory.md",
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py"
+      ],
+      "actors": "claude",
+      "actors_note": "The retrospective summary source is unattributed; the probe correction is Claude's.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "refute-the-widened-lane-safety-claims",
+      "title": "Review sub-agents refute the widened lane's documented safety claims and propose shared fixes",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Four documented safety claims of the widened lane are recorded as refuted by execution against the real code: the module header's \"asymmetric-visibility risk is neutralized by the exactly-one-parent rule\" (declarator forms _scan_var_decls cannot parse are counted as usage sites, so a clean merge is flagged CRITICAL); the inline comment that the _ARROW_DECL_RE direction \"only ever ADDS a declaration entry \u2026 (FN-safe)\" (matching `case MODE ->` manufactures a candidate); the registered residual FP class, which is narrower than the detector's actual scope-blindness (any deleted lambda parameter or local whose name coincides with an externally-resolved name); and the emitted message \"nor retains an import covering it\", which is false because the var-kind guard consults only member-import coverage. Two shared-helper fixes are proposed with them: repair the multi-label `case FOO, MODE:` exclusion in `_ipu._FileView._qualified_or_case`, and let absorption/attribution scans over parent views count bare identifier occurrences while keeping the anchor restriction for merged-site scanning.",
+      "rationale_recorded": true,
+      "rationale": "Each finding was reproduced by execution rather than line-reading: `_widened_issues returned flags {'b'}`, `{'MODE'}`, `{'x'}` and `{'Config'}` on merges that compile. The shared-helper placement is argued on two grounds: the same multi-label gap exists latently in D1's occurrences(), so one fix covers both lanes; and relaxing the parent-view scans is suppression-only, hence FN-safe, so it does not need the zero-FP anchor restriction that merged-side scanning requires.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the refutations were accepted and fixed before the gate rerun \u2014 ISSUES.md #31 (S-D4 record) lists '8 execution-verified FP-vector fixes' covering the named shapes (multi-declarator + C-style arrays 'refuted the header's neutralized claim', case-arrow phantoms, lambda/local scope-blindness \u2192 field-tier candidates, JLS 6.5.2 re-binding), and the shipped lane carries the fixes with '(S-D4 review, verified FP)' comments (unresolved_reference.py, field-tier and receiver-position guards).",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-a3fb5c-01",
+        "a:82dd479f-sub-sub-agent-a3fb5c-02",
+        "a:82dd479f-sub-sub-agent-a3fb5c-03",
+        "a:82dd479f-sub-sub-agent-a3fb5c-04",
+        "a:82dd479f-sub-agent-a9ce95-01",
+        "a:82dd479f-sub-agent-a9ce95-02"
+      ],
+      "evidence": [
+        {
+          "text": "The module header's claim that the 'asymmetric-visibility risk is neutralized by the exactly-one-parent rule' is refuted: the keeper can hold both a recognized declaration and the unrecognized one.",
+          "line": 28,
+          "file": "2026-07-16_82dd479f_sub-agent-a3fb5c.txt"
+        },
+        {
+          "text": "Asymmetric fix available: the absorption/attribution scans on PARENT views don't need the zero-FP anchor restriction that merged-site scanning needs",
+          "line": 33,
+          "file": "2026-07-16_82dd479f_sub-agent-a9ce95.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py",
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "review-briefs-rank-false-positives-worst",
+      "title": "Detector review briefs rank false-positive slips worst and require execution-reproduced findings",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Amendment 3 adds a bounded three-leg review pass to the remaining build prompts: (a) as project code with /code-review at high effort, (b) as standalone Java-semantics analysis consulting JLS, Error Prone and Checkstyle, (c) explicit comparison against named open-source comparators (Error Prone matchers, PMD, SpotBugs, IntelliJ inspections, Checkstyle) with consulted comparators and adopted/rejected divergences recorded in the close-out; fix-or-document, GD2 rerun if a gated lane changes, review before the S-D5 freeze. The finder sub-agents implementing it are scoped tightly \u2014 a line-by-line diff scan for one, five named cross-file contract families for another, four changed/new files for a third, and a simplification angle instructed to read the module docstring first and not flag guards that serve the documented FP-suppression design \u2014 each capped at six candidates, and every returned finding must be verified by concrete execution against the real detector code, not reported from line-reading.",
+      "rationale_recorded": true,
+      "rationale": "The project has a hard zero-false-positive bar: a false flag on a clean merge is the worst outcome while false negatives are acceptable and documented, so FP-slip paths get top severity in the hunt and guard density must not be flagged as complexity. The freeze protects measurement surfaces only, and a code-review instruction touches none of them \u2014 it is process/quality, the same epistemic category as \"write unit tests\" \u2014 but it had to be bounded because the open-ended wording is the kind of instruction that makes a session wander the web collecting generic advice; leg (c) was made explicit at Ali's direction after he noted it was missing. The cross-file brief was scoped by contract family because the new module deliberately imports modules rather than classes and borrows private helpers from two sibling strategies.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "Amendment 3 rev. a (two-leg version without the explicit open-source comparison leg)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-37",
+        "b:82dd479f-sub-sub-agent-a3fb5c-01",
+        "a:82dd479f-sub-sub-agent-a3fb5c-05",
+        "a:acf7e1d0-sub-agent-afc4ad-01",
+        "a:acf7e1d0-sub-sub-agent-a5d889-01"
+      ],
+      "evidence": [
+        {
+          "text": "The project has a hard zero-false-positive bar: a false flag on a clean merge is the worst outcome; false negatives are acceptable and documented.",
+          "line": 5,
+          "file": "2026-07-16_82dd479f_sub-agent-a3fb5c.txt"
+        },
+        {
+          "text": "the open-source comparison is now its own explicit review leg, committed (`d437e19`) and pushed",
+          "line": 1926,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md Amendment 3",
+        "22779a7",
+        "d437e19",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py",
+        "semantic_merge_driver/core/plugin_loader.py"
+      ],
+      "actors": "joint",
+      "actors_note": "Claude drafted the amendment and the sub-agent briefs; Ali ratified the amendment and directed the open-source comparison leg, and one brief is attributed to Ali.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "suppress-on-ambiguity-not-precision",
+      "title": "Under incomplete information the lanes suppress rather than accept precision loss",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "The lanes are to err toward false negatives on ambiguity and pair the resolution-free single-file regime with explicitly documented shape restrictions \u2014 diverging deliberately from SpotBugs' acceptance of precision loss and going beyond Checkstyle's ceiling by adding three-way differential evidence; and a name match without resolution is only a candidate, with the lane's automated guards (surviving same-kind declaration, inheritance, import/static-import coverage, remover-side-still-uses) substituting for the human Preview gate IntelliJ uses when rename refactoring falls back to textual search.",
+      "rationale_recorded": true,
+      "rationale": "SpotBugs accepts precision loss when the auxiliary classpath is incomplete and Checkstyle's own docs show resolution-free single-file analysis works only with documented shape limits and ambiguity suppression; a zero-FP bar cannot absorb precision loss, so it must suppress instead. IntelliJ propagates renames only over resolved references and demotes anything unresolvable to opt-in textual search behind a human-reviewed Preview, and JetBrains treats red code under an incomplete project model as an environment false alarm \u2014 so \"unresolved\" is a reliable defect signal only when the resolver's world model is known-complete, and an automated lane with no human gate must use conservative suppression.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): written in as required \u2014 reports_detectors/tune_d3/review_oss_comparison.md exists; ISSUES.md #31 (c) records the comparator-grounded stance (Checkstyle as 'the architectural relative: resolution-free single-file analysis viable only with documented shape limits'); the lanes document shape restrictions and FN-direction suppression in their headers (e.g. signature_stale_call.py:10-19, 'Overbroad on purpose \u2026 FN direction' at :523).",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-aadfd1-04",
+        "a:82dd479f-sub-sub-agent-aadfd1-05"
+      ],
+      "evidence": [
+        {
+          "text": "Divergence: SpotBugs accepts precision loss under incomplete information; a zero-FP lane must instead suppress.",
+          "line": 35,
+          "file": "2026-07-16_82dd479f_sub-agent-aadfd1.txt"
+        },
+        {
+          "text": "a zero-FP automated lane must replace that human gate with conservative suppression (which is precisely what the survives-declaration / inheritance / import / remover-side-still-uses guards do)",
+          "line": 45,
+          "file": "2026-07-16_82dd479f_sub-agent-aadfd1.txt"
+        }
+      ],
+      "artifacts": [
+        "https://checkstyle.sourceforge.io/writingchecks.html#Limitations",
+        "https://spotbugs.readthedocs.io/en/stable/faq.html",
+        "https://www.jetbrains.com/help/idea/rename-refactorings.html"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "d1-import-prune-usage-textual-lane",
+      "title": "Ship D1 as a pure-textual differential lane, extension-scoped and behind an experimental flag",
+      "date_from": "2026-04-25",
+      "date_to": "2026-07-16",
+      "decision": "ImportPruneUsage is a pure-text differential MergeStrategy under strategies/text_strategies/, gated by SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS=1 with the flag check as the first line of analyze(). It abstains (is_clean=True) on four entry gates: flag off, path not ending .java, ours_content or theirs_content None, and merged text containing conflict markers \u2014 extension-based language detection being the standing rule, with content-sniffing out of scope. _FileView blanks comments, strings, chars and text blocks by space-substitution preserving newlines so byte offsets and line numbers are unchanged, including javadoc; each import's identity is the tuple (is_static, path, is_wildcard) with whitespace and newlines tolerated inside the statement; and the differential is lost = (imports(ours) \u222a imports(theirs)) \u2212 imports(merged), deliberately excluding base.",
+      "rationale_recorded": true,
+      "rationale": "The first-line flag check means the lane cannot crash, flag or slow anything with the flag off, so the default driver is bit-identical to pre-S-D2 behaviour \u2014 which is what makes the GD3 baseline arm meaningful. The driver runs strategies on any merged file, so a non-.java gate is needed or Python `import x` lines would parse as Java imports; a textual conflict is already surfaced, so abstaining there hides nothing while parsing marker soup would produce garbage. Preserving offsets keeps the comments-and-strings guard in one place, and keying import identity on the tuple means reordering or reformatting by mergiraf never looks like a prune. Base is excluded because an import present in base but in neither parent was removed by both sides, so any surviving usage is parent-side breakage rather than merge-induced. Stripping javadoc too is validated by the direction of the problem: google-java-format must count javadoc references because removing an import breaks `{@link}`, whereas a javadoc-only usage of a pruned import does not break compilation, which is the failure mode being detected.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-spork-driver-integration-10",
+        "a:f0d70a59-01",
+        "a:f0d70a59-19",
+        "b:f0d70a59-26",
+        "b:f0d70a59-27",
+        "a:f0d70a59-05",
+        "a:734e4529-06"
+      ],
+      "evidence": [
+        {
+          "text": "With the env flag unset D1 returns clean at line one, so the default driver is bit-identical to pre-S-D2 behavior \u2014 that's not just politeness, it's what makes the GD3 baseline arm meaningful.",
+          "line": 166,
+          "file": "2026-07-16_f0d70a59.txt"
+        },
+        {
+          "text": "Base is deliberately **not** in the union \u2014 an import present in base but in neither parent was removed by both sides; any surviving usage is a parent-side breakage, not merge-induced",
+          "line": 112,
+          "file": "2026-07-16_f0d70a59.txt"
+        },
+        {
+          "text": "- Language detection rule for the router: extension-based (`.java`) is sufficient for S1; content-sniffing is out of scope.",
+          "line": 106,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py",
+        "semantic_merge_driver/config/strategies.yaml",
+        "core/language_detect.py",
+        "9f871b1"
+      ],
+      "actors": "claude",
+      "actors_note": "The 2026-04-25 extension-based rule is unattributed in the plan; the lane and its gates are Claude's.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "d1-suppression-calibrated-toward-false-negatives",
+      "title": "Calibrate D1's suppression toward false negatives, but reject blanket extends-suppression",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "D1's shadowing and declaration regexes are kept deliberately overbroad, admitting extra suppression; candidates mined from a lost `java.*` type wildcard must be members of the embedded _JDK_WILDCARD_TYPES sets for the eight commonly-wildcarded JDK packages (a `java.*` package with no embedded set yields no candidates, while non-JDK wildcards keep conservative mining), and the asymmetric wildcard policy \u2014 surviving wildcards suppress unconditionally, lost wildcards require positive JDK-membership evidence \u2014 is retained. No \"extends \u21d2 suppress inherited-member risk\" guard is added, with fixture P7 pinning the prohibition. One confirmed breach of the overbroad-suppression contract was corrected: clause keywords (throws/implements/extends/permits) were missing from _EXPR_KEYWORDS so clause operands were read as declarations, and enum-constant declarations matched neither declares-pattern \u2014 an FP-direction failure.",
+      "rationale_recorded": true,
+      "rationale": "A missed shadow would be a false positive while an over-detected one is only a false negative, so the design spends its error budget on FN. The wildcard restriction closes a class of error with externally knowable, invariant knowledge and fails toward FN only, whereas non-JDK wildcard membership is genuinely unknowable file-locally; and without a classpath, wildcard and static-member resolution is where both textual and AST tools bleed FPs \u2014 Checkstyle punts on wildcards outright and PMD has a decade-long FP bug tail there \u2014 so being more conservative than PMD is right for a CRITICAL-severity gate. The extends guard was rejected because the java-faker unit (AddressTest extends AbstractFakerTest) proves the category contains true positives in extending classes, so it would trade real recall for cheap FP hardening. The clause/enum breach was found by probing (`void m() throws FooEx;`, `implements FooIntf, Bar`, `interface I extends FooIntf, Bar` all wrongly \"declare\" the type, and an end-to-end pruned-exception-import case was silently missed).",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the claim that _EXPR_KEYWORDS made declares_member suppression-safe in the FN direction only"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:f0d70a59-06",
+        "a:f0d70a59-04",
+        "a:f0d70a59-07",
+        "a:734e4529-07",
+        "a:f0d70a59-15"
+      ],
+      "evidence": [
+        {
+          "text": "Deliberately overbroad: a missed shadow would be an FP, an over-detected one only an FN.",
+          "line": 135,
+          "file": "2026-07-16_f0d70a59.txt"
+        },
+        {
+          "text": "I rejected it because the java-faker unit (`AddressTest extends AbstractFakerTest`) proves the category contains true positives in extending classes; the P7 fixture now pins that a future session can't sneak that guard in either",
+          "line": 224,
+          "file": "2026-07-16_f0d70a59.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py",
+        "423c215",
+        "bed3638"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "documented-false-negatives-of-textual-tier",
+      "title": "Keep the absorption guard and document the textual tier's inherent false negatives",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "The absorption guard \u2014 suppress when a parent lacking the lost import still uses the symbol uncovered \u2014 is retained, which makes the assertj pruner-kept-usages unit an intentional, tested false negative that no rung of the upgrade ladder including differential ecj would lift; only project-context speculative-merge compilation (full Crystal) would, and that cost class is not being taken. Unicode identifiers (the ASCII first-char class, FN-only), `\\uXXXX` pre-lexing and text-block escape pathology near the closing delimiter are classified inherent-to-tier and documented rather than fixed, with a stripper unit test on text-block edges noted as cheap insurance.",
+      "rationale_recorded": true,
+      "rationale": "The zero-FP bar wins over recovering 1 of 21 derivation units: a parent using the name import-free proves it resolves without the import (same-package type, inherited member) \u2014 or that the parent was already broken; either way the breakage is not merge-induced, so the FN is a property of file-local differential evidence rather than of the regex implementation. The inherent-tier items are left alone because nobody outside javac handles `\\uXXXX` pre-lexing and the text-block FP path requires the pathology plus the FP conjunction in a pre-2020 corpus, making the risk negligible.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:f0d70a59-03",
+        "a:734e4529-12",
+        "a:f0d70a59-16"
+      ],
+      "evidence": [
+        {
+          "text": "A parent using the name import-free proves it resolves without the import (same-package type, inherited member) \u2014 or that the parent was already broken; either way not merge-induced.",
+          "line": 137,
+          "file": "2026-07-16_f0d70a59.txt"
+        },
+        {
+          "text": "That FN is a property of file-local differential evidence, not of the regex implementation. The only thing that lifts it is project-context compilation (speculative merge + real build, i.e., full Crystal), which is a different cost class entirely.",
+          "line": 103,
+          "file": "2026-07-16_734e4529.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py:550"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "reject-heavier-analysis-routes",
+      "title": "Reject Joern, type inference, compile oracles and the heavy parsers for the import lane",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "The import-prune lane does not use javasrc2cpg type inference, a compiler oracle, or Joern \u2014 Joern stays only where it earns its keep, the flow-shaped detectors (#3/#5) \u2014 and Spoon noClasspath mode, JavaParser-with-symbol-solver, CodeQL build-less Java extraction and Semgrep are all ruled out; the lane operates on import declarations plus the parent versions as semantic oracles.",
+      "rationale_recorded": true,
+      "rationale": "The type-inference route was built and dropped in Stage B because javasrc2cpg's single-file inference gives up nondeterministically and misflagged, at ~34 s per merge against milliseconds for textual; a real compile oracle needs the whole project's classpath at merge time, which a git merge driver does not have, and single-file javac shows \"(none)\" COMPILE DELTA on most of the 21 true breaks. Joern is the wrong altitude \u2014 import and name binding is a frontend concern and Joern's Java frontend is JavaParser plus best-effort typing \u2014 and the verified defects are syntax-recognition and index-maintenance failures that a CPG does not fix. Spoon and JavaParser sit strictly between the two chosen rungs in cost and authority; CodeQL is repo-scale, slow per invocation and license-encumbered, wrong for a per-file merge driver; Semgrep parses Java via tree-sitter but has no way to express three-version differential logic.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:f0d70a59-07",
+        "a:734e4529-08",
+        "a:734e4529-11"
+      ],
+      "evidence": [
+        {
+          "text": "Short answer: Joern specifically, no \u2014 for this lane it was the right thing to drop, and re-adding it wouldn't fix the defects found in review.",
+          "line": 78,
+          "file": "2026-07-16_734e4529.txt"
+        },
+        {
+          "text": "A real compile oracle needs the whole project's classpath at merge time \u2014 not something a git merge driver has.",
+          "line": 214,
+          "file": "2026-07-16_f0d70a59.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "proposed-fixes-for-d1-guard-defects",
+      "title": "Three proposed fixes for the remaining verified D1 guard defects",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Three review recommendations for import_prune_usage.py: teach `declares_type` (or the mining exclusion) to recognise type-parameter declarations so `class Box<KeyType>` no longer mines `KeyType` as a candidate; fix the multi-declarator FP with a dedicated declarator-list pattern (`Type a, b, c;`) rather than adding `,` to the preceding-character class in `declares_member`; and replace the hand-typed `_JDK_WILDCARD_TYPES`/`_JAVA_LANG` sets with mechanically generated ones from a real JDK, plus a sentinel assertion in the test battery.",
+      "rationale_recorded": true,
+      "rationale": "The type-parameter FP violates the zero-FP bar and was reproduced against committed code, and the fix belongs on the suppression side because that direction errs toward false negatives, matching the lane's bias discipline. Adding `,` to the preceding-char class would classify call arguments (`foo(x, count)`) as declarations and kill legitimate true positives for explicit static member imports, so a dedicated pattern is the safer extension. Hand-typing ~300 names produced exactly the drift the embedded index was meant to avoid (Map and other names missing), and the goimports precedent shows the stdlib symbol table is machine-generated \u2014 nobody hand-types 300 symbol names.",
+      "status": "proposed",
+      "status_note": "S12 (2026-07-26): none of the three applied \u2014 import_prune_usage.py declares_type (:369-372) has no type-parameter clause, no declarator-list pattern exists, and _JDK_WILDCARD_TYPES (:157) remains hand-typed with no generator or sentinel assertion. Still-live candidate work tied to guards-before-d1-graduates and the open default-enable ruling.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:734e4529-01",
+        "a:734e4529-02",
+        "a:734e4529-03"
+      ],
+      "evidence": [
+        {
+          "text": "A dedicated declarator-list pattern (`Type a, b, c;`) is the safer extension.",
+          "line": 13,
+          "file": "2026-07-16_734e4529.txt"
+        },
+        {
+          "text": "hand-typing ~300 names produced exactly the drift it was meant to avoid. Suggest regenerating the sets mechanically (one-shot script over a real JDK's `ct.sym`/`javap`) and adding a sentinel assertion",
+          "line": 15,
+          "file": "2026-07-16_734e4529.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "upgrade-ladder-tree-sitter-then-ecj",
+      "title": "Proposed upgrade ladder: tree-sitter-java tactically, differential ecj strategically",
+      "date_from": "2026-06-11",
+      "date_to": "2026-07-16",
+      "decision": "Two rungs are proposed for moving the text-scanning half of the detection layer to parser-grade analysis: tactically, replace the regex declaration heuristics with tree-sitter-java (error-tolerant, no JVM, pure-Python wheel) keeping the differential/absorption algorithm byte-for-byte intact; strategically, run the Eclipse batch compiler (`-proceedOnError`, `--release 17`, no classpath) on merged/ours/theirs, key errors by (error-id, symbol) never by line, and flag `errors(merged) \u2212 errors(ours) \u2212 errors(theirs)`, which subsumes the absorption guard and the hand-typed JDK sets and generalises past imports.",
+      "rationale_recorded": true,
+      "rationale": "Every defect lived in the regex half of the box and none in the RM2 half, and the comment-stripper newline bug shows hand-rolled lexing of Java in a research detector is a liability the architecture should shed. The stated reason for going textual was a Joern/javasrc2cpg nondeterminism failure, which argues against heavyweight semantic inference, not against exact syntactic parsing \u2014 the regex lexer and tree-sitter sit in the same no-resolution class, one just lexes Java correctly \u2014 making it the cheapest meaningful upgrade with no new failure modes. The existing design falls out of error-set subtraction naturally: the absorption guard becomes subtraction, ecj knows the JDK including the missing Map, generics, shadowing, multi-declarators and patterns come free, and any single-file-visible compile break including the four Stage-A compile-error misses falls out of the same subtraction \u2014 at the price of a JVM per version and error-normalisation discipline.",
+      "status": "superseded",
+      "status_note": "S12 (2026-07-26): neither rung taken \u2014 no tree_sitter dependency exists in the driver (only the comparator uses tree-sitter, its own codebase) and no ecj harness exists. The same-day adopted decision to keep the lane dependency-free governs; the zero-FP suppression design was chosen over parser-grade analysis.",
+      "supersedes": [],
+      "superseded_by": "keep-the-import-lane-dependency-free",
+      "sources": [
+        "a:bfc672b4-32",
+        "a:734e4529-09",
+        "a:734e4529-10"
+      ],
+      "evidence": [
+        {
+          "text": "the Joern failure argues against heavyweight *semantic* inference, not against exact *syntactic* parsing. Cheapest meaningful upgrade, no new failure modes.",
+          "line": 88,
+          "file": "2026-07-16_734e4529.txt"
+        },
+        {
+          "text": "Differential ecj is the strategic one \u2014 it replaces this lane's entire guard stack with a compiler and gives the next detector categories for free, at the price of a JVM in the loop.",
+          "line": 105,
+          "file": "2026-07-16_734e4529.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/rm2_strategies/rename_conflict.py",
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "keep-the-import-lane-dependency-free",
+      "title": "Defer tree-sitter token classification to keep the import lane dependency-free",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Replacing the declares_member regex family with tree-sitter-java token classification is deliberately not done; it stays a contingency triggered only by a GD3 flag traced to token misclassification.",
+      "rationale_recorded": true,
+      "rationale": "It would be semantic_merge_driver's first parsing dependency in a lane whose selling points are zero dependencies and zero runtime cost, and the current zero-FP evidence does not justify it.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:f0d70a59-12"
+      ],
+      "evidence": [
+        {
+          "text": "it would be `semantic_merge_driver`'s first parsing dependency in a lane whose selling points are zero deps and zero runtime cost. The current zero-FP evidence doesn't justify it; a GD3 flag traced to token misclassification would.",
+          "line": 252,
+          "file": "2026-07-16_f0d70a59.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py:353"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "accept-lane-inefficiencies-at-experimental-scale",
+      "title": "Accept the lanes' known inefficiencies and one warty misdetection at experimental scale",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Several known costs are accepted rather than fixed: the per-lost-wildcard recomputation of `_identifier_pool` and the full-text `declares_member` scans are not cached or hoisted; the `call_form` 40-character window examined before `lstrip` is left as-is, so pathological whitespace misdetects; and in signature_stale_call.py neither the reordering of `_any_varargs_form` after the cheaper `_declared_arities` nor the unification of the three `_name_paren_sites` passes is done. The brief's premise that the lane repeatedly recomputes text views and recompiles regexes in hot loops is withdrawn.",
+      "rationale_recorded": true,
+      "rationale": "Harmless at experimental scale \u2014 cache and hoist only if the lane ever runs on large corpora; the whitespace case is pathological and not worth fixing; and at three or fewer candidate names the reorder saves sub-milliseconds while the unified scan is well under the noise floor next to the dominating Docker runs. The premise was withdrawn on inspection: `_FileView.stripped` is computed once in __init__, view_of() memoises construction, enum_constants is a lazy cached property, `_absorbable_spans`/base_stripped are hoisted out of the per-name loop, and Python's re._cache keys on the pattern string with the same names recurring, so nothing recompiles inside a call.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the review brief's premise of per-call view recomputation and hot-loop regex recompilation"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:734e4529-14",
+        "a:734e4529-13",
+        "a:acf7e1d0-sub-agent-af6a03-05",
+        "a:acf7e1d0-sub-agent-af6a03-02"
+      ],
+      "evidence": [
+        {
+          "text": "Harmless at experimental scale; cache the pool and hoist the declares checks if this ever runs on large corpora.",
+          "line": 21,
+          "file": "2026-07-16_734e4529.txt"
+        },
+        {
+          "text": "So the \"repeated per-call recomputation\" and \"regex recompilation in hot loops\" concerns from the brief mostly do not apply here \u2014 the structure is already careful.",
+          "line": 15,
+          "file": "2026-07-16_acf7e1d0_sub-agent-af6a03.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "proposed-scan-optimisations-deferred",
+      "title": "Proposed but unratified optimisations to the widened and D2 textual scans",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Three performance recommendations are recorded as non-blocking: the widened pass's `_declared_method_names` slicing the whole stripped file per call site and the three site scanners' per-occurrence `s.count(\"\\n\", 0, start)` plus up to three whole-file regex scans per candidate are logged as warts rather than defects, with cheaper forms named (pass `(stripped, after_paren)` and scan in place; precompute newline offsets per `_FileView` and bisect via a shared `line_of(pos)` helper); and signature_stale_call.py should early-out immediately after the RM2 loop when neither side has arity changes, or defer `_absorbable_spans(merged.stripped)` and the base-content strip to first use.",
+      "rationale_recorded": true,
+      "rationale": "Runtime is dominated by subprocesses: the lane already pays three multi-second joern-parse invocations per file, 10\u2013100\u00d7 the textual cost, and the exactly-one-parent `split_sides` filter leaves near-zero candidates on typical merges \u2014 but this is the widened pass's dominant pure-Python cost and would become the floor if the textual lane were ever run without Joern. The early-out matters because both values are consumed only inside the per-name loop, which never executes when RM2 reports no Add/Remove Parameter change \u2014 the overwhelming majority of merged files \u2014 so on that path the driver throws away a multi-KB allocation and two full-file passes.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the record-as-non-blocking disposition was enacted \u2014 ISSUES.md #31 lists 'O(k\u00b7n) line counting \u2014 immaterial vs subprocess dominance' among non-fixes-with-reasons, the accept-lane-inefficiencies decision carries the same ruling, and one named cheaper form (memoized view/arity-text construction) is in signature_stale_call.py:225-237.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-a87c1f-02",
+        "b:82dd479f-sub-agent-a87c1f-02",
+        "a:acf7e1d0-sub-agent-af6a03-04"
+      ],
+      "evidence": [
+        {
+          "text": "NOT material in practice: the exactly-one-parent `split_sides` filter leaves near-zero candidates on typical merges, and Joern subprocess time dominates by 10-100x. Flag only as a worst-case note.",
+          "line": 25,
+          "file": "2026-07-16_82dd479f_sub-agent-a87c1f.txt"
+        },
+        {
+          "text": "There is no early-out for `changes[\"ours\"]` and `changes[\"theirs\"]` both being empty.",
+          "line": 23,
+          "file": "2026-07-16_acf7e1d0_sub-agent-af6a03.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py:350",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py:232-233"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "reuse-sibling-lanes-by-composition",
+      "title": "Reuse sibling lanes by composition and module import, with zero edits to frozen lane files",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "\"Reuse, don't fork\" is implemented as composition: the new D2 lane holds an internal RM2RenameConflictStrategy and calls its `_run_rm2_pair`, and imports D1's stripper and helpers by importing the *modules* (`_rc`, `_ipu`) and reaching helpers as module attributes rather than importing the sibling strategy classes. No existing lane file is edited, and the resulting reliance on another class's private method and another module's private helpers is left in place rather than flagged.",
+      "rationale_recorded": true,
+      "rationale": "This reconciles the prompt's reuse instruction with the standing no-changes-to-existing-lanes constraint, and the S-D2 close-out explicitly sanctioned importing D1's stripper. Modules rather than classes because plugin_loader instantiates any MergeStrategy subclass found in a module namespace with no arguments, so importing sibling strategy classes by name would register them twice; importing MergeStrategy itself is safe because the loader excludes it, matching the precedent in rename_conflict.py and import_prune_usage.py. The public alternatives are insufficient \u2014 `_rm2_renames` filters to renames and would drop the Add/Remove-Parameter records D2 depends on, and `_FileView.occurrences()` cannot do arity counting, new-prefix discrimination or decl-shape rejection \u2014 and every less-fragile refactor (a shared RM2Runner, promoting the scan helpers to public) requires editing the frozen lane files, so no better altitude was available within the constraints.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:acf7e1d0-04",
+        "b:acf7e1d0-sub-sub-agent-a5d889-02",
+        "a:acf7e1d0-sub-agent-a88268-03"
+      ],
+      "evidence": [
+        {
+          "text": "resolved by composition: the new lane holds an internal `RM2RenameConflictStrategy` and calls its `_run_rm2_pair`; D1's stripper is imported (S-D2 close-out explicitly sanctioned this). Zero edits to existing lane files.",
+          "line": 56,
+          "file": "2026-07-16_acf7e1d0.txt"
+        },
+        {
+          "text": "Every less-fragile alternative (extract a shared `RM2Runner`, promote `_FileView` scan helpers to public) requires editing the frozen lane files, which the stated constraint forbids this session.",
+          "line": 21,
+          "file": "2026-07-16_acf7e1d0_sub-agent-a88268.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py",
+        "semantic_merge_driver/core/plugin_loader.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "affirm-and-fix-the-d2-guard-set",
+      "title": "Fix D2's arity projection and generic-span rule; affirm the rest of its guard set",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Two D2 defects are fixed: a lane-local variant of the D1 stripper blanks string/char/text-block literals to a placeholder (comments still to spaces) so single-literal arguments count as arity 1 \u2014 a deliberate, documented fork; and `_generic_span`'s SCREAMING_CASE poison heuristic is replaced by one rule, a `(`-followed generic span is trusted only when the type is `new`-rooted. The rest of the guard set is affirmed rather than simplified: the `record` contextual-keyword exception stays narrow, `_OBJECT_METHODS` stays a fixed list, and the long `continue` chain in analyze() plus the `change.varargs`/`_any_varargs_form` pair are cleared as intentional, with `_CallSite.start`, `new_prefixed` and all seven `_SigChange` fields confirmed read.",
+      "rationale_recorded": true,
+      "rationale": "The arity projection is semantically different from D1's presence projection \u2014 under D1's stripper `send(\"boom\")` counts as arity 0, both a missed defect and a false-flag vector when old_arity == 0 \u2014 so the fork is justified. The generic-span and comparison fixes collapse into one rule that subsumes the SCREAMING_CASE special case entirely. `record` is a restricted keyword, so the general \"keyword \u21d2 not type-ish\" rule misfires for canonical-constructor headers specifically and the exception is exactly as narrow as the language wart; java.lang.Object methods are inherited by every class including one with no explicit extends, which the span-based `_absorbable_spans` mechanism structurally cannot cover, so a fixed list is the only mechanism; and each `continue` maps to a documented FP-suppression rule in the evidence chain while the mocked tests decouple RM2-reported varargs from file text, making the two varargs checks genuine dual coverage.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the SCREAMING_CASE poison classification in _generic_span"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:acf7e1d0-09",
+        "a:acf7e1d0-08",
+        "a:acf7e1d0-sub-agent-a88268-04",
+        "a:acf7e1d0-sub-agent-a88268-05",
+        "b:acf7e1d0-sub-sub-agent-afc4ad-06"
+      ],
+      "evidence": [
+        {
+          "text": "fixes 1 and 3 collapse into one rule \u2014 a `(`-followed generic span is only trusted when the type is `new`-rooted",
+          "line": 423,
+          "file": "2026-07-16_acf7e1d0.txt"
+        },
+        {
+          "text": "each `continue` maps to a documented FP-suppression rule in the evidence chain \u2014 not unnecessary nesting.",
+          "line": 66,
+          "file": "2026-07-16_acf7e1d0_sub-agent-afc4ad.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py",
+        "6523ab0"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "proposed-structural-cleanups-for-lane-drift",
+      "title": "Proposed structural cleanups against silent drift in the lanes and the tune harness",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Four unratified structural recommendations: add runtime invariants to detector_tune_run.py (`assert set(FULL_SUITE) == set(LANES)`, each `strategies[lane].name == lane`, and `{n for n,_,_ in detect_validate.DETECTORS} <= set(LANES)`); or better, replace the separate `_SMOKES` dict with one registry co-locating each lane's strategy class and smoke fixture; collapse the lockstep `changes`/`sigs` dicts in analyze() into a single `Dict[str, Dict[str, List[_SigChange]]]`; and extract the D3 widened textual pass out of the Joern strategy's pre-pass into its own flag-gated strategy module with its own LANES/FULL_SUITE row.",
+      "rationale_recorded": true,
+      "rationale": "Nothing currently enforces agreement between the duplicated registries \u2014 the comment states the name invariant without checking it \u2014 so an eighth lane added to LANES but not FULL_SUITE would let GD3 record a PASS for an arm that never executed, and a missing `_SMOKES` entry yields an opaque KeyError after preflight has already spun up Docker. `sigs[label][change.name] = change` silently keeps only the last _SigChange for a name, and the two dicts stay consistent only because the len(pairs) != 1 guard skips multi-pair names, so a future per-name branch would consume a stale last-writer value with no error. The widened pass is a fully independent detector (pure text, own guards, own issue class, 400+ lines), and embedding it costs measurement attribution and couples a deterministic detector to Joern infra noise, which would make D3's zero-FP and recall numbers unrecoverable if Joern were flaky during S-D5 \u2014 though keeping one category-#6 lane and one-flag-per-name was a deliberate documented choice, so it is a judgment call, not a defect.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): landed \u2014 detector_tune_run.py now has the one-registry design ('One registry row per lane: (strategy class, smoke-fixture builder)', :63-72) plus the exact invariant 'assert set(FULL_SUITE) == set(LANES)' at :81, and ISSUES.md #31 records 'single sig_lists map replaces the changes/sigs pair, dead equal-arity disjunct removed, no-candidate early-out' for D2.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-a87c1f-04",
+        "a:acf7e1d0-sub-agent-a88268-07",
+        "a:acf7e1d0-sub-agent-a88268-06",
+        "a:82dd479f-sub-sub-agent-a87c1f-05"
+      ],
+      "evidence": [
+        {
+          "text": "the comment at L55-57 states the name invariant but nothing checks it",
+          "line": 37,
+          "file": "2026-07-16_82dd479f_sub-agent-a87c1f.txt"
+        },
+        {
+          "text": "A separate flag-gated strategy module (own LANES/FULL_SUITE row) is the concretely better altitude; the dedupe it would lose is bounded",
+          "line": 43,
+          "file": "2026-07-16_82dd479f_sub-agent-a87c1f.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/detector_tune_run.py",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py",
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "tune-harness-carve-outs",
+      "title": "The tune harness duplicates the lane registry and forces the experimental flag ON",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Two carve-outs for the tuning harness are confirmed: detector_tune_run.py duplicates the lane composition in LANES/FULL_SUITE rather than editing frozen detect_validate.py or extracting a shared registry outside it; and it sets `SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS=1` at detector_tune_run.py:37, before importing the lane, so both lanes' analyze() do real work during the smoke gate \u2014 an explicit exception to the flag-OFF short-circuit that governs driver behaviour.",
+      "rationale_recorded": true,
+      "rationale": "detect_validate.py is a frozen instrument that must not be edited, so duplication is preferred over touching it and the drift risk is closed inside the runner instead. Without the flag ON, analyze() short-circuits on its first line and returns clean, so the smoke gate could never fire; forcing it ON is why the D1 gate has always worked and why the D2 gate will too.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:82dd479f-sub-agent-a87c1f-05",
+        "b:acf7e1d0-sub-sub-agent-af9ecb-03"
+      ],
+      "evidence": [
+        {
+          "text": "sets `os.environ[\"SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS\"] = \"1\"` before lane import, so the smoke gate itself runs with the flag ON",
+          "line": 32,
+          "file": "2026-07-16_acf7e1d0_sub-agent-af9ecb.txt"
+        },
+        {
+          "text": "this is why the D1 gate has always worked and the D2 gate will too.",
+          "line": 32,
+          "file": "2026-07-16_acf7e1d0_sub-agent-af9ecb.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/detector_tune_run.py:37",
+        "merge-tool-comparison/tools/detect_validate.py",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py:190-191"
+      ],
+      "actors": "claude",
+      "actors_note": "One of the two sub-agent findings is unattributed in the record; both come from Claude-run reviews.",
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "lanes-remain-flag-gated-until-s-d8",
+      "title": "The new detector lanes ship flag-gated; default-enabling is deferred to Ali after S-D8",
+      "date_from": "2026-07-22",
+      "date_to": "2026-07-25",
+      "decision": "All new detector lanes remain behind SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS=1 at the close of ISSUES #31 and are reported that way in the thesis alongside the committed measured results (43.2% / 22.0% / \u221211.5%); whether to enable them by default is explicitly out of scope of the evaluation cycle and remains open as of 2026-07-25, to be decided by Ali once S-D8's latency and cost re-pricing lands.",
+      "rationale_recorded": true,
+      "rationale": "Default-enabling awaits S-D8's price: the detection latency and cost delta is the input to that decision, and both halves of it should be measured on the instruments that matter. Default-enabling is a decision, not a measurement, so it is not settled by closing the evaluation cycle.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the \u27e8pending\u27e9 placeholder for S-D5 held-out recall in the earlier abstract drafts"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-22",
+        "a:06ec13eb-14",
+        "a:dc3bc182-38"
+      ],
+      "evidence": [
+        {
+          "text": "The lanes stay behind `SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS=1` \u2014 default-enabling deliberately awaits S-D8's price.",
+          "line": 735,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "The only open flag is default-enabling, which is a decision, not a measurement \u2014 the thesis reports the lanes as flag-gated.",
+          "line": 624,
+          "file": "2026-07-18_dc3bc182.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detectors/FINDINGS.md",
+        "76ee2f0",
+        "67ccce7"
+      ],
+      "actors": "joint",
+      "actors_note": "Claude framed and reported the gating; the deferred default-enabling decision is explicitly reserved to Ali.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    }
+  ],
+  "not_promoted": [
+    {
+      "uid": "preA:pre-architecture-refmerge-20",
+      "reason": "A single row of the plan's category\u2192strategy table (Exception Handling \u2192 JoernControlFlowAnalysis) with no rationale, no artifact and no later trace; the category was subsequently recorded as folding into stale-caller-of-changed-signature."
+    },
+    {
+      "uid": "preA:pre-tool-evaluation-findings-14",
+      "reason": "Sequencing preference ('build further RM-clustered strategies only after Method Rename validates the pattern') with no reason recorded; the actual build order was set by the Stage-B and detector-cycle priority decisions carried elsewhere in this record."
+    },
+    {
+      "uid": "preA:pre-commits-18",
+      "reason": "Documentation commit restating decisions already carried by rm2-called-pairwise-per-branch (\u00a71.1 decomposition) and classifier-fails-closed-to-none (\u00a71.2 empty-output semantics)."
+    },
+    {
+      "uid": "preA:pre-rm2-vs-rm3-differences-09",
+      "reason": "Too minor to carry: a one-line 'not investigated further' note on an Extract And Move Method labelling difference; the pin it supports is carried by pin-refactoringminer-2-4-0."
+    },
+    {
+      "uid": "a:acf7e1d0-sub-sub-agent-ac303e-03",
+      "reason": "Review-scope declaration for one finder sub-agent (four changed/new files) with no design choice attached; the review protocol itself is carried by review-briefs-rank-false-positives-worst."
+    }
+  ],
+  "cross_theme": [
+    {
+      "slug": "rm2-called-pairwise-per-branch",
+      "other_theme": "evaluation",
+      "other_uid": "preA:pre-rm2-integration-04",
+      "relation": "superseded-by",
+      "note": "R1 as actually built tags file-level ours/theirs only, deferring the resolution axis and the Path-D dual-mode recall-delta finding; that narrowing decision sits in another slice and should be linked to this entry."
+    },
+    {
+      "slug": "select-path-d-dual-mode-tagging",
+      "other_theme": "tooling",
+      "other_uid": "preA:pre-commits-23",
+      "relation": "depends-on",
+      "note": "The Path D bracket was re-derived after the RefactoringMiner pin was rolled back from 3.0.13 to 2.4.0; the pin/Docker decisions are owned by another theme."
+    },
+    {
+      "slug": "empirical-cluster-equals-runtime-cluster",
+      "other_theme": "evaluation",
+      "other_uid": "a:dc624d63-02",
+      "relation": "depends-on",
+      "note": "The dispatch-faithful ours\u222atheirs axis and its accepted doubled RM2 cost are owned by the evaluation theme; this entry's equivalence claim rests on that axis choice."
+    },
+    {
+      "slug": "flag-on-widened-issues-ride-along",
+      "other_theme": "measurement",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The accepted cost changes harness accounting: Joern-broken files are reclassified UNANALYZABLE\u2192FLAG in the flag-ON arm, which touches the UNANALYZABLE target-0 line and the G0 abort threshold owned by the measurement theme."
+    },
+    {
+      "slug": "no-llm-detector-lane",
+      "other_theme": "llm-coding",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The circularity rationale depends on the held-out labels having been produced by closed LLM coding; that instrument is owned by another theme."
+    },
+    {
+      "slug": "file-local-reach-is-the-ceiling",
+      "other_theme": "taxonomy",
+      "other_uid": "b:6296f4f6-09",
+      "relation": "depends-on",
+      "note": "The census masses and the old\u2192new category mapping that define what the ceiling excludes are owned by the taxonomy theme."
+    },
+    {
+      "slug": "detector-cycle-scoped-to-three-lanes",
+      "other_theme": "taxonomy",
+      "other_uid": "a:cfe6365a-09",
+      "relation": "depends-on",
+      "note": "The cycle targets the two largest census categories, so the codebook/census decisions in the taxonomy theme are its input."
+    },
+    {
+      "slug": "lanes-remain-flag-gated-until-s-d8",
+      "other_theme": "cost-and-latency",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The deferred default-enabling decision is gated on S-D8's latency/cost re-pricing, which is owned by another theme."
+    },
+    {
+      "slug": "unresolved-reference-as-template-and-tiers",
+      "other_theme": "architecture",
+      "other_uid": "a:bfc672b4-25",
+      "relation": "depends-on",
+      "note": "The tier reorganisation is paired in the same close-out with the shared-CPG refactor and the 'differential 3-way analysis' framing, both owned elsewhere."
+    },
+    {
+      "slug": "reject-heavier-analysis-routes",
+      "other_theme": "tooling",
+      "other_uid": "preA:pre-comparator-3b-ast-normalize-11",
+      "relation": "duplicates",
+      "note": "The Tier-C parser rejections (javalang, JavaParser-via-subprocess, Spoon, gjf internals) rest on the same JVM-cost and maintenance arguments as this lane's rejections; S10z should decide whether they are one decision or two."
+    },
+    {
+      "slug": "proposed-structural-cleanups-for-lane-drift",
+      "other_theme": null,
+      "other_uid": "a:82dd479f-sub-sub-agent-aca92e-03",
+      "relation": "duplicates",
+      "note": "The aca92e reuse proposals (call _ssc._call_sites, share the lambda-declared-name grammar, factor the three per-kind loops, extract _is_method_decl) cover the same duplication-drift risk from another slice."
+    }
+  ],
+  "notes": "Density: 169 of 174 primary uids landed in 51 entries (~3.3 sources/entry) with 5 in not_promoted \u2014 above the corpus calibration of 5\u20139 sources per entry, and deliberately so. Three reasons. (1) Status heterogeneity: 12 entries are status=proposed and cannot be merged into the adopted entries they neighbour without asserting ratification nobody recorded \u2014 the S-D4/S-D2 review sub-agents alone generated ~20 separately-statused findings on the same two lanes. (2) Era heterogeneity: this theme spans plan-era design (pre-*), the Stage-B pilot, the #29 fix cycle and the July detector cycle, with several positions reversed between eras (RM-ASTDiff\u2192RM2, the type-resolution lane, the 66.7% recall figure); the instructions require the arcs to stay visible, so each reversal costs two entries. (3) The theme covers roughly ten distinct detector lanes whose guards constrain different things. Judgment calls S10z may want to revisit: (a) pre-spork-driver-integration-10 (extension-based language detection) was folded into d1-import-prune-usage-textual-lane because the transcript-era .java gate is the same rule applied \u2014 it could equally be a routing-theme decision; (b) the a3fb5c/a9ce95 sub-agent findings were kept as one proposed entry rather than merged into widen-unresolved-reference-behind-a-flag, even though that adopted entry's root-cause fix names the same FP shapes, because I could not verify from the record which module-header claims were rewritten; (c) file-level-recall-remeasured-at-n-50 revises the evidence for select-path-d-dual-mode-tagging without superseding it \u2014 the decision was explicitly left unchanged \u2014 so they are linked in prose, not by superseded_by. Two entries rest wholly on single-pass sources (legacy-joern-detectors-are-heuristics, tune-harness-carve-outs) and are flagged for S11 sampling.",
+  "theme": "detection",
+  "slice_primary_total": 174
+}

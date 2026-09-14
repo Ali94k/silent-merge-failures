@@ -1,0 +1,1167 @@
+UNIT movsim_movsim__6dae25caf7
+repo: movsim_movsim   merge: 6dae25caf7e3ac3561607f9d73cb8b9d47797285   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: core/src/main/java/org/movsim/SimulationScan.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -35,64 +35,60 @@
+ import org.movsim.simulator.Simulator;
+ import org.movsim.xml.MovsimInputLoader;
+ import org.xml.sax.SAXException;
+ 
+ public final class SimulationScan {
+ 
+     public static void invokeSimulationScan() throws JAXBException, SAXException {
+ 
+-	Movsim inputData = MovsimInputLoader.getInputData(ProjectMetaData.getInstance().getInputFile());
++        Movsim inputData = MovsimInputLoader.getInputData(ProjectMetaData.getInstance().getInputFile());
+ 
+         // TODO quick hack
+-        double uncertaintyMin = 0;
+-        double uncertaintyMax = 2;
+-        double uncertaintyStep = 0.2;
++        int uncertaintyMin = 0;
++        int uncertaintyMax = 20;
++        int uncertaintyStep = 2;
+ 
+-        double fractionMin = 0.0;
+-        double fractionMax = 1.0;
+-        double fractionStep = 0.1;
++        int fractionMin = 0;
++        int fractionMax = 100;
++        int fractionStep = 10;
+ 
+         StringBuilder sb = new StringBuilder();
+ 
+-        for (int i = 0; i < 10; i++) {
+-            Simulator simRun = MovsimCoreMain.invokeSingleSimulation(inputData);
+-            sb.append(i).append(" ").append(simRun.getRoadNetwork().totalVehicleTravelTime()).append("\n");
++        // for (int i = 0; i < 10; i++) {
++        // Simulator simRun = MovsimCoreMain.invokeSingleSimulation(inputData);
++        // sb.append(i).append(" ").append(simRun.getRoadNetwork().totalVehicleTravelTime()).append("\n");
++        // }
++
++        for (int fraction = fractionMin; fraction <= fractionMax; fraction = fraction + fractionStep) {
++            for (int uncertainty = uncertaintyMin; uncertainty <= uncertaintyMax; uncertainty = uncertainty
++                    + uncertaintyStep) {
++                inputData.getScenario().getSimulation().getTrafficComposition().getVehicleType().get(0)
++                        .setFraction(fraction/100.0);
++
++                inputData.getScenario().getSimulation().getTrafficComposition().getVehicleType().get(1)
++                        .setFraction((1 - fraction/100.0));
++                inputData.getVehiclePrototypes().getVehiclePrototypeConfiguration().get(0)
++                        .getPersonalNavigationDevice().setUncertainty(uncertainty*6);
++
++                Simulator simRun = MovsimCoreMain.invokeSingleSimulation(inputData);
++
++                sb.append(fraction/100.0).append(" ").append(uncertainty/10.0).append(" ")
++                        .append(simRun.getRoadNetwork().totalVehicleTravelTime()).append("\n");
++            }
+         }
+-
+-        // for (double fraction = fractionMin; fraction <= fractionMax; fraction = fraction + fractionStep) {
+-        // for (double uncertainty = uncertaintyMin; uncertainty <= uncertaintyMax; uncertainty = uncertainty
+-        // + uncertaintyStep) {
+-        // inputData.getScenario().getSimulation().getTrafficComposition().getVehicleType().get(0)
+-        // .setFraction(fraction);
+-        //
+-        // Preconditions.checkArgument(Math.abs(inputData.getScenario().getSimulation().getTrafficComposition().getVehicleType().get(0).getFraction()
+-        // -fraction)<0.0001);
+-        //
+-        //
+-        //
+-        // inputData.getScenario().getSimulation().getTrafficComposition().getVehicleType().get(1)
+-        // .setFraction((1 - fraction));
+-        // inputData.getVehiclePrototypes().getVehiclePrototypeConfiguration().get(0).getDecisionPoints()
+-        // .setUncertainty(uncertainty);
+-        //
+-        // Simulator simRun = MovsimCoreMain.invokeSingleSimulation(inputData);
+-        //
+-        // sb.append(fraction).append(" ").append(uncertainty).append(" ").append(simRun.getRoadNetwork().totalVehicleTravelTime()).append("\n");
+-        // }
+-        // }
+ 
+         writeFile(sb.toString(), "totalVehicleTravelTime.dat");
+ 
+         // inputData.getScenario().getSimulation().getTrafficComposition().getVehicleType().get(0).setFraction(0.0);
+         // Simulator simRun = MovsimCoreMain.invokeSingleSimulation(inputData);
+         // System.out.println("result = " + simRun.getRoadNetwork().totalVehicleTravelTime());
+     }
+ 
+-    private static void writeFile(String text, String outputFile) {
++    public static void writeFile(String text, String outputFile) {
+ 
+         FileWriter outFile;
+         try {
+             outFile = new FileWriter(outputFile);
+             PrintWriter out = new PrintWriter(outFile);
+             out.println(text);
+             out.close();
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -26,28 +26,28 @@
+ package org.movsim;
+ 
+ import java.io.FileWriter;
+ import java.io.PrintWriter;
+ 
+ import javax.xml.bind.JAXBException;
+ 
+ import org.movsim.autogen.Movsim;
+-import org.movsim.input.ProjectMetaData;
+ import org.movsim.simulator.Simulator;
+-import org.movsim.xml.MovsimInputLoader;
+ import org.xml.sax.SAXException;
+ 
+ public final class SimulationScan {
+ 
+-    public static void invokeSimulationScan() throws JAXBException, SAXException {
++    private SimulationScan() {
++        throw new IllegalStateException("do not instanciate");
++    }
+ 
+-	Movsim inputData = MovsimInputLoader.getInputData(ProjectMetaData.getInstance().getInputFile());
++    public static void invokeSimulationScan(final Movsim inputData) throws JAXBException, SAXException {
+ 
+-        // TODO quick hack
++        // TODO quick hack here
+         double uncertaintyMin = 0;
+         double uncertaintyMax = 2;
+         double uncertaintyStep = 0.2;
+ 
+         double fractionMin = 0.0;
+         double fractionMax = 1.0;
+         double fractionStep = 0.1;
+ 
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (C) 2010, 2011, 2012 by Arne Kesting, Martin Treiber, Ralph Germ, Martin Budden
+ * <movsim.org@gmail.com>
+ * -----------------------------------------------------------------------------------------
+ * 
+ * This file is part of
+ * 
+ * MovSim - the multi-model open-source vehicular-traffic simulator.
+ * 
+ * MovSim is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * MovSim is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with MovSim. If not, see <http://www.gnu.org/licenses/>
+ * or <http://www.movsim.org>.
+ * 
+ * -----------------------------------------------------------------------------------------
+ */
+package org.movsim;
+
+import java.io.FileWriter;
+import java.io.PrintWriter;
+
+import javax.xml.bind.JAXBException;
+
+import org.movsim.autogen.Movsim;
+import org.movsim.simulator.Simulator;
+import org.xml.sax.SAXException;
+
+public final class SimulationScan {
+
+    public static void invokeSimulationScan() throws JAXBException, SAXException {
+
+        Movsim inputData = MovsimInputLoader.getInputData(ProjectMetaData.getInstance().getInputFile());
+
+        // TODO quick hack
+        int uncertaintyMin = 0;
+        int uncertaintyMax = 20;
+        int uncertaintyStep = 2;
+
+        int fractionMin = 0;
+        int fractionMax = 100;
+        int fractionStep = 10;
+
+        StringBuilder sb = new StringBuilder();
+
+        // for (int i = 0; i < 10; i++) {
+        // Simulator simRun = MovsimCoreMain.invokeSingleSimulation(inputData);
+        // sb.append(i).append(" ").append(simRun.getRoadNetwork().totalVehicleTravelTime()).append("\n");
+        // }
+
+        for (int fraction = fractionMin; fraction <= fractionMax; fraction = fraction + fractionStep) {
+            for (int uncertainty = uncertaintyMin; uncertainty <= uncertaintyMax; uncertainty = uncertainty
+                    + uncertaintyStep) {
+                inputData.getScenario().getSimulation().getTrafficComposition().getVehicleType().get(0)
+                        .setFraction(fraction/100.0);
+
+                inputData.getScenario().getSimulation().getTrafficComposition().getVehicleType().get(1)
+                        .setFraction((1 - fraction/100.0));
+                inputData.getVehiclePrototypes().getVehiclePrototypeConfiguration().get(0)
+                        .getPersonalNavigationDevice().setUncertainty(uncertainty*6);
+
+                Simulator simRun = MovsimCoreMain.invokeSingleSimulation(inputData);
+
+                sb.append(fraction/100.0).append(" ").append(uncertainty/10.0).append(" ")
+                        .append(simRun.getRoadNetwork().totalVehicleTravelTime()).append("\n");
+            }
+        }
+
+        writeFile(sb.toString(), "totalVehicleTravelTime.dat");
+
+        // inputData.getScenario().getSimulation().getTrafficComposition().getVehicleType().get(0).setFraction(0.0);
+        // Simulator simRun = MovsimCoreMain.invokeSingleSimulation(inputData);
+        // System.out.println("result = " + simRun.getRoadNetwork().totalVehicleTravelTime());
+    }
+
+    private SimulationScan() {
+        throw new IllegalStateException("do not instanciate");
+    }
+
+    public static void writeFile(String text, String outputFile) {
+
+        FileWriter outFile;
+        try {
+            outFile = new FileWriter(outputFile);
+            PrintWriter out = new PrintWriter(outFile);
+            out.println(text);
+            out.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -31,21 +31,24 @@
+ import javax.xml.bind.JAXBException;
+ 
+ import org.movsim.autogen.Movsim;
+ import org.movsim.simulator.Simulator;
+ import org.xml.sax.SAXException;
+ 
+ public final class SimulationScan {
+ 
+-    public static void invokeSimulationScan() throws JAXBException, SAXException {
++    private SimulationScan() {
++        throw new IllegalStateException("do not instanciate");
++    }
+ 
+-        Movsim inputData = MovsimInputLoader.getInputData(ProjectMetaData.getInstance().getInputFile());
+ 
+-        // TODO quick hack
++    public static void invokeSimulationScan(final Movsim inputData) throws JAXBException, SAXException {
++
++        // TODO quick hack here
+         int uncertaintyMin = 0;
+         int uncertaintyMax = 20;
+         int uncertaintyStep = 2;
+ 
+         int fractionMin = 0;
+         int fractionMax = 100;
+         int fractionStep = 10;
+ 
+@@ -76,20 +79,16 @@
+ 
+         writeFile(sb.toString(), "totalVehicleTravelTime.dat");
+ 
+         // inputData.getScenario().getSimulation().getTrafficComposition().getVehicleType().get(0).setFraction(0.0);
+         // Simulator simRun = MovsimCoreMain.invokeSingleSimulation(inputData);
+         // System.out.println("result = " + simRun.getRoadNetwork().totalVehicleTravelTime());
+     }
+ 
+-    private SimulationScan() {
+-        throw new IllegalStateException("do not instanciate");
+-    }
+-
+     public static void writeFile(String text, String outputFile) {
+ 
+         FileWriter outFile;
+         try {
+             outFile = new FileWriter(outputFile);
+             PrintWriter out = new PrintWriter(outFile);
+             out.println(text);
+             out.close();
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: core/src/main/java/org/movsim/simulator/roadnetwork/RoadSegment.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -24,35 +24,39 @@
+  * -----------------------------------------------------------------------------------------
+  */
+ 
+ package org.movsim.simulator.roadnetwork;
+ 
+ import java.util.ArrayList;
+ import java.util.HashSet;
+ import java.util.Iterator;
++import java.util.List;
+ import java.util.Set;
+ 
+ import javax.annotation.CheckForNull;
+ 
+ import org.jgrapht.graph.DefaultWeightedEdge;
++import org.movsim.SimulationScan;
+ import org.movsim.roadmappings.RoadMapping;
+ import org.movsim.simulator.MovsimConstants;
+ import org.movsim.simulator.roadnetwork.boundaries.AbstractTrafficSource;
+ import org.movsim.simulator.roadnetwork.boundaries.SimpleRamp;
+ import org.movsim.simulator.roadnetwork.boundaries.TrafficSink;
+ import org.movsim.simulator.roadnetwork.controller.GradientProfile;
+ import org.movsim.simulator.roadnetwork.controller.RoadObject;
+ import org.movsim.simulator.roadnetwork.controller.RoadObject.RoadObjectType;
+ import org.movsim.simulator.roadnetwork.controller.RoadObjects;
+ import org.movsim.simulator.roadnetwork.controller.SpeedLimit;
+ import org.movsim.simulator.roadnetwork.controller.TrafficLight;
+ import org.movsim.simulator.roadnetwork.controller.VariableMessageSignDiversion;
+ import org.movsim.simulator.roadnetwork.predicates.VehicleWithinRange;
+ import org.movsim.simulator.vehicles.Vehicle;
++import org.movsim.utilities.ExponentialMovingAverage;
++import org.movsim.utilities.XYDataPoint;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ import com.google.common.base.Preconditions;
+ import com.google.common.base.Predicate;
+ import com.google.common.collect.ImmutableList;
+ import com.google.common.collect.Iterators;
+ 
+@@ -644,17 +648,83 @@
+      * and current mean speed of all vehicles. An adhoc free speed is assumed in
+      * case of an empty road. An adhoc minimum speed is assumed in case of a
+      * standstill to avoid a diverging traveltime.
+      * 
+      * @return instantantaneous travel time with assumed travel time if road is
+      *         empty and with assumed maximum travel time in standstill
+      */
+     public double instantaneousTravelTime() {
++        //return calcInstantaneousTravelTime();
+         return roadLength / Math.max(meanSpeed(), MovsimConstants.MIN_POSITIVE_SPEED);
++    }
++
++    int i = 0;
++
++    public double calcInstantaneousTravelTime() {
++
++        List<XYDataPoint> dataPoints = new ArrayList<>();
++
++        int step = 10;
++        double minPos = roadLength;
++        double deltaMin = 0;
++        double maxPos = 0;
++        double deltaMax = 0;
++        double a = 1.5;
++
++        for (final LaneSegment laneSegment : laneSegments) {
++            for (Vehicle veh : laneSegment) {
++                if (veh.type() == Vehicle.Type.OBSTACLE) {
++                    continue;
++                }
++                double position = roadLength - veh.getDistanceToRoadSegmentEnd();
++                double speed = veh.getSpeed();
++                dataPoints.add(new XYDataPoint(position, speed));
++
++                if (minPos > position) {
++                    minPos = position;
++                    deltaMin = Math.abs((Math.pow(getSpeedLimit(position - step), 2) - Math.pow(speed, 2))
++                            / (2 * a));
++                }
++                if (maxPos < position) {
++                    maxPos = position;
++                    deltaMax = Math.abs((Math.pow(getSpeedLimit(position + step), 2) - Math.pow(speed, 2))
++                            / (2 * a));
++                }
++            }
++        }
++
++        for (int x = 0; x < minPos - deltaMin; x = x + step) {
++            dataPoints.add(new XYDataPoint(x, getSpeedLimit(x)));
++        }
++        for (int x = (int) (maxPos + deltaMax); x < roadLength; x = x + step) {
++            dataPoints.add(new XYDataPoint(x, getSpeedLimit(x)));
++        }
++
++        double time = 0;
++        double v = 35;
++        for (double x = 0; x < roadLength; x = x + step) {
++            double vNew = ExponentialMovingAverage.calcEMA(x, dataPoints, 20);
++            time += step / ((v + vNew) / 2);
++            v = vNew;
++        }
++
++        return time;
++    }
++
++    public double getSpeedLimit(double position) {
++
++        double speedLimit = 35;
++        for (SpeedLimit sl : speedLimits()) {
++            if (position < sl.position()) {
++                return speedLimit;
++            }
++            speedLimit = sl.getSpeedLimitKmh() / 3.6;
++        }
++        return speedLimit;
+     }
+ 
+     /**
+      * Returns the number of obstacles on this road segment.
+      * 
+      * @return the number of obstacles on this road segment
+      */
+     protected int obstacleCount() {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -30,17 +30,16 @@
+ import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.Set;
+ 
+ import javax.annotation.CheckForNull;
+ 
+ import org.jgrapht.graph.DefaultWeightedEdge;
+ import org.movsim.roadmappings.RoadMapping;
+-import org.movsim.simulator.MovsimConstants;
+ import org.movsim.simulator.roadnetwork.boundaries.AbstractTrafficSource;
+ import org.movsim.simulator.roadnetwork.boundaries.SimpleRamp;
+ import org.movsim.simulator.roadnetwork.boundaries.TrafficSink;
+ import org.movsim.simulator.roadnetwork.controller.GradientProfile;
+ import org.movsim.simulator.roadnetwork.controller.RoadObject;
+ import org.movsim.simulator.roadnetwork.controller.RoadObject.RoadObjectType;
+ import org.movsim.simulator.roadnetwork.controller.RoadObjects;
+ import org.movsim.simulator.roadnetwork.controller.SpeedLimit;
+@@ -134,18 +133,18 @@
+     private Node destination = new NodeImpl("destination");
+ 
+     /** simple ramp (source) with dropping mechanism */
+     private SimpleRamp simpleRamp;
+ 
+     /** dynamic ff speed, considering speed limits. */
+     private double meanFreeFlowSpeed = -1;
+ 
+-    /** static ff speed assigned in xodr. */
+-    private double freeFlowSpeed = -1;
++    /** static freeflow speed as maximum speed that is allowed. */
++    private double freeFlowSpeed = RoadTypeSpeeds.INSTANCE.getDefaultFreeFlowSpeed();
+ 
+     public static class TestCar {
+         public double s = 0.0; // distance
+         public double vdiff = 0.0; // approaching rate
+         public double vel = 0.0; // velocity
+         public double acc = 0.0; // acceleration
+     }
+ 
+@@ -616,22 +615,23 @@
+                 }
+                 sumSpeed += veh.getSpeed();
+                 ++vehCount;
+             }
+         }
+         return (vehCount > 0) ? sumSpeed / vehCount : getMeanFreeflowSpeed();
+     }
+ 
++    // TODO to be defined properly
+     private double getMeanFreeflowSpeed() {
+         if (meanFreeFlowSpeed < 0) {
+             double sum = 0;
+             double currentPosition = 0;
+             double speedLimitPosition = 0;
+-            double currentSpeedLimit = MovsimConstants.FREE_SPEED;
++            double currentSpeedLimit = freeFlowSpeed;
+             for (SpeedLimit speedLimit : speedLimits()) {
+                 speedLimitPosition = speedLimit.position();
+                 sum += currentSpeedLimit * (speedLimitPosition - currentPosition);
+                 currentSpeedLimit = speedLimit.getSpeedLimitKmh() / 3.6;
+                 currentPosition = speedLimitPosition;
+             }
+             sum += currentSpeedLimit * (roadLength - speedLimitPosition);
+             meanFreeFlowSpeed = sum / roadLength;
+@@ -644,17 +644,17 @@
+      * and current mean speed of all vehicles. An adhoc free speed is assumed in
+      * case of an empty road. An adhoc minimum speed is assumed in case of a
+      * standstill to avoid a diverging traveltime.
+      * 
+      * @return instantantaneous travel time with assumed travel time if road is
+      *         empty and with assumed maximum travel time in standstill
+      */
+     public double instantaneousTravelTime() {
+-        return roadLength / Math.max(meanSpeed(), MovsimConstants.MIN_POSITIVE_SPEED);
++        return roadLength / meanSpeed();
+     }
+ 
+     /**
+      * Returns the number of obstacles on this road segment.
+      * 
+      * @return the number of obstacles on this road segment
+      */
+     protected int obstacleCount() {
+@@ -1312,9 +1312,17 @@
+     }
+ 
+     public void setPeerRoadSegment(RoadSegment peerRoadSegment) {
+         Preconditions.checkNotNull(peerRoadSegment);
+         Preconditions.checkArgument(!peerRoadSegment.equals(this));
+         this.peerRoadSegment = peerRoadSegment;
+     }
+ 
++    double getFreeFlowSpeed() {
++        return freeFlowSpeed;
++    }
++
++    void setFreeFlowSpeed(double freeFlowSpeed) {
++        this.freeFlowSpeed = freeFlowSpeed;
++    }
++
+ }
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+/*
+ * Copyright (C) 2010, 2011, 2012 by Arne Kesting, Martin Treiber, Ralph Germ, Martin Budden
+ * <movsim.org@gmail.com>
+ * -----------------------------------------------------------------------------------------
+ * 
+ * This file is part of
+ * 
+ * MovSim - the multi-model open-source vehicular-traffic simulator.
+ * 
+ * MovSim is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * MovSim is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with MovSim. If not, see <http://www.gnu.org/licenses/>
+ * or <http://www.movsim.org>.
+ * 
+ * -----------------------------------------------------------------------------------------
+ */
+
+package org.movsim.simulator.roadnetwork;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
+import javax.annotation.CheckForNull;
+
+import org.jgrapht.graph.DefaultWeightedEdge;
+import org.movsim.SimulationScan;
+import org.movsim.roadmappings.RoadMapping;
+import org.movsim.simulator.roadnetwork.boundaries.AbstractTrafficSource;
+import org.movsim.simulator.roadnetwork.boundaries.SimpleRamp;
+import org.movsim.simulator.roadnetwork.boundaries.TrafficSink;
+import org.movsim.simulator.roadnetwork.controller.GradientProfile;
+import org.movsim.simulator.roadnetwork.controller.RoadObject;
+import org.movsim.simulator.roadnetwork.controller.RoadObject.RoadObjectType;
+import org.movsim.simulator.roadnetwork.controller.RoadObjects;
+import org.movsim.simulator.roadnetwork.controller.SpeedLimit;
+import org.movsim.simulator.roadnetwork.controller.TrafficLight;
+import org.movsim.simulator.roadnetwork.controller.VariableMessageSignDiversion;
+import org.movsim.simulator.roadnetwork.predicates.VehicleWithinRange;
+import org.movsim.simulator.vehicles.Vehicle;
+import org.movsim.utilities.ExponentialMovingAverage;
+import org.movsim.utilities.XYDataPoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterators;
+
+/**
+ * <p>
+ * A RoadSegment is a unidirectional stretch of road that contains a number of lane segments. A bidirectional stretch of road may be created
+ * by combining two road segments running in opposite directions.
+ * </p>
+ * <p>
+ * RoadSegments may be combined to form a road network.
+ * </p>
+ * <p>
+ * A RoadSegment is normally connected to two other road segments: a source road from which vehicles enter the road segment and a sink road
+ * to which vehicles exit. RoadSegments at the edge of the network will normally be connected to only one other road segment: traffic inflow
+ * and outflow will be controlled directly by source and sink objects.
+ * </p>
+ * <p>
+ * RoadSegments are connected to each other on a lane-wise basis: each sink (outgoing) lane of a road segment may be connected to a source
+ * (incoming) lane of another road segment. This allows the forking and merging of road segments, the creation of on-ramps and off-ramps. By
+ * connecting the lanes of a number of road segments in this way, complex junctions and interchanges may be created.
+ * </p>
+ * <p>
+ * A RoadSegment is a logical entity, not a physical one. That is a RoadSegment does not know if it is straight or winding, it just knows
+ * about the vehicles it contains and what it is connected to. A vehicle's coordinates on a RoadsSegment are given by the vehicle's position
+ * relative to the start of the RoadSegment and the vehicle's lane.
+ * </p>
+ * <p>
+ * A RoadSegment has <code>laneCount</code> lanes. Lanes within a RoadSegment are represented by the LaneSegment class.
+ * </p>
+ * <p>
+ * The mapping from a position on a RoadSegment to coordinates in physical space is determined by a RoadSegment's RoadMapping. Although the
+ * RoadMapping is primarily used by software that draws the road network and the vehicles upon it, elements of the RoadMapping may influence
+ * vehicle behavior, in particular a road's curvature and its gradient.
+ * </p>
+ */
+        // ... 1 lines elided ...
+public class RoadSegment extends DefaultWeightedEdge implements Iterable<Vehicle> {
+        // ... 9 lines elided ...
+    private RoadSegmentDirection directionType = RoadSegmentDirection.FORWARD;
+
+    /** the nodeId is an internally used unique identifier for the road. */
+    private final int id;
+    /** the userId is the nodeId specified in the .xodr and .xml files. */
+    private String userId;
+    /** road name specified in the openDrive .xodr network file. */
+    private String roadName;
+
+    private final double roadLength;
+    private final int laneCount;
+    private final LaneSegment laneSegments[];
+
+    // TODO extend Node idea to keep information of connecting roadSegments
+    private int sizeSourceRoadSegments = -1;
+    private int sizeSinkRoadSegments = -1;
+
+    private final RoadObjects roadObjects;
+    private final SignalPoints signalPoints = new SignalPoints();
+
+    /** will be initialized lazily */
+    private final LaneSegment overtakingSegment;
+    private boolean overtakingSegmentInitialized = false;
+
+    // Sources and Sinks
+    private AbstractTrafficSource trafficSource;
+    private TrafficSink sink;
+    private RoadMapping roadMapping;
+
+    private RoadSegment peerRoadSegment;
+
+    private Node origin = new NodeImpl("origin");
+    private Node destination = new NodeImpl("destination");
+
+    /** simple ramp (source) with dropping mechanism */
+    private SimpleRamp simpleRamp;
+
+    /** dynamic ff speed, considering speed limits. */
+    private double meanFreeFlowSpeed = -1;
+
+    /** static freeflow speed as maximum speed that is allowed. */
+    private double freeFlowSpeed = RoadTypeSpeeds.INSTANCE.getDefaultFreeFlowSpeed();
+
+    public static class TestCar {
+        public double s = 0.0; // distance
+        public double vdiff = 0.0; // approaching rate
+        public double vel = 0.0; // velocity
+        public double acc = 0.0; // acceleration
+    }
+
+    /**
+     * Resets the next nodeId.
+     */
+    public static void resetNextId() {
+        nextId = INITIAL_ID;
+    }
+
+    /**
+     * Returns the number of road segments that have been created. Used for instrumentation.
+     * 
+     * @return the number of road segment that have been created
+     */
+    public static int count() {
+        return nextId - INITIAL_ID;
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param roadLength
+     *            road length, in meters.
+     * @param laneCount
+     *            number of lanes in this road segment
+     */
+    public RoadSegment(double roadLength, int laneCount) {
+        assert roadLength > 0.0;
+        assert laneCount >= 1 : "laneCount=" + laneCount;
+        laneSegments = new LaneSegment[laneCount];
+        for (int index = 0; index < laneCount; ++index) {
+            laneSegments[index] = new LaneSegment(this, index + 1);
+        }
+        id = nextId++;
+        // ... 29 lines elided ...
+    public final void addDefaultSink() {
+        // ... 11 lines elided ...
+    public final int id() {
+        // ... 9 lines elided ...
+    public final void setUserId(String userId) {
+        // ... 8 lines elided ...
+    public final String userId() {
+        // ... 3 lines elided ...
+    public final RoadSegmentDirection directionType() {
+        // ... 8 lines elided ...
+    public final RoadMapping roadMapping() {
+        // ... 9 lines elided ...
+    public final void setRoadMapping(RoadMapping roadMapping) {
+        // ... 8 lines elided ...
+    public final AbstractTrafficSource trafficSource() {
+        // ... 9 lines elided ...
+    public final void setTrafficSource(AbstractTrafficSource trafficSource) {
+        // ... 10 lines elided ...
+    public final TrafficSink sink() {
+        // ... 3 lines elided ...
+    public final boolean hasSink() {
+        // ... 18 lines elided ...
+    public final double roadLength() {
+        // ... 8 lines elided ...
+    public final int laneCount() {
+        // ... 9 lines elided ...
+    public void setLaneType(int lane, Lanes.Type laneType) {
+        // ... 14 lines elided ...
+    public Lanes.Type laneType(int lane) {
+        // ... 8 lines elided ...
+    public int trafficLaneMin() {
+        // ... 12 lines elided ...
+    public int trafficLaneMax() {
+        // ... 7 lines elided ...
+    public final LaneSegment laneSegment(int lane) {
+        // ... 4 lines elided ...
+    final void setSourceLaneSegmentForLane(LaneSegment sourceLaneSegment, int lane) {
+        // ... 5 lines elided ...
+    public final LaneSegment sourceLaneSegment(int lane) {
+        // ... 5 lines elided ...
+    public final RoadSegment sourceRoadSegment(int lane) {
+        // ... 7 lines elided ...
+    public final int sourceLane(int lane) {
+        // ... 7 lines elided ...
+    final void setSinkLaneSegmentForLane(LaneSegment sinkLaneSegment, int lane) {
+        // ... 5 lines elided ...
+    final LaneSegment sinkLaneSegment(int lane) {
+        // ... 4 lines elided ...
+    public final RoadSegment sinkRoadSegment(int lane) {
+        // ... 9 lines elided ...
+    public RoadSegment sinkRoadSegmentPerId(int exitRoadSegmentId) {
+        // ... 11 lines elided ...
+    final int sinkLane(int lane) {
+        // ... 7 lines elided ...
+    public final boolean hasUpstreamConnection() {
+        // ... 3 lines elided ...
+    public final boolean hasDownstreamConnection() {
+        // ... 3 lines elided ...
+    public final int getSizeSinkRoadSegments() {
+        // ... 13 lines elided ...
+    public final int getSizeSourceRoadSegments() {
+        // ... 13 lines elided ...
+    public boolean exitsOnto(int exitRoadSegmentId) {
+        // ... 15 lines elided ...
+    public void clearVehicles() {
+        // ... 10 lines elided ...
+    public int getVehicleCount() {
+        // ... 7 lines elided ...
+    public int getStoppedVehicleCount() {
+        // ... 12 lines elided ...
+    public int getObstacleCount() {
+        // ... 14 lines elided ...
+    public int getVehicleCount(int lane) {
+        // ... 9 lines elided ...
+    protected double totalVehicleTravelTime() {
+        // ... 12 lines elided ...
+    protected double totalVehicleTravelDistance() {
+        // ... 3 lines elided ...
+        }
+        return totalVehicleTravelDistance;
+    }
+
+    /**
+     * Returns the total fuel used by all vehicles on this road segment, all lanes.
+     * 
+     * @return the total vehicle fuel used
+     */
+    protected double totalVehicleFuelUsedLiters() {
+        double totalVehicleFuelUsedLiters = 0;
+        for (final LaneSegment laneSegment : laneSegments) {
+            totalVehicleFuelUsedLiters += laneSegment.totalVehicleFuelUsedLiters();
+        }
+        return totalVehicleFuelUsedLiters;
+    }
+
+    protected double instantaneousConsumptionLitersPerSecond() {
+        double vehicleFuelUsedLiters = 0;
+        for (final LaneSegment laneSegment : laneSegments) {
+            vehicleFuelUsedLiters += laneSegment.instantaneousFuelUsedLitersPerS();
+        }
+        return vehicleFuelUsedLiters;
+    }
+
+    public double meanSpeed() {
+        double sumSpeed = 0;
+        int vehCount = 0;
+        for (final LaneSegment laneSegment : laneSegments) {
+            for (Vehicle veh : laneSegment) {
+                if (veh.type() == Vehicle.Type.OBSTACLE) {
+                    continue;
+                }
+                sumSpeed += veh.getSpeed();
+                ++vehCount;
+            }
+        }
+        return (vehCount > 0) ? sumSpeed / vehCount : getMeanFreeflowSpeed();
+    }
+
+    // TODO to be defined properly
+    private double getMeanFreeflowSpeed() {
+        if (meanFreeFlowSpeed < 0) {
+            double sum = 0;
+            double currentPosition = 0;
+            double speedLimitPosition = 0;
+            double currentSpeedLimit = freeFlowSpeed;
+            for (SpeedLimit speedLimit : speedLimits()) {
+                speedLimitPosition = speedLimit.position();
+                sum += currentSpeedLimit * (speedLimitPosition - currentPosition);
+                currentSpeedLimit = speedLimit.getSpeedLimitKmh() / 3.6;
+                currentPosition = speedLimitPosition;
+            }
+            sum += currentSpeedLimit * (roadLength - speedLimitPosition);
+            meanFreeFlowSpeed = sum / roadLength;
+        }
+        return meanFreeFlowSpeed;
+    }
+
+    /**
+     * Returns the instantaneous travel time defined by the road element length
+     * and current mean speed of all vehicles. An adhoc free speed is assumed in
+     * case of an empty road. An adhoc minimum speed is assumed in case of a
+     * standstill to avoid a diverging traveltime.
+     * 
+     * @return instantantaneous travel time with assumed travel time if road is
+     *         empty and with assumed maximum travel time in standstill
+     */
+    public double instantaneousTravelTime() {
+        //return calcInstantaneousTravelTime();
+        return roadLength / meanSpeed();
+    }
+
+    int i = 0;
+
+    public double calcInstantaneousTravelTime() {
+
+        List<XYDataPoint> dataPoints = new ArrayList<>();
+
+        int step = 10;
+        double minPos = roadLength;
+        double deltaMin = 0;
+        double maxPos = 0;
+        double deltaMax = 0;
+        double a = 1.5;
+
+        for (final LaneSegment laneSegment : laneSegments) {
+            for (Vehicle veh : laneSegment) {
+                if (veh.type() == Vehicle.Type.OBSTACLE) {
+                    continue;
+                }
+                double position = roadLength - veh.getDistanceToRoadSegmentEnd();
+                double speed = veh.getSpeed();
+                dataPoints.add(new XYDataPoint(position, speed));
+
+                if (minPos > position) {
+                    minPos = position;
+                    deltaMin = Math.abs((Math.pow(getSpeedLimit(position - step), 2) - Math.pow(speed, 2))
+                            / (2 * a));
+                }
+                if (maxPos < position) {
+                    maxPos = position;
+                    deltaMax = Math.abs((Math.pow(getSpeedLimit(position + step), 2) - Math.pow(speed, 2))
+                            / (2 * a));
+                }
+            }
+        }
+
+        for (int x = 0; x < minPos - deltaMin; x = x + step) {
+            dataPoints.add(new XYDataPoint(x, getSpeedLimit(x)));
+        }
+        for (int x = (int) (maxPos + deltaMax); x < roadLength; x = x + step) {
+            dataPoints.add(new XYDataPoint(x, getSpeedLimit(x)));
+        }
+
+        double time = 0;
+        double v = 35;
+        for (double x = 0; x < roadLength; x = x + step) {
+            double vNew = ExponentialMovingAverage.calcEMA(x, dataPoints, 20);
+            time += step / ((v + vNew) / 2);
+            v = vNew;
+        }
+
+        return time;
+    }
+
+    public double getSpeedLimit(double position) {
+
+        double speedLimit = 35;
+        for (SpeedLimit sl : speedLimits()) {
+            if (position < sl.position()) {
+                return speedLimit;
+            }
+            speedLimit = sl.getSpeedLimitKmh() / 3.6;
+        }
+        return speedLimit;
+    }
+
+    /**
+     * Returns the number of obstacles on this road segment.
+     * 
+     * @return the number of obstacles on this road segment
+     */
+    protected int obstacleCount() {
+        int obstacleCount = 0;
+        for (final LaneSegment laneSegment : laneSegments) {
+            obstacleCount += laneSegment.obstacleCount();
+        }
+        return obstacleCount;
+    }
+
+    /**
+     * <p>
+     * Returns the vehicle at the given index in the given lane.
+     * </p>
+     * 
+     * <p>
+     * In each lane vehicles are sorted in order of decreasing position:
+     * </p>
+     * 
+     * <p>
+     * V[n+1].pos < V[n].pos < V[n-1].pos ... < V[1].pos < V[0].pos
+     * </p>
+     * 
+     * @param lane
+     * @param index
+     * 
+     * @return vehicle at given index in the given lane
+     */
+    public Vehicle getVehicle(int lane, int index) {
+        return laneSegments[lane - 1].getVehicle(index);
+    }
+
+    /**
+     * Removes the front vehicle on the given lane.
+     * 
+        // ... 2 lines elided ...
+    public void removeFrontVehicleOnLane(int lane) {
+        // ... 8 lines elided ...
+    public int removeVehiclesPastEnd() {
+        // ... 12 lines elided ...
+    public Iterable<Vehicle> getVehiclesPastEnd() {
+        // ... 12 lines elided ...
+    public void addObstacle(Vehicle obstacle) {
+        // ... 10 lines elided ...
+    public void addVehicle(Vehicle vehicle) {
+        // ... 9 lines elided ...
+    public void appendVehicle(Vehicle vehicle) {
+        // ... 14 lines elided ...
+    public void updateRoadConditions(double dt, double simulationTime, long iterationCount) {
+        // ... 10 lines elided ...
+    protected void updateSignalPointsBeforeOutflow(double simulationTime) {
+        // ... 7 lines elided ...
+    public void updateSignalPointsAfterOutflowAndInflow(double simulationTime) {
+        // ... 8 lines elided ...
+    public Iterator<Vehicle> vehiclesWithinRange(double begin, double end) {
+        // ... 3 lines elided ...
+    public Iterator<Vehicle> filteredVehicles(Predicate<Vehicle> predicate) {
+        // ... 20 lines elided ...
+    public void makeLaneChanges(double dt, double simulationTime, long iterationCount) {
+        // ... 38 lines elided ...
+    private void initOvertakingLane() {
+        // ... 12 lines elided ...
+    private void checkFinishingOvertaking(double dt) {
+        // ... 26 lines elided ...
+    public void updateVehicleAccelerations(double dt, double simulationTime, long iterationCount) {
+        // ... 13 lines elided ...
+    private LaneSegment getLeftLane(LaneSegment laneSegment) {
+        // ... 16 lines elided ...
+    public void updateVehiclePositionsAndSpeeds(double dt, double simulationTime, long iterationCount) {
+        // ... 21 lines elided ...
+    public void outFlow(double dt, double simulationTime, long iterationCount) {
+        // ... 21 lines elided ...
+    public void inFlow(double dt, double simulationTime, long iterationCount) {
+        // ... 16 lines elided ...
+    public Vehicle rearVehicleOnLane(int lane) {
+        // ... 10 lines elided ...
+    public Vehicle rearVehicle(int lane, double vehiclePos) {
+        // ... 17 lines elided ...
+    public Vehicle frontVehicleOnLane(int lane) {
+        // ... 9 lines elided ...
+    public Vehicle frontVehicleOnLane(Vehicle vehicle) {
+        // ... 12 lines elided ...
+    public Vehicle frontVehicle(int lane, double vehiclePos) {
+        // ... 8 lines elided ...
+    public boolean eachLaneIsSorted() {
+        // ... 9 lines elided ...
+    private class VehicleIterator implements Iterator<Vehicle>, Iterable<Vehicle> {
+        // ... 8 lines elided ...
+        public boolean hasNext() {
+        // ... 18 lines elided ...
+        public Vehicle next() {
+        // ... 19 lines elided ...
+        public void remove() {
+        // ... 4 lines elided ...
+        public Iterator<Vehicle> iterator() {
+        // ... 10 lines elided ...
+    public final Iterator<Vehicle> iterator() {
+        // ... 3 lines elided ...
+    public final Iterator<Vehicle> overtakingVehicles() {
+        // ... 4 lines elided ...
+    final Iterator<Vehicle> iteratorAllVehicles() {
+        // ... 13 lines elided ...
+    public void checkForInconsistencies(double time, long iterationCount, boolean isWithCrashExit) {
+        // ... 45 lines elided ...
+    private class LaneSegmentIterator implements Iterator<LaneSegment> {
+        // ... 6 lines elided ...
+        public boolean hasNext() {
+        // ... 7 lines elided ...
+        public LaneSegment next() {
+        // ... 8 lines elided ...
+        public void remove() {
+        // ... 9 lines elided ...
+    public final Iterator<LaneSegment> laneSegmentIterator() {
+        // ... 8 lines elided ...
+    public Iterable<LaneSegment> laneSegments() {
+        // ... 4 lines elided ...
+    public Iterable<TrafficLight> trafficLights() {
+        // ... 3 lines elided ...
+    public Iterable<SpeedLimit> speedLimits() {
+        // ... 3 lines elided ...
+    public Iterable<VariableMessageSignDiversion> variableMessageSignDiversions() {
+        // ... 3 lines elided ...
+    public Iterable<GradientProfile> gradientProfiles() {
+        // ... 6 lines elided ...
+    public boolean assertInvariant() {
+        // ... 13 lines elided ...
+    public void setSimpleRamp(SimpleRamp simpleRamp) {
+        // ... 4 lines elided ...
+    public void setUserRoadname(String name) {
+        this.roadName = name;
+    }
+
+    public RoadObjects roadObjects() {
+        return roadObjects;
+    }
+
+    public SignalPoints signalPoints() {
+        return signalPoints;
+    }
+
+    public Node getOriginNode() {
+        return origin;
+    }
+
+    public Node getDestinationNode() {
+        return destination;
+    }
+
+    @Override
+    public String toString() {
+        return "RoadSegment [nodeId=" + id + ", userId=" + userId + ", roadName=" + roadName + ", roadLength="
+                + roadLength + ", laneCount=" + laneCount + ", " + getOriginNode() + ", " + getDestinationNode() + "]";
+    }
+
+    public RoadSegment getPeerRoadSegment() {
+        return peerRoadSegment;
+    }
+
+    public final boolean hasPeer() {
+        return peerRoadSegment != null;
+    }
+
+    public void setPeerRoadSegment(RoadSegment peerRoadSegment) {
+        Preconditions.checkNotNull(peerRoadSegment);
+        Preconditions.checkArgument(!peerRoadSegment.equals(this));
+        this.peerRoadSegment = peerRoadSegment;
+    }
+
+    double getFreeFlowSpeed() {
+        return freeFlowSpeed;
+    }
+
+    void setFreeFlowSpeed(double freeFlowSpeed) {
+        this.freeFlowSpeed = freeFlowSpeed;
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -30,17 +30,16 @@
+ import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Set;
+ 
+ import javax.annotation.CheckForNull;
+ 
+ import org.jgrapht.graph.DefaultWeightedEdge;
+-import org.movsim.SimulationScan;
+ import org.movsim.roadmappings.RoadMapping;
+ import org.movsim.simulator.roadnetwork.boundaries.AbstractTrafficSource;
+ import org.movsim.simulator.roadnetwork.boundaries.SimpleRamp;
+ import org.movsim.simulator.roadnetwork.boundaries.TrafficSink;
+ import org.movsim.simulator.roadnetwork.controller.GradientProfile;
+ import org.movsim.simulator.roadnetwork.controller.RoadObject;
+ import org.movsim.simulator.roadnetwork.controller.RoadObject.RoadObjectType;
+ import org.movsim.simulator.roadnetwork.controller.RoadObjects;
+@@ -648,21 +647,20 @@
+      * and current mean speed of all vehicles. An adhoc free speed is assumed in
+      * case of an empty road. An adhoc minimum speed is assumed in case of a
+      * standstill to avoid a diverging traveltime.
+      * 
+      * @return instantantaneous travel time with assumed travel time if road is
+      *         empty and with assumed maximum travel time in standstill
+      */
+     public double instantaneousTravelTime() {
+-        //return calcInstantaneousTravelTime();
+-        return roadLength / meanSpeed();
+-    }
+-
+-    int i = 0;
++        return calcInstantaneousTravelTime();
++        //return roadLength / meanSpeed();
++
++    }
+ 
+     public double calcInstantaneousTravelTime() {
+ 
+         List<XYDataPoint> dataPoints = new ArrayList<>();
+ 
+         int step = 10;
+         double minPos = roadLength;
+         double deltaMin = 0;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

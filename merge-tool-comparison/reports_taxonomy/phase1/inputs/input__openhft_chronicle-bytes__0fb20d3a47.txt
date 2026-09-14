@@ -1,0 +1,850 @@
+UNIT openhft_chronicle-bytes__0fb20d3a47
+repo: openhft_chronicle-bytes   merge: 0fb20d3a4773a4519123121ef3a61befde10ea33   stratum: B
+files shown: 19 of 20 intersecting Java files
+dropped (textual-conflict, not silent — excluded): src/test/java/net/openhft/chronicle/bytes/BytesFactoryUtil.java
+truncation level: T3/cap12  (diffs at -U3; merged bodies omitted; hard-fit to the 30k budget: files capped at 12 largest merged-vs-dev diffs)
+
+=== FILE 1/19: src/test/java/net/openhft/chronicle/bytes/NativeBytesStoreTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,6 +18,7 @@
+ 
+ package net.openhft.chronicle.bytes;
+ 
++import net.openhft.chronicle.bytes.internal.BytesInternal;
+ import net.openhft.chronicle.bytes.internal.NativeBytesStore;
+ import net.openhft.chronicle.core.Jvm;
+ import net.openhft.chronicle.core.Maths;
+@@ -265,7 +266,7 @@
+         final Bytes<ByteBuffer> dst = Bytes.elasticByteBuffer();
+         try {
+             dst.writePosition(src.copyTo(dst));
+-            assertEquals(src, dst);
++            assertEquals(src.toString(), dst.toString());
+         } finally {
+             src.releaseLast();
+             dst.releaseLast();
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -18,6 +18,7 @@
+ 
+ package net.openhft.chronicle.bytes;
+ 
++import net.openhft.chronicle.bytes.internal.BytesInternal;
+ import net.openhft.chronicle.bytes.internal.NativeBytesStore;
+ import net.openhft.chronicle.core.Jvm;
+ import net.openhft.chronicle.core.Maths;
+@@ -265,7 +266,7 @@
+         final Bytes<ByteBuffer> dst = Bytes.elasticByteBuffer();
+         try {
+             dst.writePosition(src.copyTo(dst));
+-            assertEquals(src, dst);
++            assertTrue(BytesInternal.contentEqual(src, dst));
+         } finally {
+             src.releaseLast();
+             dst.releaseLast();
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -266,7 +266,7 @@
+         final Bytes<ByteBuffer> dst = Bytes.elasticByteBuffer();
+         try {
+             dst.writePosition(src.copyTo(dst));
+-            assertTrue(BytesInternal.contentEqual(src.toString(), dst.toString()));
++            assertEquals(src.toString(), dst.toString());
+         } finally {
+             src.releaseLast();
+             dst.releaseLast();
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/19: src/main/java/net/openhft/chronicle/bytes/AbstractBytes.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -30,6 +30,7 @@
+ import net.openhft.chronicle.core.io.UnsafeText;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
++import org.jetbrains.annotations.TestOnly;
+ 
+ import java.nio.BufferOverflowException;
+ import java.nio.BufferUnderflowException;
+@@ -1258,6 +1259,7 @@
+     }
+ 
+     // Only used for testing
++    @TestOnly
+     void contentDependentHashcodeAndEquals(boolean val) {
+         this.contentDependentHashcodeAndEquals = val;
+     }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -30,6 +30,7 @@
+ import net.openhft.chronicle.core.io.UnsafeText;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
++import org.jetbrains.annotations.TestOnly;
+ 
+ import java.nio.BufferOverflowException;
+ import java.nio.BufferUnderflowException;
+@@ -1258,6 +1259,7 @@
+     }
+ 
+     // Only used for testing
++    @TestOnly
+     void contentDependentHashcodeAndEquals(boolean val) {
+         this.contentDependentHashcodeAndEquals = val;
+     }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/19: src/main/java/net/openhft/chronicle/bytes/Bytes.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -41,6 +41,7 @@
+ import java.nio.ReadOnlyBufferException;
+ import java.nio.charset.StandardCharsets;
+ 
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
+ import static net.openhft.chronicle.core.util.Longs.requireNonNegative;
+ import static net.openhft.chronicle.core.util.ObjectUtils.requireNonNull;
+ 
+@@ -181,7 +182,7 @@
+      * Here is an example of field groups:
+      * <pre>{@code
+      *     static class Padding extends Parent {
+-     *         @FieldGroup("p")
++     *         {@literal @}FieldGroup("p")
+      *         // 128 bytes
+      *         transient long p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15;
+      *     }
+@@ -802,7 +803,8 @@
+     static int indexOf(final @NotNull BytesStore source,
+                        final @NotNull BytesStore other,
+                        int fromSourceOffset) throws IllegalStateException {
+-
++        throwExceptionIfReleased(source);
++        throwExceptionIfReleased(other);
+         long sourceOffset = source.readPosition();
+         long otherOffset = other.readPosition();
+         long sourceCount = source.readRemaining();
+@@ -860,6 +862,7 @@
+     @NotNull
+     default Bytes<Underlying> unchecked(boolean unchecked)
+             throws IllegalStateException {
++        throwExceptionIfReleased(this);
+         if (unchecked) {
+             if (isElastic())
+                 BytesUtil.WarnUncheckedElasticBytes.warn();
+@@ -956,13 +959,10 @@
+     default String toHexString(long offset, long maxLength) {
+         requireNonNegative(offset);
+         requireNonNegative(maxLength);
+-        long maxLength2 = Math.min(maxLength, readLimit() - offset);
+-        try {
+-            @NotNull String ret = BytesInternal.toHexString(this, offset, maxLength2);
+-            return maxLength2 < readLimit() - offset ? ret + "... truncated" : ret;
+-        } catch (BufferUnderflowException | IllegalStateException e) {
+-            return e.toString();
+-        }
++
++        final long maxLength2 = Math.min(maxLength, readLimit() - offset);
++        final String ret = BytesInternal.toHexString(this, offset, maxLength2);
++        return maxLength2 < readLimit() - offset ? ret + "... truncated" : ret;
+     }
+ 
+     /**
+@@ -1113,6 +1113,7 @@
+     @NotNull
+     default BigDecimal readBigDecimal()
+             throws ArithmeticException, BufferUnderflowException, IllegalStateException {
++        throwExceptionIfReleased(this);
+         return new BigDecimal(readBigInteger(), Maths.toUInt31(readStopBit()));
+     }
+ 
+@@ -1128,6 +1129,7 @@
+     @NotNull
+     default BigInteger readBigInteger()
+             throws ArithmeticException, BufferUnderflowException, IllegalStateException {
++        throwExceptionIfReleased(this);
+         int length = Maths.toUInt31(readStopBit());
+         if (length == 0) {
+             if (lenient()) {
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -41,6 +41,7 @@
+ import java.nio.ReadOnlyBufferException;
+ import java.nio.charset.StandardCharsets;
+ 
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
+ import static net.openhft.chronicle.core.util.Longs.requireNonNegative;
+ import static net.openhft.chronicle.core.util.ObjectUtils.requireNonNull;
+ 
+@@ -181,7 +182,7 @@
+      * Here is an example of field groups:
+      * <pre>{@code
+      *     static class Padding extends Parent {
+-     *         @FieldGroup("p")
++     *         {@literal @}FieldGroup("p")
+      *         // 128 bytes
+      *         transient long p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15;
+      *     }
+@@ -802,7 +803,8 @@
+     static int indexOf(final @NotNull BytesStore source,
+                        final @NotNull BytesStore other,
+                        int fromSourceOffset) throws IllegalStateException {
+-
++        throwExceptionIfReleased(source);
++        throwExceptionIfReleased(other);
+         long sourceOffset = source.readPosition();
+         long otherOffset = other.readPosition();
+         long sourceCount = source.readRemaining();
+@@ -860,6 +862,7 @@
+     @NotNull
+     default Bytes<Underlying> unchecked(boolean unchecked)
+             throws IllegalStateException {
++        throwExceptionIfReleased(this);
+         if (unchecked) {
+             if (isElastic())
+                 BytesUtil.WarnUncheckedElasticBytes.warn();
+@@ -956,13 +959,10 @@
+     default String toHexString(long offset, long maxLength) {
+         requireNonNegative(offset);
+         requireNonNegative(maxLength);
+-        long maxLength2 = Math.min(maxLength, readLimit() - offset);
+-        try {
+-            @NotNull String ret = BytesInternal.toHexString(this, offset, maxLength2);
+-            return maxLength2 < readLimit() - offset ? ret + "... truncated" : ret;
+-        } catch (BufferUnderflowException | IllegalStateException e) {
+-            return e.toString();
+-        }
++
++        final long maxLength2 = Math.min(maxLength, readLimit() - offset);
++        final String ret = BytesInternal.toHexString(this, offset, maxLength2);
++        return maxLength2 < readLimit() - offset ? ret + "... truncated" : ret;
+     }
+ 
+     /**
+@@ -1113,6 +1113,7 @@
+     @NotNull
+     default BigDecimal readBigDecimal()
+             throws ArithmeticException, BufferUnderflowException, IllegalStateException {
++        throwExceptionIfReleased(this);
+         return new BigDecimal(readBigInteger(), Maths.toUInt31(readStopBit()));
+     }
+ 
+@@ -1128,6 +1129,7 @@
+     @NotNull
+     default BigInteger readBigInteger()
+             throws ArithmeticException, BufferUnderflowException, IllegalStateException {
++        throwExceptionIfReleased(this);
+         int length = Maths.toUInt31(readStopBit());
+         if (length == 0) {
+             if (lenient()) {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/19: src/main/java/net/openhft/chronicle/bytes/BytesMethodReaderBuilder.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -20,6 +20,8 @@
+ import net.openhft.chronicle.core.Jvm;
+ import org.jetbrains.annotations.NotNull;
+ 
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
++
+ @SuppressWarnings("rawtypes")
+ public class BytesMethodReaderBuilder implements MethodReaderBuilder {
+     private final BytesIn in;
+@@ -27,6 +29,7 @@
+     private MethodEncoderLookup methodEncoderLookup = MethodEncoderLookup.BY_ANNOTATION;
+ 
+     public BytesMethodReaderBuilder(BytesIn in) {
++        throwExceptionIfReleased(in);
+         this.in = in;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -20,6 +20,8 @@
+ import net.openhft.chronicle.core.Jvm;
+ import org.jetbrains.annotations.NotNull;
+ 
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
++
+ @SuppressWarnings("rawtypes")
+ public class BytesMethodReaderBuilder implements MethodReaderBuilder {
+     private final BytesIn in;
+@@ -27,6 +29,7 @@
+     private MethodEncoderLookup methodEncoderLookup = MethodEncoderLookup.BY_ANNOTATION;
+ 
+     public BytesMethodReaderBuilder(BytesIn in) {
++        throwExceptionIfReleased(in);
+         this.in = in;
+     }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/19: src/main/java/net/openhft/chronicle/bytes/BytesOut.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -19,12 +19,15 @@
+ 
+ package net.openhft.chronicle.bytes;
+ 
++import net.openhft.chronicle.core.io.ClosedIllegalStateException;
+ import net.openhft.chronicle.core.util.ObjectUtils;
+ import org.jetbrains.annotations.NotNull;
+ 
+ import java.lang.reflect.Proxy;
+ import java.nio.BufferOverflowException;
+ import java.nio.BufferUnderflowException;
++
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
+ 
+ @SuppressWarnings({"rawtypes", "unchecked"})
+ public interface BytesOut<Underlying> extends
+@@ -40,10 +43,13 @@
+      * @param additional any additional interfaces
+      * @return a proxy which implements the primary interface (additional interfaces have to be
+      * cast)
++     * @throws NullPointerException if the provided {@code tClass} is {@code null}
++     * @throws ClosedIllegalStateException if this BytesOut has been previously released
+      */
+     @NotNull
+     default <T> T bytesMethodWriter(@NotNull Class<T> tClass, Class... additional)
+             throws IllegalArgumentException {
++        throwExceptionIfReleased(this);
+         Class[] interfaces = ObjectUtils.addAll(tClass, additional);
+ 
+         //noinspection unchecked
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -19,12 +19,15 @@
+ 
+ package net.openhft.chronicle.bytes;
+ 
++import net.openhft.chronicle.core.io.ClosedIllegalStateException;
+ import net.openhft.chronicle.core.util.ObjectUtils;
+ import org.jetbrains.annotations.NotNull;
+ 
+ import java.lang.reflect.Proxy;
+ import java.nio.BufferOverflowException;
+ import java.nio.BufferUnderflowException;
++
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
+ 
+ @SuppressWarnings({"rawtypes", "unchecked"})
+ public interface BytesOut<Underlying> extends
+@@ -40,10 +43,13 @@
+      * @param additional any additional interfaces
+      * @return a proxy which implements the primary interface (additional interfaces have to be
+      * cast)
++     * @throws NullPointerException if the provided {@code tClass} is {@code null}
++     * @throws ClosedIllegalStateException if this BytesOut has been previously released
+      */
+     @NotNull
+     default <T> T bytesMethodWriter(@NotNull Class<T> tClass, Class... additional)
+             throws IllegalArgumentException {
++        throwExceptionIfReleased(this);
+         Class[] interfaces = ObjectUtils.addAll(tClass, additional);
+ 
+         //noinspection unchecked
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/19: src/main/java/net/openhft/chronicle/bytes/BytesStore.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -39,6 +39,8 @@
+ import java.util.Objects;
+ 
+ import static java.lang.Math.min;
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
++import static net.openhft.chronicle.core.util.ObjectUtils.requireNonNull;
+ 
+ /**
+  * An immutable reference to some bytes with fixed extents. This can be shared safely across thread
+@@ -307,6 +309,9 @@
+      */
+     default long copyTo(@NotNull BytesStore store)
+             throws IllegalStateException {
++        requireNonNull(store);
++        throwExceptionIfReleased(this);
++        throwExceptionIfReleased(store);
+         long readPos = readPosition();
+         long writePos = store.writePosition();
+         long copy = min(readRemaining(), store.capacity());
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -39,6 +39,8 @@
+ import java.util.Objects;
+ 
+ import static java.lang.Math.min;
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
++import static net.openhft.chronicle.core.util.ObjectUtils.requireNonNull;
+ 
+ /**
+  * An immutable reference to some bytes with fixed extents. This can be shared safely across thread
+@@ -307,6 +309,9 @@
+      */
+     default long copyTo(@NotNull BytesStore store)
+             throws IllegalStateException {
++        requireNonNull(store);
++        throwExceptionIfReleased(this);
++        throwExceptionIfReleased(store);
+         long readPos = readPosition();
+         long writePos = store.writePosition();
+         long copy = min(readRemaining(), store.capacity());
+@@ -653,6 +658,7 @@
+                     return;
+                 if (compareAndSwapLong(offset, v, atLeast))
+                     return;
++                Jvm.nanoPause();
+             }
+         } catch (BufferOverflowException e) {
+             throw new AssertionError(e);
+@@ -674,6 +680,7 @@
+                     return;
+                 if (compareAndSwapInt(offset, v, atLeast))
+                     return;
++                Jvm.nanoPause();
+             }
+         } catch (BufferOverflowException e) {
+             throw new AssertionError(e);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/19: src/main/java/net/openhft/chronicle/bytes/HexDumpBytes.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -25,6 +25,7 @@
+ import net.openhft.chronicle.core.util.ThrowingConsumerNonCapturing;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
++import org.jetbrains.annotations.TestOnly;
+ 
+ import java.io.IOException;
+ import java.io.InputStream;
+@@ -39,6 +40,7 @@
+ import java.util.regex.Pattern;
+ 
+ import static net.openhft.chronicle.bytes.AbstractBytes.CONTENT_DEPENDENT_HASHCODE_AND_EQUALS;
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
+ import static net.openhft.chronicle.core.util.ObjectUtils.requireNonNull;
+ 
+ @SuppressWarnings({"rawtypes", "unchecked"})
+@@ -138,6 +140,7 @@
+     @NotNull
+     @Override
+     public String toHexString() {
++        throwExceptionIfReleased(this);
+         try {
+             if (lineLength() > 0)
+                 newLine();
+@@ -234,6 +237,7 @@
+ 
+     @Override
+     public BytesStore copy() {
++        throwExceptionIfReleased(this);
+         return new HexDumpBytes(base, text);
+     }
+ 
+@@ -1767,6 +1771,7 @@
+     }
+ 
+     // Only used for testing
++    @TestOnly
+     void contentDependentHashcodeAndEquals(boolean val) {
+         this.contentDependentHashcodeAndEquals = val;
+         base.contentDependentHashcodeAndEquals(val);
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -25,6 +25,7 @@
+ import net.openhft.chronicle.core.util.ThrowingConsumerNonCapturing;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
++import org.jetbrains.annotations.TestOnly;
+ 
+ import java.io.IOException;
+ import java.io.InputStream;
+@@ -39,6 +40,7 @@
+ import java.util.regex.Pattern;
+ 
+ import static net.openhft.chronicle.bytes.AbstractBytes.CONTENT_DEPENDENT_HASHCODE_AND_EQUALS;
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
+ import static net.openhft.chronicle.core.util.ObjectUtils.requireNonNull;
+ 
+ @SuppressWarnings({"rawtypes", "unchecked"})
+@@ -138,6 +140,7 @@
+     @NotNull
+     @Override
+     public String toHexString() {
++        throwExceptionIfReleased(this);
+         try {
+             if (lineLength() > 0)
+                 newLine();
+@@ -234,6 +237,7 @@
+ 
+     @Override
+     public BytesStore copy() {
++        throwExceptionIfReleased(this);
+         return new HexDumpBytes(base, text);
+     }
+ 
+@@ -1767,6 +1771,7 @@
+     }
+ 
+     // Only used for testing
++    @TestOnly
+     void contentDependentHashcodeAndEquals(boolean val) {
+         this.contentDependentHashcodeAndEquals = val;
+         base.contentDependentHashcodeAndEquals(val);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 8/19: src/main/java/net/openhft/chronicle/bytes/NativeBytes.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -19,6 +19,7 @@
+ package net.openhft.chronicle.bytes;
+ 
+ import net.openhft.chronicle.bytes.internal.NativeBytesStore;
++import net.openhft.chronicle.bytes.internal.ReferenceCountedUtil;
+ import net.openhft.chronicle.bytes.util.DecoratedBufferOverflowException;
+ import net.openhft.chronicle.core.*;
+ import net.openhft.chronicle.core.io.AbstractReferenceCounted;
+@@ -114,6 +115,7 @@
+ 
+     public static BytesStore<Bytes<Void>, Void> copyOf(@NotNull final Bytes bytes)
+             throws IllegalStateException {
++        ReferenceCountedUtil.throwExceptionIfReleased(bytes);
+         final long remaining = bytes.readRemaining();
+ 
+         try {
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -19,6 +19,7 @@
+ package net.openhft.chronicle.bytes;
+ 
+ import net.openhft.chronicle.bytes.internal.NativeBytesStore;
++import net.openhft.chronicle.bytes.internal.ReferenceCountedUtil;
+ import net.openhft.chronicle.bytes.util.DecoratedBufferOverflowException;
+ import net.openhft.chronicle.core.*;
+ import net.openhft.chronicle.core.io.AbstractReferenceCounted;
+@@ -31,6 +32,7 @@
+ 
+ import static net.openhft.chronicle.bytes.BytesStore.nativeStoreWithFixedCapacity;
+ import static net.openhft.chronicle.bytes.NoBytesStore.noBytesStore;
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
+ import static net.openhft.chronicle.core.util.ObjectUtils.requireNonNull;
+ 
+ /**
+@@ -114,6 +116,7 @@
+ 
+     public static BytesStore<Bytes<Void>, Void> copyOf(@NotNull final Bytes bytes)
+             throws IllegalStateException {
++        ReferenceCountedUtil.throwExceptionIfReleased(bytes);
+         final long remaining = bytes.readRemaining();
+ 
+         try {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 9/19: src/main/java/net/openhft/chronicle/bytes/RandomDataInput.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -27,6 +27,7 @@
+ import java.nio.BufferUnderflowException;
+ import java.nio.ByteBuffer;
+ 
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
+ import static net.openhft.chronicle.core.util.ObjectUtils.requireNonNull;
+ 
+ /**
+@@ -307,6 +308,8 @@
+      */
+     default int copyTo(@NotNull byte[] bytes)
+             throws BufferUnderflowException, IllegalStateException {
++        requireNonNull(bytes);
++        throwExceptionIfReleased(this);
+         int len = (int) Math.min(bytes.length, readRemaining());
+         for (int i = 0; i < len; i++)
+             bytes[i] = readByte(start() + i);
+@@ -323,6 +326,8 @@
+      */
+     default int copyTo(@NotNull ByteBuffer bb)
+             throws BufferUnderflowException, IllegalStateException {
++        requireNonNull(bb);
++        throwExceptionIfReleased(this);
+         int pos = bb.position();
+         int len = (int) Math.min(bb.remaining(), readRemaining());
+         int i;
+@@ -603,6 +608,7 @@
+ 
+     default ByteBuffer toTemporaryDirectByteBuffer()
+             throws IllegalArgumentException, ArithmeticException, IllegalStateException {
++        throwExceptionIfReleased(this);
+         int len = Maths.toUInt31(readRemaining());
+         try {
+             ByteBuffer bb = ByteBuffer.allocateDirect(len);
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -27,6 +27,7 @@
+ import java.nio.BufferUnderflowException;
+ import java.nio.ByteBuffer;
+ 
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
+ import static net.openhft.chronicle.core.util.ObjectUtils.requireNonNull;
+ 
+ /**
+@@ -307,6 +308,8 @@
+      */
+     default int copyTo(@NotNull byte[] bytes)
+             throws BufferUnderflowException, IllegalStateException {
++        requireNonNull(bytes);
++        throwExceptionIfReleased(this);
+         int len = (int) Math.min(bytes.length, readRemaining());
+         for (int i = 0; i < len; i++)
+             bytes[i] = readByte(start() + i);
+@@ -323,6 +326,8 @@
+      */
+     default int copyTo(@NotNull ByteBuffer bb)
+             throws BufferUnderflowException, IllegalStateException {
++        requireNonNull(bb);
++        throwExceptionIfReleased(this);
+         int pos = bb.position();
+         int len = (int) Math.min(bb.remaining(), readRemaining());
+         int i;
+@@ -603,6 +608,7 @@
+ 
+     default ByteBuffer toTemporaryDirectByteBuffer()
+             throws IllegalArgumentException, ArithmeticException, IllegalStateException {
++        throwExceptionIfReleased(this);
+         int len = Maths.toUInt31(readRemaining());
+         try {
+             ByteBuffer bb = ByteBuffer.allocateDirect(len);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 10/19: src/main/java/net/openhft/chronicle/bytes/StreamingDataOutput.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -37,7 +37,7 @@
+ import java.nio.BufferUnderflowException;
+ import java.nio.ByteBuffer;
+ 
+-import static net.openhft.chronicle.core.UnsafeMemory.MEMORY;
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
+ import static net.openhft.chronicle.core.util.Ints.requireNonNegative;
+ import static net.openhft.chronicle.core.util.ObjectUtils.requireNonNull;
+ 
+@@ -701,6 +701,7 @@
+     default void writeBigInteger(@NotNull BigInteger bi)
+             throws BufferOverflowException, IllegalStateException, IllegalArgumentException {
+         byte[] bytes = bi.toByteArray();
++        throwExceptionIfReleased(this);
+         writeStopBit(bytes.length);
+         write(bytes);
+     }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -37,7 +37,7 @@
+ import java.nio.BufferUnderflowException;
+ import java.nio.ByteBuffer;
+ 
+-import static net.openhft.chronicle.core.UnsafeMemory.MEMORY;
++import static net.openhft.chronicle.bytes.internal.ReferenceCountedUtil.throwExceptionIfReleased;
+ import static net.openhft.chronicle.core.util.Ints.requireNonNegative;
+ import static net.openhft.chronicle.core.util.ObjectUtils.requireNonNull;
+ 
+@@ -701,6 +701,7 @@
+     default void writeBigInteger(@NotNull BigInteger bi)
+             throws BufferOverflowException, IllegalStateException, IllegalArgumentException {
+         byte[] bytes = bi.toByteArray();
++        throwExceptionIfReleased(this);
+         writeStopBit(bytes.length);
+         write(bytes);
+     }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 11/19: src/main/java/net/openhft/chronicle/bytes/UncheckedBytes.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -79,6 +79,7 @@
+     @Override
+     @NotNull
+     public Bytes<Underlying> unchecked(boolean unchecked) {
++        throwExceptionIfReleased();
+         return this;
+     }
+ 
+@@ -147,6 +148,7 @@
+     @NotNull
+     @Override
+     public BytesStore<Bytes<Underlying>, Underlying> copy() {
++        throwExceptionIfReleased();
+         throw new UnsupportedOperationException("todo");
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -79,6 +79,7 @@
+     @Override
+     @NotNull
+     public Bytes<Underlying> unchecked(boolean unchecked) {
++        throwExceptionIfReleased();
+         return this;
+     }
+ 
+@@ -147,6 +148,7 @@
+     @NotNull
+     @Override
+     public BytesStore<Bytes<Underlying>, Underlying> copy() {
++        throwExceptionIfReleased();
+         throw new UnsupportedOperationException("todo");
+     }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 12/19: src/main/java/net/openhft/chronicle/bytes/UncheckedNativeBytes.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -31,6 +31,7 @@
+ import net.openhft.chronicle.core.io.IORuntimeException;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
++import org.jetbrains.annotations.TestOnly;
+ 
+ import java.nio.BufferOverflowException;
+ import java.nio.BufferUnderflowException;
+@@ -95,6 +96,7 @@
+     @Override
+     @NotNull
+     public Bytes<Underlying> unchecked(boolean unchecked) {
++        throwExceptionIfReleased();
+         return this;
+     }
+ 
+@@ -202,6 +204,7 @@
+     @NotNull
+     @Override
+     public BytesStore<Bytes<Underlying>, Underlying> copy() {
++        throwExceptionIfReleased();
+         throw new UnsupportedOperationException("todo");
+     }
+ 
+@@ -957,6 +960,7 @@
+     }
+ 
+     // Only used for testing
++    @TestOnly
+     void contentDependentHashcodeAndEquals(boolean val) {
+         this.contentDependentHashcodeAndEquals = val;
+     }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -31,6 +31,7 @@
+ import net.openhft.chronicle.core.io.IORuntimeException;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
++import org.jetbrains.annotations.TestOnly;
+ 
+ import java.nio.BufferOverflowException;
+ import java.nio.BufferUnderflowException;
+@@ -95,6 +96,7 @@
+     @Override
+     @NotNull
+     public Bytes<Underlying> unchecked(boolean unchecked) {
++        throwExceptionIfReleased();
+         return this;
+     }
+ 
+@@ -202,6 +204,7 @@
+     @NotNull
+     @Override
+     public BytesStore<Bytes<Underlying>, Underlying> copy() {
++        throwExceptionIfReleased();
+         throw new UnsupportedOperationException("todo");
+     }
+ 
+@@ -957,6 +960,7 @@
+     }
+ 
+     // Only used for testing
++    @TestOnly
+     void contentDependentHashcodeAndEquals(boolean val) {
+         this.contentDependentHashcodeAndEquals = val;
+     }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== REMAINING 7 FILES (elided at truncation T3; listed by path + merged-vs-dev diffstat) ===
+  src/main/java/net/openhft/chronicle/bytes/VanillaBytes.java  (merged-vs-dev +0 -0)
+  src/main/java/net/openhft/chronicle/bytes/internal/ByteStringReader.java  (merged-vs-dev +0 -0)
+  src/main/java/net/openhft/chronicle/bytes/internal/ByteStringWriter.java  (merged-vs-dev +0 -0)
+  src/main/java/net/openhft/chronicle/bytes/internal/BytesInternal.java  (merged-vs-dev +0 -0)
+  src/test/java/net/openhft/chronicle/bytes/ByteStringAppenderTest.java  (merged-vs-dev +0 -0)
+  src/test/java/net/openhft/chronicle/bytes/BytesJavaDocComplianceTest.java  (merged-vs-dev +0 -0)
+  src/test/java/net/openhft/chronicle/bytes/BytesTestCommon.java  (merged-vs-dev +0 -0)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

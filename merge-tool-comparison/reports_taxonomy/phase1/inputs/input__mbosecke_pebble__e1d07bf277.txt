@@ -1,0 +1,1849 @@
+UNIT mbosecke_pebble__e1d07bf277
+repo: mbosecke_pebble   merge: e1d07bf27732d5ff2bee3b3bb9a38aaeb1637ffb   stratum: B
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/main/java/com/mitchellbosecke/pebble/node/ForNode.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -6,17 +6,17 @@
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  ******************************************************************************/
+ package com.mitchellbosecke.pebble.node;
+ 
+ import com.mitchellbosecke.pebble.error.PebbleException;
+ import com.mitchellbosecke.pebble.extension.NodeVisitor;
+ import com.mitchellbosecke.pebble.node.expression.Expression;
+-import com.mitchellbosecke.pebble.template.EvaluationContext;
++import com.mitchellbosecke.pebble.template.EvaluationContextImpl;
+ import com.mitchellbosecke.pebble.template.PebbleTemplateImpl;
+ import com.mitchellbosecke.pebble.template.ScopeChain;
+ 
+ import java.io.IOException;
+ import java.io.Writer;
+ import java.lang.reflect.Array;
+ import java.util.ArrayList;
+ import java.util.Collection;
+@@ -44,17 +44,17 @@
+         super(lineNumber);
+         this.variableName = variableName;
+         this.iterableExpression = iterableExpression;
+         this.body = body;
+         this.elseBody = elseBody;
+     }
+ 
+     @Override
+-    public void render(PebbleTemplateImpl self, Writer writer, EvaluationContext context)
++    public void render(PebbleTemplateImpl self, Writer writer, EvaluationContextImpl context)
+             throws PebbleException, IOException {
+         Object iterableEvaluation = this.iterableExpression.evaluate(self, context);
+         Iterable<?> iterable = null;
+ 
+         if (iterableEvaluation == null) {
+             return;
+         }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -9,17 +9,16 @@
+ package com.mitchellbosecke.pebble.node;
+ 
+ import com.mitchellbosecke.pebble.error.PebbleException;
+ import com.mitchellbosecke.pebble.extension.NodeVisitor;
+ import com.mitchellbosecke.pebble.node.expression.Expression;
+ import com.mitchellbosecke.pebble.template.EvaluationContext;
+ import com.mitchellbosecke.pebble.template.PebbleTemplateImpl;
+ import com.mitchellbosecke.pebble.template.ScopeChain;
+-
+ import java.io.IOException;
+ import java.io.Writer;
+ import java.lang.reflect.Array;
+ import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.HashMap;
+ import java.util.Iterator;
+ import java.util.Map;
+@@ -34,31 +33,37 @@
+     private final String variableName;
+ 
+     private final Expression<?> iterableExpression;
+ 
+     private final BodyNode body;
+ 
+     private final BodyNode elseBody;
+ 
++    class Control extends Object {
++        protected int value = -1;
++        public Control(int value){ this.value = value; }
++        public Control() {}
++    }
++    
+     public ForNode(int lineNumber, String variableName, Expression<?> iterableExpression, BodyNode body,
+             BodyNode elseBody) {
+         super(lineNumber);
+         this.variableName = variableName;
+         this.iterableExpression = iterableExpression;
+         this.body = body;
+         this.elseBody = elseBody;
+     }
+ 
+     @Override
+     public void render(PebbleTemplateImpl self, Writer writer, EvaluationContext context)
+             throws PebbleException, IOException {
+-        Object iterableEvaluation = this.iterableExpression.evaluate(self, context);
++        final Object iterableEvaluation = this.iterableExpression.evaluate(self, context);
+         Iterable<?> iterable = null;
+-
++        
+         if (iterableEvaluation == null) {
+             return;
+         }
+ 
+         iterable = this.toIterable(iterableEvaluation);
+ 
+         if (iterable == null) {
+             throw new PebbleException(null, "Not an iterable object. Value = [" + iterableEvaluation.toString() + "]",
+@@ -66,56 +71,68 @@
+         }
+ 
+         Iterator<?> iterator = iterable.iterator();
+ 
+         if (iterator.hasNext()) {
+ 
+             ScopeChain scopeChain = context.getScopeChain();
+             scopeChain.pushScope();
+-
+-            int length = this.getIteratorSize(iterableEvaluation);
++            
++            final Control length = new Control() {
++                @Override
++                public String toString() {
++                    if ( this.value == -1 )   {
++                        this.value = getIteratorSize(iterableEvaluation);
++                    }
++                    return String.valueOf(value);
++                }
++            };
++            
+             int index = 0;
+-
++            
+             Map<String, Object> loop = null;
+-
++            
+             boolean usingExecutorService = context.getExecutorService() != null;
+ 
+             while (iterator.hasNext()) {
+ 
+                 /*
+                  * If the user is using an executor service (i.e. parallel node), we
+                  * must create a new map with every iteration instead of
+                  * re-using the same one; it's imperative that each thread would
+                  * get it's own distinct copy of the context.
+                  */
+                 if (index == 0 || usingExecutorService) {
+                     loop = new HashMap<>();
+                     loop.put("first", index == 0);
+-                    loop.put("last", index == length - 1);
++                    loop.put("last", !iterator.hasNext());
+                     loop.put("length", length);
+-                }else{
+-
++                } else if (index == 1) {
+                     // second iteration
+-                    if(index == 1){
+-                        loop.put("first", false);
++                    loop.put("first", false);
++                }
++                
++                Control revindex = new Control(index) {
++                    @Override
++                    public String toString() {
++                        return String.valueOf( Integer.valueOf(length.toString()) - this.value -1);
+                     }
+-
+-                    // last iteration
+-                    if(index == length - 1){
+-                        loop.put("last", true);
+-                    }
+-                }
+-
+-                loop.put("revindex", length - index - 1);
++                };
++                
++                loop.put("revindex", revindex);
+                 loop.put("index", index++);
+-
+                 scopeChain.put("loop", loop);
+-
+                 scopeChain.put(this.variableName, iterator.next());
++
++                // last iteration
++                if( !iterator.hasNext() ){
++                    loop.put("last", true);
++                }
++
+                 this.body.render(self, writer, context);
+             }
+ 
+             scopeChain.popScope();
+ 
+         } else if (this.elseBody != null) {
+             this.elseBody.render(self, writer, context);
+         }
+--- MERGED RESULT (mergiraf; full) ---
+/*******************************************************************************
+ * This file is part of Pebble.
+ * <p>
+ * Copyright (c) 2014 by Mitchell Bösecke
+ * <p>
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ ******************************************************************************/
+package com.mitchellbosecke.pebble.node;
+
+import com.mitchellbosecke.pebble.error.PebbleException;
+import com.mitchellbosecke.pebble.extension.NodeVisitor;
+import com.mitchellbosecke.pebble.node.expression.Expression;
+import com.mitchellbosecke.pebble.template.EvaluationContextImpl;
+import com.mitchellbosecke.pebble.template.PebbleTemplateImpl;
+import com.mitchellbosecke.pebble.template.ScopeChain;
+import java.io.IOException;
+import java.io.Writer;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+/**
+ * Represents a "for" loop within the template.
+ *
+ * @author mbosecke
+ */
+public class ForNode extends AbstractRenderableNode {
+
+    private final String variableName;
+
+    private final Expression<?> iterableExpression;
+
+    private final BodyNode body;
+
+    private final BodyNode elseBody;
+
+    class Control extends Object {
+        protected int value = -1;
+        public Control(int value){ this.value = value; }
+        public Control() {}
+    }
+    
+    public ForNode(int lineNumber, String variableName, Expression<?> iterableExpression, BodyNode body,
+            BodyNode elseBody) {
+        super(lineNumber);
+        this.variableName = variableName;
+        this.iterableExpression = iterableExpression;
+        this.body = body;
+        this.elseBody = elseBody;
+    }
+
+    @Override
+    public void render(PebbleTemplateImpl self, Writer writer, EvaluationContextImpl context)
+            throws PebbleException, IOException {
+        final Object iterableEvaluation = this.iterableExpression.evaluate(self, context);
+        Iterable<?> iterable = null;
+        
+        if (iterableEvaluation == null) {
+            return;
+        }
+
+        iterable = this.toIterable(iterableEvaluation);
+
+        if (iterable == null) {
+            throw new PebbleException(null, "Not an iterable object. Value = [" + iterableEvaluation.toString() + "]",
+                    this.getLineNumber(), self.getName());
+        }
+
+        Iterator<?> iterator = iterable.iterator();
+
+        if (iterator.hasNext()) {
+
+            ScopeChain scopeChain = context.getScopeChain();
+            scopeChain.pushScope();
+            
+            final Control length = new Control() {
+                @Override
+                public String toString() {
+                    if ( this.value == -1 )   {
+                        this.value = getIteratorSize(iterableEvaluation);
+                    }
+                    return String.valueOf(value);
+                }
+            };
+            
+            int index = 0;
+            
+            Map<String, Object> loop = null;
+            
+            boolean usingExecutorService = context.getExecutorService() != null;
+
+            while (iterator.hasNext()) {
+
+                /*
+                 * If the user is using an executor service (i.e. parallel node), we
+                 * must create a new map with every iteration instead of
+                 * re-using the same one; it's imperative that each thread would
+                 * get it's own distinct copy of the context.
+                 */
+                if (index == 0 || usingExecutorService) {
+                    loop = new HashMap<>();
+                    loop.put("first", index == 0);
+                    loop.put("last", !iterator.hasNext());
+                    loop.put("length", length);
+                } else if (index == 1) {
+                    // second iteration
+                    loop.put("first", false);
+                }
+                
+                Control revindex = new Control(index) {
+                    @Override
+                    public String toString() {
+                        return String.valueOf( Integer.valueOf(length.toString()) - this.value -1);
+                    }
+                };
+                
+                loop.put("revindex", revindex);
+                loop.put("index", index++);
+                scopeChain.put("loop", loop);
+                scopeChain.put(this.variableName, iterator.next());
+
+                // last iteration
+                if( !iterator.hasNext() ){
+                    loop.put("last", true);
+                }
+
+                this.body.render(self, writer, context);
+            }
+
+            scopeChain.popScope();
+
+        } else if (this.elseBody != null) {
+            this.elseBody.render(self, writer, context);
+        }
+
+    }
+
+    @Override
+    public void accept(NodeVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    public String getIterationVariable() {
+        return this.variableName;
+    }
+
+    public Expression<?> getIterable() {
+        return this.iterableExpression;
+    }
+
+    public BodyNode getBody() {
+        return this.body;
+    }
+
+    public BodyNode getElseBody() {
+        return this.elseBody;
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private Iterable<Object> toIterable(final Object obj) {
+
+        Iterable<Object> result = null;
+
+        if (obj instanceof Iterable<?>) {
+
+            result = (Iterable<Object>) obj;
+
+        } else if (obj instanceof Map) {
+
+            // raw type
+            result = ((Map) obj).entrySet();
+
+        } else if (obj.getClass().isArray()) {
+
+            if (Array.getLength(obj) == 0) {
+                return new ArrayList<>(0);
+            }
+
+            result = new Iterable<Object>() {
+
+                @Override
+                public Iterator<Object> iterator() {
+                    return new Iterator<Object>() {
+
+                        private int index = 0;
+
+                        private final int length = Array.getLength(obj);
+
+                        @Override
+                        public boolean hasNext() {
+                            return this.index < this.length;
+                        }
+
+                        @Override
+                        public Object next() {
+                            return Array.get(obj, this.index++);
+                        }
+
+                        @Override
+                        public void remove() {
+                            throw new UnsupportedOperationException();
+                        }
+                    };
+                }
+            };
+        }
+
+        return result;
+    }
+
+    private int getIteratorSize(Object iterable) {
+        if (iterable == null) {
+            return 0;
+        }
+        if (iterable instanceof Collection) {
+            return ((Collection<?>) iterable).size();
+        } else if (iterable instanceof Map) {
+            return ((Map<?, ?>) iterable).size();
+        } else if (iterable.getClass().isArray()) {
+            return Array.getLength(iterable);
+        }
+
+        // assumed to be of type Iterator
+        Iterator<?> it = ((Iterable<?>) iterable).iterator();
+        int size = 0;
+        while (it.hasNext()) {
+            size++;
+            it.next();
+        }
+        return size;
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/com/mitchellbosecke/pebble/CoreTagsTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -5,30 +5,36 @@
+  * Copyright (c) 2014 by Mitchell Bösecke
+  * <p>
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  * ****************************************************************************
+  */
+ package com.mitchellbosecke.pebble;
+ 
++import com.mitchellbosecke.pebble.error.ParserException;
+ import com.mitchellbosecke.pebble.error.PebbleException;
+-import com.mitchellbosecke.pebble.extension.InvocationCountingFunction;
+-import com.mitchellbosecke.pebble.extension.TestingExtension;
++import com.mitchellbosecke.pebble.error.RuntimePebbleException;
+ import com.mitchellbosecke.pebble.loader.StringLoader;
+ import com.mitchellbosecke.pebble.template.PebbleTemplate;
++
+ import org.junit.Test;
+ 
+ import java.io.IOException;
+ import java.io.StringWriter;
+ import java.io.Writer;
+-import java.util.*;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
+ import java.util.concurrent.Executors;
+ 
+ import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertTrue;
+ import static org.junit.Assert.fail;
+ 
+ public class CoreTagsTest extends AbstractTest {
+ 
+     public static final String LINE_SEPARATOR = System.lineSeparator();
+ 
+     @Test
+     public void testBlock() throws PebbleException, IOException {
+@@ -133,60 +139,32 @@
+         Map<String, Object> context = new HashMap<>();
+         context.put("variable", true);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, context);
+         assertEquals("yes", writer.toString());
+     }
+ 
+-    /**
+-     * Issue #36
+-     *
+-     * @throws PebbleException
+-     * @throws IOException
+-     */
+-    @Test
+-    public void testIfTestAgainstNullVar() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+-
+-        String source = "{% if foobar %}true{% else %}false{% endif %}";
+-        PebbleTemplate template = pebble.getTemplate(source);
+-
+-        Map<String, Object> context = new HashMap<>();
+-        Writer writer = new StringWriter();
+-
+-        // "foobar" value not set at all yet
+-
+-        template.evaluate(writer, context);
+-        assertEquals("false", writer.toString());
+-
+-        context.put("foobar", null);
+-        writer = new StringWriter();
+-        template.evaluate(writer, context);
+-        assertEquals("false", writer.toString());
+-
+-        context.put("foobar", true);
+-        writer = new StringWriter();
+-        template.evaluate(writer, context);
+-        assertEquals("true", writer.toString());
+-    }
+-
+-    @Test
+-    public void testIfWhenInvalidOrNoEndifTag() throws PebbleException, IOException {
++
++
++    @Test
++    public void testIfWhenInvalidOrNoEndifTag() throws PebbleException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+         String source = "{% if variable %}smth{ endif %}";
+         try {
+             pebble.getTemplate(source);
+ 
+             fail("Should fail due to invalid endif tag");
+-        } catch (PebbleException ex) {
+-            assertEquals(ex.getPebbleMessage(), "Unexpected end of template. Pebble was looking for the \"endif\" tag");
+-            assertEquals(ex.getLineNumber(), (Integer) 1);
+-            assertEquals(ex.getFileName(), source);
++        } catch (RuntimePebbleException ex) {
++            assertTrue(ex.getCause() instanceof ParserException);
++            ParserException parserException = (ParserException) ex.getCause();
++            assertEquals(parserException.getPebbleMessage(), "Unexpected end of template. Pebble was looking for the \"endif\" tag");
++            assertEquals(parserException.getLineNumber(), (Integer) 1);
++            assertEquals(parserException.getFileName(), source);
+         }
+     }
+ 
+     @Test
+     public void testFlush() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "start{% flush %}end";
+@@ -245,40 +223,42 @@
+         PebbleTemplate template = pebble.getTemplate(source);
+         Map<String, Object> context = new HashMap<>();
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, context);
+         assertEquals("012345", writer.toString());
+     }
+ 
+-    @Test(expected = IllegalArgumentException.class)
++    @Test(expected = PebbleException.class)
+     public void testForSequenceNumberException() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{% for i in 'a'..5 %}{{i}}{% endfor %}";
+         PebbleTemplate template = pebble.getTemplate(source);
+         Map<String, Object> context = new HashMap<>();
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, context);
+     }
+ 
+     @Test
+-    public void testForWhenInvalidOrNoEndforTag() throws PebbleException, IOException {
++    public void testForWhenInvalidOrNoEndforTag() throws PebbleException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+         String source = "{% for i in 'a'..5 %}{{i}}% endfor %}";
+         try {
+             pebble.getTemplate(source);
+ 
+             fail("Should fail due to invalid endfor tag");
+-        } catch (PebbleException ex) {
+-            assertEquals(ex.getPebbleMessage(), "Unexpected end of template. Pebble was looking for the \"endfor\" tag");
+-            assertEquals(ex.getLineNumber(), (Integer) 1);
+-            assertEquals(ex.getFileName(), source);
++        } catch (RuntimePebbleException ex) {
++            assertTrue(ex.getCause() instanceof ParserException);
++            ParserException parserException = (ParserException) ex.getCause();
++            assertEquals(parserException.getPebbleMessage(), "Unexpected end of template. Pebble was looking for the \"endfor\" tag");
++            assertEquals(parserException.getLineNumber(), (Integer) 1);
++            assertEquals(parserException.getFileName(), source);
+         }
+     }
+ 
+     @Test
+     public void testFilterTag() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{% filter upper %}hello{% endfilter %}";
+@@ -416,126 +396,17 @@
+         List<User> users = new ArrayList<>();
+         context.put("users", users);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, context);
+         assertEquals("yes", writer.toString());
+     }
+ 
+-    @Test
+-    public void testMacro() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.macro1.peb");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("	<input name=\"company\" value=\"google\" type=\"text\" />" + LINE_SEPARATOR,
+-                writer.toString());
+-    }
+-
+-    /**
+-     * This ensures that macro inheritance works properly even if it skips a
+-     * generation.
+-     *
+-     * @throws PebbleException
+-     * @throws IOException
+-     */
+-    @Test
+-    public void skipGenerationMacro() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.skipGenerationMacro1.peb");
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("success", writer.toString());
+-    }
+-
+-    @Test(expected = RuntimeException.class)
+-    public void testMacrosWithSameName() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate(
+-                "{{ test() }}{% macro test(one) %}ONE{% endmacro %}{% macro test(one,two) %}TWO{% endmacro %}");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("	<input name=\"company\" value=\"google\" type=\"text\" />" + LINE_SEPARATOR,
+-                writer.toString());
+-    }
+-
+-    @Test
+-    public void testMacroWithDefaultArgument() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate(
+-                "{{ input(name='country') }}{% macro input(type='text', name) %}{{ type }} {{ name }}{% endmacro %}");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("text country", writer.toString());
+-    }
+-
+-    /**
+-     * There was an issue where the second invokation of a macro did not have
+-     * access to the original arguments any more.
+-     *
+-     * @throws PebbleException
+-     * @throws IOException
+-     */
+-    @Test
+-    public void testMacroInvokedTwice() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.macroDouble.peb");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("onetwo", writer.toString());
+-    }
+-
+-    @Test
+-    public void testFunctionInMacroInvokedTwice() throws PebbleException, IOException {
+-
+-        TestingExtension extension = new TestingExtension();
+-        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false)
+-                .extension(extension).build();
+-
+-        PebbleTemplate template = pebble
+-                .getTemplate("{{ test() }}{% macro test() %}{{ invocationCountingFunction() }}{% endmacro %}");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-
+-        InvocationCountingFunction function = extension.getInvocationCountingFunction();
+-        assertEquals(1, function.getInvocationCount());
+-    }
+-
+-    @Test
+-    public void testMacroInvocationWithoutAllArguments() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+-        PebbleTemplate template = pebble
+-                .getTemplate("{{ test('1') }}{% macro test(one,two) %}{{ one }}{{ two }}{% endmacro %}");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("1", writer.toString());
+-    }
+-
+-    /**
+-     * I was once writing macro output directly to writer which was preventing
+-     * output from being filtered. I have fixed this now.
+-     *
+-     * @throws PebbleException
+-     */
+-    @Test
+-    public void testMacroBeingFiltered() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.macro3.peb");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("HELLO" + LINE_SEPARATOR, writer.toString());
+-    }
++
+ 
+     @Test
+     public void testCache() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{% cache 'test' %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+@@ -592,17 +463,17 @@
+ 
+         //Value should be cached
+         context.put("foobar", false);
+         writer = new StringWriter();
+         template.evaluate(writer, context);
+         assertEquals("true", writer.toString());
+     }
+ 
+-    @Test(expected = PebbleException.class)
++    @Test(expected = RuntimePebbleException.class)
+     public void testCacheWithNoName() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{% cache %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+         Map<String, Object> context = new HashMap<>();
+         context.put("foobar", true);
+@@ -612,17 +483,17 @@
+         assertEquals("true", writer.toString());
+     }
+ 
+     public static class SimpleObjectA {
+ 
+         private String value;
+ 
+         public String getValue() {
+-            return value;
++            return this.value;
+         }
+ 
+         public void setValue(String value) {
+             this.value = value;
+         }
+     }
+ 
+     /**
+@@ -631,17 +502,17 @@
+      *
+      * @author mbosecke
+      */
+     public static class SimpleObjectB {
+ 
+         private String value;
+ 
+         public String getValue() {
+-            return value;
++            return this.value;
+         }
+ 
+         public void setValue(String value) {
+             this.value = value;
+         }
+     }
+ 
+     /**
+@@ -719,55 +590,17 @@
+         PebbleTemplate template = pebble.getTemplate("templates/template.importWithinBlock.peb");
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer);
+         assertEquals("\t<input name=\"company\" value=\"forcorp\" type=\"text\" />" + LINE_SEPARATOR,
+                 writer.toString());
+     }
+ 
+-    @Test
+-    public void testImportFile() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.macro2.peb");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("	<input name=\"company\" value=\"forcorp\" type=\"text\" />" + LINE_SEPARATOR,
+-                writer.toString());
+-    }
+-
+-    @Test
+-    public void testImportInChildTemplateOutsideOfBlock() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.macro.child.peb");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("	<input name=\"company\" value=\"forcorp\" type=\"text\" />" + LINE_SEPARATOR,
+-                writer.toString());
+-    }
+-    
+-    @Test
+-    public void testDynamicImport() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.import.dynamic.peb");
+-
+-        Map<String, Object> context = new HashMap<>();
+-
+-        context.put("modern", false);
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer, context);
+-        assertEquals("classic macro" + LINE_SEPARATOR, writer.toString());
+-
+-        context.put("modern", true);
+-        writer = new StringWriter();
+-        template.evaluate(writer, context);
+-        assertEquals("ajax macro" + LINE_SEPARATOR, writer.toString());
+-    }
++
+ 
+     @Test
+     public void testDynamicInclude() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+         PebbleTemplate template = pebble.getTemplate("templates/template.include.dynamic.peb");
+ 
+         Map<String, Object> context = new HashMap<>();
+ 
+@@ -860,19 +693,16 @@
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer);
+         assertEquals("TWO" + LINE_SEPARATOR + "ONE" + LINE_SEPARATOR + "TWO" + LINE_SEPARATOR, writer.toString());
+     }
+ 
+     /**
+      * Ensures that an include with a variable override works even if a null value is passed.
+-     *
+-     * @throws PebbleException
+-     * @throws IOException
+      */
+     @Test
+     public void testIncludeOverridesVariable() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+         PebbleTemplate template = pebble.getTemplate("templates/template.includeOverrideVariable1.peb");
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer);
+@@ -1099,40 +929,40 @@
+ 
+         private final String username;
+ 
+         public User(String username) {
+             this.username = username;
+         }
+ 
+         public String getUsername() {
+-            return username;
++            return this.username;
+         }
+     }
+ 
+     public class Classroom {
+ 
+         private List<User> users = new ArrayList<>();
+ 
+         public List<User> getUsers() {
+-            return users;
++            return this.users;
+         }
+ 
+         public void setUsers(List<User> users) {
+             this.users = users;
+         }
+     }
+ 
+     public class FlushAwareWriter extends StringWriter {
+ 
+         private List<String> buffers = new ArrayList<>();
+ 
+         @Override
+         public void flush() {
+-            buffers.add(this.getBuffer().toString());
++            this.buffers.add(this.getBuffer().toString());
+             super.flush();
+         }
+ 
+         public List<String> getFlushedBuffers() {
+-            return buffers;
++            return this.buffers;
+         }
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -10,26 +10,24 @@
+  */
+ package com.mitchellbosecke.pebble;
+ 
+ import com.mitchellbosecke.pebble.error.PebbleException;
+ import com.mitchellbosecke.pebble.extension.InvocationCountingFunction;
+ import com.mitchellbosecke.pebble.extension.TestingExtension;
+ import com.mitchellbosecke.pebble.loader.StringLoader;
+ import com.mitchellbosecke.pebble.template.PebbleTemplate;
+-import org.junit.Test;
+-
+ import java.io.IOException;
+ import java.io.StringWriter;
+ import java.io.Writer;
+ import java.util.*;
+ import java.util.concurrent.Executors;
+-
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.fail;
++import org.junit.Test;
+ 
+ public class CoreTagsTest extends AbstractTest {
+ 
+     public static final String LINE_SEPARATOR = System.lineSeparator();
+ 
+     @Test
+     public void testBlock() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+@@ -213,16 +211,57 @@
+         users.add(new User("John"));
+         context.put("users", users);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, context);
+         assertEquals("[3]02Alex11Bob[3]20John", writer.toString());
+     }
+ 
++    @Test
++    public void testForWithIterable() throws PebbleException, IOException {
++        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
++
++        String source = "{% for user in users %}{% if loop.first %}[first]{% endif %}{% if loop.last %}[last]{% endif %}{{ loop.index }}{{ user.username }}{% endfor %}";
++        PebbleTemplate template = pebble.getTemplate(source);
++        Iterable<User> users = new Iterable<User>() {
++            @Override
++            public Iterator<User> iterator() {
++                return new Iterator<User>() {
++                    
++                    User[] fixture = new User[]{ new User("Alex"), new User("Bob"), new User("John") };
++                    int pos = 0;
++                    
++                    @Override
++                    public boolean hasNext() {
++                        return pos < fixture.length;
++                    }
++
++                    @Override
++                    public User next() {
++                        return fixture[pos++];
++                    }
++
++                    @Override
++                    public void remove() {
++                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
++                    }
++                };
++            }
++        };
++        
++        Map<String, Object> context = new HashMap<>();        
++        context.put("users", users);
++
++        Writer writer = new StringWriter();
++        template.evaluate(writer, context);
++        assertEquals("[first]0Alex1Bob[last]2John", writer.toString());
++    }
++    
++    
+     @Test
+     public void testForWithMap() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         Map<String, Integer> data = new LinkedHashMap<>();
+         data.put("One", 1);
+         data.put("Two", 2);
+         data.put("Three", 3);
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+/**
+ * ****************************************************************************
+ * his file is part of Pebble.
+ * <p>
+ * Copyright (c) 2014 by Mitchell Bösecke
+ * <p>
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ * ****************************************************************************
+ */
+package com.mitchellbosecke.pebble;
+
+import com.mitchellbosecke.pebble.error.ParserException;
+import com.mitchellbosecke.pebble.error.PebbleException;
+import com.mitchellbosecke.pebble.error.RuntimePebbleException;
+import com.mitchellbosecke.pebble.loader.StringLoader;
+import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import org.junit.Test;
+
+public class CoreTagsTest extends AbstractTest {
+
+    public static final String LINE_SEPARATOR = System.lineSeparator();
+
+    @Test
+    public void testBlock() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+        PebbleTemplate template = pebble.getTemplate("templates/template.grandfather.peb");
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+    }
+
+    /**
+     * This ensures that block inheritance works properly even if it skips a
+     * generation.
+     *
+     * @throws PebbleException
+     * @throws IOException
+     */
+    @Test
+    public void skipGenerationBlock() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+        PebbleTemplate template = pebble.getTemplate("templates/template.skipGenerationBlock1.peb");
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        assertEquals("success", writer.toString());
+    }
+
+    /**
+     * The template used to fail if the user wrapped the block name in quotes.
+     *
+     * @throws PebbleException
+     * @throws IOException
+     */
+    @Test
+    public void testBlockWithStringLiteralName() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% block 'content' %}hello{% endblock 'content' %}";
+        // ... 8 lines elided ...
+    public void testIf() throws PebbleException, IOException {
+        // ... 14 lines elided ...
+    public void testExceptionWithIfStatement() throws PebbleException, IOException {
+        // ... 9 lines elided ...
+        template.evaluate(writer, context);
+        assertEquals("no", writer.toString());
+    }
+
+    /**
+     * Issue #34
+     *
+     * @throws PebbleException
+     * @throws IOException
+     */
+    @Test
+    public void testIfThenElse() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% if alpha %}alpha{% elseif beta %}beta{% else %}gamma{% endif %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("alpha", true);
+        context.put("beta", false);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("alpha", writer.toString());
+    }
+
+    @Test
+    public void testIfWithDirectProperty() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% if variable %}yes{% else %}no{% endif %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Map<String, Object> context = new HashMap<>();
+        context.put("variable", true);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("yes", writer.toString());
+    }
+
+
+
+    @Test
+    public void testIfWhenInvalidOrNoEndifTag() throws PebbleException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+        String source = "{% if variable %}smth{ endif %}";
+        try {
+            pebble.getTemplate(source);
+
+            fail("Should fail due to invalid endif tag");
+        } catch (RuntimePebbleException ex) {
+            assertTrue(ex.getCause() instanceof ParserException);
+            ParserException parserException = (ParserException) ex.getCause();
+            assertEquals(parserException.getPebbleMessage(), "Unexpected end of template. Pebble was looking for the \"endif\" tag");
+            assertEquals(parserException.getLineNumber(), (Integer) 1);
+            assertEquals(parserException.getFileName(), source);
+        }
+    }
+
+    @Test
+    public void testFlush() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "start{% flush %}end";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        FlushAwareWriter writer = new FlushAwareWriter();
+        template.evaluate(writer);
+        List<String> flushedBuffers = writer.getFlushedBuffers();
+
+        assertEquals("start", flushedBuffers.get(0));
+        assertEquals("startend", flushedBuffers.get(1));
+    }
+
+    @Test
+    public void testFor() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% for user in users %}{% if loop.first %}[{{ loop.length }}]{% endif %}{% if loop.last %}[{{ loop.length }}]{% endif %}{{ loop.index }}{{ loop.revindex }}{{ user.username }}{% endfor %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Map<String, Object> context = new HashMap<>();
+        List<User> users = new ArrayList<>();
+        users.add(new User("Alex"));
+        users.add(new User("Bob"));
+        users.add(new User("John"));
+        context.put("users", users);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("[3]02Alex11Bob[3]20John", writer.toString());
+    }
+
+    @Test
+    public void testForWithIterable() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% for user in users %}{% if loop.first %}[first]{% endif %}{% if loop.last %}[last]{% endif %}{{ loop.index }}{{ user.username }}{% endfor %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Iterable<User> users = new Iterable<User>() {
+            @Override
+            public Iterator<User> iterator() {
+                return new Iterator<User>() {
+                    
+                    User[] fixture = new User[]{ new User("Alex"), new User("Bob"), new User("John") };
+                    int pos = 0;
+                    
+                    @Override
+                    public boolean hasNext() {
+                        return pos < fixture.length;
+                    }
+
+                    @Override
+                    public User next() {
+                        return fixture[pos++];
+                    }
+
+                    @Override
+                    public void remove() {
+                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                    }
+                };
+            }
+        };
+        
+        Map<String, Object> context = new HashMap<>();        
+        context.put("users", users);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("[first]0Alex1Bob[last]2John", writer.toString());
+    }
+    
+    
+    @Test
+    public void testForWithMap() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        Map<String, Integer> data = new LinkedHashMap<>();
+        data.put("One", 1);
+        data.put("Two", 2);
+        data.put("Three", 3);
+
+        String source = "{% for entry in data %}{{ entry.key }} {{ entry.value }}{% endfor %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Map<String, Object> context = new HashMap<>();
+        context.put("data", data);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("One 1Two 2Three 3", writer.toString());
+    }
+
+    @Test
+    public void testForSequenceNumber() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% for i in 0..5 %}{{i}}{% endfor %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Map<String, Object> context = new HashMap<>();
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("012345", writer.toString());
+    }
+
+    @Test(expected = PebbleException.class)
+    public void testForSequenceNumberException() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% for i in 'a'..5 %}{{i}}{% endfor %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Map<String, Object> context = new HashMap<>();
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+    }
+
+    @Test
+    public void testForWhenInvalidOrNoEndforTag() throws PebbleException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+        String source = "{% for i in 'a'..5 %}{{i}}% endfor %}";
+        try {
+            pebble.getTemplate(source);
+
+            fail("Should fail due to invalid endfor tag");
+        } catch (RuntimePebbleException ex) {
+            assertTrue(ex.getCause() instanceof ParserException);
+            ParserException parserException = (ParserException) ex.getCause();
+            assertEquals(parserException.getPebbleMessage(), "Unexpected end of template. Pebble was looking for the \"endfor\" tag");
+            assertEquals(parserException.getLineNumber(), (Integer) 1);
+            assertEquals(parserException.getFileName(), source);
+        }
+    }
+
+    @Test
+    public void testFilterTag() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% filter upper %}hello{% endfilter %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        assertEquals("HELLO", writer.toString());
+    }
+
+    @Test
+    public void testChainedFilterTag() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% filter lower | escape %}HELLO<br>{% endfilter %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        assertEquals("hello&lt;br&gt;", writer.toString());
+    }
+
+    /**
+     * Issue #15
+     *
+     * @throws PebbleException
+     * @throws IOException
+     */
+    @Test
+    public void testForIteratingOverProperty() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% for user in classroom.users %}{{ user.username }}{% endfor %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Map<String, Object> context = new HashMap<>();
+        // ... 13 lines elided ...
+    public void testForWithNullIterable() throws PebbleException, IOException {
+        // ... 14 lines elided ...
+    public void testForWithArray() throws PebbleException, IOException {
+        // ... 19 lines elided ...
+    public void testForWithArrayOfPrimitives() throws PebbleException, IOException {
+        // ... 18 lines elided ...
+    /**
+     * There were compilation issues when having two for loops in the same
+     * template due to the same variable name being declared twice.
+     *
+     * @throws PebbleException
+     */
+    @Test
+    public void multipleForLoops() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "" + "{% for user in users %}{{ user.username }}{% endfor %}"
+                + "{% for user in users %}{{ user.username }}{% endfor %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Map<String, Object> context = new HashMap<>();
+        List<User> users = new ArrayList<>();
+        users.add(new User("Alex"));
+        users.add(new User("Bob"));
+        context.put("users", users);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+
+        assertEquals("AlexBobAlexBob", writer.toString());
+    }
+
+    @Test
+    public void testForElse() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% for user in users %}{{ user.username }}{% else %}yes{% endfor %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Map<String, Object> context = new HashMap<>();
+        List<User> users = new ArrayList<>();
+        context.put("users", users);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("yes", writer.toString());
+    }
+
+
+
+    @Test
+    public void testCache() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% cache 'test' %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("foobar", true);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("true", writer.toString());
+
+        //Value should be cached
+        context.put("foobar", false);
+        writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("true", writer.toString());
+    }
+
+    @Test
+    public void testDisabledCache() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false)
+                .cacheActive(false).build();
+
+        String source = "{% cache 'test' %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("foobar", true);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("true", writer.toString());
+
+        //Value should NOT be cached
+        context.put("foobar", false);
+        writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("false", writer.toString());
+    }
+
+    @Test
+    public void testCacheWithVariable() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% cache 'test' + var %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("foobar", true);
+        context.put("var", 12);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("true", writer.toString());
+
+        //Value should be cached
+        context.put("foobar", false);
+        writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("true", writer.toString());
+    }
+
+    @Test(expected = RuntimePebbleException.class)
+    public void testCacheWithNoName() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% cache %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("foobar", true);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("true", writer.toString());
+    }
+
+    public static class SimpleObjectA {
+
+        private String value;
+
+        public String getValue() {
+            return this.value;
+        }
+
+        public void setValue(String value) {
+            this.value = value;
+        }
+    }
+
+    /**
+     * It is important that this object has an identical method signature as
+     * SimpleObjectA for the following tests.
+     *
+     * @author mbosecke
+     */
+    public static class SimpleObjectB {
+
+        private String value;
+
+        public String getValue() {
+            return this.value;
+        }
+
+        public void setValue(String value) {
+            this.value = value;
+        }
+    }
+
+    /**
+     * Gets the attribute of an object once so that the attribute is cached
+     * within the GetAttributeExpression then evaluates the exact same template
+     * but with a null object.
+     * <p>
+     * Issue #57
+     *
+     * @throws PebbleException
+     * @throws IOException
+     */
+    @Test
+    public void testMemberCacheWithNullObject() throws PebbleException, IOException {
+        SimpleObjectA a = new SimpleObjectA();
+        a.setValue("A");
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", a);
+
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+        PebbleTemplate template = pebble.getTemplate("{{ object.value }}");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("A", writer.toString());
+
+        context.put("object", null);
+        writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("", writer.toString());
+    }
+
+    /**
+     * Gets the attribute of an object once so that the attribute is cached
+        // ... 7 lines elided ...
+     * @throws IOException
+     */
+    @Test
+    public void testMemberCacheWithDifferingObjectTypes() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        PebbleTemplate template = pebble.getTemplate("{{ object.value }}");
+
+        SimpleObjectA objectA = new SimpleObjectA();
+        objectA.setValue("A");
+
+        SimpleObjectB objectB = new SimpleObjectB();
+        objectB.setValue("B");
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", objectA);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("A", writer.toString());
+
+        // swap out the object with similar one to try and break the cache
+        context.put("object", objectB);
+
+        writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("B", writer.toString());
+    }
+
+    @Test
+    public void testImportWithinBlock() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+        PebbleTemplate template = pebble.getTemplate("templates/template.importWithinBlock.peb");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        assertEquals("\t<input name=\"company\" value=\"forcorp\" type=\"text\" />" + LINE_SEPARATOR,
+                writer.toString());
+    }
+
+
+
+    @Test
+    public void testDynamicInclude() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+        PebbleTemplate template = pebble.getTemplate("templates/template.include.dynamic.peb");
+
+        Map<String, Object> context = new HashMap<>();
+
+        context.put("admin", false);
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("default footer", writer.toString());
+
+        context.put("admin", true);
+        writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("admin footer", writer.toString());
+    }
+
+    @Test(expected = PebbleException.class)
+    public void testNonExistingMacroOrFunction() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+        PebbleTemplate template = pebble.getTemplate("{{ nonExisting('test') }}");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+    }
+
+    @Test
+    public void testInclude() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+        PebbleTemplate template = pebble.getTemplate("templates/template.include1.peb");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        assertEquals("TEMPLATE2" + LINE_SEPARATOR + "TEMPLATE1" + LINE_SEPARATOR + "TEMPLATE2" + LINE_SEPARATOR,
+                writer.toString());
+    }
+
+    /**
+        // ... 7 lines elided ...
+    public void testIncludeInheritance() throws PebbleException, IOException {
+        // ... 9 lines elided ...
+    public void testIncludeWithinBlock() throws PebbleException, IOException {
+        // ... 4 lines elided ...
+        template.evaluate(writer);
+        assertEquals("TEMPLATE2" + LINE_SEPARATOR + "TEMPLATE1" + LINE_SEPARATOR, writer.toString());
+    }
+
+    /**
+     * Issue #16
+     *
+     * @throws PebbleException
+     * @throws IOException
+     */
+    @Test
+    public void testIncludePropagatesContext() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+        PebbleTemplate template = pebble.getTemplate("templates/template.includePropagatesContext.peb");
+        Writer writer = new StringWriter();
+        Map<String, Object> context = new HashMap<>();
+        context.put("name", "Mitchell");
+        template.evaluate(writer, context);
+        assertEquals("Mitchell", writer.toString());
+    }
+
+    /**
+     * Ensures that when including a template it is safe to have conflicting
+     * block names.
+     *
+     * @throws PebbleException
+     * @throws IOException
+     */
+    @Test
+    public void testIncludeOverridesBlocks() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+        PebbleTemplate template = pebble.getTemplate("templates/template.includeOverrideBlock.peb");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        assertEquals("TWO" + LINE_SEPARATOR + "ONE" + LINE_SEPARATOR + "TWO" + LINE_SEPARATOR, writer.toString());
+    }
+
+    /**
+     * Ensures that an include with a variable override works even if a null value is passed.
+     */
+    @Test
+    public void testIncludeOverridesVariable() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+        PebbleTemplate template = pebble.getTemplate("templates/template.includeOverrideVariable1.peb");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        assertEquals("One: one (overridden)" + LINE_SEPARATOR + "Two: ", writer.toString());
+    }
+
+    @Test
+    public void testSet() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% set name = 'alex'  %}{{ name }}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Map<String, Object> context = new HashMap<>();
+        context.put("name", "steve");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("alex", writer.toString());
+    }
+
+    @Test
+    public void testSetInChildTemplateOutsideOfBlock() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+        PebbleTemplate template = pebble.getTemplate("templates/template.set.child.peb");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        assertEquals("SUCCESS", writer.toString());
+    }
+
+    @Test
+    public void testReSetInForLoop() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        String source = "{% set total = 0 %}{% for i in 1..1 %}{% for item in items %}{% set total = total + item.balance %}{% endfor %}{% endfor %}{{ total }}";
+        // ... 16 lines elided ...
+    public void testVerbatim() throws PebbleException, IOException {
+        // ... 11 lines elided ...
+    public void testParallel() throws PebbleException, IOException {
+        // ... 24 lines elided ...
+    public void testParallelTagWhileEvaluationContextIsChanging() throws PebbleException, IOException {
+        // ... 21 lines elided ...
+    public void testNestedParallel() throws PebbleException, IOException {
+        // ... 20 lines elided ...
+    public void testIncludeWithinParallelTag() throws PebbleException, IOException {
+        // ... 14 lines elided ...
+    public void testParallelWithoutExecutorService() throws PebbleException, IOException {
+        // ... 21 lines elided ...
+    public void testParallelWithImport() throws PebbleException, IOException {
+        // ... 10 lines elided ...
+    public class SlowObject {
+        // ... 1 lines elided ...
+        public String first() {
+        // ... 9 lines elided ...
+        public String second() {
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            return "second";
+        }
+
+        public String third() {
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            return "third";
+        }
+
+        public String fourth() {
+            try {
+                Thread.sleep(400);
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            return "fourth";
+        }
+    }
+
+    public class User {
+
+        private final String username;
+
+        public User(String username) {
+            this.username = username;
+        }
+
+        public String getUsername() {
+            return this.username;
+        }
+    }
+
+    public class Classroom {
+
+        private List<User> users = new ArrayList<>();
+
+        public List<User> getUsers() {
+            return this.users;
+        }
+
+        public void setUsers(List<User> users) {
+            this.users = users;
+        }
+    }
+
+    public class FlushAwareWriter extends StringWriter {
+
+        private List<String> buffers = new ArrayList<>();
+
+        @Override
+        public void flush() {
+            this.buffers.add(this.getBuffer().toString());
+            super.flush();
+        }
+
+        public List<String> getFlushedBuffers() {
+            return this.buffers;
+        }
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -10,16 +10,19 @@
+  */
+ package com.mitchellbosecke.pebble;
+ 
+ import com.mitchellbosecke.pebble.error.ParserException;
+ import com.mitchellbosecke.pebble.error.PebbleException;
+ import com.mitchellbosecke.pebble.error.RuntimePebbleException;
+ import com.mitchellbosecke.pebble.loader.StringLoader;
+ import com.mitchellbosecke.pebble.template.PebbleTemplate;
++
++import org.junit.Test;
++
+ import java.io.IOException;
+ import java.io.StringWriter;
+ import java.io.Writer;
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.LinkedHashMap;
+ import java.util.List;
+ import java.util.Map;
+@@ -198,20 +201,20 @@
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{% for user in users %}{% if loop.first %}[first]{% endif %}{% if loop.last %}[last]{% endif %}{{ loop.index }}{{ user.username }}{% endfor %}";
+         PebbleTemplate template = pebble.getTemplate(source);
+         Iterable<User> users = new Iterable<User>() {
+             @Override
+             public Iterator<User> iterator() {
+                 return new Iterator<User>() {
+-                    
++
+                     User[] fixture = new User[]{ new User("Alex"), new User("Bob"), new User("John") };
+                     int pos = 0;
+-                    
++
+                     @Override
+                     public boolean hasNext() {
+                         return pos < fixture.length;
+                     }
+ 
+                     @Override
+                     public User next() {
+                         return fixture[pos++];
+@@ -219,26 +222,26 @@
+ 
+                     @Override
+                     public void remove() {
+                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                     }
+                 };
+             }
+         };
+-        
+-        Map<String, Object> context = new HashMap<>();        
++
++        Map<String, Object> context = new HashMap<>();
+         context.put("users", users);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, context);
+         assertEquals("[first]0Alex1Bob[last]2John", writer.toString());
+     }
+-    
+-    
++
++
+     @Test
+     public void testForWithMap() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         Map<String, Integer> data = new LinkedHashMap<>();
+         data.put("One", 1);
+         data.put("Two", 2);
+         data.put("Three", 3);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

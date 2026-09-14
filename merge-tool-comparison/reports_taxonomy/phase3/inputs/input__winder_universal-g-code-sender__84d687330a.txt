@@ -1,0 +1,992 @@
+UNIT winder_universal-g-code-sender__84d687330a
+repo: winder_universal-g-code-sender   merge: 84d687330a68c360b5596e4fcc075d6f2a61da00   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: ugs-core/src/com/willwinder/universalgcodesender/model/GUIBackend.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -335,17 +335,17 @@
+         logger.log(Level.FINEST, "Getting settings.");
+         return this.settings;
+     }
+ 
+     @Override
+     public CommunicatorState getControlState() {
+         logger.log(Level.FINEST, "Getting control state.");
+         return this.controller == null ?
+-                CommunicatorState.COMM_DISCONNECTED : this.controller.getControlState();
++                CommunicatorState.COMM_DISCONNECTED : this.controller.getCommunicatorState();
+     }
+ 
+     @Override
+     public Position getWorkPosition() {
+         return controllerStatus.getWorkCoord();
+     }
+ 
+     @Override
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -173,17 +173,17 @@
+         if (openCommConnection(port, baudRate)) {
+             streamFailed = false;   //reset
+         }
+     }
+ 
+     protected IController fetchControllerFromFirmware(String firmware) throws Exception {
+         Optional<IController> c = FirmwareUtils.getControllerFor(firmware);
+         if (!c.isPresent()) {
+-            throw new Exception("Unable to create handler for: " + firmware);
++            throw new Exception(String.format("Could not find controller implementation for the firmware \"%s\"", firmware));
+         }
+         return c.get();
+     }
+ 
+     @Override
+     public boolean isConnected() {
+         boolean isConnected = this.controller != null && this.controller.isCommOpen();
+         logger.log(Level.FINEST, "Is connected: {0}", isConnected);
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package com.willwinder.universalgcodesender.model;
+        // ... 1 lines elided ...
+import com.google.common.io.Files;
+import com.willwinder.universalgcodesender.IController;
+import com.willwinder.universalgcodesender.connection.ConnectionFactory;
+import com.willwinder.universalgcodesender.firmware.FirmwareSetting;
+import com.willwinder.universalgcodesender.firmware.IFirmwareSettingsListener;
+import com.willwinder.universalgcodesender.gcode.GcodeParser;
+import com.willwinder.universalgcodesender.gcode.GcodeState;
+import com.willwinder.universalgcodesender.gcode.GcodeStats;
+import com.willwinder.universalgcodesender.gcode.processors.*;
+import com.willwinder.universalgcodesender.gcode.util.GcodeParserUtils;
+import com.willwinder.universalgcodesender.i18n.Localization;
+import com.willwinder.universalgcodesender.listeners.*;
+import com.willwinder.universalgcodesender.model.UnitUtils.Units;
+import com.willwinder.universalgcodesender.model.events.*;
+import com.willwinder.universalgcodesender.services.MessageService;
+import com.willwinder.universalgcodesender.types.GcodeCommand;
+import com.willwinder.universalgcodesender.utils.*;
+import com.willwinder.universalgcodesender.utils.Settings.FileStats;
+import org.apache.commons.lang3.StringUtils;
+        // ... 1 lines elided ...
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.nio.charset.Charset;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+        // ... 4 lines elided ...
+public class GUIBackend implements BackendAPI, ControllerListener, SettingChangeListener, IFirmwareSettingsListener {
+        // ... 24 lines elided ...
+    public void addUGSEventListener(UGSEventListener listener) {
+        // ... 7 lines elided ...
+    public void removeUGSEventListener(UGSEventListener listener) {
+        // ... 7 lines elided ...
+    public void addMessageListener(MessageListener listener) {
+        // ... 4 lines elided ...
+    public void removeMessageListener(MessageListener listener) {
+        // ... 8 lines elided ...
+    public void preprocessAndExportToFile(File f) throws Exception {
+        // ... 11 lines elided ...
+    protected void preprocessAndExportToFile(GcodeParser gcp, File input, IGcodeWriter gcw) throws Exception {
+        // ... 4 lines elided ...
+    private void initGcodeParser() {
+        // ... 10 lines elided ...
+        }
+    }
+
+    private void updateWithFirmware(String firmware) throws Exception {
+        this.firmware = firmware;
+
+        // Load command processors for this firmware.
+        try {
+            FirmwareUtils.getParserFor(firmware, settings);
+        } catch (Exception e) {
+            disconnect();
+            throw new Exception("Bad configuration file for: " + firmware + " (" + e.getMessage() + ")");
+        }
+
+        // Reload gcode file to use the controllers processors.
+        if (this.gcodeFile != null) {
+            setGcodeFile(this.gcodeFile);
+        }
+    }
+
+    @Override
+    public void connect(String firmware, String port, int baudRate) throws Exception {
+        logger.log(Level.INFO, "Connecting to {0} on port {1}", new Object[]{firmware, port});
+        updateWithFirmware(firmware);
+
+        this.controller = fetchControllerFromFirmware(firmware);
+        this.controller.setMessageService(messageService);
+        applySettings(settings);
+
+        this.controller.addListener(this);
+        this.controller.getFirmwareSettings().addListener(this);
+
+        if (openCommConnection(port, baudRate)) {
+            streamFailed = false;   //reset
+        }
+    }
+
+    protected IController fetchControllerFromFirmware(String firmware) throws Exception {
+        Optional<IController> c = FirmwareUtils.getControllerFor(firmware);
+        if (!c.isPresent()) {
+            throw new Exception(String.format("Could not find controller implementation for the firmware \"%s\"", firmware));
+        }
+        return c.get();
+    }
+
+    @Override
+    public boolean isConnected() {
+        boolean isConnected = this.controller != null && this.controller.isCommOpen();
+        logger.log(Level.FINEST, "Is connected: {0}", isConnected);
+        return isConnected;
+    }
+
+    @Override
+    public void disconnect() throws Exception {
+        autoconnect = false;
+        ControllerState previousState = controllerStatus.getState();
+        controllerStatus = new ControllerStatus();
+        sendUGSEvent(new ControllerStateEvent(ControllerState.DISCONNECTED, previousState));
+        disconnectInternal();
+    }
+
+    private void disconnectInternal() throws Exception {
+        logger.log(Level.INFO, "Disconnecting.");
+        if (this.controller != null) {
+            this.controller.closeCommPort();
+            this.controller.removeListener(this);
+            this.controller.getFirmwareSettings().removeListener(this);
+            this.controller = null;
+        }
+    }
+
+    public void autoconnect() {
+        if (!autoconnect) {
+            return;
+        }
+
+        if (!isConnected()) {
+            if (settings == null || streamFailed) {
+                return;
+            }
+            if (lastResponse == Long.MIN_VALUE && autoconnect) {
+        // ... 27 lines elided ...
+    public void applySettings(Settings settings) throws Exception {
+        // ... 15 lines elided ...
+    private static void initializeWithFallbackProcessors(GcodeParser parser) {
+        // ... 9 lines elided ...
+    public void sendGcodeCommand(String commandText) throws Exception {
+        // ... 4 lines elided ...
+    public void sendGcodeCommand(boolean restoreParserState, String commandText) throws Exception {
+        // ... 14 lines elided ...
+    public void sendGcodeCommand(GcodeCommand command) throws Exception {
+        // ... 7 lines elided ...
+    public void adjustManualLocation(PartialPosition distance, double feedRate) throws Exception {
+        // Do not allow jogging if we are not idle or already jogging
+        boolean canJog = getControllerState() == ControllerState.IDLE || getControllerState() == ControllerState.JOG;
+        if (!canJog) {
+            logger.fine("Skipping jog as controller state was not IDLE or JOG");
+            return;
+        }
+
+        boolean isEmpty = Arrays.stream(Axis.values())
+                .map(axis -> distance.hasAxis(axis) ? distance.getAxis(axis) : 0)
+                .allMatch(aDouble -> aDouble == 0.0);
+
+        // Don't send empty commands.
+        if (isEmpty) {
+            return;
+        }
+
+        controller.jogMachine(distance, feedRate);
+    }
+
+    @Override
+    public void probe(String axis, double feedRate, double distance, UnitUtils.Units units) throws Exception {
+        controller.probe(axis, feedRate, distance, units);
+    }
+
+    @Override
+    public void offsetTool(String axis, double offset, UnitUtils.Units units) throws Exception {
+        controller.offsetTool(axis, offset, units);
+    }
+
+    @Override
+    public Settings getSettings() {
+        logger.log(Level.FINEST, "Getting settings.");
+        return this.settings;
+    }
+
+    @Override
+    public CommunicatorState getControlState() {
+        logger.log(Level.FINEST, "Getting control state.");
+        return this.controller == null ?
+                CommunicatorState.COMM_DISCONNECTED : this.controller.getCommunicatorState();
+    }
+
+    @Override
+    public Position getWorkPosition() {
+        return controllerStatus.getWorkCoord();
+    }
+
+    @Override
+    public Position getMachinePosition() {
+        return controllerStatus.getMachineCoord();
+    }
+
+    @Override
+    public ControllerState getControllerState() {
+        return controllerStatus.getState();
+    }
+
+    @Override
+    public GcodeState getGcodeState() {
+        if (this.controller != null) {
+            return this.controller.getCurrentGcodeState();
+        }
+        return null;
+    }
+
+    @Override
+    public IController getController() {
+        logger.log(Level.FINEST, "Getting controller");
+        return this.controller;
+    }
+
+    private File getTempDir() {
+        if (tempDir == null) {
+            tempDir = Files.createTempDir();
+        }
+        return tempDir;
+    }
+
+    @Override
+    public void setGcodeFile(File file) throws Exception {
+        // ... 8 lines elided ...
+    public void reloadGcodeFile() throws Exception {
+        // ... 5 lines elided ...
+    private void processGcodeFile() throws Exception {
+        // ... 12 lines elided ...
+    public List<String> getWorkspaceFileList() {
+        // ... 19 lines elided ...
+    public void openWorkspaceFile(String file) throws Exception {
+        // ... 10 lines elided ...
+    public void applyGcodeParser(GcodeParser parser) throws Exception {
+        // ... 22 lines elided ...
+    public void applyCommandProcessor(CommandProcessor commandProcessor) throws Exception {
+        // ... 9 lines elided ...
+    public void removeCommandProcessor(CommandProcessor commandProcessor) throws Exception {
+        // ... 9 lines elided ...
+    public File getGcodeFile() {
+        // ... 5 lines elided ...
+    public File getProcessedGcodeFile() {
+        // ... 5 lines elided ...
+    public void send() throws Exception {
+        // ... 16 lines elided ...
+    public long getNumRows() {
+        // ... 5 lines elided ...
+    public long getNumSentRows() {
+        // ... 5 lines elided ...
+    public long getNumCompletedRows() {
+        // ... 5 lines elided ...
+    public long getNumRemainingRows() {
+        // ... 4 lines elided ...
+    public long getSendDuration() {
+        // ... 4 lines elided ...
+    public long getSendRemainingDuration() {
+        // ... 15 lines elided ...
+    public void pauseResume() throws Exception {
+        // ... 25 lines elided ...
+    public String getPauseResumeText() {
+        // ... 7 lines elided ...
+    public boolean isSendingFile() {
+        // ... 4 lines elided ...
+    public boolean isIdle() {
+        // ... 6 lines elided ...
+    public boolean isPaused() {
+        // ... 6 lines elided ...
+    public boolean canPause() {
+        // ... 6 lines elided ...
+    public boolean canCancel() {
+        // ... 4 lines elided ...
+    public boolean canSend() {
+        // ... 5 lines elided ...
+    public void cancel() throws Exception {
+        // ... 6 lines elided ...
+    public void returnToZero() throws Exception {
+        // ... 5 lines elided ...
+    public void resetCoordinatesToZero() throws Exception {
+        // ... 4 lines elided ...
+    public void resetCoordinateToZero(Axis coordinate) throws Exception {
+        // ... 4 lines elided ...
+    public void killAlarmLock() throws Exception {
+        // ... 4 lines elided ...
+    public void performHomingCycle() throws Exception {
+        // ... 4 lines elided ...
+    public void toggleCheckMode() throws Exception {
+        // ... 4 lines elided ...
+    public void issueSoftReset() throws Exception {
+        // ... 4 lines elided ...
+    public void requestParserState() throws Exception {
+        // ... 7 lines elided ...
+    public void controlStateChange(CommunicatorState state) {
+        // ... 3 lines elided ...
+    public void fileStreamComplete(String filename, boolean success) {
+        // ... 4 lines elided ...
+    public void receivedAlarm(Alarm alarm) {
+        // ... 4 lines elided ...
+    public void commandSkipped(GcodeCommand command) {
+        // ... 4 lines elided ...
+    public void commandSent(GcodeCommand command) {
+        // ... 4 lines elided ...
+    public void commandComplete(GcodeCommand command) {
+        // ... 4 lines elided ...
+    public void probeCoordinates(Position p) {
+        // ... 4 lines elided ...
+    public void statusStringListener(ControllerStatus status) {
+        // ... 24 lines elided ...
+    public void applySettingsToController(Settings settings, IController controller) throws Exception {
+        // ... 27 lines elided ...
+    public void dispatchMessage(MessageType messageType, String message) {
+        // ... 4 lines elided ...
+    public void openDoor() throws Exception {
+        // ... 4 lines elided ...
+    public void setWorkPosition(PartialPosition position) throws Exception {
+        // ... 4 lines elided ...
+    public void setWorkPositionUsingExpression(final Axis axis, final String expression) throws Exception {
+        // ... 25 lines elided ...
+    private boolean openCommConnection(String port, int baudRate) throws Exception {
+        // ... 13 lines elided ...
+    private void initializeProcessedLines(boolean forceReprocess, File startFile, GcodeParser gcodeParser)
+        // ... 34 lines elided ...
+    private void sendUGSEvent(UGSEvent event) {
+        // ... 5 lines elided ...
+    public void sendOverrideCommand(Overrides override) throws Exception {
+        // ... 4 lines elided ...
+    public void settingChanged() {
+        // ... 4 lines elided ...
+    public void onUpdatedFirmwareSetting(FirmwareSetting setting) {
+        // ... 3 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: ugs-core/src/com/willwinder/universalgcodesender/utils/ControllerSettings.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -16,16 +16,17 @@
+     You should have received a copy of the GNU General Public License
+     along with UGS.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ package com.willwinder.universalgcodesender.utils;
+ 
+ import com.google.gson.JsonElement;
+ import com.google.gson.JsonObject;
+ import com.willwinder.universalgcodesender.*;
++import com.willwinder.universalgcodesender.firmware.fluidnc.FluidNCController;
+ import com.willwinder.universalgcodesender.gcode.util.CommandProcessorLoader;
+ import java.util.ArrayList;
+ import java.util.List;
+ import com.willwinder.universalgcodesender.gcode.processors.CommandProcessor;
+ 
+ /**
+  * POJO Object representation of a controller JSON file.
+  *
+@@ -59,16 +60,17 @@
+     String Name;
+     Integer Version = 0;
+     ControllerConfig Controller;
+     ProcessorConfigGroups GcodeProcessors;
+ 
+     public enum CONTROLLER {
+         GRBL("GRBL"),
+         GRBL_ESP32("GRBL ESP32"),
++        FLUIDNC("FluidNC"),
+         SMOOTHIE("SmoothieBoard"),
+         TINYG("TinyG"),
+         G2CORE("g2core"),
+         XLCD("XLCD"),
+         LOOPBACK("Loopback"),
+         LOOPBACK_SLOW("Loopback_Slow");
+ 
+         final String name;
+@@ -117,16 +119,18 @@
+             case G2CORE:
+                 return new G2CoreController();
+             case XLCD:
+                 return new GrblController(new XLCDCommunicator());
+             case LOOPBACK:
+                 return new GrblController(new LoopBackCommunicator());
+             case LOOPBACK_SLOW:
+                 return new GrblController(new LoopBackCommunicator(100));
++            case FLUIDNC:
++                return new FluidNCController();
+             default:
+                 throw new AssertionError(controller.name());
+         }
+     }
+     
+     /**
+      * Get the list of processors from the settings in the order they should be
+      * applied.
+@@ -141,9 +145,9 @@
+         ret.addAll(
+                 CommandProcessorLoader.initializeWithProcessors(GcodeProcessors.End));
+         return ret;
+     }
+ 
+     public ProcessorConfigGroups getProcessorConfigs() {
+         return this.GcodeProcessors;
+     }
+-}+}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -15,123 +15,87 @@
+ 
+     You should have received a copy of the GNU General Public License
+     along with UGS.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ package com.willwinder.universalgcodesender.utils;
+ 
+ import com.google.gson.JsonElement;
+ import com.google.gson.JsonObject;
+-import com.willwinder.universalgcodesender.*;
++import com.willwinder.universalgcodesender.G2CoreController;
++import com.willwinder.universalgcodesender.GrblController;
++import com.willwinder.universalgcodesender.GrblEsp32Controller;
++import com.willwinder.universalgcodesender.IController;
++import com.willwinder.universalgcodesender.LoopBackCommunicator;
++import com.willwinder.universalgcodesender.SmoothieController;
++import com.willwinder.universalgcodesender.TinyGController;
++import com.willwinder.universalgcodesender.XLCDCommunicator;
++import com.willwinder.universalgcodesender.gcode.processors.CommandProcessor;
+ import com.willwinder.universalgcodesender.gcode.util.CommandProcessorLoader;
++
+ import java.util.ArrayList;
+ import java.util.List;
+-import com.willwinder.universalgcodesender.gcode.processors.CommandProcessor;
++import java.util.Optional;
+ 
+ /**
+  * POJO Object representation of a controller JSON file.
+  *
+  * @author wwinder
+  */
+ public class ControllerSettings {
+-    private class ControllerConfig {
+-        public String name;
+-        public JsonElement args;
+-    }
+-    
+-    static public class ProcessorConfig {
+-        public String name;
+-        public Boolean enabled = true;
+-        public Boolean optional = true;
+-        public JsonObject args = null;
+-        public ProcessorConfig(String name, Boolean enabled, Boolean optional, JsonObject args) {
+-            this.name = name;
+-            this.enabled = enabled;
+-            this.optional = optional;
+-            this.args = args;
+-        }
+-    }
+-
+-    public class ProcessorConfigGroups {
+-        public ArrayList<ProcessorConfig> Front;
+-        public ArrayList<ProcessorConfig> Custom;
+-        public ArrayList<ProcessorConfig> End;
+-    }
+-
+     String Name;
+     Integer Version = 0;
+     ControllerConfig Controller;
+     ProcessorConfigGroups GcodeProcessors;
+-
+-    public enum CONTROLLER {
+-        GRBL("GRBL"),
+-        GRBL_ESP32("GRBL ESP32"),
+-        SMOOTHIE("SmoothieBoard"),
+-        TINYG("TinyG"),
+-        G2CORE("g2core"),
+-        XLCD("XLCD"),
+-        LOOPBACK("Loopback"),
+-        LOOPBACK_SLOW("Loopback_Slow");
+-
+-        final String name;
+-        CONTROLLER(String name) {
+-            this.name = name;
+-        }
+-
+-        public static CONTROLLER fromString(String name) {
+-            for (CONTROLLER c : values()) {
+-                if (c.name.equalsIgnoreCase(name)) {
+-                    return c;
+-                }
+-            }
+-            return null;
+-        }
+-    }
+ 
+     public String getName() {
+         return Name;
+     }
+ 
+     public Integer getVersion() {
+         return Version;
+     }
+ 
+     /**
+      * Parse the "Controller" object in the firmware config json.
+-     * 
++     * <p>
+      * "Controller": {
+-     *     "name": "GRBL",
+-     *     "args": null
++     * "name": "GRBL",
++     * "args": null
+      * }
+      */
+-    public IController getController() {
++    public Optional<IController> getController() {
+         String controllerName = this.Controller.name;
+         CONTROLLER controller = CONTROLLER.fromString(controllerName);
++        if (controller == null) {
++            return Optional.empty();
++        }
++
+         switch (controller) {
+             case GRBL:
+-                return new GrblController();
++                return Optional.of(new GrblController());
+             case GRBL_ESP32:
+-                return new GrblEsp32Controller();
++                return Optional.of(new GrblEsp32Controller());
+             case SMOOTHIE:
+-                return new SmoothieController();
++                return Optional.of(new SmoothieController());
+             case TINYG:
+-                return new TinyGController();
++                return Optional.of(new TinyGController());
+             case G2CORE:
+-                return new G2CoreController();
++                return Optional.of(new G2CoreController());
+             case XLCD:
+-                return new GrblController(new XLCDCommunicator());
++                return Optional.of(new GrblController(new XLCDCommunicator()));
+             case LOOPBACK:
+-                return new GrblController(new LoopBackCommunicator());
++                return Optional.of(new GrblController(new LoopBackCommunicator()));
+             case LOOPBACK_SLOW:
+-                return new GrblController(new LoopBackCommunicator(100));
++                return Optional.of(new GrblController(new LoopBackCommunicator(100)));
+             default:
+-                throw new AssertionError(controller.name());
++                return Optional.empty();
+         }
+     }
+-    
++
+     /**
+      * Get the list of processors from the settings in the order they should be
+      * applied.
+      */
+     // TODO: Remove settings
+     public List<CommandProcessor> getProcessors() {
+         List<CommandProcessor> ret = new ArrayList<>();
+         ret.addAll(
+@@ -141,9 +105,60 @@
+         ret.addAll(
+                 CommandProcessorLoader.initializeWithProcessors(GcodeProcessors.End));
+         return ret;
+     }
+ 
+     public ProcessorConfigGroups getProcessorConfigs() {
+         return this.GcodeProcessors;
+     }
+-}+
++    public enum CONTROLLER {
++        GRBL("GRBL"),
++        GRBL_ESP32("GRBL ESP32"),
++        SMOOTHIE("SmoothieBoard"),
++        TINYG("TinyG"),
++        G2CORE("g2core"),
++        XLCD("XLCD"),
++        LOOPBACK("Loopback"),
++        LOOPBACK_SLOW("Loopback_Slow");
++
++        final String name;
++
++        CONTROLLER(String name) {
++            this.name = name;
++        }
++
++        public static CONTROLLER fromString(String name) {
++            for (CONTROLLER c : values()) {
++                if (c.name.equalsIgnoreCase(name)) {
++                    return c;
++                }
++            }
++            return null;
++        }
++    }
++
++    static public class ProcessorConfig {
++        public String name;
++        public Boolean enabled = true;
++        public Boolean optional = true;
++        public JsonObject args = null;
++
++        public ProcessorConfig(String name, Boolean enabled, Boolean optional, JsonObject args) {
++            this.name = name;
++            this.enabled = enabled;
++            this.optional = optional;
++            this.args = args;
++        }
++    }
++
++    private class ControllerConfig {
++        public String name;
++        public JsonElement args;
++    }
++
++    public class ProcessorConfigGroups {
++        public ArrayList<ProcessorConfig> Front;
++        public ArrayList<ProcessorConfig> Custom;
++        public ArrayList<ProcessorConfig> End;
++    }
++}
+--- MERGED RESULT (mergiraf; full) ---
+/*
+    Copyright 2016 Will Winder
+
+    This file is part of Universal Gcode Sender (UGS).
+
+    UGS is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    UGS is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with UGS.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package com.willwinder.universalgcodesender.utils;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.willwinder.universalgcodesender.firmware.fluidnc.FluidNCController;
+import com.willwinder.universalgcodesender.gcode.util.CommandProcessorLoader;
+import java.util.ArrayList;
+import java.util.List;
+import com.willwinder.universalgcodesender.G2CoreController;
+import com.willwinder.universalgcodesender.GrblController;
+import com.willwinder.universalgcodesender.GrblEsp32Controller;
+import com.willwinder.universalgcodesender.IController;
+import com.willwinder.universalgcodesender.LoopBackCommunicator;
+import com.willwinder.universalgcodesender.SmoothieController;
+import com.willwinder.universalgcodesender.TinyGController;
+import com.willwinder.universalgcodesender.XLCDCommunicator;
+import com.willwinder.universalgcodesender.gcode.processors.CommandProcessor;
+import java.util.Optional;
+
+/**
+ * POJO Object representation of a controller JSON file.
+ *
+ * @author wwinder
+ */
+public class ControllerSettings {
+    String Name;
+    Integer Version = 0;
+    ControllerConfig Controller;
+    ProcessorConfigGroups GcodeProcessors;
+
+    public String getName() {
+        return Name;
+    }
+
+    public Integer getVersion() {
+        return Version;
+    }
+
+    /**
+     * Parse the "Controller" object in the firmware config json.
+     * <p>
+     * "Controller": {
+     * "name": "GRBL",
+     * "args": null
+     * }
+     */
+    public Optional<IController> getController() {
+        String controllerName = this.Controller.name;
+        CONTROLLER controller = CONTROLLER.fromString(controllerName);
+        if (controller == null) {
+            return Optional.empty();
+        }
+
+        switch (controller) {
+            case GRBL:
+                return Optional.of(new GrblController());
+            case GRBL_ESP32:
+                return Optional.of(new GrblEsp32Controller());
+            case SMOOTHIE:
+                return Optional.of(new SmoothieController());
+            case TINYG:
+                return Optional.of(new TinyGController());
+            case G2CORE:
+                return Optional.of(new G2CoreController());
+            case XLCD:
+                return Optional.of(new GrblController(new XLCDCommunicator()));
+            case LOOPBACK:
+                return Optional.of(new GrblController(new LoopBackCommunicator()));
+            case LOOPBACK_SLOW:
+                return Optional.of(new GrblController(new LoopBackCommunicator(100)));
+            case FLUIDNC:
+                return new FluidNCController();
+            default:
+                return Optional.empty();
+        }
+    }
+
+    /**
+     * Get the list of processors from the settings in the order they should be
+     * applied.
+     */
+    // TODO: Remove settings
+    public List<CommandProcessor> getProcessors() {
+        List<CommandProcessor> ret = new ArrayList<>();
+        ret.addAll(
+                CommandProcessorLoader.initializeWithProcessors(GcodeProcessors.Front));
+        ret.addAll(
+                CommandProcessorLoader.initializeWithProcessors(GcodeProcessors.Custom));
+        ret.addAll(
+                CommandProcessorLoader.initializeWithProcessors(GcodeProcessors.End));
+        return ret;
+    }
+
+    public ProcessorConfigGroups getProcessorConfigs() {
+        return this.GcodeProcessors;
+    }
+
+    public enum CONTROLLER {
+        GRBL("GRBL"),
+        GRBL_ESP32("GRBL ESP32"),
+        FLUIDNC("FluidNC"),
+        SMOOTHIE("SmoothieBoard"),
+        TINYG("TinyG"),
+        G2CORE("g2core"),
+        XLCD("XLCD"),
+        LOOPBACK("Loopback"),
+        LOOPBACK_SLOW("Loopback_Slow");
+
+        final String name;
+
+        CONTROLLER(String name) {
+            this.name = name;
+        }
+
+        public static CONTROLLER fromString(String name) {
+            for (CONTROLLER c : values()) {
+                if (c.name.equalsIgnoreCase(name)) {
+                    return c;
+                }
+            }
+            return null;
+        }
+    }
+
+    static public class ProcessorConfig {
+        public String name;
+        public Boolean enabled = true;
+        public Boolean optional = true;
+        public JsonObject args = null;
+
+        public ProcessorConfig(String name, Boolean enabled, Boolean optional, JsonObject args) {
+            this.name = name;
+            this.enabled = enabled;
+            this.optional = optional;
+            this.args = args;
+        }
+    }
+
+    private class ControllerConfig {
+        public String name;
+        public JsonElement args;
+    }
+
+    public class ProcessorConfigGroups {
+        public ArrayList<ProcessorConfig> Front;
+        public ArrayList<ProcessorConfig> Custom;
+        public ArrayList<ProcessorConfig> End;
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -16,40 +16,67 @@
+     You should have received a copy of the GNU General Public License
+     along with UGS.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ package com.willwinder.universalgcodesender.utils;
+ 
+ import com.google.gson.JsonElement;
+ import com.google.gson.JsonObject;
+ import com.willwinder.universalgcodesender.firmware.fluidnc.FluidNCController;
+-import com.willwinder.universalgcodesender.gcode.util.CommandProcessorLoader;
+-import java.util.ArrayList;
+-import java.util.List;
+ import com.willwinder.universalgcodesender.G2CoreController;
+ import com.willwinder.universalgcodesender.GrblController;
+ import com.willwinder.universalgcodesender.GrblEsp32Controller;
+ import com.willwinder.universalgcodesender.IController;
+ import com.willwinder.universalgcodesender.LoopBackCommunicator;
+ import com.willwinder.universalgcodesender.SmoothieController;
+ import com.willwinder.universalgcodesender.TinyGController;
+ import com.willwinder.universalgcodesender.XLCDCommunicator;
+ import com.willwinder.universalgcodesender.gcode.processors.CommandProcessor;
++import com.willwinder.universalgcodesender.gcode.util.CommandProcessorLoader;
++
++import java.util.ArrayList;
++import java.util.List;
+ import java.util.Optional;
+ 
+ /**
+  * POJO Object representation of a controller JSON file.
+  *
+  * @author wwinder
+  */
+ public class ControllerSettings {
+     String Name;
+     Integer Version = 0;
+     ControllerConfig Controller;
+     ProcessorConfigGroups GcodeProcessors;
++
++    public enum CONTROLLER {
++        GRBL("GRBL"),
++        GRBL_ESP32("GRBL ESP32"),
++        FLUIDNC("FluidNC"),
++        SMOOTHIE("SmoothieBoard"),
++        TINYG("TinyG"),
++        G2CORE("g2core"),
++        XLCD("XLCD"),
++        LOOPBACK("Loopback"),
++        LOOPBACK_SLOW("Loopback_Slow");
++
++        final String name;
++        CONTROLLER(String name) {
++            this.name = name;
++        }
++
++        public static CONTROLLER fromString(String name) {
++            for (CONTROLLER c : values()) {
++                if (c.name.equalsIgnoreCase(name)) {
++                    return c;
++                }
++            }
++            return null;
++        }
++    }
+ 
+     public String getName() {
+         return Name;
+     }
+ 
+     public Integer getVersion() {
+         return Version;
+     }
+@@ -82,17 +109,17 @@
+                 return Optional.of(new G2CoreController());
+             case XLCD:
+                 return Optional.of(new GrblController(new XLCDCommunicator()));
+             case LOOPBACK:
+                 return Optional.of(new GrblController(new LoopBackCommunicator()));
+             case LOOPBACK_SLOW:
+                 return Optional.of(new GrblController(new LoopBackCommunicator(100)));
+             case FLUIDNC:
+-                return new FluidNCController();
++                return Optional.of(new FluidNCController());
+             default:
+                 return Optional.empty();
+         }
+     }
+ 
+     /**
+      * Get the list of processors from the settings in the order they should be
+      * applied.
+@@ -106,43 +133,16 @@
+                 CommandProcessorLoader.initializeWithProcessors(GcodeProcessors.Custom));
+         ret.addAll(
+                 CommandProcessorLoader.initializeWithProcessors(GcodeProcessors.End));
+         return ret;
+     }
+ 
+     public ProcessorConfigGroups getProcessorConfigs() {
+         return this.GcodeProcessors;
+-    }
+-
+-    public enum CONTROLLER {
+-        GRBL("GRBL"),
+-        GRBL_ESP32("GRBL ESP32"),
+-        FLUIDNC("FluidNC"),
+-        SMOOTHIE("SmoothieBoard"),
+-        TINYG("TinyG"),
+-        G2CORE("g2core"),
+-        XLCD("XLCD"),
+-        LOOPBACK("Loopback"),
+-        LOOPBACK_SLOW("Loopback_Slow");
+-
+-        final String name;
+-
+-        CONTROLLER(String name) {
+-            this.name = name;
+-        }
+-
+-        public static CONTROLLER fromString(String name) {
+-            for (CONTROLLER c : values()) {
+-                if (c.name.equalsIgnoreCase(name)) {
+-                    return c;
+-                }
+-            }
+-            return null;
+-        }
+     }
+ 
+     static public class ProcessorConfig {
+         public String name;
+         public Boolean enabled = true;
+         public Boolean optional = true;
+         public JsonObject args = null;
+ 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

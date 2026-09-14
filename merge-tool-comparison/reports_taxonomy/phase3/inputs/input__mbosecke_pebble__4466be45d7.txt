@@ -1,0 +1,1218 @@
+UNIT mbosecke_pebble__4466be45d7
+repo: mbosecke_pebble   merge: 4466be45d7efdae138dfbfe025be6b3aca6ca6d9   stratum: B
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/main/java/com/mitchellbosecke/pebble/node/expression/GetAttributeExpression.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -16,17 +16,17 @@
+ 
+ import com.mitchellbosecke.pebble.error.AttributeNotFoundException;
+ import com.mitchellbosecke.pebble.error.PebbleException;
+ import com.mitchellbosecke.pebble.error.RootAttributeNotFoundException;
+ import com.mitchellbosecke.pebble.extension.DynamicAttributeProvider;
+ import com.mitchellbosecke.pebble.extension.NodeVisitor;
+ import com.mitchellbosecke.pebble.node.ArgumentsNode;
+ import com.mitchellbosecke.pebble.node.PositionalArgumentNode;
+-import com.mitchellbosecke.pebble.template.EvaluationContext;
++import com.mitchellbosecke.pebble.template.EvaluationContextImpl;
+ import com.mitchellbosecke.pebble.template.PebbleTemplateImpl;
+ 
+ import java.lang.reflect.AccessibleObject;
+ import java.lang.reflect.Array;
+ import java.lang.reflect.Field;
+ import java.lang.reflect.InvocationTargetException;
+ import java.lang.reflect.Member;
+ import java.lang.reflect.Method;
+@@ -76,17 +76,17 @@
+         /*
+          * I dont imagine that users will often give different types to the same
+          * template so we will give this cache a pretty small initial capacity.
+          */
+         this.memberCache = new ConcurrentHashMap<>(2, 0.9f, 1);
+     }
+ 
+     @Override
+-    public Object evaluate(PebbleTemplateImpl self, EvaluationContext context) throws PebbleException {
++    public Object evaluate(PebbleTemplateImpl self, EvaluationContextImpl context) throws PebbleException {
+         Object object = this.node.evaluate(self, context);
+         Object attributeNameValue = this.attributeNameExpression.evaluate(self, context);
+         String attributeName = String.valueOf(attributeNameValue);
+ 
+         Object result = null;
+ 
+         Object[] argumentValues = this.getArgumentValues(self, context);
+ 
+@@ -145,19 +145,19 @@
+                     }
+                 } catch (NumberFormatException ex) {
+                     // do nothing
+                 }
+ 
+             }
+ 
+             // check if the object is able to provide the attribute dynamically
+-            if(object instanceof DynamicAttributeProvider) {
++            if (object instanceof DynamicAttributeProvider) {
+                 DynamicAttributeProvider dynamicAttributeProvider = (DynamicAttributeProvider) object;
+-                if(dynamicAttributeProvider.canProvideDynamicAttribute(attributeName)) {
++                if (dynamicAttributeProvider.canProvideDynamicAttribute(attributeName)) {
+                     return dynamicAttributeProvider.getDynamicAttribute(attributeNameValue, argumentValues);
+                 }
+             }
+ 
+             /*
+              * turn args into an array of types and an array of values in order
+              * to use them for our reflection calls
+              */
+@@ -261,17 +261,17 @@
+     /**
+      * Fully evaluates the individual arguments.
+      *
+      * @param self
+      * @param context
+      * @return
+      * @throws PebbleException
+      */
+-    private Object[] getArgumentValues(PebbleTemplateImpl self, EvaluationContext context) throws PebbleException {
++    private Object[] getArgumentValues(PebbleTemplateImpl self, EvaluationContextImpl context) throws PebbleException {
+ 
+         Object[] argumentValues;
+ 
+         if (this.args == null) {
+             argumentValues = new Object[0];
+         } else {
+             List<PositionalArgumentNode> args = this.args.getPositionalArgs();
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -10,16 +10,17 @@
+  * <p>
+  * >>>>>>> d6a41085fe86ce30f23d3b7929ad492343ff01b7
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  ******************************************************************************/
+ package com.mitchellbosecke.pebble.node.expression;
+ 
+ import com.mitchellbosecke.pebble.error.AttributeNotFoundException;
++import com.mitchellbosecke.pebble.error.ClassAccessException;
+ import com.mitchellbosecke.pebble.error.PebbleException;
+ import com.mitchellbosecke.pebble.error.RootAttributeNotFoundException;
+ import com.mitchellbosecke.pebble.extension.DynamicAttributeProvider;
+ import com.mitchellbosecke.pebble.extension.NodeVisitor;
+ import com.mitchellbosecke.pebble.node.ArgumentsNode;
+ import com.mitchellbosecke.pebble.node.PositionalArgumentNode;
+ import com.mitchellbosecke.pebble.template.EvaluationContext;
+ import com.mitchellbosecke.pebble.template.PebbleTemplateImpl;
+@@ -190,19 +191,23 @@
+                             "Root attribute [%s] does not exist or can not be accessed and strict variables is set to true.",
+                             rootPropertyName), rootPropertyName, this.lineNumber, this.filename);
+                 } else {
+                     throw new RootAttributeNotFoundException(null,
+                             "Attempt to get attribute of null object and strict variables is set to true.", attributeName, this.lineNumber, this.filename);
+                 }
+ 
+             } else {
+-                throw new AttributeNotFoundException(null, String.format(
+-                        "Attribute [%s] of [%s] does not exist or can not be accessed and strict variables is set to true.",
+-                        attributeName, object.getClass().getName()), attributeName, this.lineNumber, this.filename);
++                if (attributeName.equals("class") || attributeName.equals("getClass")) {
++                    throw new ClassAccessException(this.lineNumber, this.filename);
++                } else {
++                    throw new AttributeNotFoundException(null, String.format(
++                            "Attribute [%s] of [%s] does not exist or can not be accessed and strict variables is set to true.",
++                            attributeName, object.getClass().getName()), attributeName, this.lineNumber, this.filename);
++                }
+             }
+         }
+         return result;
+ 
+     }
+ 
+     private Object getObjectFromMap(Map<?, ?> object, Object attributeNameValue) throws PebbleException {
+         if (object.isEmpty()) {
+@@ -342,16 +347,20 @@
+      * compatible. This is more relaxed than class.getMethod.
+      *
+      * @param clazz
+      * @param name
+      * @param requiredTypes
+      * @return
+      */
+     private Method findMethod(Class<?> clazz, String name, Class<?>[] requiredTypes) {
++        if (name.equals("getClass")) {
++            return null;
++        }
++
+         Method result = null;
+ 
+         Method[] candidates = clazz.getMethods();
+ 
+         for (Method candidate : candidates) {
+             if (!candidate.getName().equalsIgnoreCase(name)) {
+                 continue;
+             }
+--- MERGED RESULT (mergiraf; full) ---
+/*******************************************************************************
+ * This file is part of Pebble.
+ * <<<<<<< HEAD
+ * <p>
+ * Copyright (c) 2014 by Mitchell Bösecke
+ * <p>
+ * =======
+ * <p>
+ * Copyright (c) 2014 by Mitchell Bösecke
+ * <p>
+ * >>>>>>> d6a41085fe86ce30f23d3b7929ad492343ff01b7
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ ******************************************************************************/
+package com.mitchellbosecke.pebble.node.expression;
+
+import com.mitchellbosecke.pebble.error.AttributeNotFoundException;
+import com.mitchellbosecke.pebble.error.ClassAccessException;
+import com.mitchellbosecke.pebble.error.PebbleException;
+import com.mitchellbosecke.pebble.error.RootAttributeNotFoundException;
+import com.mitchellbosecke.pebble.extension.DynamicAttributeProvider;
+import com.mitchellbosecke.pebble.extension.NodeVisitor;
+import com.mitchellbosecke.pebble.node.ArgumentsNode;
+import com.mitchellbosecke.pebble.node.PositionalArgumentNode;
+import com.mitchellbosecke.pebble.template.EvaluationContextImpl;
+import com.mitchellbosecke.pebble.template.PebbleTemplateImpl;
+
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
+import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Used to get an attribute from an object. It will look up attributes in the
+ * following order: map entry, array item, list item,
+ * {@link DynamicAttributeProvider}, get method, is method, has method, public method,
+ * public field.
+ *
+ * @author Mitchell
+ */
+public class GetAttributeExpression implements Expression<Object> {
+
+    private final Expression<?> node;
+
+    private final Expression<?> attributeNameExpression;
+
+    private final ArgumentsNode args;
+
+    private final String filename;
+
+    private final int lineNumber;
+
+    /**
+     * Potentially cached on first evaluation.
+     */
+    private final ConcurrentHashMap<MemberCacheKey, Member> memberCache;
+
+    public GetAttributeExpression(Expression<?> node, Expression<?> attributeNameExpression, String filename,
+                                  int lineNumber) {
+        this(node, attributeNameExpression, null, filename, lineNumber);
+    }
+
+    public GetAttributeExpression(Expression<?> node, Expression<?> attributeNameExpression, ArgumentsNode args,
+                                  String filename, int lineNumber) {
+
+        this.node = node;
+        this.attributeNameExpression = attributeNameExpression;
+        this.args = args;
+        this.filename = filename;
+        this.lineNumber = lineNumber;
+
+        /*
+         * I dont imagine that users will often give different types to the same
+         * template so we will give this cache a pretty small initial capacity.
+         */
+        this.memberCache = new ConcurrentHashMap<>(2, 0.9f, 1);
+    }
+
+    @Override
+    public Object evaluate(PebbleTemplateImpl self, EvaluationContextImpl context) throws PebbleException {
+        Object object = this.node.evaluate(self, context);
+        Object attributeNameValue = this.attributeNameExpression.evaluate(self, context);
+        String attributeName = String.valueOf(attributeNameValue);
+
+        Object result = null;
+
+        Object[] argumentValues = this.getArgumentValues(self, context);
+
+        Member member = object == null ? null : this.memberCache.get(new MemberCacheKey(object.getClass(), attributeName));
+        if (object != null && member == null) {
+
+            /*
+             * If, and only if, no arguments were provided does it make sense to
+             * check maps/arrays/lists
+             */
+            if (this.args == null) {
+
+                // first we check maps
+                if (object instanceof Map) {
+                    return this.getObjectFromMap((Map<?, ?>) object, attributeNameValue);
+                }
+
+                try {
+
+                    // then we check arrays
+                    if (object.getClass().isArray()) {
+                        int index = Integer.parseInt(attributeName);
+                        int length = Array.getLength(object);
+                        if (index < 0 || index >= length) {
+                            if (context.isStrictVariables()) {
+                                throw new AttributeNotFoundException(null,
+                                        "Index out of bounds while accessing array with strict variables on.",
+                                        attributeName, this.lineNumber, this.filename);
+                            } else {
+                                return null;
+                            }
+                        }
+                        return Array.get(object, index);
+                    }
+
+                    // then lists
+                    if (object instanceof List) {
+
+                        @SuppressWarnings("unchecked")
+                        List<Object> list = (List<Object>) object;
+
+                        int index = Integer.parseInt(attributeName);
+                        int length = list.size();
+
+                        if (index < 0 || index >= length) {
+                            if (context.isStrictVariables()) {
+                                throw new AttributeNotFoundException(null,
+                                        "Index out of bounds while accessing array with strict variables on.",
+                                        attributeName, this.lineNumber, this.filename);
+                            } else {
+                                return null;
+                            }
+                        }
+
+                        return list.get(index);
+                    }
+                } catch (NumberFormatException ex) {
+                    // do nothing
+                }
+
+            }
+
+            // check if the object is able to provide the attribute dynamically
+            if (object instanceof DynamicAttributeProvider) {
+                DynamicAttributeProvider dynamicAttributeProvider = (DynamicAttributeProvider) object;
+                if (dynamicAttributeProvider.canProvideDynamicAttribute(attributeName)) {
+                    return dynamicAttributeProvider.getDynamicAttribute(attributeNameValue, argumentValues);
+                }
+            }
+
+            /*
+             * turn args into an array of types and an array of values in order
+             * to use them for our reflection calls
+             */
+            Class<?>[] argumentTypes = new Class<?>[argumentValues.length];
+
+            for (int i = 0; i < argumentValues.length; i++) {
+                Object o = argumentValues[i];
+                if (o == null) {
+                    argumentTypes[i] = null;
+                } else {
+                    argumentTypes[i] = o.getClass();
+                }
+            }
+
+            member = this.reflect(object, attributeName, argumentTypes);
+            if (member != null) {
+                this.memberCache.put(new MemberCacheKey(object.getClass(), attributeName), member);
+            }
+
+        }
+
+        if (object != null && member != null) {
+            result = this.invokeMember(object, member, argumentValues);
+        } else if (context.isStrictVariables()) {
+            if (object == null) {
+
+                if (this.node instanceof ContextVariableExpression) {
+                    final String rootPropertyName = ((ContextVariableExpression) this.node).getName();
+                    throw new RootAttributeNotFoundException(null, String.format(
+                            "Root attribute [%s] does not exist or can not be accessed and strict variables is set to true.",
+                            rootPropertyName), rootPropertyName, this.lineNumber, this.filename);
+                } else {
+                    throw new RootAttributeNotFoundException(null,
+                            "Attempt to get attribute of null object and strict variables is set to true.", attributeName, this.lineNumber, this.filename);
+                }
+
+            } else {
+                if (attributeName.equals("class") || attributeName.equals("getClass")) {
+                    throw new ClassAccessException(this.lineNumber, this.filename);
+                } else {
+                    throw new AttributeNotFoundException(null, String.format(
+                            "Attribute [%s] of [%s] does not exist or can not be accessed and strict variables is set to true.",
+                            attributeName, object.getClass().getName()), attributeName, this.lineNumber, this.filename);
+                }
+            }
+        }
+        return result;
+
+    }
+
+    private Object getObjectFromMap(Map<?, ?> object, Object attributeNameValue) throws PebbleException {
+        if (object.isEmpty()) {
+            return null;
+        }
+        if (attributeNameValue != null && Number.class.isAssignableFrom(attributeNameValue.getClass())) {
+            Number keyAsNumber = (Number) attributeNameValue;
+
+            Class<?> keyClass = object.keySet().iterator().next().getClass();
+            Object key = this.cast(keyAsNumber, keyClass);
+            return object.get(key);
+        }
+        return object.get(attributeNameValue);
+    }
+
+    private Object cast(Number number, Class<?> desiredType) throws PebbleException {
+        if (desiredType == Long.class) {
+            return number.longValue();
+        } else if (desiredType == Integer.class) {
+            return number.intValue();
+        } else if (desiredType == Double.class) {
+            return number.doubleValue();
+        } else if (desiredType == Float.class) {
+            return number.floatValue();
+        } else if (desiredType == Short.class) {
+            return number.shortValue();
+        } else if (desiredType == Byte.class) {
+            return number.byteValue();
+        }
+        throw new PebbleException(null, String.format("type %s not supported for key %s", desiredType, number), this.getLineNumber(), this.filename);
+    }
+
+    /**
+     * Invoke the "Member" that was found via reflection.
+     *
+     * @param object
+     * @param member
+     * @param argumentValues
+     * @return
+     */
+    private Object invokeMember(Object object, Member member, Object[] argumentValues) {
+        Object result = null;
+        try {
+            if (member instanceof Method) {
+                result = ((Method) member).invoke(object, argumentValues);
+            } else if (member instanceof Field) {
+                result = ((Field) member).get(object);
+            }
+
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+        return result;
+    }
+
+    /**
+     * Fully evaluates the individual arguments.
+     *
+     * @param self
+     * @param context
+     * @return
+     * @throws PebbleException
+     */
+    private Object[] getArgumentValues(PebbleTemplateImpl self, EvaluationContextImpl context) throws PebbleException {
+
+        Object[] argumentValues;
+
+        if (this.args == null) {
+            argumentValues = new Object[0];
+        } else {
+            List<PositionalArgumentNode> args = this.args.getPositionalArgs();
+
+            argumentValues = new Object[args.size()];
+
+            int index = 0;
+            for (PositionalArgumentNode arg : args) {
+                Object argumentValue = arg.getValueExpression().evaluate(self, context);
+                argumentValues[index] = argumentValue;
+                index++;
+            }
+        }
+        return argumentValues;
+    }
+
+    /**
+     * Performs the actual reflection to obtain a "Member" from a class.
+     *
+     * @param object
+     * @param attributeName
+     * @param parameterTypes
+     * @return
+     */
+    private Member reflect(Object object, String attributeName, Class<?>[] parameterTypes) {
+
+        Class<?> clazz = object.getClass();
+
+        Member result = null;
+
+        // capitalize first letter of attribute for the following attempts
+        String attributeCapitalized = Character.toUpperCase(attributeName.charAt(0)) + attributeName.substring(1);
+
+        // check get method
+        result = this.findMethod(clazz, "get" + attributeCapitalized, parameterTypes);
+
+        // check is method
+        if (result == null) {
+            result = this.findMethod(clazz, "is" + attributeCapitalized, parameterTypes);
+        }
+
+        // check has method
+        if (result == null) {
+            result = this.findMethod(clazz, "has" + attributeCapitalized, parameterTypes);
+        }
+
+        // check if attribute is a public method
+        if (result == null) {
+            result = this.findMethod(clazz, attributeName, parameterTypes);
+        }
+
+        // public field
+        if (result == null) {
+            try {
+                result = clazz.getField(attributeName);
+            } catch (NoSuchFieldException | SecurityException e) {
+            }
+        }
+
+        if (result != null) {
+            ((AccessibleObject) result).setAccessible(true);
+        }
+
+        return result;
+    }
+
+    /**
+     * Finds an appropriate method by comparing if parameter types are
+     * compatible. This is more relaxed than class.getMethod.
+     *
+     * @param clazz
+     * @param name
+     * @param requiredTypes
+     * @return
+     */
+    private Method findMethod(Class<?> clazz, String name, Class<?>[] requiredTypes) {
+        if (name.equals("getClass")) {
+            return null;
+        }
+
+        Method result = null;
+
+        Method[] candidates = clazz.getMethods();
+
+        for (Method candidate : candidates) {
+            if (!candidate.getName().equalsIgnoreCase(name)) {
+                continue;
+            }
+
+            Class<?>[] types = candidate.getParameterTypes();
+
+            if (types.length != requiredTypes.length) {
+                continue;
+            }
+
+            boolean compatibleTypes = true;
+            for (int i = 0; i < types.length; i++) {
+                if (requiredTypes[i] != null && !this.widen(types[i]).isAssignableFrom(requiredTypes[i])) {
+                    compatibleTypes = false;
+                    break;
+                }
+            }
+
+            if (compatibleTypes) {
+                result = candidate;
+                break;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Performs a widening conversion (primitive to boxed type)
+     *
+     * @param clazz
+     * @return
+     */
+    private Class<?> widen(Class<?> clazz) {
+        Class<?> result = clazz;
+        if (clazz == int.class) {
+            result = Integer.class;
+        } else if (clazz == long.class) {
+            result = Long.class;
+        } else if (clazz == double.class) {
+            result = Double.class;
+        } else if (clazz == float.class) {
+            result = Float.class;
+        } else if (clazz == short.class) {
+            result = Short.class;
+        } else if (clazz == byte.class) {
+            result = Byte.class;
+        } else if (clazz == boolean.class) {
+            result = Boolean.class;
+        }
+        return result;
+    }
+
+    private class MemberCacheKey {
+        private final Class<?> clazz;
+        private final String attributeName;
+
+        private MemberCacheKey(Class<?> clazz, String attributeName) {
+            this.clazz = clazz;
+            this.attributeName = attributeName;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || this.getClass() != o.getClass()) return false;
+
+            MemberCacheKey that = (MemberCacheKey) o;
+
+            if (!this.clazz.equals(that.clazz)) return false;
+            return this.attributeName.equals(that.attributeName);
+
+        }
+
+        @Override
+        public int hashCode() {
+            int result = this.clazz.hashCode();
+            result = 31 * result + this.attributeName.hashCode();
+            return result;
+        }
+    }
+
+    @Override
+    public void accept(NodeVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    public Expression<?> getNode() {
+        return this.node;
+    }
+
+    public Expression<?> getAttributeNameExpression() {
+        return this.attributeNameExpression;
+    }
+
+    public ArgumentsNode getArgumentsNode() {
+        return this.args;
+    }
+
+    @Override
+    public int getLineNumber() {
+        return this.lineNumber;
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/com/mitchellbosecke/pebble/GetAttributeTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -79,29 +79,29 @@
+         map.put("name", "Steve");
+         context.put("object", map);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, context);
+         assertEquals("hello Steve", writer.toString());
+     }
+ 
+-    @Test
+-    public void testHashmapAttributeWithArgumentOfNull() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).build();
+-        PebbleTemplate template = pebble.getTemplate("hello {{ object[missingContextProperty] }}");
+-        Map<String, Object> context = new HashMap<>();
+-        Map<String, String> map = new HashMap<>();
+-        map.put("name", "Steve");
+-        context.put("object", map);
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer, context);
+-        assertEquals("hello ", writer.toString());
+-    }
++  @Test
++  public void testHashmapAttributeWithArgumentOfNull() throws PebbleException, IOException {
++    PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).build();
++    PebbleTemplate template = pebble.getTemplate("hello {{ object[missingContextProperty] }}");
++    Map<String, Object> context = new HashMap<>();
++    Map<String, String> map = new HashMap<>();
++    map.put("name", "Steve");
++    context.put("object", map);
++
++    Writer writer = new StringWriter();
++    template.evaluate(writer, context);
++    assertEquals("hello ", writer.toString());
++  }
+ 
+     @Test
+     public void testMethodAttribute() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+ 
+         PebbleTemplate template = pebble.getTemplate("hello {{ object.name }}");
+         Map<String, Object> context = new HashMap<>();
+         context.put("object", new SimpleObject4());
+@@ -600,26 +600,23 @@
+     public class DynamicAttributeProviderObject implements DynamicAttributeProvider {
+ 
+         public String getSurname() {
+             return "Doe";
+         }
+ 
+         public String name = "Invalid";
+         public String getName() {
+-            return name;
++          return this.name;
+         }
+ 
+         @Override
+         public boolean canProvideDynamicAttribute(Object attributeName) {
+ 
+-            if("name".equals(attributeName)) {
+-                return true;
+-            }
+-            return false;
++          return "name".equals(attributeName);
+         }
+ 
+         @Override
+         public Object getDynamicAttribute(Object attributeName, Object[] argumentValues) {
+ 
+             if("name".equals(attributeName)) {
+ 
+                 String name = "Steve";
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -4,16 +4,17 @@
+  * Copyright (c) 2014 by Mitchell Bösecke
+  *
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  ******************************************************************************/
+ package com.mitchellbosecke.pebble;
+ 
+ import com.mitchellbosecke.pebble.error.AttributeNotFoundException;
++import com.mitchellbosecke.pebble.error.ClassAccessException;
+ import com.mitchellbosecke.pebble.error.PebbleException;
+ import com.mitchellbosecke.pebble.error.RootAttributeNotFoundException;
+ import com.mitchellbosecke.pebble.extension.DynamicAttributeProvider;
+ import com.mitchellbosecke.pebble.loader.StringLoader;
+ import com.mitchellbosecke.pebble.template.PebbleTemplate;
+ 
+ import org.junit.Test;
+ 
+@@ -106,16 +107,42 @@
+         Map<String, Object> context = new HashMap<>();
+         context.put("object", new SimpleObject4());
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, context);
+         assertEquals("hello Steve", writer.toString());
+     }
+ 
++    @Test
++    public void testMethodAttributeWhenAccessingClassWithStrictVariableOff() throws PebbleException, IOException {
++        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
++
++        PebbleTemplate template = pebble.getTemplate("hello {{ object.class }}");
++        Map<String, Object> context = new HashMap<>();
++        context.put("object", "some string");
++
++        Writer writer = new StringWriter();
++        template.evaluate(writer, context);
++        assertEquals("hello ", writer.toString());
++    }
++
++    @Test(expected = ClassAccessException.class)
++    public void testMethodAttributeWhenAccessingClassWithStrictVariableOn() throws PebbleException, IOException {
++        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
++
++        PebbleTemplate template = pebble.getTemplate("hello {{ object.class }}");
++        Map<String, Object> context = new HashMap<>();
++        context.put("object", "some string");
++
++        Writer writer = new StringWriter();
++        template.evaluate(writer, context);
++        assertEquals("hello ", writer.toString());
++    }
++
+     /**
+      * The GetAttribute expression involves caching, we test with different
+      * objects to make sure that the caching doesnt have any negative side
+      * effects.
+      *
+      * @throws PebbleException
+      * @throws IOException
+      */
+@@ -552,17 +579,17 @@
+         }
+     }
+ 
+     @Test()
+     public void testPrimitiveArgument() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+ 
+         PebbleTemplate template = pebble.getTemplate("{{ obj.getStringFromLong(1) }} {{ obj.getStringFromLongs(1,2) }}"
+-            + " {{ obj.getStringFromBoolean(true) }}");
++                + " {{ obj.getStringFromBoolean(true) }}");
+ 
+         Map<String, Object> context = new HashMap<>();
+         context.put("obj", new PrimitiveArguments());
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, context);
+ 
+         assertEquals("1 1 2 true", writer.toString());
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+/*******************************************************************************
+ * This file is part of Pebble.
+ *
+ * Copyright (c) 2014 by Mitchell Bösecke
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ ******************************************************************************/
+package com.mitchellbosecke.pebble;
+
+import com.mitchellbosecke.pebble.error.AttributeNotFoundException;
+import com.mitchellbosecke.pebble.error.ClassAccessException;
+import com.mitchellbosecke.pebble.error.PebbleException;
+import com.mitchellbosecke.pebble.error.RootAttributeNotFoundException;
+import com.mitchellbosecke.pebble.extension.DynamicAttributeProvider;
+import com.mitchellbosecke.pebble.loader.StringLoader;
+import com.mitchellbosecke.pebble.template.PebbleTemplate;
+
+import org.junit.Test;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+
+public class GetAttributeTest extends AbstractTest {
+
+    @Test
+    public void testOneLayerAttributeNesting() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.name }}");
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", new SimpleObject());
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("hello Steve", writer.toString());
+    }
+
+    @Test
+    public void testAttributeCacheHitting() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.name }}{{ object.name }}");
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", new SimpleObject());
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+    }
+
+    @Test
+    public void testMultiLayerAttributeNesting() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.simpleObject2.simpleObject.name }}");
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", new SimpleObject3());
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("hello Steve", writer.toString());
+    }
+
+    @Test
+    public void testHashmapAttribute() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.name }}");
+        Map<String, Object> context = new HashMap<>();
+        Map<String, String> map = new HashMap<>();
+        map.put("name", "Steve");
+        context.put("object", map);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("hello Steve", writer.toString());
+    }
+
+  @Test
+  public void testHashmapAttributeWithArgumentOfNull() throws PebbleException, IOException {
+    PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).build();
+    PebbleTemplate template = pebble.getTemplate("hello {{ object[missingContextProperty] }}");
+    Map<String, Object> context = new HashMap<>();
+    Map<String, String> map = new HashMap<>();
+    map.put("name", "Steve");
+    context.put("object", map);
+
+    Writer writer = new StringWriter();
+    template.evaluate(writer, context);
+    assertEquals("hello ", writer.toString());
+  }
+
+    @Test
+    public void testMethodAttribute() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.name }}");
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", new SimpleObject4());
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("hello Steve", writer.toString());
+    }
+
+    @Test
+    public void testMethodAttributeWhenAccessingClassWithStrictVariableOff() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.class }}");
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", "some string");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("hello ", writer.toString());
+    }
+
+    @Test(expected = ClassAccessException.class)
+    public void testMethodAttributeWhenAccessingClassWithStrictVariableOn() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.class }}");
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", "some string");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("hello ", writer.toString());
+    }
+
+    /**
+     * The GetAttribute expression involves caching, we test with different
+     * objects to make sure that the caching doesnt have any negative side
+     * effects.
+     *
+     * @throws PebbleException
+     * @throws IOException
+     */
+    @Test
+    public void testMethodAttributeWithDifferentObjects() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.name }}");
+
+        Map<String, Object> context1 = new HashMap<>();
+        context1.put("object", new CustomizableObject("Alex"));
+        Writer writer1 = new StringWriter();
+        template.evaluate(writer1, context1);
+        assertEquals("hello Alex", writer1.toString());
+
+        Map<String, Object> context2 = new HashMap<>();
+        context2.put("object", new CustomizableObject("Steve"));
+        Writer writer2 = new StringWriter();
+        template.evaluate(writer2, context2);
+        assertEquals("hello Steve", writer2.toString());
+    }
+
+    @Test
+    public void testBeanMethodWithArgument() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.name('Steve') }}");
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", new BeanWithMethodsThatHaveArguments());
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("hello Steve", writer.toString());
+    }
+        // ... 2 lines elided ...
+    public void testBeanMethodWithLongArgument() throws PebbleException, IOException {
+        // ... 12 lines elided ...
+    public void testBeanMethodWithOverloadedArgument() throws PebbleException, IOException {
+        // ... 12 lines elided ...
+    public void testBeanMethodWithTwoArguments() throws PebbleException, IOException {
+        // ... 12 lines elided ...
+    public void testGetMethodAttribute() throws PebbleException, IOException {
+        // ... 12 lines elided ...
+    public void testHasMethodAttribute() throws PebbleException, IOException {
+        // ... 12 lines elided ...
+    public void testIsMethodAttribute() throws PebbleException, IOException {
+        // ... 12 lines elided ...
+    public void testComplexNestedAttributes() throws PebbleException, IOException {
+        // ... 13 lines elided ...
+    public void testAttributeOfNullObjectWithStrictVariables() throws PebbleException, IOException {
+        // ... 9 lines elided ...
+    public void testAttributeOfNullObjectWithoutStrictVariables() throws PebbleException, IOException {
+        // ... 13 lines elided ...
+    public void testNonExistingAttributeWithoutStrictVariables() throws PebbleException, IOException {
+        // ... 12 lines elided ...
+    public void testNonExistingAttributeWithStrictVariables() throws PebbleException, IOException {
+        // ... 12 lines elided ...
+    public void testNullAttributeWithoutStrictVariables() throws PebbleException, IOException {
+        // ... 19 lines elided ...
+    public void testNullAttributeWithStrictVariables() throws PebbleException, IOException {
+        // ... 13 lines elided ...
+    public void testPrimitiveAttribute() throws PebbleException, IOException {
+        // ... 12 lines elided ...
+    public void testArrayIndexAttribute() throws PebbleException, IOException {
+        // ... 16 lines elided ...
+    public void testListIndexAttribute() throws PebbleException, IOException {
+        // ... 22 lines elided ...
+    public void testListNonExistingIndexAttributeWithStrictMode() throws PebbleException, IOException {
+        // ... 19 lines elided ...
+    public void testListNonExistingIndexAttribute() throws PebbleException, IOException {
+        // ... 13 lines elided ...
+    public void testInheritedAttribute() throws PebbleException, IOException {
+        // ... 12 lines elided ...
+    public class Person {
+        // ... 4 lines elided ...
+    public void testAccessingValueWithSubscriptInLoop() throws PebbleException, IOException {
+        // ... 13 lines elided ...
+    public class SimpleObject {
+        // ... 4 lines elided ...
+    public class SimpleObject2 {
+        // ... 4 lines elided ...
+    public class SimpleObject3 {
+        // ... 4 lines elided ...
+    public class SimpleObject4 {
+        // ... 1 lines elided ...
+        public String name() {
+        // ... 4 lines elided ...
+    public class SimpleObject5 {
+        // ... 1 lines elided ...
+        public String getName() {
+        // ... 4 lines elided ...
+    public class SimpleObject6 {
+        // ... 1 lines elided ...
+        public String isName() {
+        // ... 4 lines elided ...
+    public class SimpleObject7 {
+        // ... 4 lines elided ...
+    public class SimpleObject8 {
+        // ... 4 lines elided ...
+    public class SimpleObject9 {
+        // ... 1 lines elided ...
+        public String hasName() {
+        // ... 4 lines elided ...
+    public class BeanWithMethodsThatHaveArguments {
+        // ... 1 lines elided ...
+        public String getName(String name) {
+        // ... 3 lines elided ...
+        public Double getNumber(Double number) {
+        // ... 3 lines elided ...
+        public Long getNumber(Long number) {
+        // ... 3 lines elided ...
+        public Long multiply(Long one, Long two) {
+        // ... 3 lines elided ...
+
+    public class ComplexObject {
+
+        public final Map<String, Object> map = new HashMap<>();
+
+        {
+            this.map.put("SimpleObject2", new SimpleObject2());
+            this.map.put("SimpleObject6", new SimpleObject6());
+        }
+    }
+
+    public class CustomizableObject {
+
+        private final String name;
+
+        public CustomizableObject(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return this.name;
+        }
+    }
+
+    public class ChildObject extends ParentObject {
+
+    }
+
+    public class ParentObject {
+
+        public String getName() {
+            return "parent";
+        }
+    }
+
+    @Test()
+    public void testPrimitiveArgument() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+
+        PebbleTemplate template = pebble.getTemplate("{{ obj.getStringFromLong(1) }} {{ obj.getStringFromLongs(1,2) }}"
+                + " {{ obj.getStringFromBoolean(true) }}");
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("obj", new PrimitiveArguments());
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+
+        assertEquals("1 1 2 true", writer.toString());
+    }
+
+    @Test
+    public void testBeanMethodWithNullArgument() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.name(var) }}");
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", new BeanWithMethodsThatHaveArguments());
+        context.put("var", null);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("hello ", writer.toString());
+    }
+
+    public class PrimitiveArguments {
+
+        public String getStringFromLong(long id) {
+            return String.valueOf(id);
+        }
+
+        public String getStringFromLongs(Long first, long second) {
+            return String.valueOf(first) + " " + String.valueOf(second);
+        }
+
+        public String getStringFromBoolean(boolean bool) {
+            return String.valueOf(bool);
+        }
+    }
+
+    public class DynamicAttributeProviderObject implements DynamicAttributeProvider {
+
+        public String getSurname() {
+            return "Doe";
+        }
+
+        public String name = "Invalid";
+        public String getName() {
+          return this.name;
+        }
+
+        @Override
+        public boolean canProvideDynamicAttribute(Object attributeName) {
+
+          return "name".equals(attributeName);
+        }
+
+        @Override
+        public Object getDynamicAttribute(Object attributeName, Object[] argumentValues) {
+
+            if("name".equals(attributeName)) {
+
+                String name = "Steve";
+                if(argumentValues != null && argumentValues.length > 0) {
+                    name += " " + Arrays.toString(argumentValues);
+                }
+                return name;
+            }
+
+            return "Invalid";
+        }
+    }
+
+    @Test
+    public void testAttributeProviderSimple() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.name }} {{ object.surname }}{{ object.invalidAttr }}");
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", new DynamicAttributeProviderObject());
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("hello Steve Doe", writer.toString());
+    }
+
+    @Test
+    public void testAttributeProviderEmptyArguments() throws PebbleException, IOException {
+        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(true).build();
+
+        PebbleTemplate template = pebble.getTemplate("hello {{ object.name() }}");
+        Map<String, Object> context = new HashMap<>();
+        context.put("object", new DynamicAttributeProviderObject());
+
+        Writer writer = new StringWriter();
+        // ... 5 lines elided ...
+    public void testAttributeProviderWithArguments() throws PebbleException, IOException {
+        // ... 14 lines elided ...
+    public void testAttributePrimitiveAccessWithEmptyMap() throws Exception {
+        // ... 13 lines elided ...
+    public void testAttributePrimitiveAccessWithInteger() throws Exception {
+        // ... 5 lines elided ...
+    private String testAttributePrimitiveAccess(Number value) throws PebbleException, IOException {
+        // ... 14 lines elided ...
+    public void testAttributePrimitiveAccessWithLong() throws Exception {
+        // ... 6 lines elided ...
+    public void testAttributePrimitiveAccessWithDouble() throws Exception {
+        // ... 6 lines elided ...
+    public void testAttributePrimitiveAccessWithFloat() throws Exception {
+        // ... 6 lines elided ...
+    public void testAttributePrimitiveAccessWithShort() throws Exception {
+        // ... 6 lines elided ...
+    public void testAttributePrimitiveAccessWithByte() throws Exception {
+        // ... 5 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,1166 @@
+{
+  "entries": [
+    {
+      "slug": "final-rulings-belong-to-ali",
+      "title": "Final adjudication rulings are Ali's; Claude may only draft and must not auto-label",
+      "date_from": "2026-06-11",
+      "date_to": "2026-07-20",
+      "decision": "In every adjudication round Claude may gather evidence and propose draft labels with written rationales \u2014 marked DRAFT, with the original label file left untouched \u2014 but no label counts until Ali confirms or overrides it; adjudication UIs are handed over unlabelled and auto-labelling is forbidden. From S-D6 the protocol is explicitly draft-first: Claude generates probe-verified draft labels plus rationales for all 20 held-out flagged units, embedded in the UI with an accept key ('a') and override keys (1/2/3), and the GD4 gate stays Ali's because the rulings only count once he accepts or overrides each one.",
+      "rationale_recorded": true,
+      "rationale": "Plan \u00a74.7 keeps the miss labelling a manual call, so nothing counts until Ali acts on it. More fundamentally the tool cannot grade its own homework: Claude built the detectors, so his own assessment carries the same circularity at one remove, while Ali's independent ruling (he did not write the detection logic) is what carries evidential weight, with the written rationales as the audit trail \u2014 \"the tool graded its own homework\" being the first thing an examiner will probe. Ali restated it as a flat constraint (\"the rulings are mine\"), and when he later accepted Claude-drafted rationales the precedent cited was that the Stage-C \u00a74.6 UI shipped drafts as starting points rather than answers, with the gate still his.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-04",
+        "a:bfc672b4-36",
+        "a:0e14484d-01",
+        "a:2e726dc0-12"
+      ],
+      "evidence": [
+        {
+          "text": "my draft has the same circularity problem at one remove \u2014 I built the detectors and I'm assessing them. Your independent ruling (you didn't write the detection logic) is what carries evidential weight.",
+          "line": 794,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "Every label is marked `DRAFT` and needs your confirm/override (plan \u00a74.7 keeps this a manual call); the original `misses_to_classify.csv` is untouched.",
+          "line": 124,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "The GD4 gate stays yours \u2014 the rulings only count once you accept or override each one.",
+          "line": 559,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_detection/pilot/misses_classification_draft.md",
+        "reports_detection/pilot/misses_classified_draft.csv",
+        "outputs/p1-stage-c-adjudication-handoff.md",
+        "merge-tool-comparison/reports_detectors/adjudication/adjudication_ui.html",
+        "c531017"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: Claude argued the circularity rationale and the DRAFT protocol (a:bfc672b4-36, a:bfc672b4-04), Ali imposed the no-auto-label constraint (a:0e14484d-01) and later chose the draft-first variant (a:2e726dc0-12). Options were put and Ali picked, so joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "withhold-per-unit-guidance-during-reliability-check",
+      "title": "Withhold per-unit guidance during the reliability adjudication, explaining layout only",
+      "date_from": "2026-07-11",
+      "date_to": null,
+      "decision": "During Ali's G3 reliability adjudication Claude will not say which way an individual unit should go; it will explain the instrument, the rule and the UI layout, but the substantive call on each unit is left entirely to Ali. (Later in the same session Claude did supply general adjudication conventions \u2014 see escape-hatch-requires-ours-theirs-interaction and category-boundary-conventions-for-primary-label \u2014 which narrowed this to per-unit answers only.)",
+      "rationale_recorded": true,
+      "rationale": "Ali's independent call on these units is the whole point of the reliability check.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "final-rulings-belong-to-ali",
+      "sources": [
+        "a:9e4b6896-15"
+      ],
+      "evidence": [
+        {
+          "text": "I'm deliberately not telling you which way this one goes \u2014 your independent call on these is the whole point of the reliability check. Ping me if a unit's inputs are confusing to read and I'll explain the *layout*, not the answer.",
+          "line": 530,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "written-rationale-per-held-out-ruling",
+      "title": "Every held-out ruling carries a written rationale; the convention is fixed in card 1",
+      "date_from": "2026-07-19",
+      "date_to": "2026-07-20",
+      "decision": "Every held-out flag's ruling must carry a one-line written rationale naming the evidence that carried it, exported in the rulings CSV and committed with the rulings in S-D6. Rationales are split into a convention \u2014 written once, in the first card where it bites (card 1, apache_commons-collections), stated as a rule and cited by later cards \u2014 and per-card case facts (which symbol, which side pruned what, where the use survives) which must be written for every card; if a later card forces the convention to be revised, the earlier cards that cited it are re-touched. The card-1 convention itself is that the ruling judges the merged artifact, not the mergiraf-vs-developer delta, so a file byte-identical to the developer's resolution is noted in the rationale but does not downgrade CAUSAL, applied uniformly across all 20 units.",
+      "rationale_recorded": true,
+      "rationale": "Plan \u00a75 GD4 defines the gate as adjudication with written rationale, so a ruling without reasoning does not count as adjudicated and a bare radio-button label is unfalsifiable; the citable recall number inherits its defensibility from the rationales, and rationales on edge cases document the ruling convention for future cases and reruns. Writing the convention once keeps GD4 honest without re-deriving the philosophy 20 times, while \"same as before\" is not adjudication \u2014 and a convention changed halfway silently forks the labels, the failure Amendment 2's rerun existed to prevent. For dev-identical files either convention was defensible, but it had to be one convention across all 20, so it was fixed in card 1 and referenced thereafter.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-13",
+        "a:2e726dc0-14",
+        "a:2e726dc0-15"
+      ],
+      "evidence": [
+        {
+          "text": "**It's the gate definition.** Plan \u00a75 GD4: \"every held-out flag adjudicated (CAUSAL / INCIDENTAL / FP, **\u00a74.6 style, written rationale**)\"",
+          "line": 506,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "These must stay **per-card** \u2014 \"same as before\" is not adjudication.",
+          "line": 539,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "CONVENTION: dev file is byte-identical (same human mistake; feature later backed out of mainline) \u2014 ruling judges the merged artifact, so dev-identical does not downgrade.",
+          "line": 581,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "joint",
+      "actors_note": "Sources disagree: a:2e726dc0-13 records Claude stating the gate definition, a:2e726dc0-14 and a:2e726dc0-15 record the convention structure and card-1 convention as agreed with Ali. Options were put and Ali agreed, so joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "gd3-control-flags-exempt-from-ui-convention",
+      "title": "GD3 control flags are ruled from their package, outside the held-out UI and convention",
+      "date_from": "2026-07-20",
+      "date_to": null,
+      "decision": "The two GD3 control flags (jgralab, jOOQ) are adjudicated from gd3_flag_package.md rather than through the S-D6 adjudication UI, and are explicitly exempt from the held-out rationale convention.",
+      "rationale_recorded": true,
+      "rationale": "They are a different instrument \u2014 FP gates on controls, not recall \u2014 and their package already isolates the question each one turns on.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-16"
+      ],
+      "evidence": [
+        {
+          "text": "they're a different instrument (FP gates, not recall), and their package already isolates the question each one turns on.",
+          "line": 545,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "so they deliberately don't use this UI or its convention.",
+          "line": 574,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detectors/eval/gd3_flag_package.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "house-pattern-browser-adjudication-ui",
+      "title": "Every adjudication round gets a self-contained browser review UI in the house pattern",
+      "date_from": "2026-06-11",
+      "date_to": "2026-07-10",
+      "decision": "Rulings are collected through a generated, self-contained HTML review UI rather than an inline chat widget or ad-hoc tooling: the two artifacts side by side, line-aligned with intraline highlighting, long unchanged runs collapsed, localStorage persistence and CSV/clipboard export. The Stage-C tool (make_adjudication_ui.py, adding a parent-presence table showing whether the flagged name appears in base/ours/theirs plus special handling for the two \"verify\" cases) becomes the house pattern that later rounds explicitly match \u2014 the Phase-2b 17-row mapping_ui.html and the G2 codebook mapping_ui.html with edit/merge/split/rename/accept/reject controls and anchors enriched with Phase-1 summary/tags. The Stage-C adjudication handoff requires the next session to build the tool first, before any labelling, under guardrails forbidding auto-labelling, touching the frozen detectors, or conflating the run with the post-fix run or the \u00a74.7 miss list.",
+      "rationale_recorded": true,
+      "rationale": "Ali asked for a browser version showing the files under question side by side with the non-matching parts highlighted; collapsing long unchanged stretches keeps 1,500-line files scannable. The parent-presence table makes the \"merge-induced\" question answerable on-page, and the handoff opens by explaining what adjudication is and why it cannot be automated so the next session does not skip to mechanics. Later rounds reuse rather than reinvent because there is an established house pattern for this (the Stage-C adjudication_ui.html), so each new tool is built to match its conventions.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "inline label widget delivered earlier in the pilot session"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-05",
+        "a:bfc672b4-37",
+        "a:8740dbd3-18",
+        "b:6296f4f6-10",
+        "a:6296f4f6-09"
+      ],
+      "evidence": [
+        {
+          "text": "generate browser version and i want to see files under question side by side with non matching part being highlighted",
+          "line": 153,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "the key addition is a **parent-presence table** (does the flagged name appear in base/ours/theirs?) that makes the \"merge-induced\" question answerable on-page",
+          "line": 804,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "Yes \u2014 there's an established house pattern for this (the Stage-C `adjudication_ui.html`). Let me look at how that one was built so this tool matches it:",
+          "line": 427,
+          "file": "2026-07-03_8740dbd3.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detection/pilot/review_ui.html",
+        "merge-tool-comparison/reports_detection/pilot/make_review_ui.py",
+        "outputs/p1-stage-c-adjudication-handoff.md",
+        "make_adjudication_ui.py",
+        "mapping_ui.html",
+        "reports_taxonomy/phase2/mapping_ui.html",
+        "8856ceb"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: Ali specified the browser side-by-side UI (a:bfc672b4-05); Claude built it, wrote the handoff mandating tool-first, and matched the pattern in later rounds (a:bfc672b4-37, b:6296f4f6-10, a:6296f4f6-09); a:8740dbd3-18 is recorded as joint. Options put and Ali picked, so joint.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "adjudication-ui-verified-then-handed-over-clean",
+      "title": "Adjudication UIs are browser-verified and handed over in a fresh unlabelled state",
+      "date_from": "2026-06-20",
+      "date_to": "2026-07-11",
+      "decision": "Before an adjudication UI is handed to Ali it is verified by actually loading it in a browser through a per-UI preview/static-server config \u2014 checking for JS console errors, that all units list, exercising the ruling interaction end to end, and measuring the real layout rather than trusting zoomed screenshots \u2014 and the underlying data extraction (line numbers, identifier parsing, parent-presence logic, plus every FP and verify case: aerospike, cloudfoundry, mtedone, comatoes) is prototyped and manually confirmed against the actual merged files before the generator is written. Claude's own test labels are then cleared so Ali starts from a fresh 0/n state. Where the preview renders a squished main panel, that is diagnosed as the preview tool's mobile-width viewport crowding out `#main` beside the fixed 320px sidebar \u2014 the same flex layout Ali used successfully on his desktop \u2014 so no layout change is made and the guidance is simply to use a wide window.",
+      "rationale_recorded": true,
+      "rationale": "Ali will actually drive the UI and it gates the session, so a structural HTML check is insufficient \u2014 and with no node available for a JS syntax check the real browser is the check. The extraction must be validated first so the UI surfaces the truth rather than propagating detector artifacts. Test labels are cleared so Ali starts fresh with no Claude-produced labels present at handoff. The narrow-strip diagnosis rests on the DOM and JS having been verified correct via eval with no console errors.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:0e14484d-15",
+        "a:0e14484d-05",
+        "a:8740dbd3-19",
+        "a:9e4b6896-13",
+        "b:6296f4f6-12"
+      ],
+      "evidence": [
+        {
+          "text": "Since Ali will actually drive this UI and it gates the session, let me render it in a browser to catch any JS runtime error.",
+          "line": 412,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "Let me verify the actual merged content so the UI surfaces the truth.",
+          "line": 20,
+          "file": "2026-06-20_0e14484d.txt"
+        },
+        {
+          "text": "Let me clear my test labels so Ali starts fresh, then take a screenshot for the handoff.",
+          "line": 57,
+          "file": "2026-06-20_0e14484d.txt"
+        }
+      ],
+      "artifacts": [
+        "make_adjudication_ui.py",
+        "adjudication_ui.html",
+        "mapping_ui.html",
+        "reports_taxonomy/phase2/mapping_ui.html",
+        "reports_taxonomy/phase3/adjudication/adjudication_ui.html",
+        ".claude/launch.json",
+        "0228e76"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "ui-shows-detector-output-verbatim-relocates-identifiers",
+      "title": "UI shows detector output verbatim but re-locates identifiers in the merged file",
+      "date_from": "2026-06-20",
+      "date_to": null,
+      "decision": "The adjudication UI displays the detector's reported line numbers verbatim, tagged with a `stripped-coord` vs `merged-coord` pill for provenance, while independently re-locating every flagged identifier in the real merged file to build the context windows (Joern and RM2 call-lane numbers are shown as-is since they map directly). It also drops the declaration-guard regex as a way of deciding whether an identifier is still declared, surfacing all merged-file occurrences of the identifier instead and leaving the judgment to the adjudicator.",
+      "rationale_recorded": true,
+      "rationale": "RM2 var-lane line numbers are computed on comment/string-stripped text and the char-literal newline bug shifts them (ahome \"L78\" is really merged L248; mtedone \"L1538\" is a Javadoc line), so showing the reported line would display wrong context and corrupt the adjudication. The DECL-guard regex is fragile \u2014 it misses generic types such as `Class<? extends Map<?,?>> mapType` because `?` breaks its character class \u2014 whereas all merged occurrences necessarily include the declarations.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:0e14484d-02",
+        "a:0e14484d-03"
+      ],
+      "evidence": [
+        {
+          "text": "showing a wrong line would corrupt the adjudication",
+          "line": 16,
+          "file": "2026-06-20_0e14484d.txt"
+        },
+        {
+          "text": "So the UI shows the detector's output **verbatim** (with a `stripped-coord` vs `merged-coord` pill) for provenance, but **re-locates** every identifier in the actual merged file for context.",
+          "line": 79,
+          "file": "2026-06-20_0e14484d.txt"
+        },
+        {
+          "text": "my DECL-guard regex misses generic types like `Class<? extends Map<?,?>> mapType` (the `?` breaks its char class), so I'll rely on **showing all merged occurrences** (which already include declarations) rather than the fragile guard",
+          "line": 22,
+          "file": "2026-06-20_0e14484d.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detection/full/make_adjudication_ui.py",
+        "adjudication_ui.html"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "graded-quote-grounding-check",
+      "title": "Spot-check UI grades whether each evidence quote is really in the model input",
+      "date_from": "2026-07-09",
+      "date_to": null,
+      "decision": "The spot-check UI generator draws a seeded stratified sample of 15, shows the exact model inputs beside the model output, and client-side checks whether each evidence quote appears in that input so the reviewer can judge 'unsupported-by-quotes'. The initial binary exact-substring test is replaced the same day by a graded matcher (exact \u2192 diff-gutter/whitespace-normalized \u2192 per-line-present \u2192 genuinely-absent) rendering graded badges.",
+      "rationale_recorded": true,
+      "rationale": "The reviewer needs to know whether a cited quote actually appears in what the model saw \u2014 this is crucial for judging 'unsupported-by-quotes'. But the binary checker showed false-red on ~7% of quotes, and the misses were almost all diff-gutter/whitespace artifacts or non-contiguous multi-line concatenations rather than hallucinations, so a brittle exact test would cry wolf and risk Ali over-rejecting; under graded matching zero quotes are absent.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "binary verbatim-substring quote checker in the spot-check UI"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:788e483b-02",
+        "a:788e483b-04"
+      ],
+      "evidence": [
+        {
+          "text": "crucially for judging \"unsupported-by-quotes\" \u2014 verifies client-side whether each evidence quote is a verbatim substring of the input",
+          "line": 92,
+          "file": "2026-07-09_788e483b.txt"
+        },
+        {
+          "text": "My binary checker is too strict and would cry wolf, risking Ali over-rejecting.",
+          "line": 178,
+          "file": "2026-07-09_788e483b.txt"
+        }
+      ],
+      "artifacts": [
+        "taxonomy_spotcheck_ui.py",
+        "reports_taxonomy/phase1/spotcheck/"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "llm-labels-are-drafts-not-oracles",
+      "title": "Overnight LLM labels are a pre-registered drafting instrument, never an autonomous oracle",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-10",
+      "decision": "The overnight LLM taxonomy run is accepted only as a pre-registered drafting instrument inside the existing methodology: its raw output is a draft codebook plus draft labels and nothing more, and it must be followed by a frozen-codebook relabeling pass, a stratified reliability subset (~40\u201360 units) adjudicated by Ali through a mapping_ui-style tool with reported agreement, a corpus split decided up front so detector evaluation is not run on derivation data, and mandatory attribution escape hatches (none-identified / indeterminate / flaky-suspect) with required evidence quotes. The human reviewer's task in that loop (G1(iii)) is a plausibility + grounding check with exactly two reject grounds \u2014 REJECT-HALLUCINATED and REJECT-UNSUPPORTED: the reviewer does not re-derive the ground-truth cause, and an escape-hatch verdict is a legitimate answer to be accepted unless the model clearly ducked an obvious mechanism or fabricated its stated reason.",
+      "rationale_recorded": true,
+      "rationale": "Without the loop the output is vibes, not findings: by the project's own standard (Stage C, Phase-2b) an unadjudicated machine label is provisional and uncitable. Deriving the taxonomy from the Schesch positives and then evaluating the new detectors on the Schesch positives would be tuning on the test set. And an LLM will produce a confident causal story for every unit, including the unattributable ones, so escape hatches must be first-class outcomes rather than failures \u2014 the worst error in the study is a confident, well-written, wrong causal story. Hence: run overnight, yes; trust overnight, no.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-10",
+        "b:4c7b0828-10",
+        "a:788e483b-09"
+      ],
+      "evidence": [
+        {
+          "text": "**1. No validation loop stated \u2192 the output is vibes, not findings.** By your own standard (Stage C, Phase-2b), an unadjudicated machine label is *provisional* and uncitable.",
+          "line": 635,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "do it \u2014 but as a *pre-registered drafting instrument inside the existing methodology*, not as an autonomous oracle. Run overnight, yes; trust overnight, no.",
+          "line": 653,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "An **escape-hatch verdict is a legitimate answer**, not a failure. Only reject one if the model clearly ducked an obvious mechanism or fabricated something.",
+          "line": 269,
+          "file": "2026-07-09_788e483b.txt"
+        }
+      ],
+      "artifacts": [
+        "ISSUES #30",
+        "outputs/taxonomy-protocol.md"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: a:4c7b0828-10 records the acceptance-with-three-fixes as joint (Ali's idea, Claude's conditions, Ali accepted); b:4c7b0828-10 and a:788e483b-09 record Claude stating the validation-loop requirement and reviewer task. Options were put and Ali picked, so joint.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "codebook-freeze-requires-explicit-approve",
+      "title": "The codebook freezes only on Ali's explicit APPROVE, recorded in the ruling artifact",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-10",
+      "decision": "The Phase-2 codebook is frozen only after Ali adjudicates it (mapping_ui.html precedent), and the open protocol questions (census ~308 vs 195-cap vs stratified sample; single- vs multi-label; compile-check yes/no; corpus-split choice) are put to him as concise questions and ruled before the document is frozen and committed. With `overall: null` in the exported rulings JSON the freeze is blocked pending an explicit APPROVE; where the JSON is ambiguous the `action` field is authoritative (category 2's ACCEPT beats its leftover `new_id`) but the reading is put to Ali for confirmation rather than guessed, and his in-session approval is written back into g2_codebook_rulings.json (overall=APPROVE, stray field cleared) before the freeze.",
+      "rationale_recorded": true,
+      "rationale": "ACCEPT wins and honouring the stray value would collide with category 5's new id, and the freeze is irreversible-ish for the program, so Claude would not guess. An explicit APPROVE is required to freeze at all; since the approval arrived in chat rather than via the UI button it was recorded into the ruling artifact, keeping the artifact the record of the decision. (The two cfe6365a sources state the freeze-after-adjudication rule and the ask-before-freezing sequence without recording a reason.)",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:cfe6365a-04",
+        "a:cfe6365a-10",
+        "a:6296f4f6-17",
+        "a:6296f4f6-16"
+      ],
+      "evidence": [
+        {
+          "text": "is FROZEN after Ali adjudicates it (mapping_ui.html precedent).",
+          "line": 29,
+          "file": "2026-07-08_cfe6365a.txt"
+        },
+        {
+          "text": "I can't freeze without an explicit APPROVE.",
+          "line": 377,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "the freeze is irreversible-ish for the program, so I won't guess",
+          "line": 357,
+          "file": "2026-07-10_6296f4f6.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/outputs/taxonomy-protocol.md",
+        "9209327",
+        "reports_taxonomy/phase2/g2_codebook_rulings.json"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: a:cfe6365a-04 and a:cfe6365a-10 attribute the freeze-gate and question-first rule to Ali; a:6296f4f6-17 attributes the refusal-to-freeze to Claude and a:6296f4f6-16 is joint. Claude put the interpretation and Ali confirmed, so joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "rulings-applied-by-hand-and-preserved",
+      "title": "Applying rulings is a mechanical edit that must survive regeneration",
+      "date_from": "2026-07-05",
+      "date_to": "2026-07-16",
+      "decision": "Rulings are applied to artifacts by hand, without recomputation: Ali's renames, edits, merges and splits are mechanical text changes Claude applies himself when building codebook_frozen.md, and only a REVISE ruling \u2014 reserved for wholesale re-clustering because the category structure itself is wrong \u2014 reruns Fable-5. Renames are held back and applied inside the freeze commit rather than mid-review. Phase-2b mapping rulings are folded into category_mapping.csv with the per-category FINDINGS table regenerated from cached results and no re-run of the evaluation. And `detector_specs_batch.py report` is changed so that a rerun preserves hand-recorded adjudication blocks and emits the final verdict into the spec table itself, verified idempotent.",
+      "rationale_recorded": true,
+      "rationale": "Renames, edits, merges and splits are mechanical text changes applicable directly, while REVISE is meant for wholesale re-clustering, not renames or a merge or two. Editing category ids mid-review would orphan rulings already saved in the UI, whose saved state is keyed by the old ids. For Phase-2b, since every unit scored 0 detections any relabeling only moves rows between 0/n cells, so the headline numbers cannot change \u2014 a low-stakes pass needing no re-run. And as written the report command would have regenerated gd1_machine.json and spec_table.md from scratch, silently wiping the Amendment-2 ruling.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:6296f4f6-12",
+        "a:6296f4f6-15",
+        "a:8740dbd3-20",
+        "a:506d875b-12"
+      ],
+      "evidence": [
+        {
+          "text": "Renames, edits, merges, and splits are mechanical text changes I apply *myself* when building `codebook_frozen.md`",
+          "line": 337,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "because editing the category ids mid-review would orphan the rulings you've already saved in the UI (its saved state is keyed by the old ids)",
+          "line": 285,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "Since every unit scored 0 detections, any relabeling only moves rows between 0/n cells \u2014 the headline numbers can't change, which makes this a low-stakes pass.",
+          "line": 450,
+          "file": "2026-07-03_8740dbd3.txt"
+        },
+        {
+          "text": "would have regenerated `gd1_machine.json` and `spec_table.md` from scratch, silently wiping your Amendment-2 ruling",
+          "line": 185,
+          "file": "2026-07-15_506d875b.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/phase2/codebook_frozen.md",
+        "merge-tool-comparison/reports_detection/phase2b/FINDINGS.md",
+        "category_mapping.csv",
+        "detector_specs_batch.py",
+        "gd1_machine.json",
+        "spec_table.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "plain-text-rulings-accepted-instead-of-ui",
+      "title": "Ali may state rulings in plain text instead of using the review UI",
+      "date_from": "2026-07-10",
+      "date_to": null,
+      "decision": "Ali may bypass the mapping UI entirely and state his category rulings in plain text in chat, and Claude will apply them; the UI (with a JSON download as a third path) is only a convenience for collecting decisions.",
+      "rationale_recorded": true,
+      "rationale": "The UI is only a convenience for collecting the decisions \u2014 if it is fiddly it should not block the ruling.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:6296f4f6-10"
+      ],
+      "evidence": [
+        {
+          "text": "The UI is just a convenience for collecting your decisions \u2014 **if it's fiddly, skip it entirely and just tell me in plain text**",
+          "line": 201,
+          "file": "2026-07-10_6296f4f6.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/phase2/mapping_ui.html"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "escape-hatch-requires-ours-theirs-interaction",
+      "title": "Escape hatches need an ours\u00d7theirs interaction; a visible mechanism beats an escape",
+      "date_from": "2026-07-13",
+      "date_to": "2026-07-14",
+      "decision": "Conventions locked in for all escape\u2194category disagreements in the census adjudication: (a) when one clear, sufficient, merge-induced mechanism is visible, attribute it to the named category rather than escaping, even if other collateral dependencies are off-screen; (b) 'concrete candidate interaction' means an ours\u00d7theirs coupling, so a one-sided change whose callers or resources merely sit off-screen is none-identified, not indeterminate \u2014 including a broad one-sided refactor whose unshown callers might be inconsistent; (c) the full tree \u2014 no ours\u00d7theirs interaction \u2192 none-identified; interaction visible and breaks \u2192 named category; interaction visible and composes cleanly \u2192 none-identified; interaction present but the deciding evidence off-screen \u2192 indeterminate. An ours\u00d7theirs interaction is therefore necessary but not sufficient for indeterminate. Applied the same way each time.",
+      "rationale_recorded": true,
+      "rationale": "Derived from R1 plus Amendment 2: escape hatches are for when no mechanism can be pinned, so you do not bail merely because some other collateral is off-screen. Letting a one-sided \"I can't see the callers\" slide into indeterminate would push every large merge with off-screen callers to indeterminate, which is precisely what Amendment 2 was written to prevent; and any break in a one-sided refactor would be pre-existing in that side rather than merge-induced (R3), so it cannot escape into a merge mechanism. Where the interaction is visible and clearly breaks, a category is owed.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:9e4b6896-18",
+        "a:9e4b6896-19",
+        "a:9e4b6896-20",
+        "a:9e4b6896-26"
+      ],
+      "evidence": [
+        {
+          "text": "**escape hatches are for when *no* mechanism can be pinned. When one clear, sufficient, merge-induced mechanism *is* visible, you attribute it** \u2014 you don't bail just because some *other* collateral is off-screen.",
+          "line": 719,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "lock in the convention: **\"candidate interaction\" means ours \u00d7 theirs; a one-sided change with off-screen callers, where you can't show the other side supplies a stale user, is `none-identified`, not `indeterminate`.**",
+          "line": 764,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "No \u2014 that's the key subtlety, so let me correct it cleanly: an ours\u00d7theirs interaction is **necessary but not sufficient** for `indeterminate`. Having one does **not** force `indeterminate`.",
+          "line": 768,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "category-boundary-conventions-for-primary-label",
+      "title": "Three category-boundary conventions fixed during the census adjudication",
+      "date_from": "2026-07-14",
+      "date_to": null,
+      "decision": "Three boundary conventions govern the primary label: (1) compile-level beats runtime-level \u2014 where a unit has both a pruned-import/changed-signature compile break and a behavioural interaction, the compile break is primary and the behavioural mechanism becomes secondary; (2) for removed vs renamed-or-relocated, the 'successor' must genuinely be the same declaration moved or renamed, so a deleted declaration whose references were switched to a distinct (often library) type sharing the simple name is removed, not relocated; (3) overlapping-edit-interleaving is only labelled when the merged region is a fused hybrid neither side wrote \u2014 if the merged region equals one side's version and the break is a reference in a different file, it routes to the removal/rename/signature categories per the interleaving exclusion.",
+      "rationale_recorded": true,
+      "rationale": "A compile error fails the entire suite, and if the file does not compile the changed runtime behaviour never even runs, so the runtime divergence is secondary. The codebook boundary requires the declaration to survive under a new identity; in gwtbootstrap3 the local SubmitEvent was deleted and GWT's FormPanel.SubmitEvent merely shares the simple name \u2014 a coincidental match, not a rename lineage. In jdeparser2 the merged definition region was exactly ours' version, failing interleaving's core criterion, and the codebook's interleaving exclusion explicitly routes 'one side's declaration-level change consumed by code the other side added in a different region' to the removal/rename/signature categories.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:9e4b6896-23",
+        "a:9e4b6896-24",
+        "a:9e4b6896-25"
+      ],
+      "evidence": [
+        {
+          "text": "a compile error fails the *entire* suite, and if the file doesn't compile, ours' rewritten `switchWorld` behavior **never even runs**",
+          "line": 886,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "The name match between `AbstractForm.SubmitEvent` (a `GwtEvent<SubmitHandler>` subclass) and GWT's `FormPanel.SubmitEvent` is **coincidental**, not a rename lineage.",
+          "line": 907,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "**when a pass says \"overlapping-edit-interleaving,\" check for an actual hybrid neither side wrote.** If the merged region just equals one side's version and the break is a reference in a *different* file, it's a removal/rename/signature case, not interleaving.",
+          "line": 950,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "verify-merged-code-not-merged-equals-dev",
+      "title": "merged == developer proves nothing; verify the merged code itself",
+      "date_from": "2026-07-14",
+      "date_to": null,
+      "decision": "Treat a pass's justification of none-identified via 'merged equals developer resolution' as suspect and check the actual merged file; and for disagreement units at truncation level T2/T3, where the line that decides the call was not shown to either pass, verify against the full merged file pulled from the repo data before ruling.",
+      "rationale_recorded": true,
+      "rationale": "merged==dev only means the tool reproduced the developer's own broken merge commit \u2014 which is why its tests failed and it is in the dataset \u2014 so it carries no information by itself: the paired javapoet/bungeecord cases show it hid a real bug in one and reflected a clean merge in the other, and the discriminator is always whether the merged code contains an actual defect. In the bungeecord case T2 truncation hid ours' surviving `default:` line, which is what flipped pass a into an incorrect overlapping-edit-interleaving call.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:9e4b6896-21",
+        "a:9e4b6896-22"
+      ],
+      "evidence": [
+        {
+          "text": "whenever a pass justifies `none-identified` with *\"merged equals developer, so no mechanism,\"* distrust it and check the actual merged code",
+          "line": 832,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "When a unit is T2/T3-truncated and the deciding line isn't visible, that's exactly when it's worth having me pull the full merged file, like here \u2014 the truncation is what flipped pass a.",
+          "line": 865,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "draft-rulings-audited-before-application",
+      "title": "Ali's draft rulings are audited programmatically, review-only, before being applied",
+      "date_from": "2026-07-14",
+      "date_to": null,
+      "decision": "Ali's draft rulings are assessed programmatically before anything is applied: validate the draft against the adjudication set and both passes, code-verify the risky rulings, flag cases for re-review with severity labels, and change no files. The audit's findings are then resolved individually \u2014 the byte-identical fork twins sander2798_enderstone__9d0d and sandergielisse_enderstone__9d0d must carry the same label under Ali's own compile-beats-runtime convention or an explicit written reason for divergence; frankbille_scoreboard__890ecd0bdb is re-ruled from overlapping-edit-interleaving to indeterminate as the rule-faithful call; and Ali's conscious retention of stale-expectation-of-changed-behavior for vkostyukov_la4j__d216 is recorded in the adjudication record as a ruled judgment call with its hinge acknowledged rather than reopened.",
+      "rationale_recorded": true,
+      "rationale": "Ali directed that the draft was exclusively for review with no changes made from it. The twins have the same 3 scored files with EnderPlayer.java byte-for-byte equal and both carry the same two used-but-unimported symbols, so differing labels are internally inconsistent with Ali's own convention. For frankbille the hybrid is real but whether it breaks hinges on the unshown pom.xml (JPA dependency dropped \u2192 compile break; retained \u2192 inert annotation), and by the Amendment-2 tree a nameable interaction with breakage unsettleable from the shown files is indeterminate. For la4j the mechanism is plausible but hinges on the unshown AbstractVectorTest hierarchy, so indeterminate is defensible and the retention stands as Ali's call with the hinge documented.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "draft v1 ruling frankbille_scoreboard__890ecd0bdb => overlapping-edit-interleaving"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:9e4b6896-27",
+        "a:9e4b6896-29",
+        "a:9e4b6896-30",
+        "b:9e4b6896-27"
+      ],
+      "evidence": [
+        {
+          "text": "dont make any changed based on this draft it is exclusively",
+          "line": 1011,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "You ruled the twins differently (SEC vs SPI). Under your own compile-beats-runtime convention (applied to sandergielisse), sander2798 should also be **SPI** \u2014 or the divergence needs an explicit written reason.",
+          "line": 1157,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "By your Amendment-2 tree \u2014 nameable interaction, breakage unsettleable from shown files \u2014 **IND (pass b)** is the more rule-faithful call",
+          "line": 1161,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/phase3/adjudication/adjudication_record.md",
+        "labels_final.csv"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: a:9e4b6896-27 records Ali's instruction to review only, a:9e4b6896-29 records Claude's inconsistency flag, and a:9e4b6896-30 / b:9e4b6896-27 record joint resolutions. Claude flagged, Ali ruled, so joint.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "reject-ruling-built-on-fabricated-quote",
+      "title": "Reject a pass's ruling whose decisive evidence quote is fabricated",
+      "date_from": "2026-07-14",
+      "date_to": null,
+      "decision": "apache_opennlp__8240a2c660 is flagged for re-review with a recommendation to flip to none-identified, because pass b's decisive evidence \u2014 conflict markers in the merged result \u2014 appears nowhere in the merged files or in the model's actual input (grep = 0 hits).",
+      "rationale_recorded": true,
+      "rationale": "The quoted evidence does not exist in the input; the remaining support is single-file classpath RESOLVE noise under R7, leaving pass a's reading as the only one grounded in the input.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:9e4b6896-28"
+      ],
+      "evidence": [
+        {
+          "text": "**2. `apache_opennlp__8240` \u2014 HARD (ruling rests on a fabricated quote).** Pass b's core evidence \u2014 `<<<<<<< HEAD` conflict markers \"in the merged result\" \u2014 **appears nowhere**: not in any merged file, not anywhere in the model's actual input (grep = 0 hits).",
+          "line": 1159,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [
+        "THREATS_TO_VALIDITY.md \u00a74.4.9"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "adjudicate-primary-only-report-unruled-holes",
+      "title": "Adjudicate the primary label only; report unruled disagreements as holes",
+      "date_from": "2026-07-11",
+      "date_to": "2026-07-12",
+      "decision": "The adjudication UI resolves the single dominant (primary) mechanism only \u2014 that is what the gate and the base rates use; where Ali judges a second mechanism present he notes it in the free-text box, and secondary labels stay reported descriptively as a co-occurrence matrix taken straight from the two passes. Ruling all 47 disagreements is not strictly required for the gate, and any left unruled are reported explicitly as units with no final label \u2014 a flagged hole in the 275-unit base rates \u2014 rather than silently filled.",
+      "rationale_recorded": true,
+      "rationale": "Per \u00a78 secondaries are reported descriptively while the primary is what the gate and base rates consume. The disagreements are not gated but do supply final labels, so leaving one unruled creates a hole in the base rates which must be flagged and handled as a caveat rather than papered over.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:9e4b6896-16",
+        "a:9e4b6896-17"
+      ],
+      "evidence": [
+        {
+          "text": "Any disagreement you leave UNREVIEWED has no final label \u2014 it becomes a hole in the 275-unit base rates that I'd have to flag and handle as a caveat (not ideal).",
+          "line": 605,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "**1. The UI adjudicates the *primary* only.** The \"Final ruling\" selector picks the single **dominant** mechanism \u2014 that's what the gate and the base rates use.",
+          "line": 653,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [
+        "labels_final.csv",
+        "reports_taxonomy/phase3/adjudication/"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "escalate-to-ali-never-improvise",
+      "title": "Escalate to Ali rather than improvise: control flags, gate flags and plan ambiguity",
+      "date_from": "2026-07-15",
+      "date_to": "2026-07-22",
+      "decision": "A detector firing on a control never passes silently: each such flag is packaged with full evidence (reports_detectors/eval/gd3_flag_package.md for the two GD3 gate failures \u2014 eval-control jgralab and spgroup-clean jOOQ DSL; reports_detectors/stagec_rerun/ctl_flag_package.md for the jgralab D1 and yubico D2 experimental-arm flags), Claude's reading is explicitly labelled as analysis, and the session stops for Ali's personal ruling, with both consequences spelled out \u2014 DETECTOR-FP implies a dated \u00a712 amendment plus full reruns, INCIDENTAL-BUT-TRUE is recorded with the gate re-judged and nothing rerun. The known residual FP class (a lost non-JDK wildcard plus the other side concurrently adding usage of a same-package type) is registered in writing beforehand as an accepted limitation to be measured on the 200 eval-controls + spgroup at S-D5/GD3 with Ali adjudicating any hit. More generally, a session must read the frozen authority doc and ISSUES entry first and, on any ambiguity, contradiction or underspecification between plan, repo state and prompt, ask Ali concrete questions and wait \u2014 material resolutions becoming dated \u00a712 amendments, trivial clarifications going to the session log and close-out \u2014 and if a verdict delta \u0394 cannot be derived purely from committed artifacts for some file, the session halts and asks rather than improvising a value.",
+      "rationale_recorded": true,
+      "rationale": "Per plan \u00a75 any control/spgroup flag stops the session and the amendment path is Ali's call, and the program's rules say a detector firing on a control is never allowed to pass silently \u2014 Ali personally rules on each one, the machine numbers publishing either way while his ruling determines how the flags are characterised. Pre-registering the residual FP class means a hit on the eval corpora confirms a known limitation rather than surprising anyone, because that case is file-locally indistinguishable from the jnr true-positive shape. Ambiguity must never be resolved by improvising: resolutions have to be traceable in the frozen plan's amendment section, and a non-computable \u0394 is a genuine question, not arithmetic.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-10",
+        "a:06ec13eb-09",
+        "a:f0d70a59-10",
+        "a:506d875b-01",
+        "a:68c24033-03"
+      ],
+      "evidence": [
+        {
+          "text": "the program's rules say **a detector firing on a control is never allowed to pass silently \u2014 you personally rule on each one**. The package is just the evidence file for those rulings.",
+          "line": 160,
+          "file": "2026-07-22_06ec13eb.txt"
+        },
+        {
+          "text": "never resolve ambiguity by improvising",
+          "line": 16,
+          "file": "2026-07-15_506d875b.txt"
+        },
+        {
+          "text": "If \u0394 turns out NOT to be computable purely from committed artifacts for some file, STOP and ask Ali \u2014 that would be a genuine question, not arithmetic.",
+          "line": 76,
+          "file": "2026-07-22_68c24033.txt"
+        },
+        {
+          "text": "I've already registered the residual FP class in writing (lost **non-JDK** wildcard + concurrent same-package-type usage; tune saw only the JDK variant), so a hit there confirms a known limitation rather than surprising us",
+          "line": 226,
+          "file": "2026-07-16_f0d70a59.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detectors/eval/gd3_flag_package.md",
+        "merge-tool-comparison/reports_detectors/stagec_rerun/ctl_flag_package.md",
+        "outputs/detector-cycle-plan.md",
+        "ISSUES #31",
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: Claude enacted the escalation and packaging (a:2e726dc0-10, a:06ec13eb-09, a:f0d70a59-10) while Ali set the ambiguity-check and stop-and-ask rules in the session brief (a:506d875b-01, a:68c24033-03). Both ends of the same rule, so joint.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "control-flags-ruled-incidental-but-true",
+      "title": "Both control-flag pairs ruled INCIDENTAL-BUT-TRUE: gates re-judged PASS, no rerun",
+      "date_from": "2026-07-22",
+      "date_to": "2026-07-23",
+      "decision": "Ali ruled the two GD3 control flags (jgralab, jOOQ) incidental-but-true rather than detector FPs: the GD3 gates were re-judged PASS in the manifest, no \u00a712 amendment or S-D5 rerun was triggered, and the record stands as zero adjudicated FPs across 363 control units. He likewise ruled both Stage-C-rerun experimental-arm control flags incidental-but-true (jgralab D1 version-skew class; yubico D2 developer-confirmed), recorded in ctl_flag_package.md's rulings section, manifest stagec_rerun.ctl_flag_rulings, ISSUES #31, FINDINGS \u00a710 and memory, with no amendment and no rerun \u2014 the 732d8ff freeze stands. Ali's initial FP challenge and its evidence-based resolution against the four-version differential are documented in the package alongside the ruling, and the same two rulings are then applied unchanged (1:1) to S-D8's two flag-ON control blocks rather than re-adjudicated.",
+      "rationale_recorded": true,
+      "rationale": "For the Stage-C-rerun pair, Ali ruled after the four-version differential resolved his FP challenge: the flags are true of the scored artifacts and their presence in the control pool is an artifact of the label construct. The challenge-and-resolution provenance is kept because it shows the ruling was contested then evidence-settled, not rubber-stamped. The S-D8 blocks are exactly the same flags Ali already ruled in S-D7 and both are Mergiraf-routed in that run, so the rulings transfer 1:1. (No reason was recorded for the GD3 pair beyond the ruling itself.)",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-11",
+        "a:06ec13eb-11",
+        "a:06ec13eb-12",
+        "a:68c24033-17"
+      ],
+      "evidence": [
+        {
+          "text": "ok both incidental-but-true, record them",
+          "line": 216,
+          "file": "2026-07-22_06ec13eb.txt"
+        },
+        {
+          "text": "with your FP challenge and its resolution against the four-version differential documented in the package (that provenance is worth keeping for the thesis: the ruling was contested, then evidence-settled, not rubber-stamped).",
+          "line": 228,
+          "file": "2026-07-22_06ec13eb.txt"
+        },
+        {
+          "text": "which are exactly the jgralab-D1 and yubico-D2 flags Ali already ruled **incidental-but-true** in S-D7 \u2014 both Mergiraf-routed here, so the rulings transfer 1:1",
+          "line": 285,
+          "file": "2026-07-22_68c24033.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_detectors/manifest.json",
+        "merge-tool-comparison/reports_detectors/FINDINGS.md",
+        "ctl_flag_package.md",
+        "ISSUES.md #31",
+        "e978585"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the rulings themselves are Ali's (a:2e726dc0-11, a:06ec13eb-11) while the provenance recording and the 1:1 carry-forward are Claude's (a:06ec13eb-12, a:68c24033-17). Options were put and Ali picked, so joint.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "held-out-drafts-corrected-during-adjudication",
+      "title": "Three held-out drafts corrected: two DETECTOR-FPs and one sub-flag fix",
+      "date_from": "2026-07-20",
+      "date_to": "2026-07-22",
+      "decision": "Three S-D6 held-out drafts were changed by scrutiny: (1) the single D3-widened catch, dabsquared_gitlab-plugin, is recorded DETECTOR-FP because ours extracted the class to a same-package top-level file (verified present at the merge commit) so the bare name needs no import \u2014 D3's held-out added value becomes 0/110 with the FP charged to its precision line; (2) scribble_scribble-java's RM2RenameConflict flag is ruled DETECTOR-FP because the supposedly renamed method is still declared in the merged file and its callers resolve, so the four flagged call sites are false alarms, with the cost falling on the baseline lane's precision (3/4 causal), touching no gate and not the name-binding family number; (3) steveice10_mcprotocollib stays CAUSAL at unit level with two sub-flag corrections recorded in the rationale \u2014 D1's wildcard-provenance clause is imprecise and the MetadataType/LongMetadataType sub-flag is a same-package FP \u2014 the UI regenerated with the refined draft (e62f7cc) and the extra-scrutiny chip removed.",
+      "rationale_recorded": true,
+      "rationale": "For dabsquared, the lane's assertion of breakage is false one level above the file it can see \u2014 a new sibling file in the same package is invisible to a file-local lane, which is the registered residual FP class documented at S-D4 and the Amendment-2 file-local ceiling; corroborated by the unit's indeterminate label and merged == developer's resolution. For scribble, RefactoringMiner recorded a partial responsibility split as a Rename Method and the RM2 call lane trusts that record without re-verifying that the old declaration vanished (unlike its var lane) \u2014 a documented name-level granularity limitation. For mcprotocollib the operative claim (\"retains no import covering the name\") was checked directly and holds \u2014 only the which-import-provided-it clause is wrong \u2014 and the codec break alone carries the unit, confirmed by the developer's later \"Fix missing imports??\" commit, while the same-package sub-flag gives the residual-FP blind spot a second held-out instance for FINDINGS.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-17",
+        "a:2e726dc0-18",
+        "a:2e726dc0-19"
+      ],
+      "evidence": [
+        {
+          "text": "**2 \u00d7 DETECTOR-FP** \u2014 dabsquared (the D3-widened catch: ours had *extracted* the class to a same-package file, verified present at the merge commit \u2014 the file-local lane can't see it; its documented residual class)",
+          "line": 570,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "the call lane doesn't re-verify that the old declaration actually vanished",
+          "line": 628,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "The *operative* claim (\"retains no import covering the name\") was checked directly and holds; only the \"which import provided it\" clause is off.",
+          "line": 658,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [
+        "e62f7cc",
+        "merge-tool-comparison/reports_detectors/adjudication/adjudication_ui.html"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: a:2e726dc0-17 and a:2e726dc0-18 are recorded joint (Claude drafted, Ali ruled) while a:2e726dc0-19 is Claude's draft refinement. Under the draft-first protocol the rulings count only on Ali's acceptance, so joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "ali-ruled-every-round-accepting-drafts",
+      "title": "Ali ruled every adjudication round and accepted the drafts unchanged",
+      "date_from": "2026-06-11",
+      "date_to": "2026-06-20",
+      "decision": "Ali ruled on all 23 pilot misses via review_ui.html, accepting every draft label; these became the adjudicated labels written into misses_to_classify.csv and fixed the final base-rate table (#6-family 8, none-of-7 5, none-identified 9, indeterminate 1, categories #1\u2013#5/#7 zero). He then ruled all 15 Stage-C flags via adjudication_ui.html \u2014 all 11 positives CAUSAL, all 4 controls DETECTOR-FP, no draft overridden, with a recorded note on the comatoes case. He directed the fold-back per handoff \u00a73: promote the draft to reports_detection/full/hit_adjudications.md marked ADJUDICATED, recompute R2 decomposed by label in FINDINGS.md, and update STATUS, THREATS row 14 and ISSUES #29.",
+      "rationale_recorded": true,
+      "rationale": "No reason was recorded for accepting the drafts wholesale. The only written reasoning Ali left was on the comatoes unit: the two methods' implementations are very similar (setReservePowerCapacity\u2192setSectorNumber) but the naming gives no hint whether they are the same method, so the developers' intention is hard to tell \u2014 while mostly agreeing with the draft.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-06",
+        "a:0e14484d-10",
+        "b:0e14484d-07"
+      ],
+      "evidence": [
+        {
+          "text": "Miss-classification review complete (23/23 labeled via review_ui.html). Final labels:",
+          "line": 188,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "CAUSAL | note: additionally, implementation of this two method are very similar setReservePowerCapacity\u2192setSectorNumber, but naming does not give a hint about if they are same method or not. hard to tell devs intention. mostly agree on the draft",
+          "line": 153,
+          "file": "2026-06-20_0e14484d.txt"
+        },
+        {
+          "text": "Please fold these into reports_detection/full/hit_adjudications.md (promote the draft, mark ADJUDICATED), recompute R2 decomposed by label in FINDINGS.md, and update STATUS/THREATS/ISSUES #29 per the handoff \u00a73.",
+          "line": 167,
+          "file": "2026-06-20_0e14484d.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detection/pilot/misses_to_classify.csv",
+        "merge-tool-comparison/reports_detection/pilot/FINDINGS.md",
+        "merge-tool-comparison/reports_detection/full/hit_adjudications.md",
+        "merge-tool-comparison/reports_detection/full/FINDINGS.md",
+        "STATUS.md",
+        "THREATS_TO_VALIDITY.md",
+        "merge-tool-comparison/ISSUES.md"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "rule-phase-2b-mapping-late-with-disclosure",
+      "title": "Rule the last open Phase-2b mapping late, disclosing the lateness as a threat",
+      "date_from": "2026-07-23",
+      "date_to": null,
+      "decision": "Complete the long-pending Phase-2b 17-row category-mapping adjudication \u2014 the project's last DRAFT label \u2014 and record in the ruling that it was adjudicated 2026-07-23 against a mapping frozen 2026-07-04 by an adjudicator who had already seen subsequent program results, listing confirmation bias as a threat mitigated by per-row written rationale; if any rows flip, the 12/17 references are traced and corrected.",
+      "rationale_recorded": true,
+      "rationale": "Lateness does not compromise validity because the mapping was drafted and committed before the Phase-2b run and has not changed since, and the ruling is label-only with no downstream tuning path; the genuine remaining threat is confirmation bias toward the draft already seen quoted, mitigated by per-row written rationale plus an explicit disclosure line. It is also the last open ruling in the entire project and cheap.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): still pending \u2014 reports_detection/phase2b/FINDINGS.md:37,80 still say the category mapping is a frozen DRAFT with Ali's adjudication pending; category_mapping.csv unchanged; no commit to phase2b/ after 2026-07-05. The 17-row ruling remains with Ali. Adopted/executed 2026-07-27 (commit 25db694): Ali ruled all 17 rows via mapping_ui.html \u2014 17/17 confirm the frozen draft, 0 overrides (incl. VERIFY-flagged row 14 storm\u2192#6) \u2192 category_mapping_adjudicated.csv; category_mapping.csv unchanged; FINDINGS/STATUS/CLAUDE updated; per-category table final. No rows flipped, so no 12/17 tracing was needed. Two deviations from the proposal text, disclosed in FINDINGS \u00a7Threats: the ruling date is 2026-07-27 (not 2026-07-23), and the rulings carry no per-row written rationales \u2014 each confirmation adopts the frozen draft's own per-row reasoning as its rationale.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-40"
+      ],
+      "evidence": [
+        {
+          "text": "rule it if you want the Phase-2b table clean in the thesis (my recommendation \u2014 it's the last open ruling in the entire project and cheap)",
+          "line": 2068,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "the ruling record should simply say so: *adjudicated 2026-07-23 on the mapping frozen 2026-07-04; the adjudicator had seen subsequent program results; listed as a threat, mitigated by per-row written rationale.*",
+          "line": 2090,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_detection/phase2b/mapping_ui.html",
+        "reports_detection/phase2b/FINDINGS.md",
+        "reports_detection/phase2b/category_mapping_adjudicated.csv"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "document-adjudication-instrumentation-in-thesis",
+      "title": "Document the adjudication instrumentation and frozen-evidence ruling protocol in Ch. 5",
+      "date_from": "2026-07-22",
+      "date_to": null,
+      "decision": "Add a Ch. 5 \"Adjudication instrumentation\" section describing the offline adjudication UIs, the committed ruling files and the census adjudication workflow, with a UI screenshot in the appendix and a contribution-delineation row separating the AI-built instrument from the author-made ruling.",
+      "rationale_recorded": true,
+      "rationale": "Capturing rulings against frozen evidence, offline and committed, is what makes \"Ali-adjudicated\" a citable label rather than an anecdote.",
+      "status": "proposed",
+      "status_note": "S12 (2026-07-26): still pending \u2014 no thesis draft, Ch. 5 text or contribution-delineation table exists in the repo. The instrumentation artifacts it would describe (make_adjudication_ui.py, hit_adjudications.md, make_sd6_adjudication_ui.py) all exist.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:dc3bc182-24"
+      ],
+      "evidence": [
+        {
+          "text": "rulings are captured against *frozen* evidence, offline, and committed \u2014 which is what makes \"Ali-adjudicated\" a citable label rather than an anecdote.",
+          "line": 549,
+          "file": "2026-07-18_dc3bc182.txt"
+        }
+      ],
+      "artifacts": [
+        "make_adjudication_ui.py",
+        "adjudication_ui.html",
+        "reports_detectors/adjudication/make_sd6_adjudication_ui.py",
+        "hit_adjudications.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "stratified-manual-eyeball-of-spork-residuals",
+      "title": "Re-test the AST-equivalence hypothesis by hand on a 15-sample stratified eyeball",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "Execute option 3j as a 15-scenario stratified manual labelling over the 39 still-differ Spork CLEAN outputs \u2014 5 size quintiles \u00d7 3 picks (low/mid/high index within bin) \u2014 classifying each post-format diff by dominant pattern with hunk and +/- line counts. The one non-trivial call in the sample (scenario [31], where a `// ---` separator comment appears 3\u00d7 in Spork vs 1\u00d7 in dev) is classified as AST-equivalent style rather than duplication pathology and flagged explicitly as the borderline case.",
+      "rationale_recorded": true,
+      "rationale": "To re-test the \u00a73 hypothesis that all 39 unsampled structural FPs are AST-equivalent reformatting at higher sample size, after \u00a78 falsified the 3-sample naive generalisation, and to determine whether the residuals are dominantly AST-equivalent (3b would recover them) or dominantly intrinsic tool pathology. The borderline scenario is arguable either way \u2014 on closer reading dev collapses three sibling comments into one in the same hunk while Spork preserves all three \u2014 so it is called AST-equivalent for this classification and flagged as the one residual where the call is non-trivial.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-stage-gamma-fp-diagnostic-16",
+        "preA:pre-stage-gamma-fp-diagnostic-17"
+      ],
+      "evidence": [
+        {
+          "text": "15-sample stratified eyeball across the 39 still-differ Spork CLEAN outputs. Size-binned (5 quintiles by merged-file size), 3 picks per quintile (low/mid/high index within bin).",
+          "line": 177,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        },
+        {
+          "text": "Treating as AST-equivalent style for the purposes of this classification; flagged as the one residual where the call is non-trivial.",
+          "line": 216,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        },
+        {
+          "text": "it must be a human judgment with written rationale \u2014 same protocol as your 3j labelling and the 23-miss classification \u2014 because \"the tool graded its own homework\" is the first thing an examiner will probe",
+          "line": 667,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "claude",
+      "actors_note": "Ruled by Ali 2026-08-06 (housekeeping PR #10): performed by Claude - Ali does not recall doing the pass himself; the 'your 3j labelling' quote in the 2026-06-11 distillate is thereby ruled a misattribution. actors=claude confirmed.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "pilot-hit-labels-and-withdrawn-claim",
+      "title": "Pilot hits labelled DETECTOR-FP; the blockchain compile-error claim withdrawn",
+      "date_from": "2026-06-11",
+      "date_to": null,
+      "decision": "All 5 flagged sites from the detection pilot are provisionally labelled DETECTOR-FP, giving 0 causal hits. Separately, the Stage-A sub-claim that blockchain's merged file was a confirmed compile error is withdrawn: it is reclassified as a mixed-rename behavioural inconsistency, the confirmed-compile-error count is corrected from 5 to 4 (erudika, jacquesberger, winder, jnr), and blockchain is documented as legitimately undetectable by the v2 id lane and by RM2.",
+      "rationale_recorded": true,
+      "rationale": "Each flagged pattern exists verbatim in base, ours and theirs (one is `if(true)`, not even a loop), so the sites are pre-existing code rather than merge-induced, and the Joern query matches any control structure with a constant condition rather than loops only. The blockchain claim rested on a too-narrow declaration regex (`baseURL =`) while Joern's scope analysis, treated as authoritative, shows `baseURL` does resolve in the merged file.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-02",
+        "a:bfc672b4-14"
+      ],
+      "evidence": [
+        {
+          "text": "all 5 flagged sites are `JoernInfiniteLoop` constant-condition hits **present verbatim in base, ours, and theirs**",
+          "line": 81,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "Provisional label: DETECTOR-FP for all five \u2192 **0 causal hits**.",
+          "line": 108,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "My Stage-A \"confirmed compile error\" claim for blockchain rested on a too-narrow declaration regex (`baseURL =`); Joern proves the identifier is declared.",
+          "line": 338,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_detection/pilot/FINDINGS.md",
+        "reports_detection/pilot/misses_classification_draft.md",
+        "merge-tool-comparison/reports_detection/pilot_v2/FINDINGS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    }
+  ],
+  "not_promoted": [
+    {
+      "uid": "a:bfc672b4-38",
+      "reason": "Kickoff-prompt wording that restates the Stage-C handoff's tool-first / no-auto-labelling constraints (promoted in house-pattern-browser-adjudication-ui and final-rulings-belong-to-ali); carries no separate choice, and is status=proposed while the handoff it repeats is adopted."
+    },
+    {
+      "uid": "a:0e14484d-04",
+      "reason": "Implementation fix inside the UI generator (replacing a broken marker-char highlighter with a tokenizing one); too minor to carry in the decision record."
+    },
+    {
+      "uid": "a:788e483b-11",
+      "reason": "Session-mechanics choice about where Ali pastes his spot-check rulings; no bearing on the ruling record or the adjudication protocol."
+    }
+  ],
+  "cross_theme": [
+    {
+      "slug": "escape-hatch-requires-ours-theirs-interaction",
+      "other_theme": null,
+      "other_uid": "a:9e4b6896-08",
+      "relation": "depends-on",
+      "note": "These conventions operationalise Amendment 2's distinction between none-identified and indeterminate (articulable cross-side interaction). Amendment 2 itself is placed in another theme (instrument/protocol amendments); the conventions here are unreadable without it."
+    },
+    {
+      "slug": "adjudicate-primary-only-report-unruled-holes",
+      "other_theme": null,
+      "other_uid": "a:9e4b6896-14",
+      "relation": "depends-on",
+      "note": "The reporting decision for the n=12 agreeing-sample reliability gate (Wilson CI, framed as corroborating only) sits in another theme; it determines how the rulings collected under this entry are published."
+    },
+    {
+      "slug": "category-boundary-conventions-for-primary-label",
+      "other_theme": null,
+      "other_uid": "b:6296f4f6-17",
+      "relation": "depends-on",
+      "note": "The frozen codebook's own tie-break rule for a declaration both renamed and re-signatured (primary = whichever the use trips on first, optional secondary) is owned by the codebook theme and is the parent rule these adjudication-time boundary conventions extend."
+    },
+    {
+      "slug": "llm-labels-are-drafts-not-oracles",
+      "other_theme": null,
+      "other_uid": "a:6296f4f6-20",
+      "relation": "depends-on",
+      "note": "The S4 census scope (308 merges double-coded under the frozen codebook, with Ali's reliability adjudication) is placed in another theme but is the run this validation-loop requirement governs."
+    },
+    {
+      "slug": "document-adjudication-instrumentation-in-thesis",
+      "other_theme": "thesis writing / chapter structure",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "This is a writing-plan item inside the Ch. 5 outline session; whoever owns thesis-structure decisions should hold the parent entry, and its ratification would be visible there."
+    },
+    {
+      "slug": "control-flags-ruled-incidental-but-true",
+      "other_theme": null,
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The GD3/GD4 gate definitions and the \u00a712 amendment-vs-rerun machinery in outputs/detector-cycle-plan.md are owned elsewhere; this entry's 'gates re-judged PASS, no rerun' outcome is meaningful only against them."
+    }
+  ],
+  "notes": "Density: 26 entries from 72 primary sources (2.8 per entry), below the corpus 5-9 band. Reason: this theme is unusually made of singular events rather than repeated positions \u2014 individual human rulings (the 23 misses, the 15 Stage-C flags, four control flags, three held-out corrections, one fabricated-quote rejection) and case-level conventions that the two extraction passes deliberately kept apart because each governs a different category boundary. I merged aggressively where the same position recurred (the drafts-vs-rulings principle across four sessions; the house UI pattern across four rounds; UI verification across four sessions; the escalate-rather-than-improvise rule across five sources) but did not collapse the escape-hatch, category-boundary and merged-code-verification conventions into one block, nor the three carve-outs/reversals the schema asks to keep visible (withhold-per-unit-guidance, gd3-control-flags-exempt-from-ui-convention, plain-text-rulings-accepted-instead-of-ui).\n\nTwo judgment calls S10z should check:\n(1) withhold-per-unit-guidance-during-reliability-check is marked superseded (extraction's status) with superseded_by pointing at final-rulings-belong-to-ali, whose date_from (2026-06-11) precedes it. The merged entry covers 2026-06-11..2026-07-20 and the superseding act is the 2026-07-20 draft-first ruling (a:2e726dc0-12) inside it. If S10z prefers, split the draft-first source back out into its own later-dated entry so the arc reads chronologically.\n(2) stratified-manual-eyeball-of-spork-residuals is built from two pre-transcript sources (uid preA:, a diagnostic document, not a pre-commits- source), so by the plan-source rule its 'adopted' status needed external confirmation. The confirmation is a transcript-era source in this slice, a:bfc672b4-36, which refers to \"your 3j labelling\" as an established protocol precedent; that uid is cited in final-rulings-belong-to-ali (uids appear once), so I carried its L667 quote as third evidence here instead. Status kept adopted, confidence medium; downgrade to proposed if S10z judges that indirect.\n\nAlso-placed decisions were read and cited only in cross_theme (none in sources): a:9e4b6896-08 (Amendment 2) is the parent of the escape-hatch conventions, b:6296f4f6-17 is the codebook's own tie-break rule, a:9e4b6896-14 governs how the reliability gate is published, a:6296f4f6-20 is the census run the validation loop gates.",
+  "theme": "adjudication",
+  "slice_primary_total": 75
+}

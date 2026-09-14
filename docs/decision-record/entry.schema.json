@@ -1,0 +1,280 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Consolidated decision entries for one theme",
+  "description": "One object per theme slice. Emitted by a consolidation session (S10b..S10l) reading exactly one slice from extractions/slices/, and consumed by S10z, which numbers the entries and renders docs/DECISIONS.md. FROZEN: consolidation sessions adapt to this schema, never the reverse. The chain uid -> quote -> distilled line must survive into the finished document, so that every claim in the record stays checkable without re-opening the union.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "theme",
+    "slice_primary_total",
+    "entries",
+    "not_promoted"
+  ],
+  "properties": {
+    "theme": {
+      "type": "string",
+      "description": "Theme name, exactly as in the slice file."
+    },
+    "slice_primary_total": {
+      "type": "integer",
+      "description": "Count of decisions in this slice with placement='primary', copied from the slice's n_primary. Do not recount. The coverage gate is checked against it."
+    },
+    "entries": {
+      "type": "array",
+      "description": "The consolidated record for this theme. Expect roughly one entry per 5-10 source decisions: extraction was deliberately finer-grained than the finished document.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slug",
+          "title",
+          "date_from",
+          "decision",
+          "rationale_recorded",
+          "status",
+          "sources",
+          "evidence",
+          "actors",
+          "corroboration",
+          "provenance",
+          "confidence"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+){1,7}$",
+            "description": "Stable kebab-case handle, unique within the theme, e.g. 'route-on-ours-union-theirs'. Entries carry NO D-nn number: numbering is global and only S10z can assign it. Cross-references between entries use slugs until then."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 90,
+            "description": "Declarative one-liner, no trailing period. This becomes the entry heading."
+          },
+          "date_from": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "Date the decision was made. When merging several source decisions, the EARLIEST \u2014 when the position was first taken, not when it was restated."
+          },
+          "date_to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "Only for a decision argued across several days, e.g. a refutation that accumulated evidence. Null for a single-day decision \u2014 do not pad a range to look deliberate."
+          },
+          "decision": {
+            "type": "string",
+            "description": "What was decided, stated so it is actionable without reading the sources. Renders as the **Decision.** paragraph."
+          },
+          "rationale_recorded": {
+            "type": "boolean",
+            "description": "Did any source decision actually state a reason? If every source has rationale_recorded=false, this is false and rationale MUST be null. Consolidation is where a tidy after-the-fact justification is most tempting; a missing reason is a finding about the record, not a gap to fill."
+          },
+          "rationale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why, AS ARGUED AT THE TIME, merged from the sources' rationales. Renders as the **Why.** paragraph. Never a later or better reason than the one given."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "adopted",
+              "superseded",
+              "reversed",
+              "open",
+              "proposed",
+              "abandoned"
+            ],
+            "description": "State as of 2026-07-25. adopted: in force. superseded: replaced by a later decision (name it in superseded_by). reversed: undone, not replaced. open: live question, no ruling. proposed: recommended in the transcript with no visible ratification \u2014 143 source decisions carry this; resolving it needs the code or a later transcript, so leave it proposed rather than guessing. abandoned: dropped without a ruling."
+          },
+          "status_note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Required when status is 'proposed' or 'open': what would settle it, and where to look. Null otherwise."
+          },
+          "supersedes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Slugs of entries this replaces, or a plain description when the thing replaced is a plan document rather than an entry."
+          },
+          "superseded_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Slug of the entry that replaced this one. If that entry is in a different theme, also add a cross_theme record \u2014 this theme cannot see it to verify."
+          },
+          "sources": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            },
+            "description": "Every union uid this entry consolidates, e.g. 'a:20b53f98-04'. This is the provenance chain and the coverage gate: each primary uid in the slice must appear here or in not_promoted. Citing an 'also' uid owned by another theme is fine and does not count toward coverage."
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Quotes carried into the finished document, so a reader can check the entry against the transcript without the union. Normally drawn from the sources' own quotes. Two when the rationale is the load-bearing part.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "text",
+                "line",
+                "file"
+              ],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 15,
+                  "description": "VERBATIM substring of the distilled file, machine-checked exactly as in extraction. May span a line break (PROTOCOL \u00a78 Amendment 2). No paraphrase, no tidied typo, no ellipsis."
+                },
+                "line": {
+                  "type": "integer",
+                  "description": "1-indexed line the quote STARTS on."
+                },
+                "file": {
+                  "type": "string",
+                  "description": "Distilled filename, e.g. 2026-05-18_20b53f98.txt. Required because one entry may merge sources from several transcripts."
+                }
+              }
+            }
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Commit shas, file paths, ISSUES numbers, report directories the decision names. Renders into **Source.**"
+          },
+          "actors": {
+            "type": "string",
+            "enum": [
+              "ali",
+              "claude",
+              "joint",
+              "unclear"
+            ],
+            "description": "Who made the call. Feeds the thesis contribution-delineation table, so it is load-bearing. Where sources disagree, do NOT take a majority: use 'joint' if options were put and Ali picked, 'unclear' if the record genuinely does not say, and explain in actors_note."
+          },
+          "actors_note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Required when the source decisions disagree about actors. Null otherwise."
+          },
+          "corroboration": {
+            "type": "string",
+            "enum": [
+              "both",
+              "single-pass",
+              "mixed"
+            ],
+            "description": "From the \u00a76 two-pass run, via each source's corroboration.status. 'both' = every source was found independently by both passes. 'single-pass' = every source came from only one pass, so the entry rests on weaker evidence and S11 should sample it preferentially. 'mixed' = some of each."
+          },
+          "provenance": {
+            "type": "string",
+            "enum": [
+              "chat",
+              "reconstructed",
+              "mixed"
+            ],
+            "description": "Derived from the sources' era and checked against it, not declared. 'chat' when every source is transcript-era (uid a:/b:) \u2014 the reasoning is what was argued at the time. 'reconstructed' when every source is pre-transcript (uid preA:/preB:), rebuilt from commit messages and planning documents, where the deliberation is lost. 'mixed' for both. Renders as the v1 provenance tag."
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "description": "low = the sources support this entry only loosely, or merging them was a judgment call that could reasonably have gone another way. Low-confidence entries are kept and flagged for S11, not dropped."
+          }
+        }
+      }
+    },
+    "not_promoted": {
+      "type": "array",
+      "description": "Every primary uid in the slice that did NOT become part of an entry, with a one-line reason: a restatement of another decision, a status update, too minor to carry, or superseded within the slice. This is the consolidation analogue of extraction's near_misses \u2014 it is how S11 audits the threshold, and it is half of the coverage gate. An empty list on a large slice reads as an unexamined threshold, not a clean one.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "uid",
+          "reason"
+        ],
+        "properties": {
+          "uid": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "cross_theme": {
+      "type": "array",
+      "description": "Relationships this session can see but cannot resolve, because the other end is in a slice it did not read. S10z reconciles these. Raise one whenever an entry supersedes, is superseded by, contradicts, or duplicates something you believe sits in another theme \u2014 including for the 'also'-placed decisions, which exist precisely because they straddle a boundary.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slug",
+          "relation",
+          "note"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "Entry in THIS theme."
+          },
+          "other_theme": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Suspected theme at the other end, null if unknown."
+          },
+          "other_uid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The union uid at the other end, when known."
+          },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "supersedes",
+              "superseded-by",
+              "contradicts",
+              "duplicates",
+              "depends-on"
+            ],
+            "description": "Direction from this theme's entry to the other end."
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Anything S10z needs: a merge you were unsure about, a decision that clearly continues into another theme, a coverage shortfall and why."
+    }
+  }
+}

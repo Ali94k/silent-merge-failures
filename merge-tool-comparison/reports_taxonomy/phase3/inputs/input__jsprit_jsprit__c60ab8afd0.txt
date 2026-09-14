@@ -1,0 +1,717 @@
+UNIT jsprit_jsprit__c60ab8afd0
+repo: jsprit_jsprit   merge: c60ab8afd055cab1b8c7826b493fcae8b619e9c4   stratum: B
+files shown: 7 of 7 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/7: jsprit-core/src/main/java/algorithms/CalculatesServiceInsertion.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -41,32 +41,42 @@
+ 	private VehicleRoutingTransportCosts routingCosts;
+ 	
+ 	private VehicleRoutingActivityCosts activityCosts;
+ 	
+ 	private Start start;
+ 	
+ 	private End end;
+ 	
++	private HardConstraint hardConstraint = new HardConstraint() {
++		
++		@Override
++		public boolean fulfilled(InsertionScenario iScenario) {
++			return true;
++		}
++	};
++	
+ 	private Neighborhood neighborhood = new Neighborhood() {
+ 		
+ 		@Override
+ 		public boolean areNeighbors(String location1, String location2) {
+ 			return true;
+ 		}
+ 	};
+ 	
+-	
++	void setHardConstraint(HardConstraint hardConstraint){
++		this.hardConstraint = hardConstraint;
++	}
+ 	
+ 	public void setNeighborhood(Neighborhood neighborhood) {
+ 		this.neighborhood = neighborhood;
+ 		logger.info("initialise neighborhood " + neighborhood);
+ 	}
+ 
+-	public void setActivityStates(StatesContainer activityStates2){
++	public void setStates(StatesContainer activityStates2){
+ 		this.states = activityStates2;
+ 	}
+ 	
+ 	public CalculatesServiceInsertion(VehicleRoutingTransportCosts vehicleRoutingTransportCosts, VehicleRoutingActivityCosts vehicleRoutingActivityCosts) {
+ 		super();
+ 		this.routingCosts = vehicleRoutingTransportCosts;
+ 		this.activityCosts = vehicleRoutingActivityCosts;
+ 		logger.info("initialise " + this);
+@@ -82,24 +92,25 @@
+ 	 * assumption that cost changes can entirely covered by only looking at the predecessor i-1 and its successor i+1.
+ 	 *  
+ 	 */
+ 	@Override
+ 	public InsertionData calculate(final VehicleRoute currentRoute, final Job jobToInsert, final Vehicle newVehicle, double newVehicleDepartureTime, final Driver newDriver, final double bestKnownCosts) {
+ 		if(jobToInsert == null) throw new IllegalStateException("jobToInsert is missing.");
+ 		if(newVehicle == null || newVehicle instanceof NoVehicle) throw new IllegalStateException("newVehicle is missing.");
+ 		
++		InsertionFacts iFacts = new InsertionFacts(currentRoute, jobToInsert, newVehicle, newDriver, newVehicleDepartureTime);
++		if(!hardConstraint.fulfilled(new InsertionScenario(iFacts, null))){
++			return InsertionData.noInsertionFound();
++		}
++		
+ 		TourActivities tour = currentRoute.getTourActivities();
+ 		double bestCost = bestKnownCosts;
+ 		Service service = (Service)jobToInsert;
+-		
+-		int currentLoad = (int) states.getRouteState(currentRoute, StateTypes.LOAD).toDouble();
+-		if(currentLoad + service.getCapacityDemand() > newVehicle.getCapacity()){
+-			return InsertionData.noInsertionFound();
+-		}
++
+ 		int insertionIndex = InsertionData.NO_INDEX;
+ 		
+ 		TourActivity deliveryAct2Insert = ServiceActivity.newInstance(service);
+ 		
+ 		initialiseStartAndEnd(newVehicle, newVehicleDepartureTime);
+ 		
+ 		TourActivity prevAct = start;
+ 		double prevCostInOriginalTour = 0.0;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -10,17 +10,17 @@
+  * Contributors:
+  *     Stefan Schroeder - initial API and implementation
+  ******************************************************************************/
+ package algorithms;
+ 
+ import org.apache.log4j.Logger;
+ 
+ import util.Neighborhood;
+-import algorithms.StatesContainer.State;
++import algorithms.StateManager.State;
+ import basics.Job;
+ import basics.Service;
+ import basics.costs.VehicleRoutingActivityCosts;
+ import basics.costs.VehicleRoutingTransportCosts;
+ import basics.route.Driver;
+ import basics.route.End;
+ import basics.route.ServiceActivity;
+ import basics.route.Start;
+@@ -31,17 +31,17 @@
+ import basics.route.VehicleRoute;
+ 
+ 
+ 
+ final class CalculatesServiceInsertion implements JobInsertionCalculator{
+ 	
+ 	private static final Logger logger = Logger.getLogger(CalculatesServiceInsertion.class);
+ 	
+-	private StatesContainer states;
++	private StateManager states;
+ 	
+ 	private VehicleRoutingTransportCosts routingCosts;
+ 	
+ 	private VehicleRoutingActivityCosts activityCosts;
+ 	
+ 	private Start start;
+ 	
+ 	private End end;
+@@ -56,17 +56,17 @@
+ 	
+ 	
+ 	
+ 	public void setNeighborhood(Neighborhood neighborhood) {
+ 		this.neighborhood = neighborhood;
+ 		logger.info("initialise neighborhood " + neighborhood);
+ 	}
+ 
+-	public void setActivityStates(StatesContainer activityStates2){
++	public void setActivityStates(StateManager activityStates2){
+ 		this.states = activityStates2;
+ 	}
+ 	
+ 	public CalculatesServiceInsertion(VehicleRoutingTransportCosts vehicleRoutingTransportCosts, VehicleRoutingActivityCosts vehicleRoutingActivityCosts) {
+ 		super();
+ 		this.routingCosts = vehicleRoutingTransportCosts;
+ 		this.activityCosts = vehicleRoutingActivityCosts;
+ 		logger.info("initialise " + this);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -65,16 +65,17 @@
+ 	void setHardConstraint(HardConstraint hardConstraint){
+ 		this.hardConstraint = hardConstraint;
+ 	}
+ 	
+ 	public void setNeighborhood(Neighborhood neighborhood) {
+ 		this.neighborhood = neighborhood;
+ 		logger.info("initialise neighborhood " + neighborhood);
+ 	}
++
+ 
+ 	public void setStates(StateManager activityStates2){
+ 		this.states = activityStates2;
+ 	}
+ 	
+ 	public CalculatesServiceInsertion(VehicleRoutingTransportCosts vehicleRoutingTransportCosts, VehicleRoutingActivityCosts vehicleRoutingActivityCosts) {
+ 		super();
+ 		this.routingCosts = vehicleRoutingTransportCosts;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/7: jsprit-core/src/main/java/algorithms/CalculatesServiceInsertionOnRouteLevel.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -85,17 +85,17 @@
+ 	public CalculatesServiceInsertionOnRouteLevel(VehicleRoutingTransportCosts vehicleRoutingCosts, VehicleRoutingActivityCosts costFunc) {
+ 			super();
+ 			this.transportCosts = vehicleRoutingCosts;
+ 			this.activityCosts = costFunc;
+ 			auxilliaryPathCostCalculator = new AuxilliaryCostCalculator(transportCosts, activityCosts);
+ 			logger.info("initialise " + this);
+ 		}
+ 
+-	public void setActivityStates(StatesContainer activityStates2){
++	public void setStates(StatesContainer activityStates2){
+ 		this.states = activityStates2;
+ 	}
+ 	
+ 	void setNuOfActsForwardLooking(int nOfActsForwardLooking) {
+ 		this.nuOfActsForwardLooking = nOfActsForwardLooking;
+ 		logger.info("set [forwardLooking="+nOfActsForwardLooking+"]");
+ 	}
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -46,17 +46,17 @@
+ 	private static final Logger logger = Logger.getLogger(CalculatesServiceInsertionOnRouteLevel.class);
+ 	
+ 	private final VehicleRoutingTransportCosts transportCosts;
+ 	
+ 	private final VehicleRoutingActivityCosts activityCosts;
+ 
+ 	private AuxilliaryCostCalculator auxilliaryPathCostCalculator;
+ 	
+-	private StatesContainer states;
++	private StateManager states;
+ 	
+ 	private int nuOfActsForwardLooking = 0;
+ 	
+ 	private int memorySize = 2;
+ 	
+ 	private Start start;
+ 	
+ 	private End end;
+@@ -85,17 +85,17 @@
+ 	public CalculatesServiceInsertionOnRouteLevel(VehicleRoutingTransportCosts vehicleRoutingCosts, VehicleRoutingActivityCosts costFunc) {
+ 			super();
+ 			this.transportCosts = vehicleRoutingCosts;
+ 			this.activityCosts = costFunc;
+ 			auxilliaryPathCostCalculator = new AuxilliaryCostCalculator(transportCosts, activityCosts);
+ 			logger.info("initialise " + this);
+ 		}
+ 
+-	public void setActivityStates(StatesContainer activityStates2){
++	public void setActivityStates(StateManager activityStates2){
+ 		this.states = activityStates2;
+ 	}
+ 	
+ 	void setNuOfActsForwardLooking(int nOfActsForwardLooking) {
+ 		this.nuOfActsForwardLooking = nOfActsForwardLooking;
+ 		logger.info("set [forwardLooking="+nOfActsForwardLooking+"]");
+ 	}
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -84,16 +84,17 @@
+ 
+ 	public CalculatesServiceInsertionOnRouteLevel(VehicleRoutingTransportCosts vehicleRoutingCosts, VehicleRoutingActivityCosts costFunc) {
+ 			super();
+ 			this.transportCosts = vehicleRoutingCosts;
+ 			this.activityCosts = costFunc;
+ 			auxilliaryPathCostCalculator = new AuxilliaryCostCalculator(transportCosts, activityCosts);
+ 			logger.info("initialise " + this);
+ 		}
++
+ 
+ 	public void setStates(StateManager activityStates2){
+ 		this.states = activityStates2;
+ 	}
+ 	
+ 	void setNuOfActsForwardLooking(int nOfActsForwardLooking) {
+ 		this.nuOfActsForwardLooking = nOfActsForwardLooking;
+ 		logger.info("set [forwardLooking="+nOfActsForwardLooking+"]");
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/7: jsprit-core/src/main/java/algorithms/CalculatesServiceInsertionWithTriangleInequality.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -68,17 +68,19 @@
+ 	
+ 	private Start start;
+ 	
+ 	private End end;
+ 	
+ 	private HardConstraint hardConstraint = new HardConstraint() {
+ 		
+ 		@Override
+-		public boolean fulfilled() { return true; }
++		public boolean fulfilled(InsertionScenario iScenario) {
++			return true;
++		}
+ 	};
+ 	
+ 	public void setHardConstraint(HardConstraint hardConstraint){
+ 		this.hardConstraint = hardConstraint;
+ 	}
+ 	
+ 	private Neighborhood neighborhood = new Neighborhood() {
+ 		
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -12,18 +12,18 @@
+  ******************************************************************************/
+ package algorithms;
+ 
+ import org.apache.log4j.Logger;
+ 
+ import util.Neighborhood;
+ 
+ import algorithms.RouteStates.ActivityState;
+-import algorithms.StatesContainer.State;
+-import algorithms.StatesContainer.States;
++import algorithms.StateManager.State;
++import algorithms.StateManager.States;
+ import basics.Job;
+ import basics.Service;
+ import basics.costs.VehicleRoutingActivityCosts;
+ import basics.costs.VehicleRoutingTransportCosts;
+ import basics.route.Driver;
+ import basics.route.End;
+ import basics.route.ServiceActivity;
+ import basics.route.Start;
+@@ -57,17 +57,17 @@
+ 		public double getMarginalTime() {
+ 			return marginalTime;
+ 		}
+ 		
+ 	}
+ 	
+ 	private static final Logger logger = Logger.getLogger(CalculatesServiceInsertionWithTriangleInequality.class);
+ 	
+-	private StatesContainer routeStates;
++	private StateManager routeStates;
+ 	
+ 	private VehicleRoutingTransportCosts routingCosts;
+ 	
+ 	private Start start;
+ 	
+ 	private End end;
+ 	
+ 	private HardConstraint hardConstraint = new HardConstraint() {
+@@ -90,17 +90,17 @@
+ 	
+ 	
+ 	
+ 	public void setNeighborhood(Neighborhood neighborhood) {
+ 		this.neighborhood = neighborhood;
+ 		logger.info("initialise neighborhood " + neighborhood);
+ 	}
+ 
+-	public void setActivityStates(StatesContainer activityStates2){
++	public void setActivityStates(StateManager activityStates2){
+ 		this.routeStates = activityStates2;
+ 	}
+ 	
+ 	public CalculatesServiceInsertionWithTriangleInequality(VehicleRoutingTransportCosts vehicleRoutingTransportCosts, VehicleRoutingActivityCosts vehicleRoutingActivityCosts) {
+ 		super();
+ 		this.routingCosts = vehicleRoutingTransportCosts;
+ 		logger.info("initialise " + this);
+ 	}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/7: jsprit-core/src/main/java/algorithms/CalculatorBuilder.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -218,22 +218,20 @@
+ 	private void addAlgorithmListeners(List<PrioritizedVRAListener> list) {
+ 		for(PrioritizedVRAListener aL : list){
+ 			algorithmListeners.add(aL);
+ 		}
+ 	}
+ 
+ 	private CalculatorPlusListeners createStandardLocal(VehicleRoutingProblem vrp, StatesContainer activityStates2){
+ 		JobInsertionCalculator standardServiceInsertion = new CalculatesServiceInsertion(vrp.getTransportCosts(), vrp.getActivityCosts());
+-//		JobInsertionCalculator standardServiceInsertion = new CalculatesServiceInsertionWithTriangleInequality(vrp.getTransportCosts(), vrp.getActivityCosts());
+-//		((CalculatesServiceInsertionWithTriangleInequality) standardServiceInsertion).setActivityStates(activityStates2);
+-//		((CalculatesServiceInsertionWithTriangleInequality) standardServiceInsertion).setNeighborhood(vrp.getNeighborhood());
+-//		
+-		((CalculatesServiceInsertion) standardServiceInsertion).setActivityStates(activityStates2);
++		
++		((CalculatesServiceInsertion) standardServiceInsertion).setStates(activityStates2);
+ 		((CalculatesServiceInsertion) standardServiceInsertion).setNeighborhood(vrp.getNeighborhood());
++		((CalculatesServiceInsertion) standardServiceInsertion).setHardConstraint(new HardConstraints.HardLoadConstraint(activityStates2));
+ 		CalculatorPlusListeners calcPlusListeners = new CalculatorPlusListeners(standardServiceInsertion);
+ 		
+ 		return calcPlusListeners;
+ 	}
+ 
+ 	private CalculatorPlusListeners createCalculatorConsideringFixedCosts(VehicleRoutingProblem vrp, JobInsertionCalculator baseCalculator, StatesContainer activityStates2, double weightOfFixedCosts){
+ 		final CalculatesServiceInsertionConsideringFixCost withFixCost = new CalculatesServiceInsertionConsideringFixCost(baseCalculator, activityStates2);
+ 		withFixCost.setWeightOfFixCost(weightOfFixedCosts);
+@@ -243,17 +241,17 @@
+ 	}
+ 
+ 	private CalculatorPlusListeners createStandardRoute(VehicleRoutingProblem vrp, StatesContainer activityStates2, int forwardLooking, int solutionMemory){
+ 		int after = forwardLooking;
+ 		JobInsertionCalculator jobInsertionCalculator = new CalculatesServiceInsertionOnRouteLevel(vrp.getTransportCosts(), vrp.getActivityCosts());
+ 		((CalculatesServiceInsertionOnRouteLevel)jobInsertionCalculator).setNuOfActsForwardLooking(after);
+ 		((CalculatesServiceInsertionOnRouteLevel)jobInsertionCalculator).setMemorySize(solutionMemory);
+ 		((CalculatesServiceInsertionOnRouteLevel)jobInsertionCalculator).setNeighborhood(vrp.getNeighborhood());
+-		((CalculatesServiceInsertionOnRouteLevel) jobInsertionCalculator).setActivityStates(activityStates2);
++		((CalculatesServiceInsertionOnRouteLevel) jobInsertionCalculator).setStates(activityStates2);
+ 		CalculatorPlusListeners calcPlusListener = new CalculatorPlusListeners(jobInsertionCalculator);
+ 		return calcPlusListener;
+ 	}
+ 
+ 	private JobInsertionCalculator createFinalInsertion(VehicleFleetManager fleetManager, JobInsertionCalculator baseCalc, StatesContainer activityStates2){
+ 		return new CalculatesVehTypeDepServiceInsertion(fleetManager, baseCalc);
+ 	}
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -65,17 +65,17 @@
+ 	}
+ 
+ 	private List<InsertionListener> insertionListeners;
+ 
+ 	private List<PrioritizedVRAListener> algorithmListeners;
+ 
+ 	private VehicleRoutingProblem vrp;
+ 
+-	private StatesContainer states;
++	private StateManager states;
+ 
+ 	private boolean local = true;
+ 
+ 	private int forwardLooking = 0;
+ 
+ 	private int memory = 1;
+ 
+ 	private boolean considerFixedCost = false;
+@@ -106,17 +106,17 @@
+ 	}
+ 
+ 	/**
+ 	 * Sets activityStates. MUST be set.
+ 	 * @param states TODO
+ 	 * 
+ 	 * @return
+ 	 */
+-	public CalculatorBuilder setStates(StatesContainer states){
++	public CalculatorBuilder setStates(StateManager states){
+ 		this.states = states;
+ 		return this;
+ 	}
+ 
+ 	/**
+ 	 * Sets routingProblem. MUST be set.
+ 	 * 
+ 	 * @param vehicleRoutingProblem
+@@ -216,49 +216,49 @@
+ 	}
+ 
+ 	private void addAlgorithmListeners(List<PrioritizedVRAListener> list) {
+ 		for(PrioritizedVRAListener aL : list){
+ 			algorithmListeners.add(aL);
+ 		}
+ 	}
+ 
+-	private CalculatorPlusListeners createStandardLocal(VehicleRoutingProblem vrp, StatesContainer activityStates2){
++	private CalculatorPlusListeners createStandardLocal(VehicleRoutingProblem vrp, StateManager activityStates2){
+ 		JobInsertionCalculator standardServiceInsertion = new CalculatesServiceInsertion(vrp.getTransportCosts(), vrp.getActivityCosts());
+ //		JobInsertionCalculator standardServiceInsertion = new CalculatesServiceInsertionWithTriangleInequality(vrp.getTransportCosts(), vrp.getActivityCosts());
+ //		((CalculatesServiceInsertionWithTriangleInequality) standardServiceInsertion).setActivityStates(activityStates2);
+ //		((CalculatesServiceInsertionWithTriangleInequality) standardServiceInsertion).setNeighborhood(vrp.getNeighborhood());
+ //		
+ 		((CalculatesServiceInsertion) standardServiceInsertion).setActivityStates(activityStates2);
+ 		((CalculatesServiceInsertion) standardServiceInsertion).setNeighborhood(vrp.getNeighborhood());
+ 		CalculatorPlusListeners calcPlusListeners = new CalculatorPlusListeners(standardServiceInsertion);
+ 		
+ 		return calcPlusListeners;
+ 	}
+ 
+-	private CalculatorPlusListeners createCalculatorConsideringFixedCosts(VehicleRoutingProblem vrp, JobInsertionCalculator baseCalculator, StatesContainer activityStates2, double weightOfFixedCosts){
++	private CalculatorPlusListeners createCalculatorConsideringFixedCosts(VehicleRoutingProblem vrp, JobInsertionCalculator baseCalculator, StateManager activityStates2, double weightOfFixedCosts){
+ 		final CalculatesServiceInsertionConsideringFixCost withFixCost = new CalculatesServiceInsertionConsideringFixCost(baseCalculator, activityStates2);
+ 		withFixCost.setWeightOfFixCost(weightOfFixedCosts);
+ 		CalculatorPlusListeners calcPlusListeners = new CalculatorPlusListeners(withFixCost);
+ 		calcPlusListeners.getInsertionListener().add(new ConfigureFixCostCalculator(vrp, withFixCost));
+ 		return calcPlusListeners;
+ 	}
+ 
+-	private CalculatorPlusListeners createStandardRoute(VehicleRoutingProblem vrp, StatesContainer activityStates2, int forwardLooking, int solutionMemory){
++	private CalculatorPlusListeners createStandardRoute(VehicleRoutingProblem vrp, StateManager activityStates2, int forwardLooking, int solutionMemory){
+ 		int after = forwardLooking;
+ 		JobInsertionCalculator jobInsertionCalculator = new CalculatesServiceInsertionOnRouteLevel(vrp.getTransportCosts(), vrp.getActivityCosts());
+ 		((CalculatesServiceInsertionOnRouteLevel)jobInsertionCalculator).setNuOfActsForwardLooking(after);
+ 		((CalculatesServiceInsertionOnRouteLevel)jobInsertionCalculator).setMemorySize(solutionMemory);
+ 		((CalculatesServiceInsertionOnRouteLevel)jobInsertionCalculator).setNeighborhood(vrp.getNeighborhood());
+ 		((CalculatesServiceInsertionOnRouteLevel) jobInsertionCalculator).setActivityStates(activityStates2);
+ 		CalculatorPlusListeners calcPlusListener = new CalculatorPlusListeners(jobInsertionCalculator);
+ 		return calcPlusListener;
+ 	}
+ 
+-	private JobInsertionCalculator createFinalInsertion(VehicleFleetManager fleetManager, JobInsertionCalculator baseCalc, StatesContainer activityStates2){
++	private JobInsertionCalculator createFinalInsertion(VehicleFleetManager fleetManager, JobInsertionCalculator baseCalc, StateManager activityStates2){
+ 		return new CalculatesVehTypeDepServiceInsertion(fleetManager, baseCalc);
+ 	}
+ 
+ }
+ 
+ 
+ 
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/7: jsprit-core/src/test/java/algorithms/GendreauPostOptTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -147,17 +147,17 @@
+ 		
+ //		Collection<Vehicle> vehicles = Arrays.asList(lightVehicle1,lightVehicle2, heavyVehicle);
+ 		fleetManager = new VehicleFleetManagerImpl(vehicles);
+ 		states = new StatesContainerImpl();
+ 		
+ 		activityCosts = new ExampleActivityCostFunction();
+ 		
+ 		CalculatesServiceInsertion standardServiceInsertion = new CalculatesServiceInsertion(cost, activityCosts);
+-		standardServiceInsertion.setActivityStates(states);
++		standardServiceInsertion.setStates(states);
+ 		CalculatesServiceInsertionConsideringFixCost withFixCost = new CalculatesServiceInsertionConsideringFixCost(standardServiceInsertion, states);
+ 		withFixCost.setWeightOfFixCost(1.2);
+ 		
+ 		insertionCalc = new CalculatesVehTypeDepServiceInsertion(fleetManager, withFixCost);
+ 		
+ //		updater = new TourStateUpdater(states, cost, activityCosts);
+ 		
+ 	}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -66,17 +66,17 @@
+ 	VehicleRoutingProblem vrp;
+ 	
+ 	Service job1;
+ 	
+ 	Service job2;
+ 	
+ 	Service job3;
+ 
+-	private StatesContainerImpl states;
++	private StateManagerImpl states;
+ 
+ 	private List<Vehicle> vehicles;
+ 
+ 	private VehicleFleetManagerImpl fleetManager;
+ 	
+ 	private JobInsertionCalculator insertionCalc;
+ 
+ 	@Before
+@@ -142,17 +142,17 @@
+ 		jobs.add(job1);
+ 		jobs.add(job2);
+ 		jobs.add(job3);
+ 		
+ 		vehicles = Arrays.asList(lightVehicle1,lightVehicle2, heavyVehicle);
+ 		
+ //		Collection<Vehicle> vehicles = Arrays.asList(lightVehicle1,lightVehicle2, heavyVehicle);
+ 		fleetManager = new VehicleFleetManagerImpl(vehicles);
+-		states = new StatesContainerImpl();
++		states = new StateManagerImpl();
+ 		
+ 		activityCosts = new ExampleActivityCostFunction();
+ 		
+ 		CalculatesServiceInsertion standardServiceInsertion = new CalculatesServiceInsertion(cost, activityCosts);
+ 		standardServiceInsertion.setActivityStates(states);
+ 		CalculatesServiceInsertionConsideringFixCost withFixCost = new CalculatesServiceInsertionConsideringFixCost(standardServiceInsertion, states);
+ 		withFixCost.setWeightOfFixCost(1.2);
+ 		
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/7: jsprit-core/src/test/java/algorithms/TestCalculatesServiceInsertion.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -152,17 +152,17 @@
+ 		jobs.add(second);
+ 		jobs.add(third);
+ 		
+ 		states = new StatesContainerImpl();
+ 		
+ 		ExampleActivityCostFunction activityCosts = new ExampleActivityCostFunction();
+ 
+ 		serviceInsertion = new CalculatesServiceInsertion(costs, activityCosts);
+-		serviceInsertion.setActivityStates(states);
++		serviceInsertion.setStates(states);
+ 		
+ 		stateUpdater = new UpdateStates(states, costs, activityCosts);
+ 		
+ 	}
+ 	
+ 	public TourActivity getActivityMock(String id, double earliestOperationStart, double currCost){
+ 		TourActivity act = mock(TourActivity.class);
+ 		when(act.getLocationId()).thenReturn(id);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -57,17 +57,17 @@
+ 	Vehicle newVehicle;
+ 
+ 	private Service first;
+ 
+ 	private Service second;
+ 
+ 	private Service third;
+ 
+-	private StatesContainerImpl states;
++	private StateManagerImpl states;
+ 
+ 	private NoDriver driver;
+ 	
+ 	private UpdateStates stateUpdater;
+ 	
+ 	@Before
+ 	public void setup(){
+ 		Logger.getRootLogger().setLevel(Level.DEBUG);
+@@ -147,17 +147,17 @@
+ 		first = Service.Builder.newInstance("1", 0).setLocationId("1").setTimeWindow(TimeWindow.newInstance(0.0, 100.0)).build();
+ 		second = Service.Builder.newInstance("3", 0).setLocationId("3").setTimeWindow(TimeWindow.newInstance(0.0, 100.0)).build();
+ 		third = Service.Builder.newInstance("2", 0).setLocationId("2").setTimeWindow(TimeWindow.newInstance(0.0, 100.0)).build();
+ 		Collection<Job> jobs = new ArrayList<Job>();
+ 		jobs.add(first);
+ 		jobs.add(second);
+ 		jobs.add(third);
+ 		
+-		states = new StatesContainerImpl();
++		states = new StateManagerImpl();
+ 		
+ 		ExampleActivityCostFunction activityCosts = new ExampleActivityCostFunction();
+ 
+ 		serviceInsertion = new CalculatesServiceInsertion(costs, activityCosts);
+ 		serviceInsertion.setActivityStates(states);
+ 		
+ 		stateUpdater = new UpdateStates(states, costs, activityCosts);
+ 		
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/7: jsprit-core/src/test/java/algorithms/TestCalculatesServiceInsertionOnRouteLevel.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -143,17 +143,17 @@
+ 		jobs.add(second);
+ 		jobs.add(third);
+ 		
+ 		states = new StatesContainerImpl();
+ 		
+ 		ExampleActivityCostFunction activityCosts = new ExampleActivityCostFunction();
+ 		serviceInsertion = new CalculatesServiceInsertionOnRouteLevel(costs,activityCosts);
+ 		serviceInsertion.setNuOfActsForwardLooking(4);
+-		serviceInsertion.setActivityStates(states);
++		serviceInsertion.setStates(states);
+ 		
+ 		updateStates = new UpdateStates(states, costs, activityCosts);
+ 		
+ 		
+ 		
+ 	}
+ 	
+ 	public TourActivity getActivityMock(String id, double earliestOperationStart, double currCost){
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -60,17 +60,17 @@
+ 	Vehicle newVehicle;
+ 
+ 	private Service first;
+ 
+ 	private Service second;
+ 
+ 	private Service third;
+ 
+-	private StatesContainerImpl states;
++	private StateManagerImpl states;
+ 
+ 	private NoDriver driver;
+ 	
+ 	private UpdateStates updateStates;
+ 	
+ 	@Before
+ 	public void setup(){
+ 		Logger.getRootLogger().setLevel(Level.DEBUG);
+@@ -138,17 +138,17 @@
+ 		first = Service.Builder.newInstance("1", 0).setLocationId("0,10").setTimeWindow(TimeWindow.newInstance(0.0, 100.0)).build();
+ 		second = Service.Builder.newInstance("3", 0).setLocationId("10,0").setTimeWindow(TimeWindow.newInstance(0.0, 100.0)).build();
+ 		third = Service.Builder.newInstance("2", 0).setLocationId("10,10").setTimeWindow(TimeWindow.newInstance(0.0, 100.0)).build();
+ 		Collection<Job> jobs = new ArrayList<Job>();
+ 		jobs.add(first);
+ 		jobs.add(second);
+ 		jobs.add(third);
+ 		
+-		states = new StatesContainerImpl();
++		states = new StateManagerImpl();
+ 		
+ 		ExampleActivityCostFunction activityCosts = new ExampleActivityCostFunction();
+ 		serviceInsertion = new CalculatesServiceInsertionOnRouteLevel(costs,activityCosts);
+ 		serviceInsertion.setNuOfActsForwardLooking(4);
+ 		serviceInsertion.setActivityStates(states);
+ 		
+ 		updateStates = new UpdateStates(states, costs, activityCosts);
+ 		
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,776 @@
+UNIT cloudfoundry_cf-java-client__a9d35d542d
+repo: cloudfoundry_cf-java-client   merge: a9d35d542d88727dd302fb7a488891077bf28fb5   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/2: cloudfoundry-operations/src/main/java/org/cloudfoundry/operations/routes/DefaultRoutes.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -35,29 +35,29 @@
+ import org.cloudfoundry.client.v2.shareddomains.ListSharedDomainsRequest;
+ import org.cloudfoundry.client.v2.shareddomains.SharedDomainResource;
+ import org.cloudfoundry.client.v2.spaces.ListSpaceApplicationsRequest;
+ import org.cloudfoundry.client.v2.spaces.ListSpaceRoutesRequest;
+ import org.cloudfoundry.client.v2.spaces.SpaceResource;
+ import org.cloudfoundry.operations.util.OperationsLogging;
+ import org.cloudfoundry.util.ExceptionUtils;
+ import org.cloudfoundry.util.JobUtils;
+-import org.cloudfoundry.util.OperationUtils;
+ import org.cloudfoundry.util.PaginationUtils;
+ import org.cloudfoundry.util.ResourceUtils;
+ import reactor.core.publisher.Flux;
+ import reactor.core.publisher.Mono;
+ import reactor.util.function.Tuples;
+ 
+ import java.time.Duration;
+ import java.util.Collections;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.NoSuchElementException;
+ import java.util.Optional;
++import java.util.function.Function;
+ import java.util.function.UnaryOperator;
+ 
+ import static org.cloudfoundry.util.tuple.TupleUtils.function;
+ import static org.cloudfoundry.util.tuple.TupleUtils.predicate;
+ 
+ public final class DefaultRoutes implements Routes {
+ 
+     private final Mono<CloudFoundryClient> cloudFoundryClient;
+@@ -70,143 +70,135 @@
+         this.cloudFoundryClient = cloudFoundryClient;
+         this.organizationId = organizationId;
+         this.spaceId = spaceId;
+     }
+ 
+     @Override
+     public Mono<Boolean> check(CheckRouteRequest request) {
+         return Mono
+-            .when(this.cloudFoundryClient, this.organizationId)
+-            .then(function((cloudFoundryClient, organizationId) -> Mono
+-                .when(
+-                    Mono.just(cloudFoundryClient),
+-                    getOptionalDomainId(cloudFoundryClient, organizationId, request.getDomain())
+-                )))
+-            .then(function((cloudFoundryClient, domainId) -> requestRouteExists(cloudFoundryClient, domainId, request.getHost(), request.getPath())))
++            .zip(this.cloudFoundryClient, this.organizationId)
++            .flatMap(function((cloudFoundryClient, organizationId) -> Mono.zip(
++                Mono.just(cloudFoundryClient),
++                getOptionalDomainId(cloudFoundryClient, organizationId, request.getDomain())
++            )))
++            .flatMap(function((cloudFoundryClient, domainId) -> requestRouteExists(cloudFoundryClient, domainId, request.getHost(), request.getPath())))
+             .defaultIfEmpty(false)
+             .transform(OperationsLogging.log("Check Route Exists"))
+             .checkpoint();
+     }
+ 
+     @Override
+     public Mono<Integer> create(CreateRouteRequest request) {
+         return Mono
+-            .when(this.cloudFoundryClient, this.organizationId)
+-            .then(function((cloudFoundryClient, organizationId) -> Mono
+-                .when(
+-                    Mono.just(cloudFoundryClient),
+-                    getSpaceId(cloudFoundryClient, organizationId, request.getSpace()),
+-                    getDomainId(cloudFoundryClient, organizationId, request.getDomain())
+-                )))
+-            .then(function((cloudFoundryClient, spaceId, domainId) ->
++            .zip(this.cloudFoundryClient, this.organizationId)
++            .flatMap(function((cloudFoundryClient, organizationId) -> Mono.zip(
++                Mono.just(cloudFoundryClient),
++                getSpaceId(cloudFoundryClient, organizationId, request.getSpace()),
++                getDomainId(cloudFoundryClient, organizationId, request.getDomain())
++            )))
++            .flatMap(function((cloudFoundryClient, spaceId, domainId) ->
+                 requestCreateRoute(cloudFoundryClient, domainId, request.getHost(), request.getPath(), request.getPort(), request.getRandomPort(), spaceId)
+                     .map(ResourceUtils::getEntity)
+-                    .then(routeEntity -> Mono.justOrEmpty(routeEntity.getPort()))
++                    .flatMap(routeEntity -> Mono.justOrEmpty(routeEntity.getPort()))
+             ))
+             .transform(OperationsLogging.log("Create Route"))
+             .checkpoint();
+     }
+ 
+     @Override
+     public Mono<Void> delete(DeleteRouteRequest request) {
+         return Mono
+-            .when(this.cloudFoundryClient, this.organizationId)
+-            .then(function((cloudFoundryClient, organizationId) -> Mono
+-                .when(
+-                    Mono.just(cloudFoundryClient),
+-                    getDomainId(cloudFoundryClient, organizationId, request.getDomain())
+-                )))
+-            .then(function((cloudFoundryClient, domainId) -> Mono
+-                .when(
+-                    Mono.just(cloudFoundryClient),
+-                    Mono.just(request.getCompletionTimeout()),
+-                    getRouteId(cloudFoundryClient, request.getHost(), request.getDomain(), domainId, request.getPath(), request.getPort())
+-                )))
+-            .then(function(DefaultRoutes::deleteRoute))
++            .zip(this.cloudFoundryClient, this.organizationId)
++            .flatMap(function((cloudFoundryClient, organizationId) -> Mono.zip(
++                Mono.just(cloudFoundryClient),
++                getDomainId(cloudFoundryClient, organizationId, request.getDomain())
++            )))
++            .flatMap(function((cloudFoundryClient, domainId) -> Mono.zip(
++                Mono.just(cloudFoundryClient),
++                Mono.just(request.getCompletionTimeout()),
++                getRouteId(cloudFoundryClient, request.getHost(), request.getDomain(), domainId, request.getPath(), request.getPort())
++            )))
++            .flatMap(function(DefaultRoutes::deleteRoute))
+             .transform(OperationsLogging.log("Delete Route"))
+             .checkpoint();
+     }
+ 
+     @Override
+     public Mono<Void> deleteOrphanedRoutes(DeleteOrphanedRoutesRequest request) {
+         return Mono
+-            .when(this.cloudFoundryClient, this.spaceId)
++            .zip(this.cloudFoundryClient, this.spaceId)
+             .flatMapMany(function((cloudFoundryClient, spaceId) -> requestSpaceRoutes(cloudFoundryClient, spaceId)
+                 .filter(route -> isRouteOrphan(ResourceUtils.getEntity(route)))
+                 .map(ResourceUtils::getId)
+                 .map(routeId -> Tuples.of(cloudFoundryClient, routeId))))
+             .flatMap(function((cloudFoundryClient, routeId) -> getApplications(cloudFoundryClient, routeId)
+                 .map(applicationResources -> Tuples.of(cloudFoundryClient, applicationResources, routeId))))
+             .filter(predicate((cloudFoundryClient, applicationResources, routeId) -> isApplicationOrphan(applicationResources)))
+             .flatMap(function((cloudFoundryClient, applicationResources, routeId) -> deleteRoute(cloudFoundryClient, request.getCompletionTimeout(), routeId)))
+             .then()
+             .transform(OperationsLogging.log("Delete Orphaned Routes"))
+             .checkpoint();
+     }
+ 
+     @Override
+     public Flux<Route> list(ListRoutesRequest request) {
+         return Mono
+-            .when(this.cloudFoundryClient, this.organizationId)
+-            .then(function((cloudFoundryClient, organizationId) -> Mono
+-                .when(
+-                    Mono.just(cloudFoundryClient),
+-                    getAllDomains(cloudFoundryClient, organizationId),
+-                    getAllSpaces(cloudFoundryClient, organizationId)
+-                )))
++            .zip(this.cloudFoundryClient, this.organizationId)
++            .flatMap(function((cloudFoundryClient, organizationId) -> Mono.zip(
++                Mono.just(cloudFoundryClient),
++                getAllDomains(cloudFoundryClient, organizationId),
++                getAllSpaces(cloudFoundryClient, organizationId)
++            )))
+             .flatMapMany(function((cloudFoundryClient, domains, spaces) -> getRoutes(cloudFoundryClient, request, this.organizationId, this.spaceId)
+                 .map(resource -> Tuples.of(cloudFoundryClient, domains, resource, spaces))))
+-            .flatMap(function((cloudFoundryClient, domains, resource, spaces) -> Mono
+-                .when(
+-                    getApplicationNames(cloudFoundryClient, ResourceUtils.getId(resource)),
+-                    getDomainName(domains, ResourceUtils.getEntity(resource).getDomainId()),
+-                    Mono.just(resource),
+-                    getSpaceName(spaces, ResourceUtils.getEntity(resource).getSpaceId())
+-                )))
++            .flatMap(function((cloudFoundryClient, domains, resource, spaces) -> Mono.zip(
++                getApplicationNames(cloudFoundryClient, ResourceUtils.getId(resource)),
++                getDomainName(domains, ResourceUtils.getEntity(resource).getDomainId()),
++                Mono.just(resource),
++                getSpaceName(spaces, ResourceUtils.getEntity(resource).getSpaceId())
++            )))
+             .map(function(DefaultRoutes::toRoute))
+             .transform(OperationsLogging.log("List Routes"))
+             .checkpoint();
+     }
+ 
+     @Override
+     public Mono<Integer> map(MapRouteRequest request) {
+         return Mono
+-            .when(this.cloudFoundryClient, this.organizationId, this.spaceId)
+-            .then(function((cloudFoundryClient, organizationId, spaceId) -> Mono
+-                .when(
+-                    Mono.just(cloudFoundryClient),
+-                    getOrCreateRoute(cloudFoundryClient, organizationId, spaceId, request.getDomain(), request.getHost(), request.getPath(), request.getPort(), request.getRandomPort()),
+-                    getApplicationId(cloudFoundryClient, request.getApplicationName(), spaceId)
+-                )))
+-            .then(function((cloudFoundryClient, routeResource, applicationId) -> requestAssociateRoute(cloudFoundryClient, applicationId, ResourceUtils.getId(routeResource))))
++            .zip(this.cloudFoundryClient, this.organizationId, this.spaceId)
++            .flatMap(function((cloudFoundryClient, organizationId, spaceId) -> Mono.zip(
++                Mono.just(cloudFoundryClient),
++                getOrCreateRoute(cloudFoundryClient, organizationId, spaceId, request.getDomain(), request.getHost(), request.getPath(), request.getPort(), request.getRandomPort()),
++                getApplicationId(cloudFoundryClient, request.getApplicationName(), spaceId)
++            )))
++            .flatMap(function((cloudFoundryClient, routeResource, applicationId) -> requestAssociateRoute(cloudFoundryClient, applicationId, ResourceUtils.getId(routeResource))))
+             .then(Mono.justOrEmpty(request.getPort()))
+             .transform(OperationsLogging.log("Map Route"))
+             .checkpoint();
+     }
+ 
+     @Override
+     public Mono<Void> unmap(UnmapRouteRequest request) {
+         return Mono
+-            .when(this.cloudFoundryClient, this.organizationId, this.spaceId)
+-            .then(function((cloudFoundryClient, organizationId, spaceId) -> Mono
+-                .when(
+-                    Mono.just(cloudFoundryClient),
+-                    getApplicationId(cloudFoundryClient, request.getApplicationName(), spaceId),
+-                    getDomainId(cloudFoundryClient, organizationId, request.getDomain())
+-                        .then(domainId -> getRouteId(cloudFoundryClient, request.getHost(), request.getDomain(), domainId, request.getPath(), request.getPort()))
+-                )))
+-            .then(function(DefaultRoutes::requestRemoveRouteFromApplication))
++            .zip(this.cloudFoundryClient, this.organizationId, this.spaceId)
++            .flatMap(function((cloudFoundryClient, organizationId, spaceId) -> Mono.zip(
++                Mono.just(cloudFoundryClient),
++                getApplicationId(cloudFoundryClient, request.getApplicationName(), spaceId),
++                getDomainId(cloudFoundryClient, organizationId, request.getDomain())
++                    .flatMap(domainId -> getRouteId(cloudFoundryClient, request.getHost(), request.getDomain(), domainId, request.getPath(), request.getPort()))
++            )))
++            .flatMap(function(DefaultRoutes::requestRemoveRouteFromApplication))
+             .transform(OperationsLogging.log("Unmap Route"))
+             .checkpoint();
+     }
+ 
+     private static Mono<Void> deleteRoute(CloudFoundryClient cloudFoundryClient, Duration completionTimeout, String routeId) {
+         return requestDeleteRoute(cloudFoundryClient, routeId)
+-            .then(job -> JobUtils.waitForCompletion(cloudFoundryClient, completionTimeout, job));
++            .flatMap(job -> JobUtils.waitForCompletion(cloudFoundryClient, completionTimeout, job));
+     }
+ 
+     private static Mono<Map<String, String>> getAllDomains(CloudFoundryClient cloudFoundryClient, String organizationId) {
+         return requestAllPrivateDomains(cloudFoundryClient, organizationId)
+             .map(resource -> Tuples.of(ResourceUtils.getId(resource), ResourceUtils.getEntity(resource).getName()))
+             .mergeWith(requestAllSharedDomains(cloudFoundryClient)
+                 .map(resource -> Tuples.of(ResourceUtils.getId(resource), ResourceUtils.getEntity(resource).getName())))
+             .collectMap(function((id, name) -> id), function((id, name) -> name));
+@@ -252,35 +244,35 @@
+     }
+ 
+     private static Mono<String> getDomainName(Map<String, String> domains, String domainId) {
+         return Mono.just(domains.get(domainId));
+     }
+ 
+     private static Flux<Resource<?>> getDomains(CloudFoundryClient cloudFoundryClient, String organizationId, String domain) {
+         return requestPrivateDomains(cloudFoundryClient, organizationId, domain)
+-            .map(OperationUtils.<PrivateDomainResource, Resource<?>>cast())
++            .map((Function<PrivateDomainResource, Resource<?>>) in -> in)
+             .switchIfEmpty(requestSharedDomains(cloudFoundryClient, domain));
+     }
+ 
+     private static Mono<String> getOptionalDomainId(CloudFoundryClient cloudFoundryClient, String organizationId, String domain) {
+         return getDomains(cloudFoundryClient, organizationId, domain)
+             .singleOrEmpty()
+             .map(ResourceUtils::getId);
+     }
+ 
+     private static Mono<AbstractRouteResource> getOrCreateRoute(CloudFoundryClient cloudFoundryClient, String organizationId, String spaceId, String domain, String host, String path, Integer port,
+                                                                 Boolean randomPort) {
+         if (randomPort != null) {
+             return getDomainId(cloudFoundryClient, organizationId, domain)
+-                .then(domainId -> requestCreateRoute(cloudFoundryClient, domainId, host, path, port, randomPort, spaceId));
++                .flatMap(domainId -> requestCreateRoute(cloudFoundryClient, domainId, host, path, port, randomPort, spaceId));
+         }
+ 
+         return getDomainId(cloudFoundryClient, organizationId, domain)
+-            .then(domainId -> getRoute(cloudFoundryClient, domainId, host, path, port)
++            .flatMap(domainId -> getRoute(cloudFoundryClient, domainId, host, path, port)
+                 .cast(AbstractRouteResource.class)
+                 .switchIfEmpty(requestCreateRoute(cloudFoundryClient, domainId, host, path, port, randomPort, spaceId)));
+     }
+ 
+     private static Mono<RouteResource> getRoute(CloudFoundryClient cloudFoundryClient, String domainId, String domain, String host, String path, Integer port) {
+         return getRoute(cloudFoundryClient, domainId, host, path, port)
+             .switchIfEmpty(ExceptionUtils.illegalArgument("Route for %s does not exist", domain));
+     }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -27,20 +27,22 @@
+ import org.cloudfoundry.client.v2.privatedomains.PrivateDomainResource;
+ import org.cloudfoundry.client.v2.routes.AbstractRouteResource;
+ import org.cloudfoundry.client.v2.routes.CreateRouteResponse;
+ import org.cloudfoundry.client.v2.routes.DeleteRouteResponse;
+ import org.cloudfoundry.client.v2.routes.ListRouteApplicationsRequest;
+ import org.cloudfoundry.client.v2.routes.RouteEntity;
+ import org.cloudfoundry.client.v2.routes.RouteExistsRequest;
+ import org.cloudfoundry.client.v2.routes.RouteResource;
++import org.cloudfoundry.client.v2.serviceinstances.UnionServiceInstanceResource;
+ import org.cloudfoundry.client.v2.shareddomains.ListSharedDomainsRequest;
+ import org.cloudfoundry.client.v2.shareddomains.SharedDomainResource;
+ import org.cloudfoundry.client.v2.spaces.ListSpaceApplicationsRequest;
+ import org.cloudfoundry.client.v2.spaces.ListSpaceRoutesRequest;
++import org.cloudfoundry.client.v2.spaces.ListSpaceServiceInstancesRequest;
+ import org.cloudfoundry.client.v2.spaces.SpaceResource;
+ import org.cloudfoundry.operations.util.OperationsLogging;
+ import org.cloudfoundry.util.ExceptionUtils;
+ import org.cloudfoundry.util.JobUtils;
+ import org.cloudfoundry.util.OperationUtils;
+ import org.cloudfoundry.util.PaginationUtils;
+ import org.cloudfoundry.util.ResourceUtils;
+ import reactor.core.publisher.Flux;
+@@ -149,23 +151,24 @@
+             .when(this.cloudFoundryClient, this.organizationId)
+             .then(function((cloudFoundryClient, organizationId) -> Mono
+                 .when(
+                     Mono.just(cloudFoundryClient),
+                     getAllDomains(cloudFoundryClient, organizationId),
+                     getAllSpaces(cloudFoundryClient, organizationId)
+                 )))
+             .flatMapMany(function((cloudFoundryClient, domains, spaces) -> getRoutes(cloudFoundryClient, request, this.organizationId, this.spaceId)
+-                .map(resource -> Tuples.of(cloudFoundryClient, domains, resource, spaces))))
+-            .flatMap(function((cloudFoundryClient, domains, resource, spaces) -> Mono
+-                .when(
+-                    getApplicationNames(cloudFoundryClient, ResourceUtils.getId(resource)),
+-                    getDomainName(domains, ResourceUtils.getEntity(resource).getDomainId()),
+-                    Mono.just(resource),
+-                    getSpaceName(spaces, ResourceUtils.getEntity(resource).getSpaceId())
++                .map(route -> Tuples.of(cloudFoundryClient, domains, route, spaces))))
++            .flatMap(function((cloudFoundryClient, domains, route, spaces) -> Mono
++                .when(
++                    getApplicationNames(cloudFoundryClient, ResourceUtils.getId(route)),
++                    getDomainName(domains, ResourceUtils.getEntity(route).getDomainId()),
++                    Mono.just(route),
++                    getServiceName(cloudFoundryClient, ResourceUtils.getEntity(route)),
++                    getSpaceName(spaces, ResourceUtils.getEntity(route).getSpaceId())
+                 )))
+             .map(function(DefaultRoutes::toRoute))
+             .transform(OperationsLogging.log("List Routes"))
+             .checkpoint();
+     }
+ 
+     @Override
+     public Mono<Integer> map(MapRouteRequest request) {
+@@ -307,16 +310,29 @@
+             return organizationId
+                 .flatMapMany(organizationId1 -> requestRoutes(cloudFoundryClient, builder -> builder.organizationId(organizationId1)));
+         } else {
+             return spaceId
+                 .flatMapMany(spaceId1 -> requestSpaceRoutes(cloudFoundryClient, spaceId1));
+         }
+     }
+ 
++    private static Mono<Optional<String>> getServiceInstanceName(CloudFoundryClient cloudFoundryClient, String serviceInstanceId, String spaceId) {
++        return requestListSpaceServiceInstances(cloudFoundryClient, spaceId)
++            .filter(resource -> serviceInstanceId.equals(ResourceUtils.getId(resource)))
++            .single()
++            .map(resource -> Optional.of(ResourceUtils.getEntity(resource).getName()));
++    }
++
++    private static Mono<Optional<String>> getServiceName(CloudFoundryClient cloudFoundryClient, RouteEntity route) {
++        return Mono.justOrEmpty(route.getServiceInstanceId())
++            .then(serviceInstanceId -> getServiceInstanceName(cloudFoundryClient, serviceInstanceId, route.getSpaceId()))
++            .defaultIfEmpty(Optional.empty());
++    }
++
+     private static Mono<SpaceResource> getSpace(CloudFoundryClient cloudFoundryClient, String organizationId, String space) {
+         return requestSpaces(cloudFoundryClient, organizationId, space)
+             .single()
+             .onErrorResume(NoSuchElementException.class, t -> ExceptionUtils.illegalArgument("Space %s does not exist", space));
+     }
+ 
+     private static Mono<String> getSpaceId(CloudFoundryClient cloudFoundryClient, String organizationId, String space) {
+         return getSpace(cloudFoundryClient, organizationId, space)
+@@ -415,16 +431,26 @@
+     private static Mono<DeleteRouteResponse> requestDeleteRoute(CloudFoundryClient cloudFoundryClient, String routeId) {
+         return cloudFoundryClient.routes()
+             .delete(org.cloudfoundry.client.v2.routes.DeleteRouteRequest.builder()
+                 .async(true)
+                 .routeId(routeId)
+                 .build());
+     }
+ 
++    private static Flux<UnionServiceInstanceResource> requestListSpaceServiceInstances(CloudFoundryClient cloudFoundryClient, String spaceId) {
++        return PaginationUtils
++            .requestClientV2Resources(page -> cloudFoundryClient.spaces()
++                .listServiceInstances(ListSpaceServiceInstancesRequest.builder()
++                    .page(page)
++                    .returnUserProvidedServiceInstances(true)
++                    .spaceId(spaceId)
++                    .build()));
++    }
++
+     private static Flux<PrivateDomainResource> requestPrivateDomains(CloudFoundryClient cloudFoundryClient, String organizationId, String domain) {
+         return PaginationUtils
+             .requestClientV2Resources(page -> cloudFoundryClient.organizations()
+                 .listPrivateDomains(ListOrganizationPrivateDomainsRequest.builder()
+                     .organizationId(organizationId)
+                     .name(domain)
+                     .page(page)
+                     .build()));
+@@ -490,26 +516,28 @@
+             .requestClientV2Resources(page -> cloudFoundryClient.organizations()
+                 .listSpaces(ListOrganizationSpacesRequest.builder()
+                     .organizationId(organizationId)
+                     .name(space)
+                     .page(page)
+                     .build()));
+     }
+ 
+-    private static Route toRoute(List<String> applications, String domain, RouteResource resource, String space) {
++    private static Route toRoute(List<String> applications, String domain, RouteResource resource, Optional<String> service, String space) {
+         RouteEntity entity = ResourceUtils.getEntity(resource);
+-
+-        return Route.builder()
++        Route.Builder builder = Route.builder()
+             .applications(applications)
+             .domain(domain)
+             .host(entity.getHost())
+             .id(ResourceUtils.getId(resource))
+             .path(entity.getPath())
+-            .space(space)
+-            .build();
++            .space(space);
++
++        service.ifPresent(builder::service);
++
++        return builder.build();
+     }
+ 
+     private boolean isRouteOrphan(RouteEntity entity) {
+         return entity.getServiceInstanceId() == null || entity.getServiceInstanceId().isEmpty();
+     }
+ 
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -312,17 +312,17 @@
+         return requestListSpaceServiceInstances(cloudFoundryClient, spaceId)
+             .filter(resource -> serviceInstanceId.equals(ResourceUtils.getId(resource)))
+             .single()
+             .map(resource -> Optional.of(ResourceUtils.getEntity(resource).getName()));
+     }
+ 
+     private static Mono<Optional<String>> getServiceName(CloudFoundryClient cloudFoundryClient, RouteEntity route) {
+         return Mono.justOrEmpty(route.getServiceInstanceId())
+-            .then(serviceInstanceId -> getServiceInstanceName(cloudFoundryClient, serviceInstanceId, route.getSpaceId()))
++            .flatMap(serviceInstanceId -> getServiceInstanceName(cloudFoundryClient, serviceInstanceId, route.getSpaceId()))
+             .defaultIfEmpty(Optional.empty());
+     }
+ 
+     private static Mono<SpaceResource> getSpace(CloudFoundryClient cloudFoundryClient, String organizationId, String space) {
+         return requestSpaces(cloudFoundryClient, organizationId, space)
+             .single()
+             .onErrorResume(NoSuchElementException.class, t -> ExceptionUtils.illegalArgument("Space %s does not exist", space));
+     }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: integration-test/src/test/java/org/cloudfoundry/operations/RoutesTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -248,17 +248,17 @@
+     }
+ 
+     @Test
+     public void deleteTcpRoute() {
+         String domainName = this.nameFactory.getDomainName();
+ 
+         requestCreateSharedDomain(this.cloudFoundryOperations, domainName, DEFAULT_ROUTER_GROUP)
+             .then(requestCreateRoute(this.cloudFoundryOperations, this.spaceName, domainName, true))
+-            .then(port -> this.cloudFoundryOperations.routes()
++            .flatMap(port -> this.cloudFoundryOperations.routes()
+                 .delete(DeleteRouteRequest.builder()
+                     .domain(domainName)
+                     .port(port)
+                     .build()))
+             .thenMany(requestListRoutes(this.cloudFoundryOperations))
+             .filter(response -> domainName.equals(response.getDomain()))
+             .as(StepVerifier::create)
+             .expectComplete()
+@@ -304,17 +304,17 @@
+     @Test
+     public void map() throws IOException {
+         String applicationName = this.nameFactory.getApplicationName();
+         String domainName = this.nameFactory.getDomainName();
+         String hostName = this.nameFactory.getHostName();
+         String path = this.nameFactory.getPath();
+ 
+         Mono
+-            .when(
++            .zip(
+                 createDomainAndRoute(this.cloudFoundryOperations, this.organizationName, this.spaceName, domainName, hostName, path),
+                 requestCreateApplication(this.cloudFoundryOperations, new ClassPathResource("test-application.zip").getFile().toPath(), applicationName, true)
+             )
+             .then(this.cloudFoundryOperations.routes()
+                 .map(MapRouteRequest.builder()
+                     .applicationName(applicationName)
+                     .domain(domainName)
+                     .host(hostName)
+@@ -331,17 +331,17 @@
+     @Test
+     public void mapNoHost() throws IOException {
+         String applicationName = this.nameFactory.getApplicationName();
+         String domainName = this.nameFactory.getDomainName();
+         String hostName = null;
+         String path = this.nameFactory.getPath();
+ 
+         Mono
+-            .when(
++            .zip(
+                 createDomainAndRoute(this.cloudFoundryOperations, this.organizationName, this.spaceName, domainName, hostName, path),
+                 requestCreateApplication(this.cloudFoundryOperations, new ClassPathResource("test-application.zip").getFile().toPath(), applicationName, true)
+             )
+             .then(this.cloudFoundryOperations.routes()
+                 .map(MapRouteRequest.builder()
+                     .applicationName(applicationName)
+                     .domain(domainName)
+                     .host(hostName)
+@@ -358,17 +358,17 @@
+     @Test
+     public void mapNoPath() throws IOException {
+         String applicationName = this.nameFactory.getApplicationName();
+         String domainName = this.nameFactory.getDomainName();
+         String hostName = this.nameFactory.getHostName();
+         String path = null;
+ 
+         Mono
+-            .when(
++            .zip(
+                 createDomainAndRoute(this.cloudFoundryOperations, this.organizationName, this.spaceName, domainName, hostName, path),
+                 requestCreateApplication(this.cloudFoundryOperations, new ClassPathResource("test-application.zip").getFile().toPath(), applicationName, true)
+             )
+             .then(this.cloudFoundryOperations.routes()
+                 .map(MapRouteRequest.builder()
+                     .applicationName(applicationName)
+                     .domain(domainName)
+                     .host(hostName)
+@@ -383,17 +383,17 @@
+     }
+ 
+     @Test
+     public void mapTcpRoute() throws IOException {
+         String applicationName = this.nameFactory.getApplicationName();
+         String domainName = this.nameFactory.getDomainName();
+ 
+         Mono
+-            .when(
++            .zip(
+                 createSharedDomainAndTcpRoute(this.cloudFoundryOperations, domainName, this.spaceName),
+                 requestCreateApplication(this.cloudFoundryOperations, new ClassPathResource("test-application.zip").getFile().toPath(), applicationName, true)
+             )
+             .then(this.cloudFoundryOperations.routes()
+                 .map(MapRouteRequest.builder()
+                     .applicationName(applicationName)
+                     .domain(domainName)
+                     .build()))
+@@ -408,17 +408,17 @@
+     }
+ 
+     @Test
+     public void mapTcpRouteTwice() throws IOException {
+         String applicationName = this.nameFactory.getApplicationName();
+         String domainName = this.nameFactory.getDomainName();
+ 
+         Mono
+-            .when(
++            .zip(
+                 requestCreateSharedDomain(this.cloudFoundryOperations, domainName, DEFAULT_ROUTER_GROUP),
+                 requestCreateApplication(this.cloudFoundryOperations, new ClassPathResource("test-application.zip").getFile().toPath(), applicationName, true)
+             )
+             .then(this.cloudFoundryOperations.routes()
+                 .map(MapRouteRequest.builder()
+                     .applicationName(applicationName)
+                     .domain(domainName)
+                     .randomPort(true)
+@@ -440,17 +440,17 @@
+     @Test
+     public void unmap() throws IOException {
+         String applicationName = this.nameFactory.getApplicationName();
+         String domainName = this.nameFactory.getDomainName();
+         String hostName = this.nameFactory.getHostName();
+         String path = this.nameFactory.getPath();
+ 
+         Mono
+-            .when(
++            .zip(
+                 createDomainAndRoute(this.cloudFoundryOperations, this.organizationName, this.spaceName, domainName, hostName, path),
+                 requestCreateApplication(this.cloudFoundryOperations, new ClassPathResource("test-application.zip").getFile().toPath(), applicationName, true)
+             )
+             .then(requestMapRoute(this.cloudFoundryOperations, applicationName, domainName, hostName, path))
+             .then(this.cloudFoundryOperations.routes()
+                 .unmap(UnmapRouteRequest.builder()
+                     .applicationName(applicationName)
+                     .domain(domainName)
+@@ -467,17 +467,17 @@
+     @Test
+     public void unmapNoPath() throws IOException {
+         String applicationName = this.nameFactory.getApplicationName();
+         String domainName = this.nameFactory.getDomainName();
+         String hostName = this.nameFactory.getHostName();
+         String path = null;
+ 
+         Mono
+-            .when(
++            .zip(
+                 createDomainAndRoute(this.cloudFoundryOperations, this.organizationName, this.spaceName, domainName, hostName, path),
+                 requestCreateApplication(this.cloudFoundryOperations, new ClassPathResource("test-application.zip").getFile().toPath(), applicationName, true)
+             )
+             .then(requestMapRoute(this.cloudFoundryOperations, applicationName, domainName, hostName, path))
+             .then(this.cloudFoundryOperations.routes()
+                 .unmap(UnmapRouteRequest.builder()
+                     .applicationName(applicationName)
+                     .domain(domainName)
+@@ -492,22 +492,22 @@
+     }
+ 
+     @Test
+     public void unmapTcpRoute() throws IOException {
+         String applicationName = this.nameFactory.getApplicationName();
+         String domainName = this.nameFactory.getDomainName();
+ 
+         Mono
+-            .when(
++            .zip(
+                 createSharedDomainAndTcpRoute(this.cloudFoundryOperations, domainName, this.spaceName),
+                 requestCreateApplication(this.cloudFoundryOperations, new ClassPathResource("test-application.zip").getFile().toPath(), applicationName, true)
+             )
+-            .then(function((port, ignore) -> requestMapRoute(this.cloudFoundryOperations, applicationName, domainName, port)))
+-            .then(port -> this.cloudFoundryOperations.routes()
++            .flatMap(function((port, ignore) -> requestMapRoute(this.cloudFoundryOperations, applicationName, domainName, port)))
++            .flatMap(port -> this.cloudFoundryOperations.routes()
+                 .unmap(UnmapRouteRequest.builder()
+                     .applicationName(applicationName)
+                     .domain(domainName)
+                     .port(port)
+                     .build()))
+             .thenMany(requestListRoutes(this.cloudFoundryOperations))
+             .filter(response -> domainName.equals(response.getDomain()))
+             .map(route -> route.getApplications().size())
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -24,29 +24,30 @@
+ import org.cloudfoundry.operations.routes.CheckRouteRequest;
+ import org.cloudfoundry.operations.routes.CreateRouteRequest;
+ import org.cloudfoundry.operations.routes.DeleteOrphanedRoutesRequest;
+ import org.cloudfoundry.operations.routes.DeleteRouteRequest;
+ import org.cloudfoundry.operations.routes.ListRoutesRequest;
+ import org.cloudfoundry.operations.routes.MapRouteRequest;
+ import org.cloudfoundry.operations.routes.Route;
+ import org.cloudfoundry.operations.routes.UnmapRouteRequest;
++import org.cloudfoundry.operations.services.BindRouteServiceInstanceRequest;
++import org.cloudfoundry.operations.services.CreateUserProvidedServiceInstanceRequest;
+ import org.junit.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.core.io.ClassPathResource;
+ import reactor.core.publisher.Flux;
+ import reactor.core.publisher.Mono;
+ import reactor.test.StepVerifier;
+ 
+ import java.io.IOException;
+ import java.nio.file.Path;
+ import java.time.Duration;
+ import java.util.Collections;
+ import java.util.Optional;
+-import java.util.concurrent.TimeoutException;
+ import java.util.function.Predicate;
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.cloudfoundry.operations.routes.Level.ORGANIZATION;
+ import static org.cloudfoundry.operations.routes.Level.SPACE;
+ import static org.cloudfoundry.util.tuple.TupleUtils.function;
+ 
+ public final class RoutesTest extends AbstractIntegrationTest {
+@@ -274,16 +275,38 @@
+         createDomainAndRoute(this.cloudFoundryOperations, this.organizationName, this.spaceName, domainName, hostName, path)
+             .thenMany(this.cloudFoundryOperations.routes()
+                 .list(ListRoutesRequest.builder()
+                     .level(ORGANIZATION)
+                     .build()))
+             .filter(filterRoutes(domainName, hostName, path, null))
+             .as(StepVerifier::create)
+             .expectNextCount(1)
++            .expectComplete()
++            .verify(Duration.ofMinutes(5));
++    }
++
++    @Test
++    public void listWithService() {
++        String domainName = this.nameFactory.getDomainName();
++        String hostName = this.nameFactory.getHostName();
++        String path = this.nameFactory.getPath();
++        String serviceInstanceName = this.nameFactory.getServiceInstanceName();
++
++        createSharedDomainAndRoute(this.cloudFoundryOperations, this.spaceName, domainName, hostName, path)
++            .then(requestCreateUserProvidedServiceInstance(this.cloudFoundryOperations, serviceInstanceName))
++            .then(requestBindRouteServiceInstance(this.cloudFoundryOperations, domainName, hostName, path, serviceInstanceName))
++            .thenMany(this.cloudFoundryOperations.routes()
++                .list(ListRoutesRequest.builder()
++                    .level(SPACE)
++                    .build()))
++            .filter(filterRoutes(domainName, hostName, path, null))
++            .map(Route::getService)
++            .as(StepVerifier::create)
++            .expectNext(serviceInstanceName)
+             .expectComplete()
+             .verify(Duration.ofMinutes(5));
+     }
+ 
+     @Test
+     public void listWithSpaceLevel() {
+         String domainName = this.nameFactory.getDomainName();
+         String hostName = this.nameFactory.getHostName();
+@@ -532,16 +555,26 @@
+             .then(requestCreateRoute(cloudFoundryOperations, spaceName, domainName, true));
+     }
+ 
+     private static Predicate<Route> filterRoutes(String domainName, String host, String path, String applicationName) {
+         return route -> Optional.ofNullable(domainName).map(route.getDomain()::equals).orElse(true)
+             && Optional.ofNullable(host).map(route.getHost()::equals).orElse(true)
+             && Optional.ofNullable(applicationName).map(Collections::singletonList).map(route.getApplications()::equals).orElse(true)
+             && Optional.ofNullable(path).map(route.getPath()::equals).orElse(true);
++    }
++
++    private static Mono<Void> requestBindRouteServiceInstance(CloudFoundryOperations cloudFoundryOperations, String domainName, String hostName, String path, String serviceInstanceName) {
++        return cloudFoundryOperations.services()
++            .bindRoute(BindRouteServiceInstanceRequest.builder()
++                .domainName(domainName)
++                .hostname(hostName)
++                .path(path)
++                .serviceInstanceName(serviceInstanceName)
++                .build());
+     }
+ 
+     private static Mono<Void> requestCreateApplication(CloudFoundryOperations cloudFoundryOperations, Path application, String name, Boolean noStart) {
+         return cloudFoundryOperations.applications()
+             .push(PushApplicationRequest.builder()
+                 .path(application)
+                 .healthCheckType(ApplicationHealthCheck.PORT)
+                 .buildpack("staticfile_buildpack")
+@@ -591,16 +624,24 @@
+     private static Mono<Void> requestCreateSharedDomain(CloudFoundryOperations cloudFoundryOperations, String domainName, String routerGroup) {
+         return cloudFoundryOperations.domains()
+             .createShared(CreateSharedDomainRequest.builder()
+                 .domain(domainName)
+                 .routerGroup(routerGroup)
+                 .build());
+     }
+ 
++    private static Mono<Void> requestCreateUserProvidedServiceInstance(CloudFoundryOperations cloudFoundryOperations, String name) {
++        return cloudFoundryOperations.services()
++            .createUserProvidedInstance(CreateUserProvidedServiceInstanceRequest.builder()
++                .name(name)
++                .routeServiceUrl("https://test.route.service")
++                .build());
++    }
++
+     private static Flux<Route> requestListRoutes(CloudFoundryOperations cloudFoundryOperations) {
+         return cloudFoundryOperations.routes()
+             .list(ListRoutesRequest.builder()
+                 .level(SPACE)
+                 .build());
+     }
+ 
+     private static Mono<Integer> requestMapRoute(CloudFoundryOperations cloudFoundryOperations, String applicationName, String domainName, String hostName, String path) {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

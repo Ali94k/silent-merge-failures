@@ -1,0 +1,1163 @@
+UNIT vkostyukov_la4j__d216aa8928
+repo: vkostyukov_la4j   merge: d216aa89285cc7628b99b729535531b51ffcc451   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/main/java/org/la4j/vector/AbstractVector.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -23,19 +23,19 @@
+  * 
+  */
+ 
+ package org.la4j.vector;
+ 
+ import java.text.DecimalFormat;
+ import java.text.NumberFormat;
+ import java.util.Random;
++
+ import org.la4j.factory.Factory;
+ import org.la4j.io.VectorIterator;
+-import org.la4j.matrix.Matrices;
+ import org.la4j.matrix.Matrix;
+ import org.la4j.vector.functor.VectorAccumulator;
+ import org.la4j.vector.functor.VectorFunction;
+ import org.la4j.vector.functor.VectorPredicate;
+ import org.la4j.vector.functor.VectorProcedure;
+ import org.la4j.vector.operation.VectorOperations;
+ 
+ /**
+@@ -558,47 +558,54 @@
+             long value = (long) it.get();
+             result = 37 * result + (int) (value ^ (value >>> 32));
+         }
+ 
+         return result;
+     }
+ 
+     @Override
+-    public boolean equals(Object object) {
+-        if (this == object) {
+-            return true;
+-        }
+-        if (object == null) {
+-            return false;
+-        }
+-
+-        if (!(object instanceof Vector)) {
+-            return false;
+-        }
+-
+-        Vector vector = (Vector) object;
++    public boolean equals(Vector vector, double precision) {
+ 
+         if (length != vector.length()) {
+             return false;
+         }
+ 
+         boolean result = true;
+ 
+         // TODO: export as operation
+         for (int i = 0; result && i < length; i++) {
+             double a = get(i);
+             double b = vector.get(i);
+ 
+             double diff = Math.abs(a - b);
+ 
+-            result = (a == b) || (diff < Matrices.EPS || diff / Math.max(Math.abs(a), Math.abs(b)) < Vectors.EPS);
+-        }
+-
+-        return result;
++            result = (a == b) || (diff < precision || diff / Math.max(Math.abs(a), Math.abs(b)) < precision);
++        }
++
++        return result;
++    }
++
++    @Override
++    public boolean equals(Object o) {
++
++        if (this == o) {
++            return true;
++        }
++        if (o == null) {
++            return false;
++        }
++
++        if (!(o instanceof Vector)) {
++            return false;
++        }
++
++        Vector vector = (Vector) o;
++
++        return equals(vector, Vectors.EPS);
+     }
+ 
+     @Override
+     public String toString() {
+         return mkString(DEFAULT_FORMATTER,
+                         DEFAULT_DELIMITER);
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -23,16 +23,17 @@
+  * 
+  */
+ 
+ package org.la4j.vector;
+ 
+ import java.text.DecimalFormat;
+ import java.text.NumberFormat;
+ import java.util.Random;
++
+ import org.la4j.factory.Factory;
+ import org.la4j.io.VectorIterator;
+ import org.la4j.matrix.Matrices;
+ import org.la4j.matrix.Matrix;
+ import org.la4j.vector.functor.VectorAccumulator;
+ import org.la4j.vector.functor.VectorFunction;
+ import org.la4j.vector.functor.VectorPredicate;
+ import org.la4j.vector.functor.VectorProcedure;
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright 2011-2013, by Vladimir Kostyukov and Contributors.
+ * 
+ * This file is part of la4j project (http://la4j.org)
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ * Contributor(s): Daniel Renshaw
+ *                 Ewald Grusk
+ *                 Jakob Moellers
+ *                 Maxim Samoylov
+ *                 Miron Aseev
+ * 
+ */
+
+package org.la4j.vector;
+
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Random;
+
+import org.la4j.factory.Factory;
+import org.la4j.io.VectorIterator;
+import org.la4j.matrix.Matrix;
+import org.la4j.vector.functor.VectorAccumulator;
+import org.la4j.vector.functor.VectorFunction;
+import org.la4j.vector.functor.VectorPredicate;
+import org.la4j.vector.functor.VectorProcedure;
+import org.la4j.vector.operation.VectorOperations;
+
+/**
+ * An abstract wrapper around {@code Vector} to make it easier to implement.
+ * 
+ * A vector represents an array of elements. It can be resized.
+ */
+public abstract class AbstractVector implements Vector {
+
+    private static final String DEFAULT_DELIMITER = ", ";
+    private static final NumberFormat DEFAULT_FORMATTER = new DecimalFormat("0.000");
+
+    protected int length;
+    
+    protected Factory factory;
+
+    protected AbstractVector(Factory factory, int length) {
+        ensureLengthIsCorrect(length);
+
+        this.factory = factory;
+        this.length = length;
+    }
+
+    @Override
+    public void swap(int i, int j) {
+        if (i != j) {
+            double s = get(i);
+            set(i, get(j));
+            set(j, s);
+        }
+    }
+
+    @Override
+    public void clear() {
+        assign(0.0);
+    }
+
+    @Override
+    public void assign(double value) {
+        update(Vectors.asConstFunction(value));
+    }
+
+    @Override
+    public int length() {
+        return length;
+    }
+
+    @Override
+    public Vector add(double value) {
+        return add(value, factory);
+    }
+
+    @Override
+    public Vector add(double value, Factory factory) {
+        ensureFactoryIsNotNull(factory);
+        Vector result = blank(factory);
+        VectorIterator it = iterator();
+
+        while (it.hasNext()) {
+            it.next();
+            result.set(it.index(), it.get() + value);
+        }
+
+        return result;
+    }
+
+    @Override
+    public void addInPlace(double value) {
+        VectorIterator it = iterator();
+        while (it.hasNext()) {
+            it.next();
+            it.set(it.get() + value);
+        }
+    }
+
+    @Override
+    public Vector add(Vector that) {
+        return add(that, factory);
+    }
+
+    @Override
+    public Vector add(Vector that, Factory factory) {
+        ensureFactoryIsNotNull(factory);
+        ensureArgumentIsNotNull(that, "vector");
+        ensureVectorIsSimilar(that);
+
+        return pipeTo(VectorOperations.ooPlaceVectorToVectorAddition(factory), that);
+    }
+
+    @Override
+    public void addInPlace(Vector that) {
+        ensureArgumentIsNotNull(that, "vector");
+        ensureVectorIsSimilar(that);
+
+        pipeTo(VectorOperations.inPlaceVectorToVectorAddition(), that);
+    }
+
+    @Override
+    public Vector multiply(double value) {
+        return multiply(value, factory);
+    }
+
+    @Override
+    public Vector hadamardProduct(Vector that) {
+        return hadamardProduct(that, factory);
+    }
+
+    @Override
+    public Vector hadamardProduct(Vector that, Factory factory) {
+        ensureFactoryIsNotNull(factory);
+        ensureArgumentIsNotNull(that,  "vector");
+        ensureVectorIsSimilar(that);
+
+        return pipeTo(VectorOperations.ooPlaceHadamardProduct(factory), that);
+    }
+
+    @Override
+    public void hadamardProductInPlace(Vector that) {
+        ensureArgumentIsNotNull(that,  "vector");
+        ensureVectorIsSimilar(that);
+
+        pipeTo(VectorOperations.inPlaceHadamardProduct(), that);
+    }
+
+    @Override
+    public Vector multiply(Matrix matrix) {
+        return multiply(matrix, factory);
+    }
+
+    @Override
+    public Vector multiply(Matrix matrix, Factory factory) {
+        // TODO: export as operation (blocked by no-support of matrices)
+        ensureFactoryIsNotNull(factory);
+        ensureArgumentIsNotNull(matrix, "matrix");
+
+        if (length != matrix.rows()) {
+            fail("Wrong matrix dimensions: " + matrix.rows() + "x" + matrix.columns() +
+                 ". Should be: " + length + "x_.");
+        }
+
+        Vector result = factory.createVector(matrix.columns());
+
+        for (int j = 0; j < matrix.columns(); j++) {
+
+            double acc = 0.0;
+
+            for (int i = 0; i < matrix.rows(); i++) {
+                acc += get(i) * matrix.get(i, j);
+            }
+
+            result.set(j, acc);
+        }
+
+        return result;
+    }
+
+    @Override
+    public Vector subtract(double value) {
+        return subtract(value, factory);
+    }
+
+    @Override
+    public Vector subtract(double value, Factory factory) {
+        return add(-value, factory);
+    }
+
+    @Override
+    public Vector subtract(Vector that) {
+        return subtract(that, factory);
+    }
+
+    @Override
+    public Vector subtract(Vector that, Factory factory) {
+        ensureFactoryIsNotNull(factory);
+        ensureArgumentIsNotNull(that, "vector");
+        ensureVectorIsSimilar(that);
+
+        return pipeTo(VectorOperations.ooPlaceVectorFromVectorSubtraction(factory), that);
+    }
+
+    @Override
+    public void subtractInPlace(Vector that) {
+        ensureArgumentIsNotNull(that, "vector");
+        ensureVectorIsSimilar(that);
+
+        pipeTo(VectorOperations.inPlaceVectorFromVectorSubtraction(), that);
+    }
+
+    @Override
+    public Vector divide(double value) {
+        return divide(value, factory);
+    }
+
+    @Override
+    public Vector divide(double value, Factory factory) {
+        return multiply(1.0 / value, factory);
+    }
+
+    @Override
+    public double product() {
+        return fold(Vectors.asProductAccumulator(1.0));
+    }
+
+    @Override
+    public double sum() {
+        return fold(Vectors.asSumAccumulator(0.0));
+    }
+
+    @Override
+    public double innerProduct(Vector that) {
+        ensureArgumentIsNotNull(that, "vector");
+        ensureVectorIsSimilar(that);
+
+        return pipeTo(VectorOperations.ooPlaceInnerProduct(), that);
+    }
+
+    @Override
+    public Matrix outerProduct(Vector that) {
+        return outerProduct(that, factory);
+    }
+
+    @Override
+    public Matrix outerProduct(Vector that, Factory factory) {
+        // TODO: export as operation (blocked by no-support of matrices)
+        ensureFactoryIsNotNull(factory);
+        ensureArgumentIsNotNull(that, "vector");
+
+        Matrix result = factory.createMatrix(length, that.length());
+
+        for (int i = 0; i < length; i++) {
+            for (int j = 0; j < that.length(); j++) {
+                result.set(i, j, get(i) * that.get(j));
+            }
+        }
+
+        return result;
+    }
+
+    @Override
+    public Vector blank() {
+        return blank(factory);
+    }
+
+    @Override
+    public Vector blank(Factory factory) {
+        ensureFactoryIsNotNull(factory);
+
+        return factory.createVector(length);
+    }
+
+    @Override
+    public Vector copy() {
+        return copy(factory);
+    }
+
+    @Override
+    public Vector copy(Factory factory) {
+        ensureFactoryIsNotNull(factory);
+
+        if (factory == this.factory) {
+            return copy();
+        }
+
+        return factory.createVector(this);
+    }
+
+    @Override
+    public Vector resize(int length) {
+        return resize(length, factory);
+    }
+
+    @Override
+    public Vector resize(int length, Factory factory) {
+        ensureFactoryIsNotNull(factory);
+
+        Vector result = factory.createVector(length);
+
+        for (int i = 0; i < Math.min(length, this.length); i++) {
+            result.set(i, get(i));
+        }
+
+        return result;
+    }
+
+    @Override
+    public Vector shuffle() {
+        return shuffle(factory);
+    }
+    
+    /**
+     * Shuffles this vector, using a Fisher-Yates shuffle.
+     * 
+     * Copies this vector in the new vector that contains the same elements but with
+     * the elements shuffled around (which might also result in the same vector,
+     * since all outcomes are equally probable).
+     *
+     * @param factory the factory of result vector
+     *
+     * @return the shuffled vector
+     */
+    @Override
+    public Vector shuffle(Factory factory) {
+        ensureFactoryIsNotNull(factory);
+
+        Vector result = copy(factory);
+
+        // Conduct Fisher-Yates shuffle
+        Random rnd = new Random();
+
+        for (int i = 0; i < length; i++) {
+            int ii = rnd.nextInt(length - i) + i;
+
+            double a = result.get(ii);
+            result.set(ii, result.get(i));
+            result.set(i, a);
+        }
+
+        return result;
+    }
+
+    @Override
+    public Vector sliceLeft(int until) {
+        return slice(0, until, factory);
+    }
+
+    @Override
+    public Vector sliceLeft(int until, Factory factory) {
+        return slice(0, until, factory);
+    }
+
+    @Override
+    public Vector sliceRight(int from) {
+        return slice(from, length, factory);
+    }
+
+    @Override
+    public Vector sliceRight(int from, Factory factory) {
+        return slice(from, length, factory);
+    }
+
+    @Override
+    public Vector slice(int from, int until) {
+        return slice(from, until, factory);
+    }
+
+    @Override
+    public Vector slice(int from, int until, Factory factory) {
+        ensureFactoryIsNotNull(factory);
+
+        if (until - from < 0) {
+            fail("Wrong slice range: [" + from + ".." + until + "].");
+        }
+
+        Vector result = factory.createVector(until - from);
+
+        for (int i = from; i < until; i++) {
+            result.set(i - from, get(i));
+        }
+
+        return result;
+    }
+
+    @Override
+    public Vector select(int[] indices) {
+        return select(indices, factory);
+    }
+
+    @Override
+    public Vector select(int[] indices, Factory factory) {
+        int newLength = indices.length;
+
+        if (newLength == 0) {
+            fail("No elements selected.");
+        }
+
+        Vector result = factory.createVector(newLength);
+
+        for (int i = 0; i < newLength; i++) {
+            result.set(i, get(indices[i]));
+        }
+
+        return result;
+    }
+
+    @Override
+    public Factory factory() {
+        return factory;
+    }
+
+    @Override
+    public void each(VectorProcedure procedure) {
+        VectorIterator it = iterator();
+        while (it.hasNext()) {
+            it.next();
+            procedure.apply(it.index(), it.get());
+        }
+    }
+
+    @Override
+    public double max() {
+        return fold(Vectors.mkMaxAccumulator());
+    }
+
+    @Override
+    public double min() {
+        return fold(Vectors.mkMinAccumulator());
+    }
+
+    @Override
+    public Vector transform(VectorFunction function) {
+        return transform(function, factory);
+    }
+
+    @Override
+    public Vector transform(VectorFunction function, Factory factory) {
+        Vector result = blank(factory);
+        VectorIterator it = iterator();
+
+        while (it.hasNext()) {
+            it.next();
+            result.set(it.index(), function.evaluate(it.index(), it.get()));
+        }
+
+        return result;
+    }
+
+    @Override
+    public Vector transform(int i, VectorFunction function) {
+        return transform(i, function, factory);
+    }
+
+    @Override
+    public Vector transform(int i, VectorFunction function, Factory factory) {
+
+        Vector result = copy(factory);
+        result.set(i, function.evaluate(i, get(i)));
+
+        return result;
+    }
+
+    @Override
+    public void update(VectorFunction function) {
+        VectorIterator it = iterator();
+        while (it.hasNext()) {
+            it.next();
+            it.set(function.evaluate(it.index(), it.get()));
+        }
+    }
+
+    @Override
+    public void update(int i, VectorFunction function) {
+        set(i, function.evaluate(i, get(i)));
+    }
+
+    @Override
+    public double fold(VectorAccumulator accumulator) {
+        each(Vectors.asAccumulatorProcedure(accumulator));
+        return accumulator.accumulate();
+    }
+
+    @Override
+    public boolean is(VectorPredicate predicate) {
+        boolean result = true;
+        VectorIterator it = iterator();
+
+        while (it.hasNext()) {
+            it.next();
+            result = result && predicate.test(it.index(), it.get());
+        }
+
+        return result;
+    }
+
+    @Override
+    public boolean non(VectorPredicate predicate) {
+        return !is(predicate);
+    }
+
+    @Override
+    public Matrix toRowMatrix() {
+        return toRowMatrix(factory);
+    }
+
+    @Override
+    public Matrix toRowMatrix(Factory factory) {
+        Matrix result = factory.createMatrix(1, length);
+        result.setRow(0, this);
+        return result;
+    }
+
+    @Override
+    public Matrix toColumnMatrix() {
+        return toColumnMatrix(factory);
+    }
+
+    @Override
+    public Matrix toColumnMatrix(Factory factory) {
+        Matrix result = factory.createMatrix(length, 1);
+        result.setColumn(0, this);
+        return result;
+    }
+    
+    @Override
+    public Vector normalize() {
+    	return normalize(Vectors.mkEuclideanNormAccumulator());
+    }
+    
+    @Override
+    public Vector normalize(VectorAccumulator acc) {
+    	return divide(fold(acc));
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 17;
+        VectorIterator it = iterator();
+
+        while (it.hasNext()) {
+            it.next();
+            long value = (long) it.get();
+            result = 37 * result + (int) (value ^ (value >>> 32));
+        }
+
+        return result;
+    }
+
+    @Override
+    public boolean equals(Vector vector, double precision) {
+
+        if (length != vector.length()) {
+            return false;
+        }
+
+        boolean result = true;
+
+        // TODO: export as operation
+        for (int i = 0; result && i < length; i++) {
+            double a = get(i);
+            double b = vector.get(i);
+
+            double diff = Math.abs(a - b);
+
+            result = (a == b) || (diff < precision || diff / Math.max(Math.abs(a), Math.abs(b)) < precision);
+        }
+
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+
+        if (this == o) {
+            return true;
+        }
+        if (o == null) {
+            return false;
+        }
+
+        if (!(o instanceof Vector)) {
+            return false;
+        }
+
+        Vector vector = (Vector) o;
+
+        return equals(vector, Vectors.EPS);
+    }
+
+    @Override
+    public String toString() {
+        return mkString(DEFAULT_FORMATTER,
+                        DEFAULT_DELIMITER);
+    }
+
+    @Override
+    public String mkString(NumberFormat formatter) {
+        return mkString(formatter,
+                        DEFAULT_DELIMITER);
+    }
+
+    @Override
+    public String mkString(NumberFormat formatter, String delimiter) {
+        StringBuilder sb = new StringBuilder();
+        VectorIterator it = iterator();
+
+        while (it.hasNext()) {
+            it.next();
+            sb.append(formatter.format(it.get()));
+            sb.append((it.index() < length - 1 ? delimiter : ""));
+        }
+
+        return sb.toString();
+    }
+
+    protected void ensureFactoryIsNotNull(Factory factory) {
+        ensureArgumentIsNotNull(factory, "factory");
+    }
+
+    protected void ensureLengthIsCorrect(int length) {
+        if (length < 0) {
+            fail("Wrong vector length: " + length);
+        }
+        if (length == Integer.MAX_VALUE) {
+            fail("Wrong vector length: use 'Integer.MAX_VALUE - 1' instead.");
+        }
+    }
+
+    protected void ensureVectorIsSimilar(Vector that) {
+        if (length != that.length()) {
+            fail("Wrong vector length: " + that.length() + ". Should be: " + length + ".");
+        }
+    }
+
+    protected void ensureArgumentIsNotNull(Object argument, String name) {
+        if (argument == null) {
+            fail("Bad argument: \"" + name + "\" is 'null'.");
+        }
+    }
+
+    protected void fail(String message) {
+        throw new IllegalArgumentException(message);
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/org/la4j/vector/sparse/SparseVectorTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -16,72 +16,82 @@
+  * limitations under the License.
+  * 
+  * Contributor(s): -
+  * 
+  */
+ 
+ package org.la4j.vector.sparse;
+ 
++import org.junit.Test;
+ import org.la4j.vector.AbstractVectorTest;
+ import org.la4j.vector.Vectors;
+ import org.la4j.vector.functor.VectorAccumulator;
+ 
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertTrue;
++
+ public abstract class SparseVectorTest extends AbstractVectorTest {
+ 
++    @Test
+     public void testCardinality() {
+ 
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 0.0, 0.0, 0.0, 1.0 }
+         );
+ 
+         assertEquals(1, a.cardinality());
+     }
+ 
++    @Test
+     public void testFoldNonZero_5() {
+ 
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 2.0, 0.0, 5.0, 0.0, 2.0 }
+         );
+ 
+         VectorAccumulator sum = Vectors.asSumAccumulator(0.0);
+         VectorAccumulator product = Vectors.asProductAccumulator(1.0);
+ 
+-        assertEquals(9.0, a.foldNonZero(sum));
++        assertEquals(9.0, a.foldNonZero(sum), Vectors.EPS);
+         // check whether the accumulator were flushed
+-        assertEquals(9.0, a.foldNonZero(sum));
++        assertEquals(9.0, a.foldNonZero(sum), Vectors.EPS);
+ 
+-        assertEquals(20.0, a.foldNonZero(product));
++        assertEquals(20.0, a.foldNonZero(product), Vectors.EPS);
+         // check whether the accumulator were flushed
+-        assertEquals(20.0, a.foldNonZero(product));
++        assertEquals(20.0, a.foldNonZero(product), Vectors.EPS);
+     }
+ 
++    @Test
+     public void testIsZeroAt_4() {
+ 
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 1.0, 0.0, 0.0, 4.0 }
+         );
+ 
+         assertTrue(a.isZeroAt(1));
+         assertFalse(a.isZeroAt(3));
+     }
+ 
++    @Test
+     public void testNonZeroAt_6() {
+ 
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 5.0, 2.0, 0.0, 0.0, 0.0 }
+         );
+ 
+         assertTrue(a.nonZeroAt(1));
+         assertFalse(a.nonZeroAt(3));
+     }
+ 
++    @Test
+     public void testGetOrElse_5() {
+ 
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+         );
+ 
+-        assertEquals(0.0, a.getOrElse(1, 0.0));
+-        assertEquals(1.0, a.getOrElse(2, 3.14));
+-        assertEquals(4.2, a.getOrElse(3, 4.2));
++        assertEquals(0.0, a.getOrElse(1, 0.0), Vectors.EPS);
++        assertEquals(1.0, a.getOrElse(2, 3.14), Vectors.EPS);
++        assertEquals(4.2, a.getOrElse(3, 4.2), Vectors.EPS);
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -79,9 +79,85 @@
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+         );
+ 
+         assertEquals(0.0, a.getOrElse(1, 0.0));
+         assertEquals(1.0, a.getOrElse(2, 3.14));
+         assertEquals(4.2, a.getOrElse(3, 4.2));
+     }
++    
++    public void testGet_IndexChecks() {
++        SparseVector a = (SparseVector) factory().createVector(
++                new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
++        );
++        
++        // Test negative index
++        try {
++        	a.get(-1);
++        	fail("Expected IndexOutOfBoundsException to be thrown.");
++        } catch (IndexOutOfBoundsException e) {
++        	// Intended behavior
++        }
++        
++        // Test too large of an index
++        try {
++        	a.get(a.length());
++        	fail("Expected IndexOutOfBoundsException to be thrown.");
++        } catch (IndexOutOfBoundsException e) {
++        	// Intended behavior
++        }
++        
++        // Test valid index
++        assertEquals(1.0, a.get(2));
++    }
++    
++    public void testGetOrElse_IndexChecks() {
++        SparseVector a = (SparseVector) factory().createVector(
++                new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
++        );
++        
++        // Test negative index
++        try {
++        	a.get(-1);
++        	fail("Expected IndexOutOfBoundsException to be thrown.");
++        } catch (IndexOutOfBoundsException e) {
++        	// Intended behavior
++        }
++        
++        // Test too large of an index
++        try {
++        	a.get(a.length());
++        	fail("Expected IndexOutOfBoundsException to be thrown.");
++        } catch (IndexOutOfBoundsException e) {
++        	// Intended behavior
++        }
++        
++        // Test valid index
++        assertEquals(1.0, a.get(2));
++    }
++    
++    public void testSet_IndexChecks() {
++        SparseVector a = (SparseVector) factory().createVector(
++                new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
++        );
++        
++        // Test negative index
++        try {
++        	a.set(-1, 1.0);
++        	fail("Expected IndexOutOfBoundsException to be thrown.");
++        } catch (IndexOutOfBoundsException e) {
++        	// Intended behavior
++        }
++        
++        // Test too large of an index
++        try {
++        	a.set(a.length(), 1.0);
++        	fail("Expected IndexOutOfBoundsException to be thrown.");
++        } catch (IndexOutOfBoundsException e) {
++        	// Intended behavior
++        }
++        
++        // Test valid index
++        a.set(0, 1.0);
++        assertEquals(1.0, a.get(0));
++    }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright 2011-2013, by Vladimir Kostyukov and Contributors.
+ * 
+ * This file is part of la4j project (http://la4j.org)
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * 
+ * Contributor(s): -
+ * 
+ */
+
+package org.la4j.vector.sparse;
+
+import org.junit.Test;
+import org.la4j.vector.AbstractVectorTest;
+import org.la4j.vector.Vectors;
+import org.la4j.vector.functor.VectorAccumulator;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+public abstract class SparseVectorTest extends AbstractVectorTest {
+
+    @Test
+    public void testCardinality() {
+
+        SparseVector a = (SparseVector) factory().createVector(
+                new double[] { 0.0, 0.0, 0.0, 0.0, 1.0 }
+        );
+
+        assertEquals(1, a.cardinality());
+    }
+
+    @Test
+    public void testFoldNonZero_5() {
+
+        SparseVector a = (SparseVector) factory().createVector(
+                new double[] { 2.0, 0.0, 5.0, 0.0, 2.0 }
+        );
+
+        VectorAccumulator sum = Vectors.asSumAccumulator(0.0);
+        VectorAccumulator product = Vectors.asProductAccumulator(1.0);
+
+        assertEquals(9.0, a.foldNonZero(sum), Vectors.EPS);
+        // check whether the accumulator were flushed
+        assertEquals(9.0, a.foldNonZero(sum), Vectors.EPS);
+
+        assertEquals(20.0, a.foldNonZero(product), Vectors.EPS);
+        // check whether the accumulator were flushed
+        assertEquals(20.0, a.foldNonZero(product), Vectors.EPS);
+    }
+
+    @Test
+    public void testIsZeroAt_4() {
+
+        SparseVector a = (SparseVector) factory().createVector(
+                new double[] { 1.0, 0.0, 0.0, 4.0 }
+        );
+
+        assertTrue(a.isZeroAt(1));
+        assertFalse(a.isZeroAt(3));
+    }
+
+    @Test
+    public void testNonZeroAt_6() {
+
+        SparseVector a = (SparseVector) factory().createVector(
+                new double[] { 0.0, 5.0, 2.0, 0.0, 0.0, 0.0 }
+        );
+
+        assertTrue(a.nonZeroAt(1));
+        assertFalse(a.nonZeroAt(3));
+    }
+
+    @Test
+    public void testGetOrElse_5() {
+
+        SparseVector a = (SparseVector) factory().createVector(
+                new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+        );
+
+        assertEquals(0.0, a.getOrElse(1, 0.0), Vectors.EPS);
+        assertEquals(1.0, a.getOrElse(2, 3.14), Vectors.EPS);
+        assertEquals(4.2, a.getOrElse(3, 4.2), Vectors.EPS);
+    }
+    
+    public void testGet_IndexChecks() {
+        SparseVector a = (SparseVector) factory().createVector(
+                new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+        );
+        
+        // Test negative index
+        try {
+        	a.get(-1);
+        	fail("Expected IndexOutOfBoundsException to be thrown.");
+        } catch (IndexOutOfBoundsException e) {
+        	// Intended behavior
+        }
+        
+        // Test too large of an index
+        try {
+        	a.get(a.length());
+        	fail("Expected IndexOutOfBoundsException to be thrown.");
+        } catch (IndexOutOfBoundsException e) {
+        	// Intended behavior
+        }
+        
+        // Test valid index
+        assertEquals(1.0, a.get(2));
+    }
+    
+    public void testGetOrElse_IndexChecks() {
+        SparseVector a = (SparseVector) factory().createVector(
+                new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+        );
+        
+        // Test negative index
+        try {
+        	a.get(-1);
+        	fail("Expected IndexOutOfBoundsException to be thrown.");
+        } catch (IndexOutOfBoundsException e) {
+        	// Intended behavior
+        }
+        
+        // Test too large of an index
+        try {
+        	a.get(a.length());
+        	fail("Expected IndexOutOfBoundsException to be thrown.");
+        } catch (IndexOutOfBoundsException e) {
+        	// Intended behavior
+        }
+        
+        // Test valid index
+        assertEquals(1.0, a.get(2));
+    }
+    
+    public void testSet_IndexChecks() {
+        SparseVector a = (SparseVector) factory().createVector(
+                new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+        );
+        
+        // Test negative index
+        try {
+        	a.set(-1, 1.0);
+        	fail("Expected IndexOutOfBoundsException to be thrown.");
+        } catch (IndexOutOfBoundsException e) {
+        	// Intended behavior
+        }
+        
+        // Test too large of an index
+        try {
+        	a.set(a.length(), 1.0);
+        	fail("Expected IndexOutOfBoundsException to be thrown.");
+        } catch (IndexOutOfBoundsException e) {
+        	// Intended behavior
+        }
+        
+        // Test valid index
+        a.set(0, 1.0);
+        assertEquals(1.0, a.get(0));
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,1620 @@
+UNIT jenkinsci_build-timeout-plugin__daeab4a1ee
+repo: jenkinsci_build-timeout-plugin   merge: daeab4a1ee26e434bcc2358529b78b852819068b   stratum: B
+files shown: 4 of 4 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T3/cap2  (diffs at -U3; merged bodies omitted; hard-fit to the 30k budget: files capped at 2 largest merged-vs-dev diffs)
+
+=== FILE 1/4: src/main/java/hudson/plugins/build_timeout/BuildTimeOutOperation.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -57,4 +57,12 @@
+     public BuildTimeOutOperationDescriptor getDescriptor() {
+         return (BuildTimeOutOperationDescriptor)Jenkins.getActiveInstance().getDescriptorOrDie(getClass());
+     }
++
++    public void addAction(@Nonnull AbstractBuild<?,?> build, @Nonnull String reason) {
++        BuildTimeOutAction buildTimeoutAction = build.getAction(BuildTimeOutAction.class);
++        if(buildTimeoutAction == null) {
++            buildTimeoutAction = new BuildTimeOutAction(reason);
++        }
++        build.addAction(buildTimeoutAction);
++    }
+ }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -31,7 +31,7 @@
+ import hudson.model.BuildListener;
+ import hudson.model.Describable;
+ 
+-import javax.annotation.Nonnull;
++import edu.umd.cs.findbugs.annotations.NonNull;
+ 
+ /**
+  * Defines an operation performed when timeout occurs.
+@@ -49,7 +49,7 @@
+      * @param effectiveTimeout  timeout (milliseconds)
+      * @return false not to run subsequent operations. It also mark the build as failure.
+      */
+-    public abstract boolean perform(@Nonnull AbstractBuild<?,?> build, @Nonnull BuildListener listener, long effectiveTimeout);
++    public abstract boolean perform(@NonNull AbstractBuild<?,?> build, @NonNull BuildListener listener, long effectiveTimeout);
+     
+     /**
+      * @see hudson.model.Describable#getDescriptor()
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -1,68 +1,68 @@
+-/*
+- * The MIT License
+- * 
+- * Copyright (c) 2014 IKEDA Yasuyuki
+- * 
+- * Permission is hereby granted, free of charge, to any person obtaining a copy
+- * of this software and associated documentation files (the "Software"), to deal
+- * in the Software without restriction, including without limitation the rights
+- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+- * copies of the Software, and to permit persons to whom the Software is
+- * furnished to do so, subject to the following conditions:
+- * 
+- * The above copyright notice and this permission notice shall be included in
+- * all copies or substantial portions of the Software.
+- * 
+- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+- * THE SOFTWARE.
+- */
+-
+-package hudson.plugins.build_timeout;
+-
+-import jenkins.model.Jenkins;
+-import hudson.ExtensionPoint;
+-import hudson.model.AbstractBuild;
+-import hudson.model.Action;
+-import hudson.model.BuildListener;
+-import hudson.model.Describable;
+-
+-import edu.umd.cs.findbugs.annotations.NonNull;
+-
+-/**
+- * Defines an operation performed when timeout occurs.
+- * They are called "Timeout Actions", but the class is BuildTimeOutOperation
+- * not to be confused with {@link Action}
+- */
+-public abstract class BuildTimeOutOperation
+-        implements ExtensionPoint, Describable<BuildTimeOutOperation> {
+-    
+-    /**
+-     * Perform operation.
+-     * 
+-     * @param build             build timed out
+-     * @param listener          build listener. can be used to print log.
+-     * @param effectiveTimeout  timeout (milliseconds)
+-     * @return false not to run subsequent operations. It also mark the build as failure.
+-     */
+-    public abstract boolean perform(@NonNull AbstractBuild<?,?> build, @NonNull BuildListener listener, long effectiveTimeout);
+-    
+-    /**
+-     * @see hudson.model.Describable#getDescriptor()
+-     */
+-    public BuildTimeOutOperationDescriptor getDescriptor() {
+-        return (BuildTimeOutOperationDescriptor)Jenkins.getActiveInstance().getDescriptorOrDie(getClass());
+-    }
+-
+-    public void addAction(@Nonnull AbstractBuild<?,?> build, @Nonnull String reason) {
+-        BuildTimeOutAction buildTimeoutAction = build.getAction(BuildTimeOutAction.class);
+-        if(buildTimeoutAction == null) {
+-            buildTimeoutAction = new BuildTimeOutAction(reason);
+-        }
+-        build.addAction(buildTimeoutAction);
+-    }
+-}
++/*
++ * The MIT License
++ * 
++ * Copyright (c) 2014 IKEDA Yasuyuki
++ * 
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ * 
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ * 
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++ * THE SOFTWARE.
++ */
++
++package hudson.plugins.build_timeout;
++
++import jenkins.model.Jenkins;
++import hudson.ExtensionPoint;
++import hudson.model.AbstractBuild;
++import hudson.model.Action;
++import hudson.model.BuildListener;
++import hudson.model.Describable;
++
++import edu.umd.cs.findbugs.annotations.NonNull;
++
++/**
++ * Defines an operation performed when timeout occurs.
++ * They are called "Timeout Actions", but the class is BuildTimeOutOperation
++ * not to be confused with {@link Action}
++ */
++public abstract class BuildTimeOutOperation
++        implements ExtensionPoint, Describable<BuildTimeOutOperation> {
++    
++    /**
++     * Perform operation.
++     * 
++     * @param build             build timed out
++     * @param listener          build listener. can be used to print log.
++     * @param effectiveTimeout  timeout (milliseconds)
++     * @return false not to run subsequent operations. It also mark the build as failure.
++     */
++    public abstract boolean perform(@NonNull AbstractBuild<?,?> build, @NonNull BuildListener listener, long effectiveTimeout);
++    
++    /**
++     * @see hudson.model.Describable#getDescriptor()
++     */
++    public BuildTimeOutOperationDescriptor getDescriptor() {
++        return (BuildTimeOutOperationDescriptor)Jenkins.getActiveInstance().getDescriptorOrDie(getClass());
++    }
++
++    public void addAction(@Nonnull AbstractBuild<?,?> build, @Nonnull String reason) {
++        BuildTimeOutAction buildTimeoutAction = build.getAction(BuildTimeOutAction.class);
++        if(buildTimeoutAction == null) {
++            buildTimeoutAction = new BuildTimeOutAction(reason);
++        }
++        build.addAction(buildTimeoutAction);
++    }
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/4: src/test/java/hudson/plugins/build_timeout/BuildTimeoutWrapperIntegrationTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -36,7 +36,7 @@
+ import com.google.common.collect.Lists;
+ 
+ public class BuildTimeoutWrapperIntegrationTest extends HudsonTestCase {
+-	
++
+ 	/*
+ 	 * Method to get environment variables when no timeout env variable is declared
+ 	 */
+@@ -110,7 +110,7 @@
+ 
+   		assertEquals(expectedEnvVars.size(), envVars.size());
+ 	}
+-	
++
+ 	@Bug(9203)
+ 	public void testIssue9203() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+@@ -123,48 +123,48 @@
+ 	}
+     public static class ExecutionCheckBuilder extends Builder {
+         public boolean executed = false;
+-        
++
+         @Override
+         public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+                 throws InterruptedException, IOException {
+             executed = true;
+             return true;
+         }
+-        
++
+         @TestExtension
+         public static class DescriptorImpl extends BuildStepDescriptor<Builder> {
+             @Override
+             public boolean isApplicable(@SuppressWarnings("rawtypes") Class<? extends AbstractProject> arg0) {
+                 return true;
+             }
+-            
++
+             @Override
+             public String getDisplayName() {
+                 return "ExecutionCheckBuilder";
+             }
+         }
+     }
+-    
++
+     public static class ExecutionCheckPublisher extends Recorder {
+         public boolean executed = false;
+-        
++
+         public BuildStepMonitor getRequiredMonitorService() {
+             return BuildStepMonitor.NONE;
+         }
+-        
++
+         @Override
+         public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+                 throws InterruptedException, IOException {
+             executed = true;
+             return true;
+         }
+-        
++
+         @SuppressWarnings({"rawtypes", "unchecked"})
+         @Override
+         public BuildStepDescriptor getDescriptor() {
+             return super.getDescriptor();
+         }
+-        
++
+         @TestExtension
+         public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
+             @Override
+@@ -172,14 +172,14 @@
+             {
+                 return true;
+             }
+-            
++
+             @Override
+             public String getDisplayName() {
+                 return "ExecutionCheckPublisher";
+             }
+         }
+     }
+-    
++
+     public void testAbort() throws Exception
+     {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+@@ -188,69 +188,74 @@
+             FreeStyleProject project = createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), false, false));
+             project.getBuildersList().add(new SleepBuilder(9999));
+-            
++
+             ExecutionCheckBuilder checkBuilder = new ExecutionCheckBuilder();
+             ExecutionCheckPublisher checkPublisher = new ExecutionCheckPublisher();
+             project.getBuildersList().add(checkBuilder);
+             project.getPublishersList().add(checkPublisher);
+-            
+-            assertFalse(checkBuilder.executed);
+-            assertFalse(checkPublisher.executed);
+-            
+-            FreeStyleBuild build = project.scheduleBuild2(0).get();
+-            
++
++            assertFalse(checkBuilder.executed);
++            assertFalse(checkPublisher.executed);
++
++            FreeStyleBuild build = project.scheduleBuild2(0).get();
++
+             assertBuildStatus(Result.ABORTED, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+-        }
+-        
++            BuildTimeOutAction action = build.getAction(BuildTimeOutAction.class);
++            assertNotNull(action);
++        }
++
+         // Set description
+         {
+             FreeStyleProject project = createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), false, true));
+             project.getBuildersList().add(new SleepBuilder(9999));
+-            
++
+             ExecutionCheckBuilder checkBuilder = new ExecutionCheckBuilder();
+             ExecutionCheckPublisher checkPublisher = new ExecutionCheckPublisher();
+             project.getBuildersList().add(checkBuilder);
+             project.getPublishersList().add(checkPublisher);
+-            
+-            assertFalse(checkBuilder.executed);
+-            assertFalse(checkPublisher.executed);
+-            
+-            FreeStyleBuild build = project.scheduleBuild2(0).get();
+-            
++
++            assertFalse(checkBuilder.executed);
++            assertFalse(checkPublisher.executed);
++
++            FreeStyleBuild build = project.scheduleBuild2(0).get();
++
+             assertBuildStatus(Result.ABORTED, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNotNull(build.getDescription());
+             assertFalse(build.getDescription().isEmpty());
+-        }
+-        
++            BuildTimeOutAction action = build.getAction(BuildTimeOutAction.class);
++            assertNotNull(action);
++        }
++
+         // Not aborted
+         {
+             FreeStyleProject project = createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), false, true));
+             project.getBuildersList().add(new SleepBuilder(1000));
+-            
++
+             ExecutionCheckBuilder checkBuilder = new ExecutionCheckBuilder();
+             ExecutionCheckPublisher checkPublisher = new ExecutionCheckPublisher();
+             project.getBuildersList().add(checkBuilder);
+             project.getPublishersList().add(checkPublisher);
+-            
+-            assertFalse(checkBuilder.executed);
+-            assertFalse(checkPublisher.executed);
+-            
+-            FreeStyleBuild build = project.scheduleBuild2(0).get();
+-            
++
++            assertFalse(checkBuilder.executed);
++            assertFalse(checkPublisher.executed);
++
++            FreeStyleBuild build = project.scheduleBuild2(0).get();
++
+             assertBuildStatusSuccess(build);
+             assertTrue(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+-        }
+-    }
+-    
++            assertNull(build.getAction(BuildTimeOutAction.class));
++        }
++    }
++
+     public void testFail() throws Exception
+     {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+@@ -259,69 +264,74 @@
+             FreeStyleProject project = createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), true, false));
+             project.getBuildersList().add(new SleepBuilder(9999));
+-            
++
+             ExecutionCheckBuilder checkBuilder = new ExecutionCheckBuilder();
+             ExecutionCheckPublisher checkPublisher = new ExecutionCheckPublisher();
+             project.getBuildersList().add(checkBuilder);
+             project.getPublishersList().add(checkPublisher);
+-            
+-            assertFalse(checkBuilder.executed);
+-            assertFalse(checkPublisher.executed);
+-            
+-            FreeStyleBuild build = project.scheduleBuild2(0).get();
+-            
++
++            assertFalse(checkBuilder.executed);
++            assertFalse(checkPublisher.executed);
++
++            FreeStyleBuild build = project.scheduleBuild2(0).get();
++
+             assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+-        }
+-        
++            BuildTimeOutAction action = build.getAction(BuildTimeOutAction.class);
++            assertNotNull(action);
++        }
++
+         // Set description
+         {
+             FreeStyleProject project = createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), true, true));
+             project.getBuildersList().add(new SleepBuilder(9999));
+-            
++
+             ExecutionCheckBuilder checkBuilder = new ExecutionCheckBuilder();
+             ExecutionCheckPublisher checkPublisher = new ExecutionCheckPublisher();
+             project.getBuildersList().add(checkBuilder);
+             project.getPublishersList().add(checkPublisher);
+-            
+-            assertFalse(checkBuilder.executed);
+-            assertFalse(checkPublisher.executed);
+-            
+-            FreeStyleBuild build = project.scheduleBuild2(0).get();
+-            
++
++            assertFalse(checkBuilder.executed);
++            assertFalse(checkPublisher.executed);
++
++            FreeStyleBuild build = project.scheduleBuild2(0).get();
++
+             assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNotNull(build.getDescription());
+             assertFalse(build.getDescription().isEmpty());
+-        }
+-        
++            BuildTimeOutAction action = build.getAction(BuildTimeOutAction.class);
++            assertNotNull(action);
++        }
++
+         // Not aborted
+         {
+             FreeStyleProject project = createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), true, true));
+             project.getBuildersList().add(new SleepBuilder(1000));
+-            
++
+             ExecutionCheckBuilder checkBuilder = new ExecutionCheckBuilder();
+             ExecutionCheckPublisher checkPublisher = new ExecutionCheckPublisher();
+             project.getBuildersList().add(checkBuilder);
+             project.getPublishersList().add(checkPublisher);
+-            
+-            assertFalse(checkBuilder.executed);
+-            assertFalse(checkPublisher.executed);
+-            
+-            FreeStyleBuild build = project.scheduleBuild2(0).get();
+-            
++
++            assertFalse(checkBuilder.executed);
++            assertFalse(checkPublisher.executed);
++
++            FreeStyleBuild build = project.scheduleBuild2(0).get();
++
+             assertBuildStatusSuccess(build);
+             assertTrue(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+-        }
+-    }
+-    
++            assertNull(build.getAction(BuildTimeOutAction.class));
++        }
++    }
++
+     @LocalData
+     public void testMigrationFrom_1_12_2() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+@@ -329,7 +339,7 @@
+         {
+             FreeStyleProject project = jenkins.getItem("AbortWithoutDescription", jenkins, FreeStyleProject.class);
+             assertNotNull(project);
+-            
++
+             // assert migration of configuration
+             BuildTimeoutWrapper buildTimeout = project.getBuildWrappersList().get(BuildTimeoutWrapper.class);
+             assertNotNull(buildTimeout);
+@@ -342,29 +352,29 @@
+                         }
+                     })
+             );
+-            
++
+             // assert it works.
+             ExecutionCheckBuilder checkBuilder = project.getBuildersList().get(ExecutionCheckBuilder.class);
+             ExecutionCheckPublisher checkPublisher = project.getPublishersList().get(ExecutionCheckPublisher.class);
+             assertNotNull(checkBuilder);
+             assertNotNull(checkPublisher);
+-            
+-            assertFalse(checkBuilder.executed);
+-            assertFalse(checkPublisher.executed);
+-            
+-            FreeStyleBuild build = project.scheduleBuild2(0).get();
+-            
++
++            assertFalse(checkBuilder.executed);
++            assertFalse(checkPublisher.executed);
++
++            FreeStyleBuild build = project.scheduleBuild2(0).get();
++
+             assertBuildStatus(Result.ABORTED, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+         }
+-        
++
+         // Abort and Set description
+         {
+             FreeStyleProject project = jenkins.getItem("AbortWithDescription", jenkins, FreeStyleProject.class);
+             assertNotNull(project);
+-            
++
+             // assert migration of configuration
+             BuildTimeoutWrapper buildTimeout = project.getBuildWrappersList().get(BuildTimeoutWrapper.class);
+             assertNotNull(buildTimeout);
+@@ -377,30 +387,32 @@
+                         }
+                     })
+             );
+-            
++
+             // assert it works.
+             ExecutionCheckBuilder checkBuilder = project.getBuildersList().get(ExecutionCheckBuilder.class);
+             ExecutionCheckPublisher checkPublisher = project.getPublishersList().get(ExecutionCheckPublisher.class);
+             assertNotNull(checkBuilder);
+             assertNotNull(checkPublisher);
+-            
+-            assertFalse(checkBuilder.executed);
+-            assertFalse(checkPublisher.executed);
+-            
+-            FreeStyleBuild build = project.scheduleBuild2(0).get();
+-            
++
++            assertFalse(checkBuilder.executed);
++            assertFalse(checkPublisher.executed);
++
++            FreeStyleBuild build = project.scheduleBuild2(0).get();
++
+             assertBuildStatus(Result.ABORTED, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNotNull(build.getDescription());
+             assertFalse(build.getDescription().isEmpty());
+-        }
+-        
++            BuildTimeOutAction action = build.getAction(BuildTimeOutAction.class);
++            assertNotNull(action);
++        }
++
+         // Fail
+         {
+             FreeStyleProject project = jenkins.getItem("FailWithoutDescription", jenkins, FreeStyleProject.class);
+             assertNotNull(project);
+-            
++
+             // assert migration of configuration
+             BuildTimeoutWrapper buildTimeout = project.getBuildWrappersList().get(BuildTimeoutWrapper.class);
+             assertNotNull(buildTimeout);
+@@ -413,29 +425,32 @@
+                         }
+                     })
+             );
+-            
++
+             // assert it works.
+             ExecutionCheckBuilder checkBuilder = project.getBuildersList().get(ExecutionCheckBuilder.class);
+             ExecutionCheckPublisher checkPublisher = project.getPublishersList().get(ExecutionCheckPublisher.class);
+             assertNotNull(checkBuilder);
+             assertNotNull(checkPublisher);
+-            
+-            assertFalse(checkBuilder.executed);
+-            assertFalse(checkPublisher.executed);
+-            
+-            FreeStyleBuild build = project.scheduleBuild2(0).get();
+-            
++
++            assertFalse(checkBuilder.executed);
++            assertFalse(checkPublisher.executed);
++
++            FreeStyleBuild build = project.scheduleBuild2(0).get();
++
+             assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+-        }
+-        
++            BuildTimeOutAction action = build.getAction(BuildTimeOutAction.class);
++            assertNotNull(action);
++            assertEquals(FailOperation.class.getSimpleName(), action.getReason());
++        }
++
+         // Fail and Set description
+         {
+             FreeStyleProject project = jenkins.getItem("FailWithDescription", jenkins, FreeStyleProject.class);
+             assertNotNull(project);
+-            
++
+             // assert migration of configuration
+             BuildTimeoutWrapper buildTimeout = project.getBuildWrappersList().get(BuildTimeoutWrapper.class);
+             assertNotNull(buildTimeout);
+@@ -448,25 +463,28 @@
+                         }
+                     })
+             );
+-            
++
+             ExecutionCheckBuilder checkBuilder = project.getBuildersList().get(ExecutionCheckBuilder.class);
+             ExecutionCheckPublisher checkPublisher = project.getPublishersList().get(ExecutionCheckPublisher.class);
+             assertNotNull(checkBuilder);
+             assertNotNull(checkPublisher);
+-            
+-            assertFalse(checkBuilder.executed);
+-            assertFalse(checkPublisher.executed);
+-            
+-            FreeStyleBuild build = project.scheduleBuild2(0).get();
+-            
++
++            assertFalse(checkBuilder.executed);
++            assertFalse(checkPublisher.executed);
++
++            FreeStyleBuild build = project.scheduleBuild2(0).get();
++
+             assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNotNull(build.getDescription());
+             assertFalse(build.getDescription().isEmpty());
+-        }
+-    }
+-    
++            BuildTimeOutAction action = build.getAction(BuildTimeOutAction.class);
++            assertNotNull(action);
++            assertEquals(WriteDescriptionOperation.class.getSimpleName(), action.getReason());
++        }
++    }
++
+     private static class TestBuildTimeOutOperation extends BuildTimeOutOperation {
+         public boolean executed = false;
+         private final boolean result;
+@@ -482,7 +500,7 @@
+             return result;
+         }
+     }
+-    
++
+     public void testMultipleOperations() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+         FreeStyleProject project = createFreeStyleProject();
+@@ -494,20 +512,20 @@
+                 Arrays.<BuildTimeOutOperation>asList(op1, op2, op3)
+         ));
+         project.getBuildersList().add(new SleepBuilder(5000));
+-        
++
+         ExecutionCheckBuilder checkBuilder = new ExecutionCheckBuilder();
+         ExecutionCheckPublisher checkPublisher = new ExecutionCheckPublisher();
+         project.getBuildersList().add(checkBuilder);
+         project.getPublishersList().add(checkPublisher);
+-        
++
+         assertFalse(checkBuilder.executed);
+         assertFalse(checkPublisher.executed);
+         assertFalse(op1.executed);
+         assertFalse(op2.executed);
+         assertFalse(op3.executed);
+-        
++
+         FreeStyleBuild build = project.scheduleBuild2(0).get();
+-        
++
+         assertBuildStatusSuccess(build);
+         assertTrue(checkBuilder.executed);
+         assertTrue(checkPublisher.executed);
+@@ -515,7 +533,7 @@
+         assertTrue(op2.executed);
+         assertTrue(op3.executed);
+     }
+-    
++
+     public void testFailingOperations() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+         FreeStyleProject project = createFreeStyleProject();
+@@ -527,20 +545,20 @@
+                 Arrays.<BuildTimeOutOperation>asList(op1, op2, op3)
+         ));
+         project.getBuildersList().add(new SleepBuilder(5000));
+-        
++
+         ExecutionCheckBuilder checkBuilder = new ExecutionCheckBuilder();
+         ExecutionCheckPublisher checkPublisher = new ExecutionCheckPublisher();
+         project.getBuildersList().add(checkBuilder);
+         project.getPublishersList().add(checkPublisher);
+-        
++
+         assertFalse(checkBuilder.executed);
+         assertFalse(checkPublisher.executed);
+         assertFalse(op1.executed);
+         assertFalse(op2.executed);
+         assertFalse(op3.executed);
+-        
++
+         FreeStyleBuild build = project.scheduleBuild2(0).get();
+-        
++
+         assertBuildStatus(Result.FAILURE, build);
+         assertTrue(checkBuilder.executed);
+         assertTrue(checkPublisher.executed);
+@@ -548,7 +566,7 @@
+         assertTrue(op2.executed);
+         assertFalse(op3.executed);
+     }
+-    
++
+     public void testConfigurationNoOperation() throws Exception {
+         FreeStyleProject p = createFreeStyleProject();
+         p.getBuildWrappersList().add(new BuildTimeoutWrapper(
+@@ -557,18 +575,18 @@
+                 "TESTVAR"
+         ));
+         p.save();
+-        
++
+         String fullname = p.getFullName();
+-        
++
+         // reconfigure.
+         // This should preserve configuration.
+         WebClient wc = createWebClient();
+         HtmlPage page = wc.getPage(p, "configure");
+         HtmlForm form = page.getFormByName("config");
+         submit(form);
+-        
++
+         p = jenkins.getItemByFullName(fullname, FreeStyleProject.class);
+-        
++
+         // assert strategy is preserved.
+         assertEquals(
+                 AbsoluteTimeOutStrategy.class,
+@@ -578,19 +596,19 @@
+                 "3",
+                 ((AbsoluteTimeOutStrategy)p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getStrategy()).getTimeoutMinutes()
+         );
+-        
++
+         // assert operation is preserved
+         assertEquals(
+                 Collections.emptyList(),
+                 p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getOperationList()
+         );
+-        
++
+         assertEquals(
+                 "TESTVAR",
+                 p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getTimeoutEnvVar()
+         );
+     }
+-    
++
+     public void testConfigurationSingleOperation() throws Exception {
+         FreeStyleProject p = createFreeStyleProject();
+         p.getBuildWrappersList().add(new BuildTimeoutWrapper(
+@@ -601,18 +619,18 @@
+                 "TESTVAR"
+         ));
+         p.save();
+-        
++
+         String fullname = p.getFullName();
+-        
++
+         // reconfigure.
+         // This should preserve configuration.
+         WebClient wc = createWebClient();
+         HtmlPage page = wc.getPage(p, "configure");
+         HtmlForm form = page.getFormByName("config");
+         submit(form);
+-        
++
+         p = jenkins.getItemByFullName(fullname, FreeStyleProject.class);
+-        
++
+         // assert strategy is preserved.
+         assertEquals(
+                 AbsoluteTimeOutStrategy.class,
+@@ -622,7 +640,7 @@
+                 "3",
+                 ((AbsoluteTimeOutStrategy)p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getStrategy()).getTimeoutMinutes()
+         );
+-        
++
+         // assert operation is preserved
+         assertEquals(
+                 Arrays.asList(WriteDescriptionOperation.class),
+@@ -639,14 +657,14 @@
+                 "test",
+                 ((WriteDescriptionOperation)p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getOperationList().get(0)).getDescription()
+         );
+-        
++
+         assertEquals(
+                 "TESTVAR",
+                 p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getTimeoutEnvVar()
+         );
+     }
+-    
+-    
++
++
+     public void testConfigurationMultipleOperation() throws Exception {
+         FreeStyleProject p = createFreeStyleProject();
+         p.getBuildWrappersList().add(new BuildTimeoutWrapper(
+@@ -658,18 +676,18 @@
+                 "TESTVAR"
+         ));
+         p.save();
+-        
++
+         String fullname = p.getFullName();
+-        
++
+         // reconfigure.
+         // This should preserve configuration.
+         WebClient wc = createWebClient();
+         HtmlPage page = wc.getPage(p, "configure");
+         HtmlForm form = page.getFormByName("config");
+         submit(form);
+-        
++
+         p = jenkins.getItemByFullName(fullname, FreeStyleProject.class);
+-        
++
+         // assert strategy is preserved.
+         assertEquals(
+                 AbsoluteTimeOutStrategy.class,
+@@ -679,7 +697,7 @@
+                 "3",
+                 ((AbsoluteTimeOutStrategy)p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getStrategy()).getTimeoutMinutes()
+         );
+-        
++
+         // assert operation is preserved
+         assertEquals(
+                 Arrays.asList(
+@@ -699,13 +717,13 @@
+                 "test",
+                 ((WriteDescriptionOperation)p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getOperationList().get(0)).getDescription()
+         );
+-        
++
+         assertEquals(
+                 "TESTVAR",
+                 p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getTimeoutEnvVar()
+         );
+     }
+-    
++
+     @LocalData
+     public void testMigrationFrom_1_13() throws Exception {
+         Thread.sleep(60000);
+@@ -714,7 +732,7 @@
+         NoActivityTimeOutStrategy strategy = (NoActivityTimeOutStrategy)p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getStrategy();
+         assertEquals("5", strategy.getTimeoutSecondsString());
+         assertEquals(5, strategy.getTimeoutSeconds());
+-        
++
+         assertBuildStatus(Result.ABORTED, p.scheduleBuild2(0).get());
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -23,8 +23,11 @@
+ import hudson.tasks.Publisher;
+ import hudson.tasks.Recorder;
+ 
+-import org.jvnet.hudson.test.Bug;
+-import org.jvnet.hudson.test.HudsonTestCase;
++import org.junit.Rule;
++import org.junit.Test;
++import org.jvnet.hudson.test.Issue;
++import org.jvnet.hudson.test.JenkinsRule;
++import org.jvnet.hudson.test.JenkinsRule.WebClient;
+ import org.jvnet.hudson.test.TestExtension;
+ import org.jvnet.hudson.test.CaptureEnvironmentBuilder;
+ import org.jvnet.hudson.test.SleepBuilder;
+@@ -35,14 +38,23 @@
+ import com.google.common.base.Function;
+ import com.google.common.collect.Lists;
+ 
+-public class BuildTimeoutWrapperIntegrationTest extends HudsonTestCase {
+-	
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertNotNull;
++import static org.junit.Assert.assertNull;
++import static org.junit.Assert.assertTrue;
++
++public class BuildTimeoutWrapperIntegrationTest {
++
++	@Rule
++	public JenkinsRule j = new JenkinsRule();
++
+ 	/*
+ 	 * Method to get environment variables when no timeout env variable is declared
+ 	 */
+ 	public EnvVars getEnvVars() throws Exception {
+ 		BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+-		FreeStyleProject project = createFreeStyleProject();
++		FreeStyleProject project = j.createFreeStyleProject();
+ 		project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(300000), false, false));
+ 		CaptureEnvironmentBuilder captureEnvBuilder = new CaptureEnvironmentBuilder();
+ 		project.getBuildersList().add(captureEnvBuilder);
+@@ -53,10 +65,10 @@
+ 	/*
+ 	 * Test to verify setting a timeout environment variable to a valid string
+ 	 */
+-	public void testBuildTimeoutEnvValid() throws Exception {
+-
++	@Test
++	public void buildTimeoutEnvValid() throws Exception {
+ 		EnvVars expectedEnvVars = getEnvVars();
+-	  	FreeStyleProject project = createFreeStyleProject();
++		FreeStyleProject project = j.createFreeStyleProject();
+ 	  	project.getBuildWrappersList().add(new BuildTimeoutWrapper(
+               new QuickBuildTimeOutStrategy(12345),
+               Arrays.<BuildTimeOutOperation>asList(),
+@@ -74,10 +86,10 @@
+ 	/*
+ 	 * Test to verify setting timeout environment variable to null (this is the default)
+ 	 */
+-	public void testBuildTimeoutEnvNull() throws Exception {
+-
++	@Test
++	public void buildTimeoutEnvNull() throws Exception {
+ 	    EnvVars expectedEnvVars = getEnvVars();
+-		FreeStyleProject project = createFreeStyleProject();
++		FreeStyleProject project = j.createFreeStyleProject();
+ 		project.getBuildWrappersList().add(new BuildTimeoutWrapper(
+                 new QuickBuildTimeOutStrategy(12345),
+                 Arrays.<BuildTimeOutOperation>asList(),
+@@ -94,10 +106,10 @@
+ 	/*
+ 	 * Test to verify setting timeout environment variable to empty string.
+ 	 */
+-	public void testBuildTimeoutEnvEmpty() throws Exception {
+-
++	@Test
++	public void buildTimeoutEnvEmpty() throws Exception {
+ 		EnvVars expectedEnvVars = getEnvVars();
+-		FreeStyleProject project = createFreeStyleProject();
++		FreeStyleProject project = j.createFreeStyleProject();
+ 		project.getBuildWrappersList().add(new BuildTimeoutWrapper(
+                 new QuickBuildTimeOutStrategy(12345),
+                 Arrays.<BuildTimeOutOperation>asList(),
+@@ -111,16 +123,18 @@
+   		assertEquals(expectedEnvVars.size(), envVars.size());
+ 	}
+ 	
+-	@Bug(9203)
+-	public void testIssue9203() throws Exception {
++	@Issue("JENKINS-9203")
++	@Test
++	public void issue9203() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+-		FreeStyleProject project = createFreeStyleProject();
++		FreeStyleProject project = j.createFreeStyleProject();
+ 		project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), true, false));
+         project.getBuildersList().add(new SleepBuilder(9999));
+ 		FreeStyleBuild build = project.scheduleBuild2(0).get();
+-		assertBuildStatus(Result.FAILURE, build);
+-        System.err.println(getLog(build));
++		j.assertBuildStatus(Result.FAILURE, build);
++		System.err.println(j.getLog(build));
+ 	}
++
+     public static class ExecutionCheckBuilder extends Builder {
+         public boolean executed = false;
+         
+@@ -179,13 +193,13 @@
+             }
+         }
+     }
+-    
+-    public void testAbort() throws Exception
+-    {
++
++    @Test
++    public void abort() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+         // No description
+         {
+-            FreeStyleProject project = createFreeStyleProject();
++            FreeStyleProject project = j.createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), false, false));
+             project.getBuildersList().add(new SleepBuilder(9999));
+             
+@@ -199,7 +213,7 @@
+             
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+             
+-            assertBuildStatus(Result.ABORTED, build);
++            j.assertBuildStatus(Result.ABORTED, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+@@ -207,7 +221,7 @@
+         
+         // Set description
+         {
+-            FreeStyleProject project = createFreeStyleProject();
++            FreeStyleProject project = j.createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), false, true));
+             project.getBuildersList().add(new SleepBuilder(9999));
+             
+@@ -221,7 +235,7 @@
+             
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+             
+-            assertBuildStatus(Result.ABORTED, build);
++            j.assertBuildStatus(Result.ABORTED, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNotNull(build.getDescription());
+@@ -230,7 +244,7 @@
+         
+         // Not aborted
+         {
+-            FreeStyleProject project = createFreeStyleProject();
++            FreeStyleProject project = j.createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), false, true));
+             project.getBuildersList().add(new SleepBuilder(1000));
+             
+@@ -244,19 +258,19 @@
+             
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+             
+-            assertBuildStatusSuccess(build);
++            j.assertBuildStatusSuccess(build);
+             assertTrue(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+         }
+     }
+-    
+-    public void testFail() throws Exception
+-    {
++
++    @Test
++    public void fail() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+         // No description
+         {
+-            FreeStyleProject project = createFreeStyleProject();
++            FreeStyleProject project = j.createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), true, false));
+             project.getBuildersList().add(new SleepBuilder(9999));
+             
+@@ -270,7 +284,7 @@
+             
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+             
+-            assertBuildStatus(Result.FAILURE, build);
++            j.assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+@@ -278,7 +292,7 @@
+         
+         // Set description
+         {
+-            FreeStyleProject project = createFreeStyleProject();
++            FreeStyleProject project = j.createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), true, true));
+             project.getBuildersList().add(new SleepBuilder(9999));
+             
+@@ -292,7 +306,7 @@
+             
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+             
+-            assertBuildStatus(Result.FAILURE, build);
++            j.assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNotNull(build.getDescription());
+@@ -301,7 +315,7 @@
+         
+         // Not aborted
+         {
+-            FreeStyleProject project = createFreeStyleProject();
++            FreeStyleProject project = j.createFreeStyleProject();
+             project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), true, true));
+             project.getBuildersList().add(new SleepBuilder(1000));
+             
+@@ -315,7 +329,7 @@
+             
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+             
+-            assertBuildStatusSuccess(build);
++            j.assertBuildStatusSuccess(build);
+             assertTrue(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+@@ -323,11 +337,11 @@
+     }
+     
+     @LocalData
+-    public void testMigrationFrom_1_12_2() throws Exception {
++    public void migrationFrom_1_12_2() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+         // Abort
+         {
+-            FreeStyleProject project = jenkins.getItem("AbortWithoutDescription", jenkins, FreeStyleProject.class);
++            FreeStyleProject project = j.jenkins.getItem("AbortWithoutDescription", j.jenkins, FreeStyleProject.class);
+             assertNotNull(project);
+             
+             // assert migration of configuration
+@@ -354,7 +368,7 @@
+             
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+             
+-            assertBuildStatus(Result.ABORTED, build);
++            j.assertBuildStatus(Result.ABORTED, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+@@ -362,7 +376,7 @@
+         
+         // Abort and Set description
+         {
+-            FreeStyleProject project = jenkins.getItem("AbortWithDescription", jenkins, FreeStyleProject.class);
++            FreeStyleProject project = j.jenkins.getItem("AbortWithDescription", j.jenkins, FreeStyleProject.class);
+             assertNotNull(project);
+             
+             // assert migration of configuration
+@@ -389,7 +403,7 @@
+             
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+             
+-            assertBuildStatus(Result.ABORTED, build);
++            j.assertBuildStatus(Result.ABORTED, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNotNull(build.getDescription());
+@@ -398,7 +412,7 @@
+         
+         // Fail
+         {
+-            FreeStyleProject project = jenkins.getItem("FailWithoutDescription", jenkins, FreeStyleProject.class);
++            FreeStyleProject project = j.jenkins.getItem("FailWithoutDescription", j.jenkins, FreeStyleProject.class);
+             assertNotNull(project);
+             
+             // assert migration of configuration
+@@ -425,7 +439,7 @@
+             
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+             
+-            assertBuildStatus(Result.FAILURE, build);
++            j.assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNull(build.getDescription());
+@@ -433,7 +447,7 @@
+         
+         // Fail and Set description
+         {
+-            FreeStyleProject project = jenkins.getItem("FailWithDescription", jenkins, FreeStyleProject.class);
++            FreeStyleProject project = j.jenkins.getItem("FailWithDescription", j.jenkins, FreeStyleProject.class);
+             assertNotNull(project);
+             
+             // assert migration of configuration
+@@ -459,7 +473,7 @@
+             
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+             
+-            assertBuildStatus(Result.FAILURE, build);
++            j.assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+             assertNotNull(build.getDescription());
+@@ -482,10 +496,11 @@
+             return result;
+         }
+     }
+-    
+-    public void testMultipleOperations() throws Exception {
++
++    @Test
++    public void multipleOperations() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+-        FreeStyleProject project = createFreeStyleProject();
++        FreeStyleProject project = j.createFreeStyleProject();
+         TestBuildTimeOutOperation op1 = new TestBuildTimeOutOperation();
+         TestBuildTimeOutOperation op2 = new TestBuildTimeOutOperation();
+         TestBuildTimeOutOperation op3 = new TestBuildTimeOutOperation();
+@@ -508,17 +523,18 @@
+         
+         FreeStyleBuild build = project.scheduleBuild2(0).get();
+         
+-        assertBuildStatusSuccess(build);
++        j.assertBuildStatusSuccess(build);
+         assertTrue(checkBuilder.executed);
+         assertTrue(checkPublisher.executed);
+         assertTrue(op1.executed);
+         assertTrue(op2.executed);
+         assertTrue(op3.executed);
+     }
+-    
+-    public void testFailingOperations() throws Exception {
++
++    @Test
++    public void failingOperations() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+-        FreeStyleProject project = createFreeStyleProject();
++        FreeStyleProject project = j.createFreeStyleProject();
+         TestBuildTimeOutOperation op1 = new TestBuildTimeOutOperation();
+         TestBuildTimeOutOperation op2 = new TestBuildTimeOutOperation(false); // Fail!
+         TestBuildTimeOutOperation op3 = new TestBuildTimeOutOperation();
+@@ -541,16 +557,17 @@
+         
+         FreeStyleBuild build = project.scheduleBuild2(0).get();
+         
+-        assertBuildStatus(Result.FAILURE, build);
++        j.assertBuildStatus(Result.FAILURE, build);
+         assertTrue(checkBuilder.executed);
+         assertTrue(checkPublisher.executed);
+         assertTrue(op1.executed);
+         assertTrue(op2.executed);
+         assertFalse(op3.executed);
+     }
+-    
+-    public void testConfigurationNoOperation() throws Exception {
+-        FreeStyleProject p = createFreeStyleProject();
++
++    @Test
++    public void configurationNoOperation() throws Exception {
++        FreeStyleProject p = j.createFreeStyleProject();
+         p.getBuildWrappersList().add(new BuildTimeoutWrapper(
+                 new AbsoluteTimeOutStrategy(3),
+                 Collections.<BuildTimeOutOperation>emptyList(),
+@@ -562,12 +579,12 @@
+         
+         // reconfigure.
+         // This should preserve configuration.
+-        WebClient wc = createWebClient();
++        WebClient wc = j.createWebClient();
+         HtmlPage page = wc.getPage(p, "configure");
+         HtmlForm form = page.getFormByName("config");
+-        submit(form);
+-        
+-        p = jenkins.getItemByFullName(fullname, FreeStyleProject.class);
++        j.submit(form);
++        
++        p = j.jenkins.getItemByFullName(fullname, FreeStyleProject.class);
+         
+         // assert strategy is preserved.
+         assertEquals(
+@@ -590,9 +607,10 @@
+                 p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getTimeoutEnvVar()
+         );
+     }
+-    
+-    public void testConfigurationSingleOperation() throws Exception {
+-        FreeStyleProject p = createFreeStyleProject();
++
++    @Test
++    public void configurationSingleOperation() throws Exception {
++        FreeStyleProject p = j.createFreeStyleProject();
+         p.getBuildWrappersList().add(new BuildTimeoutWrapper(
+                 new AbsoluteTimeOutStrategy(3),
+                 Arrays.<BuildTimeOutOperation>asList(
+@@ -606,12 +624,12 @@
+         
+         // reconfigure.
+         // This should preserve configuration.
+-        WebClient wc = createWebClient();
++        WebClient wc = j.createWebClient();
+         HtmlPage page = wc.getPage(p, "configure");
+         HtmlForm form = page.getFormByName("config");
+-        submit(form);
+-        
+-        p = jenkins.getItemByFullName(fullname, FreeStyleProject.class);
++        j.submit(form);
++        
++        p = j.jenkins.getItemByFullName(fullname, FreeStyleProject.class);
+         
+         // assert strategy is preserved.
+         assertEquals(
+@@ -645,10 +663,10 @@
+                 p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getTimeoutEnvVar()
+         );
+     }
+-    
+-    
+-    public void testConfigurationMultipleOperation() throws Exception {
+-        FreeStyleProject p = createFreeStyleProject();
++
++    @Test
++    public void configurationMultipleOperation() throws Exception {
++        FreeStyleProject p = j.createFreeStyleProject();
+         p.getBuildWrappersList().add(new BuildTimeoutWrapper(
+                 new AbsoluteTimeOutStrategy(3),
+                 Arrays.asList(
+@@ -663,12 +681,12 @@
+         
+         // reconfigure.
+         // This should preserve configuration.
+-        WebClient wc = createWebClient();
++        WebClient wc = j.createWebClient();
+         HtmlPage page = wc.getPage(p, "configure");
+         HtmlForm form = page.getFormByName("config");
+-        submit(form);
+-        
+-        p = jenkins.getItemByFullName(fullname, FreeStyleProject.class);
++        j.submit(form);
++        
++        p = j.jenkins.getItemByFullName(fullname, FreeStyleProject.class);
+         
+         // assert strategy is preserved.
+         assertEquals(
+@@ -707,14 +725,15 @@
+     }
+     
+     @LocalData
+-    public void testMigrationFrom_1_13() throws Exception {
++    @Test
++    public void migrationFrom_1_13() throws Exception {
+         Thread.sleep(60000);
+-        FreeStyleProject p = jenkins.getItemByFullName("NoActivityTimeOutStrategy", FreeStyleProject.class);
++        FreeStyleProject p = j.jenkins.getItemByFullName("NoActivityTimeOutStrategy", FreeStyleProject.class);
+         assertNotNull(p);
+         NoActivityTimeOutStrategy strategy = (NoActivityTimeOutStrategy)p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getStrategy();
+         assertEquals("5", strategy.getTimeoutSecondsString());
+         assertEquals(5, strategy.getTimeoutSeconds());
+         
+-        assertBuildStatus(Result.ABORTED, p.scheduleBuild2(0).get());
++        j.assertBuildStatus(Result.ABORTED, p.scheduleBuild2(0).get());
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -44,7 +44,7 @@
+ import static org.junit.Assert.assertNull;
+ import static org.junit.Assert.assertTrue;
+ 
+-public class BuildTimeoutWrapperIntegrationTest {
++public class BuildTimeoutWrapperIntegrationTest extends HudsonTestCase {
+ 
+ 	@Rule
+ 	public JenkinsRule j = new JenkinsRule();
+@@ -122,10 +122,10 @@
+ 
+   		assertEquals(expectedEnvVars.size(), envVars.size());
+ 	}
+-
++	
+ 	@Issue("JENKINS-9203")
+ 	@Test
+-	public void issue9203() throws Exception {
++	public void testIssue9203() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+ 		FreeStyleProject project = j.createFreeStyleProject();
+ 		project.getBuildWrappersList().add(new BuildTimeoutWrapper(new QuickBuildTimeOutStrategy(), true, false));
+@@ -195,7 +195,7 @@
+     }
+ 
+     @Test
+-    public void abort() throws Exception {
++    public void testAbort() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+         // No description
+         {
+@@ -236,7 +236,7 @@
+             assertFalse(checkPublisher.executed);
+ 
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+-
++            
+             j.assertBuildStatus(Result.ABORTED, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+@@ -261,7 +261,7 @@
+             assertFalse(checkPublisher.executed);
+ 
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+-
++            
+             j.assertBuildStatusSuccess(build);
+             assertTrue(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+@@ -271,7 +271,7 @@
+     }
+ 
+     @Test
+-    public void fail() throws Exception {
++    public void testFail() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+         // No description
+         {
+@@ -288,7 +288,7 @@
+             assertFalse(checkPublisher.executed);
+ 
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+-
++            
+             j.assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+@@ -312,7 +312,7 @@
+             assertFalse(checkPublisher.executed);
+ 
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+-
++            
+             j.assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+@@ -337,7 +337,7 @@
+             assertFalse(checkPublisher.executed);
+ 
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+-
++            
+             j.assertBuildStatusSuccess(build);
+             assertTrue(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+@@ -377,7 +377,7 @@
+             assertFalse(checkPublisher.executed);
+ 
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+-
++            
+             j.assertBuildStatus(Result.ABORTED, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+@@ -412,7 +412,7 @@
+             assertFalse(checkPublisher.executed);
+ 
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+-
++            
+             j.assertBuildStatus(Result.ABORTED, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+@@ -450,7 +450,7 @@
+             assertFalse(checkPublisher.executed);
+ 
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+-
++            
+             j.assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+@@ -487,7 +487,7 @@
+             assertFalse(checkPublisher.executed);
+ 
+             FreeStyleBuild build = project.scheduleBuild2(0).get();
+-
++            
+             j.assertBuildStatus(Result.FAILURE, build);
+             assertFalse(checkBuilder.executed);
+             assertTrue(checkPublisher.executed);
+@@ -516,7 +516,7 @@
+     }
+ 
+     @Test
+-    public void multipleOperations() throws Exception {
++    public void testMultipleOperations() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+         FreeStyleProject project = j.createFreeStyleProject();
+         TestBuildTimeOutOperation op1 = new TestBuildTimeOutOperation();
+@@ -540,7 +540,7 @@
+         assertFalse(op3.executed);
+ 
+         FreeStyleBuild build = project.scheduleBuild2(0).get();
+-
++        
+         j.assertBuildStatusSuccess(build);
+         assertTrue(checkBuilder.executed);
+         assertTrue(checkPublisher.executed);
+@@ -550,7 +550,7 @@
+     }
+ 
+     @Test
+-    public void failingOperations() throws Exception {
++    public void testFailingOperations() throws Exception {
+         BuildTimeoutWrapper.MINIMUM_TIMEOUT_MILLISECONDS = 0;
+         FreeStyleProject project = j.createFreeStyleProject();
+         TestBuildTimeOutOperation op1 = new TestBuildTimeOutOperation();
+@@ -574,7 +574,7 @@
+         assertFalse(op3.executed);
+ 
+         FreeStyleBuild build = project.scheduleBuild2(0).get();
+-
++        
+         j.assertBuildStatus(Result.FAILURE, build);
+         assertTrue(checkBuilder.executed);
+         assertTrue(checkPublisher.executed);
+@@ -584,7 +584,7 @@
+     }
+ 
+     @Test
+-    public void configurationNoOperation() throws Exception {
++    public void testConfigurationNoOperation() throws Exception {
+         FreeStyleProject p = j.createFreeStyleProject();
+         p.getBuildWrappersList().add(new BuildTimeoutWrapper(
+                 new AbsoluteTimeOutStrategy(3),
+@@ -600,10 +600,11 @@
+         WebClient wc = j.createWebClient();
+         HtmlPage page = wc.getPage(p, "configure");
+         HtmlForm form = page.getFormByName("config");
++
+         j.submit(form);
+-
++        
+         p = j.jenkins.getItemByFullName(fullname, FreeStyleProject.class);
+-
++        
+         // assert strategy is preserved.
+         assertEquals(
+                 AbsoluteTimeOutStrategy.class,
+@@ -627,7 +628,7 @@
+     }
+ 
+     @Test
+-    public void configurationSingleOperation() throws Exception {
++    public void testConfigurationSingleOperation() throws Exception {
+         FreeStyleProject p = j.createFreeStyleProject();
+         p.getBuildWrappersList().add(new BuildTimeoutWrapper(
+                 new AbsoluteTimeOutStrategy(3),
+@@ -645,10 +646,11 @@
+         WebClient wc = j.createWebClient();
+         HtmlPage page = wc.getPage(p, "configure");
+         HtmlForm form = page.getFormByName("config");
++        
+         j.submit(form);
+-
++        
+         p = j.jenkins.getItemByFullName(fullname, FreeStyleProject.class);
+-
++        
+         // assert strategy is preserved.
+         assertEquals(
+                 AbsoluteTimeOutStrategy.class,
+@@ -682,9 +684,8 @@
+         );
+     }
+ 
+-
+     @Test
+-    public void configurationMultipleOperation() throws Exception {
++    public void testConfigurationMultipleOperation() throws Exception {
+         FreeStyleProject p = j.createFreeStyleProject();
+         p.getBuildWrappersList().add(new BuildTimeoutWrapper(
+                 new AbsoluteTimeOutStrategy(3),
+@@ -703,10 +704,11 @@
+         WebClient wc = j.createWebClient();
+         HtmlPage page = wc.getPage(p, "configure");
+         HtmlForm form = page.getFormByName("config");
++
+         j.submit(form);
+-
++        
+         p = j.jenkins.getItemByFullName(fullname, FreeStyleProject.class);
+-
++        
+         // assert strategy is preserved.
+         assertEquals(
+                 AbsoluteTimeOutStrategy.class,
+@@ -752,7 +754,7 @@
+         NoActivityTimeOutStrategy strategy = (NoActivityTimeOutStrategy)p.getBuildWrappersList().get(BuildTimeoutWrapper.class).getStrategy();
+         assertEquals("5", strategy.getTimeoutSecondsString());
+         assertEquals(5, strategy.getTimeoutSeconds());
+-
++        
+         j.assertBuildStatus(Result.ABORTED, p.scheduleBuild2(0).get());
+     }
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== REMAINING 2 FILES (elided at truncation T3; listed by path + merged-vs-dev diffstat) ===
+  src/test/java/hudson/plugins/build_timeout/operations/AbortAndRestartOperationTest.java  (merged-vs-dev +3 -9)
+  src/test/java/hudson/plugins/build_timeout/BuildStepWithTimeoutTest.java  (merged-vs-dev +0 -0)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

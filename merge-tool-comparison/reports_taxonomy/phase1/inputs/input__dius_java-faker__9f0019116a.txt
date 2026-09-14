@@ -1,0 +1,1766 @@
+UNIT dius_java-faker__9f0019116a
+repo: dius_java-faker   merge: 9f0019116a78779121bacbbbc45375a3aae1046b   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T3/cap12  (diffs at -U3; merged bodies omitted; hard-fit to the 30k budget: files capped at 12 largest merged-vs-dev diffs)
+
+=== FILE 1/3: src/main/java/com/github/javafaker/Address.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -1,107 +1,123 @@
+-package com.github.javafaker;
+-
+-public class Address {
+-    private final Faker faker;
+-
+-    protected Address(Faker faker) {
+-        this.faker = faker;
+-    }
+-
+-    public String streetName() {
+-        return faker.fakeValuesService().resolve("address.street_name", this, faker);
+-    }
+-
+-    public String streetAddressNumber() {
+-        return String.valueOf(faker.random().nextInt(1000));
+-    }
+-
+-    public String streetAddress() {
+-        return faker.fakeValuesService().resolve("address.street_address", this, faker);
+-    }
+-
+-    public String streetAddress(boolean includeSecondary) {
+-        String streetAddress = faker.fakeValuesService().resolve("address.street_address", this, faker);
+-        if (includeSecondary) {
+-            streetAddress = streetAddress + " " + secondaryAddress();
+-        }
+-        return streetAddress;
+-    }
+-
+-    public String secondaryAddress() {
+-        return faker.numerify(faker.fakeValuesService().resolve("address.secondary_address", this,faker));
+-    }
+-
+-    public String zipCode() {
+-        return faker.bothify(faker.fakeValuesService().resolve("address.postcode", this,faker));
+-    }
+-
+-    public String zipCodeByState(String stateAbbr) { return faker.fakeValuesService().resolve("address.postcode_by_state." + stateAbbr, this, faker); }
+-
+-    public String streetSuffix() {
+-        return faker.fakeValuesService().resolve("address.street_suffix", this, faker);
+-    }
+-
+-    public String streetPrefix() {
+-        return faker.fakeValuesService().resolve("address.street_prefix", this, faker);
+-    }
+-
+-    public String citySuffix() {
+-        return faker.fakeValuesService().resolve("address.city_suffix", this, faker);
+-    }
+-
+-    public String cityPrefix() {
+-        return faker.fakeValuesService().resolve("address.city_prefix", this, faker);
+-    }
+-
+-    public String city() {
+-        return faker.fakeValuesService().resolve("address.city", this, faker);
+-    }
+-
+-    public String cityName() {
+-        return faker.fakeValuesService().resolve("address.city_name", this, faker);
+-    }
+-
+-    public String state() {
+-        return faker.fakeValuesService().resolve("address.state", this, faker);
+-    }
+-
+-    public String stateAbbr() {
+-        return faker.fakeValuesService().resolve("address.state_abbr", this, faker);
+-    }
+-
+-    public String firstName() {
+-        return faker.name().firstName();
+-    }
+-
+-    public String lastName() {
+-        return faker.name().lastName();
+-    }
+-
+-    public String latitude() {
+-        return String.format("%.8g", (faker.random().nextDouble() * 180) - 90);
+-    }
+-
+-    public String longitude() {
+-        return String.format("%.8g", (faker.random().nextDouble() * 360) - 180);
+-    }
+-
+-    public String timeZone() {
+-        return faker.fakeValuesService().resolve("address.time_zone", this, faker);
+-    }
+-
+-    public String country() {
+-        return faker.fakeValuesService().resolve("address.country", this, faker);
+-    }
+-
+-    public String countryCode() {
+-        return faker.fakeValuesService().resolve("address.country_code", this, faker);
+-    }
+-
+-    public String buildingNumber() {
+-        return faker.numerify(faker.fakeValuesService().resolve("address.building_number", this, faker));
+-    }
+-
+-    public String fullAddress() {
+-        return faker.fakeValuesService().resolve("address.full_address", this, faker);
+-    }
+-}
++package com.github.javafaker;
++
++import com.github.javafaker.service.RandomService;
++
++public class Address {
++    private final Faker faker;
++    private final RandomService random = new RandomService();
++
++    protected Address(Faker faker) {
++        this.faker = faker;
++    }
++
++    public String streetName() {
++        return faker.fakeValuesService().resolve("address.street_name", this, faker);
++    }
++
++    public String streetAddressNumber() {
++        return String.valueOf(faker.random().nextInt(1000));
++    }
++
++    public String streetAddress() {
++        return faker.fakeValuesService().resolve("address.street_address", this, faker);
++    }
++
++    public String streetAddress(boolean includeSecondary) {
++        String streetAddress = faker.fakeValuesService().resolve("address.street_address", this, faker);
++        if (includeSecondary) {
++            streetAddress = streetAddress + " " + secondaryAddress();
++        }
++        return streetAddress;
++    }
++
++    public String secondaryAddress() {
++        return faker.numerify(faker.fakeValuesService().resolve("address.secondary_address", this,faker));
++    }
++
++    public String zipCode() {
++        return faker.bothify(faker.fakeValuesService().resolve("address.postcode", this,faker));
++    }
++
++    public String zipCodeByState(String stateAbbr) { return faker.fakeValuesService().resolve("address.postcode_by_state." + stateAbbr, this, faker); }
++
++    public String streetSuffix() {
++        return faker.fakeValuesService().resolve("address.street_suffix", this, faker);
++    }
++
++    public String streetPrefix() {
++        return faker.fakeValuesService().resolve("address.street_prefix", this, faker);
++    }
++
++    public String citySuffix() {
++        return faker.fakeValuesService().resolve("address.city_suffix", this, faker);
++    }
++
++    public String cityPrefix() {
++        return faker.fakeValuesService().resolve("address.city_prefix", this, faker);
++    }
++
++    public String city() {
++        return faker.fakeValuesService().resolve("address.city", this, faker);
++    }
++
++    public String cityName() {
++        return faker.fakeValuesService().resolve("address.city_name", this, faker);
++    }
++
++    public String state() {
++        return faker.fakeValuesService().resolve("address.state", this, faker);
++    }
++
++    public String stateAbbr() {
++        return faker.fakeValuesService().resolve("address.state_abbr", this, faker);
++    }
++
++    public String firstName() {
++        return faker.name().firstName();
++    }
++
++    public String lastName() {
++        return faker.name().lastName();
++    }
++
++    public String latitude() {
++        return String.format("%.8g", (faker.random().nextDouble() * 180) - 90);
++    }
++
++    public String longitude() {
++        return String.format("%.8g", (faker.random().nextDouble() * 360) - 180);
++    }
++
++    public String timeZone() {
++        return faker.fakeValuesService().resolve("address.time_zone", this, faker);
++    }
++
++    public String country() {
++        return faker.fakeValuesService().resolve("address.country", this, faker);
++    }
++
++    public String countryCode() {
++        return faker.fakeValuesService().resolve("address.country_code", this, faker);
++    }
++
++    public String buildingNumber() {
++        return faker.numerify(faker.fakeValuesService().resolve("address.building_number", this, faker));
++    }
++
++    public String fullAddress() {
++        return faker.fakeValuesService().resolve("address.full_address", this, faker);
++    }
++
++    public String physicalDescription() {
++        // Example: 2 miles east of the Washington and Jefferson intersection
++        String distance = Integer.toString(random.nextInt(1, 5));
++        if (distance.equals("1"))
++        	distance = distance + " mile ";
++        else
++        	distance = distance + " miles ";
++        String direction = faker.expression("#{compass.direction}");
++        String intersection = streetName() + " and " + streetName() + " intersection";
++        return distance + direction + " of the " + intersection; 
++    }
++    
++}
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -35,7 +35,13 @@
+         return faker.bothify(faker.fakeValuesService().resolve("address.postcode", this,faker));
+     }
+ 
+-    public String zipCodeByState(String stateAbbr) { return faker.fakeValuesService().resolve("address.postcode_by_state." + stateAbbr, this, faker); }
++    public String zipCodeByState(String stateAbbr) {
++        return faker.fakeValuesService().resolve("address.postcode_by_state." + stateAbbr, this, faker);
++    }
++
++    public String countyByZipCode(String postCode) {
++        return faker.fakeValuesService().resolve("address.county_by_postcode." + postCode, this, faker);
++    }
+ 
+     public String streetSuffix() {
+         return faker.fakeValuesService().resolve("address.street_suffix", this, faker);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -1,129 +1,129 @@
+-package com.github.javafaker;
+-
+-import com.github.javafaker.service.RandomService;
+-
+-public class Address {
+-    private final Faker faker;
+-    private final RandomService random = new RandomService();
+-
+-    protected Address(Faker faker) {
+-        this.faker = faker;
+-    }
+-
+-    public String streetName() {
+-        return faker.fakeValuesService().resolve("address.street_name", this, faker);
+-    }
+-
+-    public String streetAddressNumber() {
+-        return String.valueOf(faker.random().nextInt(1000));
+-    }
+-
+-    public String streetAddress() {
+-        return faker.fakeValuesService().resolve("address.street_address", this, faker);
+-    }
+-
+-    public String streetAddress(boolean includeSecondary) {
+-        String streetAddress = faker.fakeValuesService().resolve("address.street_address", this, faker);
+-        if (includeSecondary) {
+-            streetAddress = streetAddress + " " + secondaryAddress();
+-        }
+-        return streetAddress;
+-    }
+-
+-    public String secondaryAddress() {
+-        return faker.numerify(faker.fakeValuesService().resolve("address.secondary_address", this,faker));
+-    }
+-
+-    public String zipCode() {
+-        return faker.bothify(faker.fakeValuesService().resolve("address.postcode", this,faker));
+-    }
+-
+-    public String zipCodeByState(String stateAbbr) {
+-        return faker.fakeValuesService().resolve("address.postcode_by_state." + stateAbbr, this, faker);
+-    }
+-
+-    public String countyByZipCode(String postCode) {
+-        return faker.fakeValuesService().resolve("address.county_by_postcode." + postCode, this, faker);
+-    }
+-
+-    public String streetSuffix() {
+-        return faker.fakeValuesService().resolve("address.street_suffix", this, faker);
+-    }
+-
+-    public String streetPrefix() {
+-        return faker.fakeValuesService().resolve("address.street_prefix", this, faker);
+-    }
+-
+-    public String citySuffix() {
+-        return faker.fakeValuesService().resolve("address.city_suffix", this, faker);
+-    }
+-
+-    public String cityPrefix() {
+-        return faker.fakeValuesService().resolve("address.city_prefix", this, faker);
+-    }
+-
+-    public String city() {
+-        return faker.fakeValuesService().resolve("address.city", this, faker);
+-    }
+-
+-    public String cityName() {
+-        return faker.fakeValuesService().resolve("address.city_name", this, faker);
+-    }
+-
+-    public String state() {
+-        return faker.fakeValuesService().resolve("address.state", this, faker);
+-    }
+-
+-    public String stateAbbr() {
+-        return faker.fakeValuesService().resolve("address.state_abbr", this, faker);
+-    }
+-
+-    public String firstName() {
+-        return faker.name().firstName();
+-    }
+-
+-    public String lastName() {
+-        return faker.name().lastName();
+-    }
+-
+-    public String latitude() {
+-        return String.format("%.8g", (faker.random().nextDouble() * 180) - 90);
+-    }
+-
+-    public String longitude() {
+-        return String.format("%.8g", (faker.random().nextDouble() * 360) - 180);
+-    }
+-
+-    public String timeZone() {
+-        return faker.fakeValuesService().resolve("address.time_zone", this, faker);
+-    }
+-
+-    public String country() {
+-        return faker.fakeValuesService().resolve("address.country", this, faker);
+-    }
+-
+-    public String countryCode() {
+-        return faker.fakeValuesService().resolve("address.country_code", this, faker);
+-    }
+-
+-    public String buildingNumber() {
+-        return faker.numerify(faker.fakeValuesService().resolve("address.building_number", this, faker));
+-    }
+-
+-    public String fullAddress() {
+-        return faker.fakeValuesService().resolve("address.full_address", this, faker);
+-    }
+-
+-    public String physicalDescription() {
+-        // Example: 2 miles east of the Washington and Jefferson intersection
+-        String distance = Integer.toString(random.nextInt(1, 5));
+-        if (distance.equals("1"))
+-        	distance = distance + " mile ";
+-        else
+-        	distance = distance + " miles ";
+-        String direction = faker.expression("#{compass.direction}");
+-        String intersection = streetName() + " and " + streetName() + " intersection";
+-        return distance + direction + " of the " + intersection; 
+-    }
+-    
+-}
++package com.github.javafaker;
++
++import com.github.javafaker.service.RandomService;
++
++public class Address {
++    private final Faker faker;
++    private final RandomService random = new RandomService();
++
++    protected Address(Faker faker) {
++        this.faker = faker;
++    }
++
++    public String streetName() {
++        return faker.fakeValuesService().resolve("address.street_name", this, faker);
++    }
++
++    public String streetAddressNumber() {
++        return String.valueOf(faker.random().nextInt(1000));
++    }
++
++    public String streetAddress() {
++        return faker.fakeValuesService().resolve("address.street_address", this, faker);
++    }
++
++    public String streetAddress(boolean includeSecondary) {
++        String streetAddress = faker.fakeValuesService().resolve("address.street_address", this, faker);
++        if (includeSecondary) {
++            streetAddress = streetAddress + " " + secondaryAddress();
++        }
++        return streetAddress;
++    }
++
++    public String secondaryAddress() {
++        return faker.numerify(faker.fakeValuesService().resolve("address.secondary_address", this,faker));
++    }
++
++    public String zipCode() {
++        return faker.bothify(faker.fakeValuesService().resolve("address.postcode", this,faker));
++    }
++
++    public String zipCodeByState(String stateAbbr) {
++        return faker.fakeValuesService().resolve("address.postcode_by_state." + stateAbbr, this, faker);
++    }
++
++    public String countyByZipCode(String postCode) {
++        return faker.fakeValuesService().resolve("address.county_by_postcode." + postCode, this, faker);
++    }
++
++    public String streetSuffix() {
++        return faker.fakeValuesService().resolve("address.street_suffix", this, faker);
++    }
++
++    public String streetPrefix() {
++        return faker.fakeValuesService().resolve("address.street_prefix", this, faker);
++    }
++
++    public String citySuffix() {
++        return faker.fakeValuesService().resolve("address.city_suffix", this, faker);
++    }
++
++    public String cityPrefix() {
++        return faker.fakeValuesService().resolve("address.city_prefix", this, faker);
++    }
++
++    public String city() {
++        return faker.fakeValuesService().resolve("address.city", this, faker);
++    }
++
++    public String cityName() {
++        return faker.fakeValuesService().resolve("address.city_name", this, faker);
++    }
++
++    public String state() {
++        return faker.fakeValuesService().resolve("address.state", this, faker);
++    }
++
++    public String stateAbbr() {
++        return faker.fakeValuesService().resolve("address.state_abbr", this, faker);
++    }
++
++    public String firstName() {
++        return faker.name().firstName();
++    }
++
++    public String lastName() {
++        return faker.name().lastName();
++    }
++
++    public String latitude() {
++        return String.format("%.8g", (faker.random().nextDouble() * 180) - 90);
++    }
++
++    public String longitude() {
++        return String.format("%.8g", (faker.random().nextDouble() * 360) - 180);
++    }
++
++    public String timeZone() {
++        return faker.fakeValuesService().resolve("address.time_zone", this, faker);
++    }
++
++    public String country() {
++        return faker.fakeValuesService().resolve("address.country", this, faker);
++    }
++
++    public String countryCode() {
++        return faker.fakeValuesService().resolve("address.country_code", this, faker);
++    }
++
++    public String buildingNumber() {
++        return faker.numerify(faker.fakeValuesService().resolve("address.building_number", this, faker));
++    }
++
++    public String fullAddress() {
++        return faker.fakeValuesService().resolve("address.full_address", this, faker);
++    }
++
++    public String physicalDescription() {
++        // Example: 2 miles east of the Washington and Jefferson intersection
++        String distance = Integer.toString(random.nextInt(1, 5));
++        if (distance.equals("1"))
++        	distance = distance + " mile ";
++        else
++        	distance = distance + " miles ";
++        String direction = faker.expression("#{compass.direction}");
++        String intersection = streetName() + " and " + streetName() + " intersection";
++        return distance + direction + " of the " + intersection; 
++    }
++    
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/main/java/com/github/javafaker/service/FakeValuesService.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -1,12 +1,4 @@
+ package com.github.javafaker.service;
+-
+-import com.github.javafaker.Address;
+-import com.github.javafaker.Faker;
+-import com.github.javafaker.Name;
+-import com.mifmif.common.regex.Generex;
+-import org.apache.commons.lang3.ClassUtils;
+-import org.apache.commons.lang3.StringUtils;
+-import org.yaml.snakeyaml.Yaml;
+ 
+ import java.io.File;
+ import java.io.InputStream;
+@@ -14,11 +6,26 @@
+ import java.lang.reflect.InvocationTargetException;
+ import java.lang.reflect.Method;
+ import java.net.URL;
+-import java.util.*;
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Locale;
++import java.util.Map;
++import java.util.Set;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ import java.util.regex.Matcher;
+ import java.util.regex.Pattern;
++
++import org.apache.commons.lang3.ClassUtils;
++import org.apache.commons.lang3.StringUtils;
++import org.yaml.snakeyaml.Yaml;
++
++import com.github.javafaker.Address;
++import com.github.javafaker.Faker;
++import com.github.javafaker.Name;
++import com.mifmif.common.regex.Generex;
+ 
+ public class FakeValuesService {
+     private static final Pattern EXPRESSION_PATTERN = Pattern.compile("#\\{([a-z0-9A-Z_.]+)\\s?(?:'([^']+)')?(?:,'([^']+)')*\\}");
+@@ -49,7 +56,6 @@
+      * @param locale
+      * @param randomService
+      */
+-    @SuppressWarnings({"unchecked", "rawtypes"})
+     public FakeValuesService(Locale locale, RandomService randomService) {
+         if (locale == null) {
+             throw new IllegalArgumentException("locale is required");
+@@ -58,7 +64,7 @@
+         locale = normalizeLocale(locale);
+ 
+         final List<Locale> locales = localeChain(locale);
+-        final List<Map<String,Object>> all = new ArrayList(locales.size());
++        final List<Map<String,Object>> all = new ArrayList<Map<String, Object>>();
+         final Set<Locale> loadedLocales = new HashSet<Locale>();
+ 
+         for (final Locale l : locales) {
+@@ -75,7 +81,7 @@
+                 String fileToLoad = filename + "/"  + resourceFolderFile.getName();
+                 final InputStream stream = getClass().getClassLoader().getResourceAsStream(fileToLoad);
+                 if (stream != null) {
+-                    Map map = fakerFromStream(stream, filename.toString());
++                    Map<String, Object> map = fakerFromStream(stream, filename.toString());
+                     all.add(map);
+                     loadedLocales.add(l);
+                 }
+@@ -121,10 +127,11 @@
+     /**
+      * @return the embedded faker: clause from the loaded Yml by the localeName, so .yml > en-us: > faker: 
+      */
+-    protected Map fakerFromStream(InputStream stream, String localeName) {
+-        final Map valuesMap = new Yaml().loadAs(stream, Map.class);
+-        final Map localeBased = (Map) valuesMap.get(localeName);
+-        return (Map) localeBased.get("faker");
++    @SuppressWarnings("unchecked")
++	protected Map<String, Object> fakerFromStream(InputStream stream, String localeName) {
++        final Map<String, Object> valuesMap = new Yaml().loadAs(stream, Map.class);
++        final Map<String, Object> localeBased = ((Map<String, Object>)valuesMap.get(localeName));
++        return (Map<String, Object>) localeBased.get("faker");
+     }
+ 
+     /**
+@@ -166,12 +173,12 @@
+     }
+ 
+     private InputStream findStream(String filename) {
+-        String filenameWithExtension =  "/" + filename + ".yml";
+-        InputStream streamOnClass = getClass().getResourceAsStream(filenameWithExtension);
++    	String filenameWithExtension =  "/" + filename + ".yml";
++        InputStream streamOnClass = this.getClass().getResourceAsStream(filenameWithExtension);
+         if (streamOnClass != null) {
+             return streamOnClass;
+         }
+-        return getClass().getClassLoader().getResourceAsStream(filenameWithExtension);
++        return ClassLoader.getSystemResourceAsStream(filenameWithExtension);
+     }
+ 
+     /**
+@@ -180,8 +187,9 @@
+      * @param key
+      * @return
+      */
+-    public Object fetch(String key) {
+-        List<Object> valuesArray = (List) fetchObject(key);
++    @SuppressWarnings("unchecked")
++	public Object fetch(String key) {
++        List<Object> valuesArray = (List<Object>)fetchObject(key);
+         return valuesArray == null ? null : valuesArray.get(randomService.nextInt(valuesArray.size()));
+     }
+ 
+@@ -227,6 +235,30 @@
+             return (String) o;
+         }
+     }
++    
++    @SuppressWarnings("unchecked")
++    public String safeFetch(String key, String defaultIfNull, int size) {
++        Object o = fetchObject(key);
++        if (o == null) return defaultIfNull;
++        if (o instanceof List) {
++            List<String> values = (List<String>) o;
++            if (values.size() == 0) {
++                return defaultIfNull;
++            }
++            List<String> subset = new ArrayList<String>();
++            for (int i = 0; i < values.size(); i++)
++                if (values.get(i).length() == size && StringUtils.isNoneEmpty(values.get(i)))
++                    subset.add(values.get(i));
++            if (subset.size() == 0) {
++                return defaultIfNull;
++            }
++            return subset.get(randomService.nextInt(subset.size()));
++        } else if (isSlashDelimitedRegex(o.toString())) {
++            return String.format("#{regexify '%s'}", trimRegexSlashes(o.toString()));
++        } else {
++            return (String) o;
++        }
++    }
+ 
+     /**
+      * Return the object selected by the key from yaml file.
+@@ -358,6 +390,15 @@
+         final String expression = safeFetch(key, null);
+         if (expression == null) {
+             throw new RuntimeException(key + " resulted in null expression");
++        }
++
++        return resolveExpression(expression, current, root);
++    }
++    
++    public String resolve(String key, Object current, Faker root, int size) {
++        final String expression = safeFetch(key, null, size);
++        if (expression == null) {
++            throw new RuntimeException(key + " with size " + size + " resulted in null expression");
+         }
+ 
+         return resolveExpression(expression, current, root);
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -9,12 +9,16 @@
+ import org.yaml.snakeyaml.Yaml;
+ 
+ import java.io.File;
++import java.io.IOException;
+ import java.io.InputStream;
+ import java.lang.reflect.Constructor;
+ import java.lang.reflect.InvocationTargetException;
+ import java.lang.reflect.Method;
++import java.net.JarURLConnection;
+ import java.net.URL;
+ import java.util.*;
++import java.util.jar.JarEntry;
++import java.util.jar.JarFile;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ import java.util.regex.Matcher;
+@@ -24,28 +28,29 @@
+     private static final Pattern EXPRESSION_PATTERN = Pattern.compile("#\\{([a-z0-9A-Z_.]+)\\s?(?:'([^']+)')?(?:,'([^']+)')*\\}");
+ 
+     private final Logger log = Logger.getLogger("faker");
+-    
++
+     private final List<Map<String, Object>> fakeValuesMaps;
+-    
++
+     private final RandomService randomService;
+ 
+     /**
+      * <p>
+-     *     Resolves YAML file using the most specific path first based on language and country code.
+-     *      'en_US' would resolve in the following order:
+-     *      <ol>
+-     *          <li>/en-US.yml</li>
+-     *          <li>/en.yml</li>
+-     *      </ol>
+-     *      The search is case-insensitive, so the following will all resolve correctly.  Also, either a hyphen or
+-     *      an underscore can be used when constructing a {@link Locale} instance.  This is legacy behavior and not
+-     *      condoned, but it will work.
+-     *      <ul>
+-     *          <li>EN_US</li>
+-     *          <li>En-Us</li>
+-     *          <li>eN_uS</li>
+-     *      </ul>
++     * Resolves YAML file using the most specific path first based on language and country code.
++     * 'en_US' would resolve in the following order:
++     * <ol>
++     * <li>/en-US.yml</li>
++     * <li>/en.yml</li>
++     * </ol>
++     * The search is case-insensitive, so the following will all resolve correctly.  Also, either a hyphen or
++     * an underscore can be used when constructing a {@link Locale} instance.  This is legacy behavior and not
++     * condoned, but it will work.
++     * <ul>
++     * <li>EN_US</li>
++     * <li>En-Us</li>
++     * <li>eN_uS</li>
++     * </ul>
+      * </p>
++     *
+      * @param locale
+      * @param randomService
+      */
+@@ -58,7 +63,7 @@
+         locale = normalizeLocale(locale);
+ 
+         final List<Locale> locales = localeChain(locale);
+-        final List<Map<String,Object>> all = new ArrayList(locales.size());
++        final List<Map<String, Object>> all = new ArrayList(locales.size());
+         final Set<Locale> loadedLocales = new HashSet<Locale>();
+ 
+         for (final Locale l : locales) {
+@@ -67,24 +72,27 @@
+                 filename.append("-").append(l.getCountry());
+             }
+ 
+-
+-            // list the files on the classpath... so if we pass in "en"
+-            // it will look for a folder "en" and list all the files underneath it
+-            File[] files = listFilesInDirectoryOnClasspath(filename.toString());
+-            for (File resourceFolderFile : files) {
+-                String fileToLoad = filename + "/"  + resourceFolderFile.getName();
+-                final InputStream stream = getClass().getClassLoader().getResourceAsStream(fileToLoad);
++            // need to treat jar files differently
++            if (isJarFile(filename.toString())) {
++                loadFromJarFile(all, loadedLocales, l, filename);
++            } else {
++                // list the files on the classpath... so if we pass in "en"
++                // it will look for a folder "en" and list all the files underneath it
++                File[] files = listFilesInDirectoryOnClasspath(filename.toString());
++                for (File resourceFolderFile : files) {
++                    String fileToLoad = filename + "/" + resourceFolderFile.getName();
++                    final InputStream stream = getClass().getClassLoader().getResourceAsStream(fileToLoad);
++                    if (stream != null) {
++                        Map map = fakerFromStream(stream, filename.toString());
++                        all.add(map);
++                        loadedLocales.add(l);
++                    }
++                }
++                final InputStream stream = findStream(filename.toString());
+                 if (stream != null) {
+-                    Map map = fakerFromStream(stream, filename.toString());
+-                    all.add(map);
++                    all.add(fakerFromStream(stream, filename.toString()));
+                     loadedLocales.add(l);
+                 }
+-            }
+-
+-            final InputStream stream = findStream(filename.toString());
+-            if (stream != null) {
+-                all.add(fakerFromStream(stream, filename.toString()));
+-                loadedLocales.add(l);
+             }
+         }
+ 
+@@ -101,10 +109,44 @@
+         this.fakeValuesMaps = Collections.unmodifiableList(all);
+     }
+ 
++    private void loadFromJarFile(List<Map<String, Object>> all, Set<Locale> loadedLocales, Locale locale, StringBuilder filename) {
++        try {
++            ClassLoader loader = getClass().getClassLoader();
++            URL url = loader.getResource(filename.toString());
++            JarURLConnection connection = (JarURLConnection) url.openConnection();
++            JarFile jarFile = connection.getJarFile();
++            Enumeration<JarEntry> entries = jarFile.entries();
++            while (entries.hasMoreElements()) {
++                JarEntry jarEntry = entries.nextElement();
++                String jarEntryName = jarEntry.getName();
++                if (jarEntryName.contains(filename.toString() + "/") && jarEntryName.endsWith(".yml")) {
++                    InputStream inputStream = jarFile.getInputStream(jarEntry);
++                    if (inputStream != null) {
++                        Map map = fakerFromStream(inputStream, filename.toString());
++                        all.add(map);
++                        loadedLocales.add(locale);
++                    }
++                }
++            }
++        } catch (IOException e) {
++            throw new LocaleDoesNotExistException(filename.toString());
++        }
++    }
++
++    private boolean isJarFile(String fileName) {
++        ClassLoader loader = getClass().getClassLoader();
++        URL url = loader.getResource(fileName);
++        return url != null && url.getProtocol().equals("jar");
++    }
++
+     private File[] listFilesInDirectoryOnClasspath(String dir) {
+         ClassLoader loader = getClass().getClassLoader();
+         URL url = loader.getResource(dir);
+-        return (url != null) ? new File(url.getPath()).listFiles() : new File[0];
++        if (url == null) {
++            return new File[0];
++        } else {
++            return new File(url.getPath()).listFiles();
++        }
+     }
+ 
+     /**
+@@ -119,7 +161,7 @@
+     }
+ 
+     /**
+-     * @return the embedded faker: clause from the loaded Yml by the localeName, so .yml > en-us: > faker: 
++     * @return the embedded faker: clause from the loaded Yml by the localeName, so .yml > en-us: > faker:
+      */
+     protected Map fakerFromStream(InputStream stream, String localeName) {
+         final Map valuesMap = new Yaml().loadAs(stream, Map.class);
+@@ -129,9 +171,9 @@
+ 
+     /**
+      * Convert the specified locale into a chain of locales used for message resolution. For example:
+-     * 
+-     * {@link Locale#FRANCE} (fr_FR) -> [ fr_FR, fr, en ]
+-     * 
++     * <p>
++     * {@link Locale#FRANCE} (fr_FR) -> [ fr_FR, anotherTest, en ]
++     *
+      * @return a list of {@link Locale} instances
+      */
+     protected List<Locale> localeChain(Locale from) {
+@@ -149,24 +191,24 @@
+         chain.add(Locale.ENGLISH); // default
+         return chain;
+     }
+-   
++
+     /**
+      * @return a proper {@link Locale} instance with language and country code set regardless of how
+-     *         it was instantiated.  new Locale("pt-br") will be normalized to a locale constructed
+-     *         with new Locale("pt","BR").
++     * it was instantiated.  new Locale("pt-br") will be normalized to a locale constructed
++     * with new Locale("pt","BR").
+      */
+     private Locale normalizeLocale(Locale locale) {
+         final String[] parts = locale.toString().split("[-\\_]");
+-        
++
+         if (parts.length == 1) {
+             return new Locale(parts[0]);
+         } else {
+-            return new Locale(parts[0],parts[1]);
++            return new Locale(parts[0], parts[1]);
+         }
+     }
+ 
+     private InputStream findStream(String filename) {
+-        String filenameWithExtension =  "/" + filename + ".yml";
++        String filenameWithExtension = "/" + filename + ".yml";
+         InputStream streamOnClass = getClass().getResourceAsStream(filenameWithExtension);
+         if (streamOnClass != null) {
+             return streamOnClass;
+@@ -286,7 +328,7 @@
+     }
+ 
+     /**
+-     * Applies both a {@link #numerify(String)} and a {@link #letterify(String,boolean)}
++     * Applies both a {@link #numerify(String)} and a {@link #letterify(String, boolean)}
+      * over the incoming string.
+      *
+      * @param string
+@@ -326,7 +368,7 @@
+      * For example, the string "12??34" could be replaced with a string like "12AB34".
+      *
+      * @param letterString
+-     * @param isUpper specifies whether or not letters should be upper case
++     * @param isUpper      specifies whether or not letters should be upper case
+      * @return
+      */
+     public String letterify(String letterString, boolean isUpper) {
+@@ -348,11 +390,10 @@
+ 
+     /**
+      * Resolves a key to a method on an object.
+-     *
++     * <p>
+      * #{hello} with result in a method call to current.hello();
+-     *
++     * <p>
+      * #{Person.hello_someone} will result in a method call to person.helloSomeone();
+-     *
+      */
+     public String resolve(String key, Object current, Faker root) {
+         final String expression = safeFetch(key, null);
+@@ -365,6 +406,7 @@
+ 
+     /**
+      * resolves an expression using the current faker.
++     *
+      * @param expression
+      * @param faker
+      * @return
+@@ -372,22 +414,23 @@
+     public String expression(String expression, Faker faker) {
+         return resolveExpression(expression, null, faker);
+     }
++
+     /**
+      * <p>processes a expression in the style #{X.y} using the current objects as the 'current' location
+      * within the yml file (or the {@link Faker} object hierarchy as it were).
+      * </p>
+      * <p>
+-     *     #{Address.streetName} would get resolved to {@link Faker#address()}'s {@link Address#streetName()}
++     * #{Address.streetName} would get resolved to {@link Faker#address()}'s {@link Address#streetName()}
+      * </p>
+      * <p>
+-     *     #{address.street} would get resolved to the YAML > locale: faker: address: street:
++     * #{address.street} would get resolved to the YAML > locale: faker: address: street:
+      * </p>
+      * <p>
+-     *     Combinations are supported as well: "#{x} #{y}"
++     * Combinations are supported as well: "#{x} #{y}"
+      * </p>
+      * <p>
+-     *     Recursive templates are supported.  if "#{x}" resolves to "#{Address.streetName}" then "#{x}" resolves to
+-     *     {@link Faker#address()}'s {@link Address#streetName()}.
++     * Recursive templates are supported.  if "#{x}" resolves to "#{Address.streetName}" then "#{x}" resolves to
++     * {@link Faker#address()}'s {@link Address#streetName()}.
+      * </p>
+      */
+     protected String resolveExpression(String expression, Object current, Faker root) {
+@@ -398,10 +441,10 @@
+             final String escapedDirective = matcher.group(0);
+             final String directive = matcher.group(1);
+             List<String> args = new ArrayList<String>();
+-            for (int i=2;i < matcher.groupCount()+1 && matcher.group(i) != null;i++) {
++            for (int i = 2; i < matcher.groupCount() + 1 && matcher.group(i) != null; i++) {
+                 args.add(matcher.group(i));
+             }
+-            
++
+             // resolve the expression and reprocess it to handle recursive templates
+             String resolved = resolveExpression(directive, args, current, root);
+             if (resolved == null) {
+@@ -417,20 +460,21 @@
+     /**
+      * <h1>Search Order</h1>
+      * <ul>
+-     *     <li>Search for methods on the current object</li>
+-     *     <li>local keys in Yaml File</li>
+-     *     <li>Search for methods on faker child objects</li>
+-     *     <li>Search for keys in yaml file by transforming object reference to yaml reference</li>
++     * <li>Search for methods on the current object</li>
++     * <li>local keys in Yaml File</li>
++     * <li>Search for methods on faker child objects</li>
++     * <li>Search for keys in yaml file by transforming object reference to yaml reference</li>
+      * </ul>
++     *
+      * @return null if unable to resolve
+      */
+     private String resolveExpression(String directive, List<String> args, Object current, Faker root) {
+         // name.name (resolve locally)
+         // Name.first_name (resolve to faker.name().firstName())
+-        final String simpleDirective = (isDotDirective(directive) || current == null) 
+-                ? directive 
++        final String simpleDirective = (isDotDirective(directive) || current == null)
++                ? directive
+                 : classNameToYamlName(current) + "." + directive;
+-        
++
+         String resolved = null;
+         // resolve method references on CURRENT object like #{number_between '1','10'} on Number or
+         // #{ssn_valid} on IdNumber
+@@ -439,7 +483,7 @@
+         }
+ 
+         // simple fetch of a value from the yaml file. the directive may have been mutated
+-        // such that if the current yml object is car: and directive is #{wheel} then 
++        // such that if the current yml object is car: and directive is #{wheel} then
+         // car.wheel will be looked up in the YAML file.
+         if (resolved == null) {
+             resolved = safeFetch(simpleDirective, null);
+@@ -454,16 +498,16 @@
+         if (resolved == null && isDotDirective(directive)) {
+             resolved = resolveFakerObjectAndMethod(root, directive, args);
+         }
+-        
++
+         // last ditch effort.  Due to Ruby's dynamic nature, something like 'Address.street_title' will resolve
+-        // because 'street_title' is a dynamic method on the Address object.  We can't do this in Java so we go 
++        // because 'street_title' is a dynamic method on the Address object.  We can't do this in Java so we go
+         // thru the normal resolution above, but if we will can't resolve it, we once again do a 'safeFetch' as we
+         // did first but FIRST we change the Object reference Class.method_name with a yml style internal refernce ->
+         // class.method_name (lowercase)
+         if (resolved == null && isDotDirective(directive)) {
+             resolved = safeFetch(javaNameToYamlName(simpleDirective), null);
+         }
+-        
++
+         return resolved;
+     }
+ 
+@@ -478,6 +522,7 @@
+ 
+     /**
+      * Given a {@code slashDelimitedRegex} such as {@code /[ab]/}, removes the slashes and returns only {@code [ab]}
++     *
+      * @param slashDelimitedRegex a non null slash delimited regex (ex. {@code /[ab]/})
+      * @return the regex without the slashes (ex. {@code [ab]})
+      */
+@@ -490,21 +535,20 @@
+     }
+ 
+     /**
+-     * @return a yaml style name from the classname of the supplied object (PhoneNumber => phone_number) 
++     * @return a yaml style name from the classname of the supplied object (PhoneNumber => phone_number)
+      */
+     private String classNameToYamlName(Object current) {
+         return javaNameToYamlName(current.getClass().getSimpleName());
+     }
+ 
+     /**
+-     * @return a yaml style name like 'phone_number' from a java style name like 'PhoneNumber' 
++     * @return a yaml style name like 'phone_number' from a java style name like 'PhoneNumber'
+      */
+     private String javaNameToYamlName(String expression) {
+         return expression.replaceAll("([A-Z])", "_$1")
+                 .substring(1)
+                 .toLowerCase();
+     }
+-
+ 
+ 
+     /**
+@@ -526,15 +570,16 @@
+             return null;
+         }
+     }
+-    
++
+     /**
+      * Accepts a {@link Faker} instance and a name.firstName style 'key' which is resolved to the return value of:
+      * {@link Faker#name()}'s {@link Name#firstName()} method.
++     *
+      * @throws RuntimeException if there's a problem invoking the method or it doesn't exist.
+      */
+     private String resolveFakerObjectAndMethod(Faker faker, String key, List<String> args) {
+         final String[] classAndMethod = key.split("\\.", 2);
+-        
++
+         try {
+             String fakerMethodName = classAndMethod[0].replaceAll("_", "");
+             MethodAndCoercedArgs fakerAccessor = accessor(faker, fakerMethodName, Collections.<String>emptyList());
+@@ -558,15 +603,15 @@
+         }
+     }
+ 
+-    
++
+     /**
+      * Find an accessor by name ignoring case.
+      */
+     private MethodAndCoercedArgs accessor(Object onObject, String name, List<String> args) {
+         log.log(Level.FINE, "Find accessor named " + name + " on " + onObject.getClass().getSimpleName() + " with args " + args);
+-        
++
+         for (Method m : onObject.getClass().getMethods()) {
+-            if (m.getName().equalsIgnoreCase(name) 
++            if (m.getName().equalsIgnoreCase(name)
+                     && m.getParameterTypes().length == args.size()) {
+                 final List<Object> coercedArguments = coerceArguments(m, args);
+                 if (coercedArguments != null) {
+@@ -584,6 +629,7 @@
+     /**
+      * Coerce arguments in <em>args</em> into the appropriate types (if possible) for the parameter arguments
+      * to <em>accessor</em>.
++     *
+      * @return array of coerced values if successful, null otherwise
+      * @throws Exception if unable to coerce
+      */
+@@ -604,7 +650,7 @@
+         }
+         return coerced;
+     }
+-    
++
+     private String string(Object obj) {
+         return (obj == null) ? null : obj.toString();
+     }
+@@ -617,14 +663,14 @@
+     private class MethodAndCoercedArgs {
+ 
+         private final Method method;
+-        
++
+         private final List<Object> coerced;
+ 
+         private MethodAndCoercedArgs(Method m, List<Object> coerced) {
+             this.method = requireNonNull(m, "method cannot be null");
+             this.coerced = requireNonNull(coerced, "coerced arguments cannot be null");
+         }
+-        
++
+         private Object invoke(Object on) throws InvocationTargetException, IllegalAccessException {
+             return method.invoke(on, coerced.toArray());
+         }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -1,33 +1,36 @@
+ package com.github.javafaker.service;
+ 
+ import java.io.File;
++import java.io.IOException;
+ import java.io.InputStream;
+ import java.lang.reflect.Constructor;
+ import java.lang.reflect.InvocationTargetException;
+ import java.lang.reflect.Method;
++import java.net.JarURLConnection;
+ import java.net.URL;
+ import java.util.ArrayList;
+ import java.util.Collections;
++import java.util.Enumeration;
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.Map;
+ import java.util.Set;
++import java.util.jar.JarEntry;
++import java.util.jar.JarFile;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ import java.util.regex.Matcher;
+ import java.util.regex.Pattern;
++
+ import org.apache.commons.lang3.ClassUtils;
+ import org.apache.commons.lang3.StringUtils;
+ import org.yaml.snakeyaml.Yaml;
++
+ import com.github.javafaker.Address;
+ import com.github.javafaker.Faker;
+ import com.github.javafaker.Name;
+ import com.mifmif.common.regex.Generex;
+-import java.io.IOException;
+-import java.net.JarURLConnection;
+-import java.util.jar.JarEntry;
+-import java.util.jar.JarFile;
+ 
+ public class FakeValuesService {
+     private static final Pattern EXPRESSION_PATTERN = Pattern.compile("#\\{([a-z0-9A-Z_.]+)\\s?(?:'([^']+)')?(?:,'([^']+)')*\\}");
+@@ -67,7 +70,7 @@
+         locale = normalizeLocale(locale);
+ 
+         final List<Locale> locales = localeChain(locale);
+-        final List<Map<String, Object>> all = new ArrayList<Map<String, Object>>();
++        final List<Map<String, Object>> all = new ArrayList<Map<String, Object>>(locales.size());
+         final Set<Locale> loadedLocales = new HashSet<Locale>();
+ 
+         for (final Locale l : locales) {
+@@ -87,8 +90,7 @@
+                     String fileToLoad = filename + "/" + resourceFolderFile.getName();
+                     final InputStream stream = getClass().getClassLoader().getResourceAsStream(fileToLoad);
+                     if (stream != null) {
+-                        Map<String, Object> map = fakerFromStream(stream, filename.toString());
+-                        all.add(map);
++                        all.add(fakerFromStream(stream, filename.toString()));
+                         loadedLocales.add(l);
+                     }
+                 }
+@@ -126,8 +128,7 @@
+                 if (jarEntryName.contains(filename.toString() + "/") && jarEntryName.endsWith(".yml")) {
+                     InputStream inputStream = jarFile.getInputStream(jarEntry);
+                     if (inputStream != null) {
+-                        Map map = fakerFromStream(inputStream, filename.toString());
+-                        all.add(map);
++                        all.add(fakerFromStream(inputStream, filename.toString()));
+                         loadedLocales.add(locale);
+                     }
+                 }
+@@ -213,8 +214,8 @@
+     }
+ 
+     private InputStream findStream(String filename) {
+-    	String filenameWithExtension = "/" + filename + ".yml";
+-        InputStream streamOnClass = this.getClass().getResourceAsStream(filenameWithExtension);
++        String filenameWithExtension = "/" + filename + ".yml";
++        InputStream streamOnClass = getClass().getResourceAsStream(filenameWithExtension);
+         if (streamOnClass != null) {
+             return streamOnClass;
+         }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/test/java/com/github/javafaker/AddressTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -1,109 +1,125 @@
+-package com.github.javafaker;
+-
+-import org.junit.Test;
+-
+-import java.text.DecimalFormatSymbols;
+-import java.util.Locale;
+-import java.util.Random;
+-
+-import static com.github.javafaker.matchers.IsANumber.isANumber;
+-import static com.github.javafaker.matchers.MatchesRegularExpression.matchesRegularExpression;
+-import static org.hamcrest.Matchers.*;
+-import static org.junit.Assert.assertThat;
+-
+-public class AddressTest extends AbstractFakerTest {
+-
+-    private static final char decimalSeparator = new DecimalFormatSymbols().getDecimalSeparator();
+-
+-    @Test
+-    public void testStreetAddressStartsWithNumber() {
+-        final String streetAddressNumber = faker.address().streetAddress();
+-        assertThat(streetAddressNumber, matchesRegularExpression("[0-9]+ .+"));
+-    }
+-
+-    @Test
+-    public void testStreetAddressIsANumber() {
+-        final String streetAddressNumber = faker.address().streetAddressNumber();
+-        assertThat(streetAddressNumber, matchesRegularExpression("[0-9]+"));
+-    }
+-
+-    @Test
+-    public void testLatitude() {
+-        String latStr;
+-        Double lat;
+-        for (int i = 0; i < 100; i++) {
+-            latStr = faker.address().latitude().replace(decimalSeparator, '.');
+-            assertThat(latStr, isANumber());
+-            lat = new Double(latStr);
+-            assertThat("Latitude is less then -90", lat, greaterThanOrEqualTo(-90.0));
+-            assertThat("Latitude is greater than 90", lat, lessThanOrEqualTo(90.0));
+-        }
+-    }
+-
+-    @Test
+-    public void testLongitude() {
+-        String longStr;
+-        Double lon;
+-        for (int i = 0; i < 100; i++) {
+-            longStr = faker.address().longitude().replace(decimalSeparator, '.');
+-            assertThat(longStr, isANumber());
+-            lon = new Double(longStr);
+-            assertThat("Longitude is less then -180", lon, greaterThanOrEqualTo(-180.0));
+-            assertThat("Longitude is greater than 180", lon, lessThanOrEqualTo(180.0));
+-        }
+-    }
+-
+-    @Test
+-    public void testTimeZone() {
+-        assertThat(faker.address().timeZone(), matchesRegularExpression("[A-Za-z_]+/[A-Za-z_]+[/A-Za-z_]*"));
+-    }
+-
+-    @Test
+-    public void testState() {
+-        assertThat(faker.address().state(), matchesRegularExpression("[A-Za-z ]+"));
+-    }
+-
+-    @Test
+-    public void testCity() {
+-        assertThat(faker.address().city(), matchesRegularExpression("[A-Za-z'() ]+"));
+-    }
+-
+-    @Test
+-    public void testCityName() {
+-        assertThat(faker.address().cityName(), matchesRegularExpression("[A-Za-z'() ]+"));
+-    }
+-
+-    @Test
+-    public void testCountry() {
+-        assertThat(faker.address().country(), matchesRegularExpression("[A-Za-z\\- &.,'()\\d]+"));
+-    }
+-
+-    @Test
+-    public void testCountryCode() {
+-        assertThat(faker.address().countryCode(), matchesRegularExpression("[A-Za-z ]+"));
+-    }
+-
+-    @Test
+-    public void testStreetAddressIncludeSecondary() {
+-        assertThat(faker.address().streetAddress(true), not(isEmptyString()));
+-    }
+-
+-    @Test
+-    public void testCityWithLocaleFranceAndSeed() {
+-        long seed = 1L;
+-        Faker firstFaker = new Faker(Locale.FRANCE, new Random(seed));
+-        Faker secondFaker = new Faker(Locale.FRANCE, new Random(seed));
+-        assertThat(firstFaker.address().city(), is(secondFaker.address().city()));
+-    }
+-
+-    @Test
+-    public void testFullAddress() {
+-        assertThat(faker.address().fullAddress(), not(isEmptyOrNullString()));
+-    }
+-
+-    @Test
+-    public void testZipCodeByState() {
+-        faker = new Faker(new Locale("en-US"));
+-        assertThat(faker.address().zipCodeByState(faker.address().stateAbbr()), matchesRegularExpression("[0-9]{5}"));
+-    }
+-}
++package com.github.javafaker;
++
++import static com.github.javafaker.matchers.IsANumber.isANumber;
++import static com.github.javafaker.matchers.MatchesRegularExpression.matchesRegularExpression;
++import static org.hamcrest.MatcherAssert.assertThat;
++import static org.hamcrest.Matchers.emptyOrNullString;
++import static org.hamcrest.Matchers.greaterThanOrEqualTo;
++import static org.hamcrest.Matchers.is;
++import static org.hamcrest.Matchers.emptyString;
++import static org.hamcrest.Matchers.lessThanOrEqualTo;
++import static org.hamcrest.Matchers.not;
++
++import java.text.DecimalFormatSymbols;
++import java.util.Locale;
++import java.util.Random;
++
++import org.junit.Test;
++
++public class AddressTest extends AbstractFakerTest {
++    private final static String EXPRESSION = "(north|east|west|south)+\\s{0,1}"
++        + "((by|-)\\s{0,1}(north|east|west|south)+){0,1}";
++    private static final char decimalSeparator = new DecimalFormatSymbols().getDecimalSeparator();
++
++    @Test
++    public void testStreetAddressStartsWithNumber() {
++        final String streetAddressNumber = faker.address().streetAddress();
++        assertThat(streetAddressNumber, matchesRegularExpression("[0-9]+ .+"));
++    }
++
++    @Test
++    public void testStreetAddressIsANumber() {
++        final String streetAddressNumber = faker.address().streetAddressNumber();
++        assertThat(streetAddressNumber, matchesRegularExpression("[0-9]+"));
++    }
++
++    @Test
++    public void testLatitude() {
++        String latStr;
++        Double lat;
++        for (int i = 0; i < 100; i++) {
++            latStr = faker.address().latitude().replace(decimalSeparator, '.');
++            assertThat(latStr, isANumber());
++            lat = Double.parseDouble(latStr);
++            assertThat("Latitude is less then -90", lat, greaterThanOrEqualTo(-90.0));
++            assertThat("Latitude is greater than 90", lat, lessThanOrEqualTo(90.0));
++        }
++    }
++
++    @Test
++    public void testLongitude() {
++        String longStr;
++        Double lon;
++        for (int i = 0; i < 100; i++) {
++            longStr = faker.address().longitude().replace(decimalSeparator, '.');
++            assertThat(longStr, isANumber());
++            lon = Double.parseDouble(longStr);
++            assertThat("Longitude is less then -180", lon, greaterThanOrEqualTo(-180.0));
++            assertThat("Longitude is greater than 180", lon, lessThanOrEqualTo(180.0));
++        }
++    }
++
++    @Test
++    public void testTimeZone() {
++        assertThat(faker.address().timeZone(), matchesRegularExpression("[A-Za-z_]+/[A-Za-z_]+[/A-Za-z_]*"));
++    }
++
++    @Test
++    public void testState() {
++        assertThat(faker.address().state(), matchesRegularExpression("[A-Za-z ]+"));
++    }
++
++    @Test
++    public void testCity() {
++        assertThat(faker.address().city(), matchesRegularExpression("[A-Za-z'() ]+"));
++    }
++
++    @Test
++    public void testCityName() {
++        assertThat(faker.address().cityName(), matchesRegularExpression("[A-Za-z'() ]+"));
++    }
++
++    @Test
++    public void testCountry() {
++        assertThat(faker.address().country(), matchesRegularExpression("[A-Za-z\\- &.,'()\\d]+"));
++    }
++
++    @Test
++    public void testCountryCode() {
++        assertThat(faker.address().countryCode(), matchesRegularExpression("[A-Za-z ]+"));
++    }
++
++    @Test
++    public void testStreetAddressIncludeSecondary() {
++        assertThat(faker.address().streetAddress(true), not(emptyString()));
++    }
++
++    @Test
++    public void testCityWithLocaleFranceAndSeed() {
++        long seed = 1L;
++        Faker firstFaker = new Faker(Locale.FRANCE, new Random(seed));
++        Faker secondFaker = new Faker(Locale.FRANCE, new Random(seed));
++        assertThat(firstFaker.address().city(), is(secondFaker.address().city()));
++    }
++
++    @Test
++    public void testFullAddress() {
++        assertThat(faker.address().fullAddress(), not(emptyOrNullString()));
++    }
++
++    @Test
++    public void testZipCodeByState() {
++        faker = new Faker(new Locale("en-US"));
++        assertThat(faker.address().zipCodeByState(faker.address().stateAbbr()), matchesRegularExpression("[0-9]{5}"));
++    }
++    
++    @Test
++    public void testPhysicalDescription() {
++    	String physicalDescription = faker.address().physicalDescription();
++    	System.out.println("Physical Description: \"" + physicalDescription + "\"");
++        assertThat(physicalDescription, 
++            matchesRegularExpression("[1-5] mile(s){0,1} " + EXPRESSION 
++                + " of the \\w+ \\w+ and \\w+ \\w+ intersection"));
++    }
++    
++}
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -106,4 +106,10 @@
+         faker = new Faker(new Locale("en-US"));
+         assertThat(faker.address().zipCodeByState(faker.address().stateAbbr()), matchesRegularExpression("[0-9]{5}"));
+     }
++
++    @Test
++    public void testCountyByZipCode() {
++        faker = new Faker(new Locale("en-US"));
++        assertThat(faker.address().countyByZipCode(faker.address().zipCodeByState(faker.address().stateAbbr())), not(isEmptyOrNullString()));
++    }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -1,130 +1,131 @@
+-package com.github.javafaker;
+-
+-import static com.github.javafaker.matchers.IsANumber.isANumber;
+-import static com.github.javafaker.matchers.MatchesRegularExpression.matchesRegularExpression;
+-import static org.hamcrest.MatcherAssert.assertThat;
+-import static org.hamcrest.Matchers.emptyOrNullString;
+-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+-import static org.hamcrest.Matchers.is;
+-import static org.hamcrest.Matchers.emptyString;
+-import static org.hamcrest.Matchers.lessThanOrEqualTo;
+-import static org.hamcrest.Matchers.not;
+-
+-import java.text.DecimalFormatSymbols;
+-import java.util.Locale;
+-import java.util.Random;
+-
+-import org.junit.Test;
+-
+-public class AddressTest extends AbstractFakerTest {
+-    private final static String EXPRESSION = "(north|east|west|south)+\\s{0,1}"
+-        + "((by|-)\\s{0,1}(north|east|west|south)+){0,1}";
+-    private static final char decimalSeparator = new DecimalFormatSymbols().getDecimalSeparator();
+-
+-    @Test
+-    public void testStreetAddressStartsWithNumber() {
+-        final String streetAddressNumber = faker.address().streetAddress();
+-        assertThat(streetAddressNumber, matchesRegularExpression("[0-9]+ .+"));
+-    }
+-
+-    @Test
+-    public void testStreetAddressIsANumber() {
+-        final String streetAddressNumber = faker.address().streetAddressNumber();
+-        assertThat(streetAddressNumber, matchesRegularExpression("[0-9]+"));
+-    }
+-
+-    @Test
+-    public void testLatitude() {
+-        String latStr;
+-        Double lat;
+-        for (int i = 0; i < 100; i++) {
+-            latStr = faker.address().latitude().replace(decimalSeparator, '.');
+-            assertThat(latStr, isANumber());
+-            lat = Double.parseDouble(latStr);
+-            assertThat("Latitude is less then -90", lat, greaterThanOrEqualTo(-90.0));
+-            assertThat("Latitude is greater than 90", lat, lessThanOrEqualTo(90.0));
+-        }
+-    }
+-
+-    @Test
+-    public void testLongitude() {
+-        String longStr;
+-        Double lon;
+-        for (int i = 0; i < 100; i++) {
+-            longStr = faker.address().longitude().replace(decimalSeparator, '.');
+-            assertThat(longStr, isANumber());
+-            lon = Double.parseDouble(longStr);
+-            assertThat("Longitude is less then -180", lon, greaterThanOrEqualTo(-180.0));
+-            assertThat("Longitude is greater than 180", lon, lessThanOrEqualTo(180.0));
+-        }
+-    }
+-
+-    @Test
+-    public void testTimeZone() {
+-        assertThat(faker.address().timeZone(), matchesRegularExpression("[A-Za-z_]+/[A-Za-z_]+[/A-Za-z_]*"));
+-    }
+-
+-    @Test
+-    public void testState() {
+-        assertThat(faker.address().state(), matchesRegularExpression("[A-Za-z ]+"));
+-    }
+-
+-    @Test
+-    public void testCity() {
+-        assertThat(faker.address().city(), matchesRegularExpression("[A-Za-z'() ]+"));
+-    }
+-
+-    @Test
+-    public void testCityName() {
+-        assertThat(faker.address().cityName(), matchesRegularExpression("[A-Za-z'() ]+"));
+-    }
+-
+-    @Test
+-    public void testCountry() {
+-        assertThat(faker.address().country(), matchesRegularExpression("[A-Za-z\\- &.,'()\\d]+"));
+-    }
+-
+-    @Test
+-    public void testCountryCode() {
+-        assertThat(faker.address().countryCode(), matchesRegularExpression("[A-Za-z ]+"));
+-    }
+-
+-    @Test
+-    public void testStreetAddressIncludeSecondary() {
+-        assertThat(faker.address().streetAddress(true), not(emptyString()));
+-    }
+-
+-    @Test
+-    public void testCityWithLocaleFranceAndSeed() {
+-        long seed = 1L;
+-        Faker firstFaker = new Faker(Locale.FRANCE, new Random(seed));
+-        Faker secondFaker = new Faker(Locale.FRANCE, new Random(seed));
+-        assertThat(firstFaker.address().city(), is(secondFaker.address().city()));
+-    }
+-
+-    @Test
+-    public void testFullAddress() {
+-        assertThat(faker.address().fullAddress(), not(emptyOrNullString()));
+-    }
+-
+-    @Test
+-    public void testZipCodeByState() {
+-        faker = new Faker(new Locale("en-US"));
+-        assertThat(faker.address().zipCodeByState(faker.address().stateAbbr()), matchesRegularExpression("[0-9]{5}"));
+-    }
+-    
+-    @Test
+-    public void testPhysicalDescription() {
+-    	String physicalDescription = faker.address().physicalDescription();
+-    	System.out.println("Physical Description: \"" + physicalDescription + "\"");
+-        assertThat(physicalDescription, 
+-            matchesRegularExpression("[1-5] mile(s){0,1} " + EXPRESSION 
+-                + " of the \\w+ \\w+ and \\w+ \\w+ intersection"));
+-    }
+-
+-    @Test
+-    public void testCountyByZipCode() {
+-        faker = new Faker(new Locale("en-US"));
+-        assertThat(faker.address().countyByZipCode(faker.address().zipCodeByState(faker.address().stateAbbr())), not(isEmptyOrNullString()));
+-    }
+-}
++package com.github.javafaker;
++
++import static com.github.javafaker.matchers.IsANumber.isANumber;
++import static com.github.javafaker.matchers.MatchesRegularExpression.matchesRegularExpression;
++import static org.hamcrest.MatcherAssert.assertThat;
++import static org.hamcrest.Matchers.emptyOrNullString;
++import static org.hamcrest.Matchers.greaterThanOrEqualTo;
++import static org.hamcrest.Matchers.is;
++import static org.hamcrest.Matchers.emptyString;
++import static org.hamcrest.Matchers.lessThanOrEqualTo;
++import static org.hamcrest.Matchers.not;
++
++import java.text.DecimalFormatSymbols;
++import java.util.Locale;
++import java.util.Random;
++
++import org.junit.Test;
++
++public class AddressTest extends AbstractFakerTest {
++    private final static String EXPRESSION = "(north|east|west|south)+\\s{0,1}"
++        + "((by|-)\\s{0,1}(north|east|west|south)+){0,1}";
++    private static final char decimalSeparator = new DecimalFormatSymbols().getDecimalSeparator();
++
++    @Test
++    public void testStreetAddressStartsWithNumber() {
++        final String streetAddressNumber = faker.address().streetAddress();
++        assertThat(streetAddressNumber, matchesRegularExpression("[0-9]+ .+"));
++    }
++
++    @Test
++    public void testStreetAddressIsANumber() {
++        final String streetAddressNumber = faker.address().streetAddressNumber();
++        assertThat(streetAddressNumber, matchesRegularExpression("[0-9]+"));
++    }
++
++    @Test
++    public void testLatitude() {
++        String latStr;
++        Double lat;
++        for (int i = 0; i < 100; i++) {
++            latStr = faker.address().latitude().replace(decimalSeparator, '.');
++            assertThat(latStr, isANumber());
++            lat = Double.parseDouble(latStr);
++            assertThat("Latitude is less then -90", lat, greaterThanOrEqualTo(-90.0));
++            assertThat("Latitude is greater than 90", lat, lessThanOrEqualTo(90.0));
++        }
++    }
++
++    @Test
++    public void testLongitude() {
++        String longStr;
++        Double lon;
++        for (int i = 0; i < 100; i++) {
++            longStr = faker.address().longitude().replace(decimalSeparator, '.');
++            assertThat(longStr, isANumber());
++            lon = Double.parseDouble(longStr);
++            assertThat("Longitude is less then -180", lon, greaterThanOrEqualTo(-180.0));
++            assertThat("Longitude is greater than 180", lon, lessThanOrEqualTo(180.0));
++        }
++    }
++
++    @Test
++    public void testTimeZone() {
++        assertThat(faker.address().timeZone(), matchesRegularExpression("[A-Za-z_]+/[A-Za-z_]+[/A-Za-z_]*"));
++    }
++
++    @Test
++    public void testState() {
++        assertThat(faker.address().state(), matchesRegularExpression("[A-Za-z ]+"));
++    }
++
++    @Test
++    public void testCity() {
++        assertThat(faker.address().city(), matchesRegularExpression("[A-Za-z'() ]+"));
++    }
++
++    @Test
++    public void testCityName() {
++        assertThat(faker.address().cityName(), matchesRegularExpression("[A-Za-z'() ]+"));
++    }
++
++    @Test
++    public void testCountry() {
++        assertThat(faker.address().country(), matchesRegularExpression("[A-Za-z\\- &.,'()\\d]+"));
++    }
++
++    @Test
++    public void testCountryCode() {
++        assertThat(faker.address().countryCode(), matchesRegularExpression("[A-Za-z ]+"));
++    }
++
++    @Test
++    public void testStreetAddressIncludeSecondary() {
++        assertThat(faker.address().streetAddress(true), not(emptyString()));
++    }
++
++    @Test
++    public void testCityWithLocaleFranceAndSeed() {
++        long seed = 1L;
++        Faker firstFaker = new Faker(Locale.FRANCE, new Random(seed));
++        Faker secondFaker = new Faker(Locale.FRANCE, new Random(seed));
++        assertThat(firstFaker.address().city(), is(secondFaker.address().city()));
++    }
++
++    @Test
++    public void testFullAddress() {
++        assertThat(faker.address().fullAddress(), not(emptyOrNullString()));
++    }
++
++    @Test
++    public void testZipCodeByState() {
++        faker = new Faker(new Locale("en-US"));
++        assertThat(faker.address().zipCodeByState(faker.address().stateAbbr()), matchesRegularExpression("[0-9]{5}"));
++    }
++    
++    @Test
++    public void testCountyByZipCode() {
++        faker = new Faker(new Locale("en-US"));
++        assertThat(faker.address().countyByZipCode(faker.address().zipCodeByState(faker.address().stateAbbr())), not(emptyOrNullString()));
++    }
++    
++    @Test
++    public void testPhysicalDescription() {
++    	String physicalDescription = faker.address().physicalDescription();
++    	System.out.println("Physical Description: \"" + physicalDescription + "\"");
++        assertThat(physicalDescription, 
++            matchesRegularExpression("[1-5] mile(s){0,1} " + EXPRESSION 
++                + " of the \\w+ \\w+ and \\w+ \\w+ intersection"));
++    }
++    
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

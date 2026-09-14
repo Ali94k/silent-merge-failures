@@ -1,0 +1,923 @@
+UNIT spigotmc_bungeecord__78083158f5
+repo: spigotmc_bungeecord   merge: 78083158f579143d0cc074297f91e48b970d0756   stratum: B
+files shown: 7 of 7 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/7: protocol/src/main/java/net/md_5/bungee/protocol/ProtocolConstants.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -22,16 +22,17 @@
+     public static final int MINECRAFT_1_13_2 = 404;
+     public static final int MINECRAFT_1_14 = 477;
+     public static final int MINECRAFT_1_14_1 = 480;
+     public static final int MINECRAFT_1_14_2 = 485;
+     public static final int MINECRAFT_1_14_3 = 490;
+     public static final int MINECRAFT_1_14_4 = 498;
+     public static final int MINECRAFT_1_15 = 573;
+     public static final int MINECRAFT_1_15_1 = 575;
++    public static final int MINECRAFT_1_15_2 = 578;
+     public static final List<String> SUPPORTED_VERSIONS = Arrays.asList(
+             "1.8.x",
+             "1.9.x",
+             "1.10.x",
+             "1.11.x",
+             "1.12.x",
+             "1.13.x",
+             "1.14.x",
+@@ -53,17 +54,18 @@
+             ProtocolConstants.MINECRAFT_1_13_1,
+             ProtocolConstants.MINECRAFT_1_13_2,
+             ProtocolConstants.MINECRAFT_1_14,
+             ProtocolConstants.MINECRAFT_1_14_1,
+             ProtocolConstants.MINECRAFT_1_14_2,
+             ProtocolConstants.MINECRAFT_1_14_3,
+             ProtocolConstants.MINECRAFT_1_14_4,
+             ProtocolConstants.MINECRAFT_1_15,
+-            ProtocolConstants.MINECRAFT_1_15_1
+-    );
++            ProtocolConstants.MINECRAFT_1_15_1,
++            ProtocolConstants.MINECRAFT_1_15_2
++        );
+ 
+     public enum Direction
+     {
+ 
+         TO_CLIENT, TO_SERVER;
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -22,16 +22,17 @@
+     public static final int MINECRAFT_1_13_2 = 404;
+     public static final int MINECRAFT_1_14 = 477;
+     public static final int MINECRAFT_1_14_1 = 480;
+     public static final int MINECRAFT_1_14_2 = 485;
+     public static final int MINECRAFT_1_14_3 = 490;
+     public static final int MINECRAFT_1_14_4 = 498;
+     public static final int MINECRAFT_1_15 = 573;
+     public static final int MINECRAFT_1_15_1 = 575;
++    public static final int MINECRAFT_1_15_2 = 578;
+     public static final List<String> SUPPORTED_VERSIONS = Arrays.asList(
+             "1.8.x",
+             "1.9.x",
+             "1.10.x",
+             "1.11.x",
+             "1.12.x",
+             "1.13.x",
+             "1.14.x",
+@@ -53,17 +54,18 @@
+             ProtocolConstants.MINECRAFT_1_13_1,
+             ProtocolConstants.MINECRAFT_1_13_2,
+             ProtocolConstants.MINECRAFT_1_14,
+             ProtocolConstants.MINECRAFT_1_14_1,
+             ProtocolConstants.MINECRAFT_1_14_2,
+             ProtocolConstants.MINECRAFT_1_14_3,
+             ProtocolConstants.MINECRAFT_1_14_4,
+             ProtocolConstants.MINECRAFT_1_15,
+-            ProtocolConstants.MINECRAFT_1_15_1
++            ProtocolConstants.MINECRAFT_1_15_1,
++            ProtocolConstants.MINECRAFT_1_15_2
+     );
+ 
+     public enum Direction
+     {
+ 
+         TO_CLIENT, TO_SERVER;
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -56,16 +56,16 @@
+             ProtocolConstants.MINECRAFT_1_14,
+             ProtocolConstants.MINECRAFT_1_14_1,
+             ProtocolConstants.MINECRAFT_1_14_2,
+             ProtocolConstants.MINECRAFT_1_14_3,
+             ProtocolConstants.MINECRAFT_1_14_4,
+             ProtocolConstants.MINECRAFT_1_15,
+             ProtocolConstants.MINECRAFT_1_15_1,
+             ProtocolConstants.MINECRAFT_1_15_2
+-        );
++    );
+ 
+     public enum Direction
+     {
+ 
+         TO_CLIENT, TO_SERVER;
+     }
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/7: proxy/src/main/java/net/md_5/bungee/BungeeServerInfo.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -149,17 +149,17 @@
+                     future.channel().pipeline().get( HandlerBoss.class ).setHandler( new PingHandler( BungeeServerInfo.this, callback, protocolVersion ) );
+                 } else
+                 {
+                     callback.done( null, future.cause() );
+                 }
+             }
+         };
+         new Bootstrap()
+-                .channel( PipelineUtils.getChannel( socketAddress ) )
+-                .group( BungeeCord.getInstance().eventLoops )
++                .channel( PipelineUtils.getChannel(socketAddress) )
++                .group( BungeeCord.getInstance().workerEventLoopGroup ) //BotFilter //WaterFall backport
+                 .handler( PipelineUtils.BASE )
+                 .option( ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000 ) // TODO: Configurable
+                 .remoteAddress( socketAddress )
+                 .connect()
+                 .addListener( listener );
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -26,21 +26,23 @@
+ import net.md_5.bungee.api.connection.ProxiedPlayer;
+ import net.md_5.bungee.api.connection.Server;
+ import net.md_5.bungee.connection.PingHandler;
+ import net.md_5.bungee.netty.HandlerBoss;
+ import net.md_5.bungee.netty.PipelineUtils;
+ import net.md_5.bungee.protocol.DefinedPacket;
+ import net.md_5.bungee.protocol.packet.PluginMessage;
+ 
++// CHECKSTYLE:OFF
+ @RequiredArgsConstructor
+ @ToString(of =
+ {
+-    "name", "address", "restricted"
++    "name", "socketAddress", "restricted"
+ })
++// CHECKSTYLE:ON
+ public class BungeeServerInfo implements ServerInfo
+ {
+ 
+     @Getter
+     private final String name;
+     @Getter
+     private final SocketAddress socketAddress;
+     private final Collection<ProxiedPlayer> players = new ArrayList<>();
+@@ -118,31 +120,55 @@
+             } else if ( queue )
+             {
+                 packetQueue.add( new PluginMessage( channel, data, false ) );
+             }
+             return false;
+         }
+     }
+ 
++    private long lastPing;
++    private ServerPing cachedPing;
++
++    public void cachePing(ServerPing serverPing)
++    {
++        if ( ProxyServer.getInstance().getConfig().getRemotePingCache() > 0 )
++        {
++            this.cachedPing = serverPing;
++            this.lastPing = System.currentTimeMillis();
++        }
++    }
++
+     @Override
+     public InetSocketAddress getAddress()
+     {
+         return (InetSocketAddress) socketAddress;
+     }
+ 
+     @Override
+     public void ping(final Callback<ServerPing> callback)
+     {
+         ping( callback, ProxyServer.getInstance().getProtocolVersion() );
+     }
+ 
+     public void ping(final Callback<ServerPing> callback, final int protocolVersion)
+     {
+         Preconditions.checkNotNull( callback, "callback" );
++
++        int pingCache = ProxyServer.getInstance().getConfig().getRemotePingCache();
++        if ( pingCache > 0 && cachedPing != null && ( lastPing - System.currentTimeMillis() ) > pingCache )
++        {
++            cachedPing = null;
++        }
++
++        if ( cachedPing != null )
++        {
++            callback.done( cachedPing, null );
++            return;
++        }
+ 
+         ChannelFutureListener listener = new ChannelFutureListener()
+         {
+             @Override
+             public void operationComplete(ChannelFuture future) throws Exception
+             {
+                 if ( future.isSuccess() )
+                 {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -175,17 +175,17 @@
+                     future.channel().pipeline().get( HandlerBoss.class ).setHandler( new PingHandler( BungeeServerInfo.this, callback, protocolVersion ) );
+                 } else
+                 {
+                     callback.done( null, future.cause() );
+                 }
+             }
+         };
+         new Bootstrap()
+-                .channel( PipelineUtils.getChannel(socketAddress) )
++                .channel( PipelineUtils.getChannel( socketAddress ) )
+                 .group( BungeeCord.getInstance().workerEventLoopGroup ) //BotFilter //WaterFall backport
+                 .handler( PipelineUtils.BASE )
+                 .option( ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000 ) // TODO: Configurable
+                 .remoteAddress( socketAddress )
+                 .connect()
+                 .addListener( listener );
+     }
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/7: proxy/src/main/java/net/md_5/bungee/UserConnection.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -10,16 +10,17 @@
+ import io.netty.channel.ChannelOption;
+ import io.netty.util.internal.PlatformDependent;
+ import java.net.InetSocketAddress;
+ import java.net.SocketAddress;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.HashSet;
+ import java.util.LinkedList;
++import java.util.List;
+ import java.util.Locale;
+ import java.util.Map;
+ import java.util.Objects;
+ import java.util.Queue;
+ import java.util.UUID;
+ import java.util.logging.Level;
+ import lombok.Getter;
+ import lombok.NonNull;
+@@ -56,27 +57,39 @@
+ import net.md_5.bungee.protocol.packet.Chat;
+ import net.md_5.bungee.protocol.packet.ClientSettings;
+ import net.md_5.bungee.protocol.packet.Kick;
+ import net.md_5.bungee.protocol.packet.PlayerListHeaderFooter;
+ import net.md_5.bungee.protocol.packet.PluginMessage;
+ import net.md_5.bungee.protocol.packet.SetCompression;
+ import net.md_5.bungee.tab.ServerUnique;
+ import net.md_5.bungee.tab.TabList;
++import net.md_5.bungee.util.BoundedArrayList;
+ import net.md_5.bungee.util.CaseInsensitiveSet;
+ import net.md_5.bungee.util.ChatComponentTransformer;
+ 
+ @RequiredArgsConstructor
+ public final class UserConnection implements ProxiedPlayer
+ {
++
++    @Getter
++    @Setter
++    private boolean needLogin = true; //BotFilter
++    @Getter
++    @Setter
++    private boolean callSettingsEvent = false; //BotFilter
++    @Getter
++    @Setter
++    private List<PluginMessage> delayedPluginMessages = new BoundedArrayList<>( 64 ); //BotFilter
+ 
+     /*========================================================================*/
+     @NonNull
+     private final ProxyServer bungee;
+     @NonNull
++    @Getter //BotFilter
+     private final ChannelWrapper ch;
+     @Getter
+     @NonNull
+     private final String name;
+     @Getter
+     private final InitialHandler pendingConnection;
+     /*========================================================================*/
+     @Getter
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -88,19 +88,16 @@
+     @Getter
+     @Setter
+     private boolean dimensionChange = true;
+     @Getter
+     private final Collection<ServerInfo> pendingConnects = new HashSet<>();
+     /*========================================================================*/
+     @Getter
+     @Setter
+-    private long sentPingTime;
+-    @Getter
+-    @Setter
+     private int ping = 100;
+     @Getter
+     @Setter
+     private ServerInfo reconnectServer;
+     @Getter
+     private TabList tabListHandler;
+     @Getter
+     @Setter
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/7: proxy/src/main/java/net/md_5/bungee/conf/Configuration.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,21 +1,23 @@
+ package net.md_5.bungee.conf;
+ 
+ import com.google.common.base.Preconditions;
+ import gnu.trove.map.TMap;
+ import java.io.File;
+ import java.io.IOException;
+ import java.util.Arrays;
+ import java.util.Collection;
++import java.util.HashSet;
+ import java.util.Map;
+ import java.util.UUID;
+ import java.util.logging.Level;
+ import javax.imageio.ImageIO;
+ import lombok.Getter;
++import net.md_5.bungee.BungeeCord;
+ import net.md_5.bungee.api.Favicon;
+ import net.md_5.bungee.api.ProxyConfig;
+ import net.md_5.bungee.api.ProxyServer;
+ import net.md_5.bungee.api.config.ConfigurationAdapter;
+ import net.md_5.bungee.api.config.ListenerInfo;
+ import net.md_5.bungee.api.config.ServerInfo;
+ import net.md_5.bungee.util.CaseInsensitiveMap;
+ import net.md_5.bungee.util.CaseInsensitiveSet;
+@@ -89,42 +91,22 @@
+         throttle = adapter.getInt( "connection_throttle", throttle );
+         throttleLimit = adapter.getInt( "connection_throttle_limit", throttleLimit );
+         ipForward = adapter.getBoolean( "ip_forward", ipForward );
+         compressionThreshold = adapter.getInt( "network_compression_threshold", compressionThreshold );
+         preventProxyConnections = adapter.getBoolean( "prevent_proxy_connections", preventProxyConnections );
+         forgeSupport = adapter.getBoolean( "forge_support", forgeSupport );
+ 
+         disabledCommands = new CaseInsensitiveSet( (Collection<String>) adapter.getList( "disabled_commands", Arrays.asList( "disabledcommandhere" ) ) );
++        disabledCommands.remove( "bungee" ); //BotFilter
++        disabledCommands.remove( "botfilter" ); //BotFilter
+ 
+         Preconditions.checkArgument( listeners != null && !listeners.isEmpty(), "No listeners defined." );
+ 
+-        Map<String, ServerInfo> newServers = adapter.getServers();
+-        Preconditions.checkArgument( newServers != null && !newServers.isEmpty(), "No servers defined" );
+-
+-        if ( servers == null )
+-        {
+-            servers = new CaseInsensitiveMap<>( newServers );
+-        } else
+-        {
+-            for ( ServerInfo oldServer : servers.values() )
+-            {
+-                // Don't allow servers to be removed
+-                Preconditions.checkArgument( newServers.containsKey( oldServer.getName() ), "Server %s removed on reload!", oldServer.getName() );
+-            }
+-
+-            // Add new servers
+-            for ( Map.Entry<String, ServerInfo> newServer : newServers.entrySet() )
+-            {
+-                if ( !servers.containsValue( newServer.getValue() ) )
+-                {
+-                    servers.put( newServer.getKey(), newServer.getValue() );
+-                }
+-            }
+-        }
++        loadServers( adapter, false );
+ 
+         for ( ListenerInfo listener : listeners )
+         {
+             for ( int i = 0; i < listener.getServerPriority().size(); i++ )
+             {
+                 String server = listener.getServerPriority().get( i );
+                 Preconditions.checkArgument( servers.containsKey( server ), "Server %s (priority %s) is not defined", server, i );
+             }
+@@ -133,16 +115,55 @@
+                 if ( !servers.containsKey( server ) )
+                 {
+                     ProxyServer.getInstance().getLogger().log( Level.WARNING, "Forced host server {0} is not defined", server );
+                 }
+             }
+         }
+     }
+ 
++    //BotFilter start
++    public void loadServers(ConfigurationAdapter adapter, boolean load)
++    {
++        if ( load )
++        {
++            adapter.load();
++        }
++        Map<String, ServerInfo> newServers = adapter.getServers();
++        Preconditions.checkArgument( newServers != null && !newServers.isEmpty(), "No servers defined" );
++
++        if ( servers == null )
++        {
++            servers = new CaseInsensitiveMap<>( newServers );
++        } else
++        {
++            HashSet<String> toRemove = new HashSet<>();
++            servers.values().stream()
++                    .filter(
++                            oldServer -> ( !newServers.containsKey( oldServer.getName() )
++                            || !newServers.get( oldServer.getName() ).equals( oldServer ) )
++                    ).forEach( server ->
++                    {
++                        toRemove.add( server.getName() );
++                        server.getPlayers().forEach( p -> p.disconnect( BungeeCord.getInstance().getTranslation( "server_went_down" ) ) );
++                    } );
++
++            toRemove.forEach( s -> servers.remove( s ) );
++
++            for ( Map.Entry<String, ServerInfo> newServer : newServers.entrySet() )
++            {
++                if ( !servers.containsValue( newServer.getValue() ) )
++                {
++                    servers.put( newServer.getKey(), newServer.getValue() );
++                }
++            }
++        }
++    }
++    // BotFilter end
++
+     @Override
+     @Deprecated
+     public String getFavicon()
+     {
+         return getFaviconObject().getEncoded();
+     }
+ 
+     @Override
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -47,16 +47,17 @@
+      * Should we check minecraft.net auth.
+      */
+     private boolean onlineMode = true;
+     /**
+      * Whether we log proxy commands to the proxy log
+      */
+     private boolean logCommands;
+     private boolean logPings = true;
++    private int remotePingCache = -1;
+     private int playerLimit = -1;
+     private Collection<String> disabledCommands;
+     private int throttle = 4000;
+     private int throttleLimit = 3;
+     private boolean ipForward;
+     private Favicon favicon;
+     private int compressionThreshold = 256;
+     private boolean preventProxyConnections;
+@@ -80,16 +81,17 @@
+         }
+ 
+         listeners = adapter.getListeners();
+         timeout = adapter.getInt( "timeout", timeout );
+         uuid = adapter.getString( "stats", uuid );
+         onlineMode = adapter.getBoolean( "online_mode", onlineMode );
+         logCommands = adapter.getBoolean( "log_commands", logCommands );
+         logPings = adapter.getBoolean( "log_pings", logPings );
++        remotePingCache = adapter.getInt( "remote_ping_cache", remotePingCache );
+         playerLimit = adapter.getInt( "player_limit", playerLimit );
+         throttle = adapter.getInt( "connection_throttle", throttle );
+         throttleLimit = adapter.getInt( "connection_throttle_limit", throttleLimit );
+         ipForward = adapter.getBoolean( "ip_forward", ipForward );
+         compressionThreshold = adapter.getInt( "network_compression_threshold", compressionThreshold );
+         preventProxyConnections = adapter.getBoolean( "prevent_proxy_connections", preventProxyConnections );
+         forgeSupport = adapter.getBoolean( "forge_support", forgeSupport );
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -134,24 +134,23 @@
+ 
+         if ( servers == null )
+         {
+             servers = new CaseInsensitiveMap<>( newServers );
+         } else
+         {
+             HashSet<String> toRemove = new HashSet<>();
+             servers.values().stream()
+-                    .filter(
+-                            oldServer -> ( !newServers.containsKey( oldServer.getName() )
+-                            || !newServers.get( oldServer.getName() ).equals( oldServer ) )
+-                    ).forEach( server ->
+-                    {
+-                        toRemove.add( server.getName() );
+-                        server.getPlayers().forEach( p -> p.disconnect( BungeeCord.getInstance().getTranslation( "server_went_down" ) ) );
+-                    } );
++                .filter( oldServer -> ( !newServers.containsKey( oldServer.getName() )
++                        || !newServers.get( oldServer.getName() ).equals( oldServer ) ) )
++                .forEach( server ->
++                {
++                    toRemove.add( server.getName() );
++                    server.getPlayers().forEach( p -> p.disconnect( BungeeCord.getInstance().getTranslation( "server_went_down" ) ) );
++                } );
+ 
+             toRemove.forEach( s -> servers.remove( s ) );
+ 
+             for ( Map.Entry<String, ServerInfo> newServer : newServers.entrySet() )
+             {
+                 if ( !servers.containsValue( newServer.getValue() ) )
+                 {
+                     servers.put( newServer.getKey(), newServer.getValue() );
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/7: proxy/src/main/java/net/md_5/bungee/connection/DownstreamBridge.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -16,17 +16,16 @@
+ import io.netty.buffer.ByteBufAllocator;
+ import io.netty.buffer.Unpooled;
+ import io.netty.channel.unix.DomainSocketAddress;
+ import java.io.DataInput;
+ import java.net.InetSocketAddress;
+ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Map;
+-import lombok.RequiredArgsConstructor;
+ import net.md_5.bungee.ServerConnection;
+ import net.md_5.bungee.UserConnection;
+ import net.md_5.bungee.Util;
+ import net.md_5.bungee.api.ProxyServer;
+ import net.md_5.bungee.api.chat.TextComponent;
+ import net.md_5.bungee.api.config.ServerInfo;
+ import net.md_5.bungee.api.connection.ProxiedPlayer;
+ import net.md_5.bungee.api.event.PluginMessageEvent;
+@@ -55,23 +54,41 @@
+ import net.md_5.bungee.protocol.packet.Respawn;
+ import net.md_5.bungee.protocol.packet.ScoreboardDisplay;
+ import net.md_5.bungee.protocol.packet.ScoreboardObjective;
+ import net.md_5.bungee.protocol.packet.ScoreboardScore;
+ import net.md_5.bungee.protocol.packet.SetCompression;
+ import net.md_5.bungee.protocol.packet.TabCompleteResponse;
+ import net.md_5.bungee.tab.TabList;
+ 
+-@RequiredArgsConstructor
++//@RequiredArgsConstructor //BotFilter - removed
+ public class DownstreamBridge extends PacketHandler
+ {
+ 
+     private final ProxyServer bungee;
+     private final UserConnection con;
+     private final ServerConnection server;
++
++    //BotFilter start
++    public DownstreamBridge(ProxyServer bungee, UserConnection con, ServerConnection server)
++    {
++        this.bungee = bungee;
++        this.con = con;
++        this.server = server;
++
++        if ( !con.getDelayedPluginMessages().isEmpty() )
++        {
++            for ( PluginMessage msg : con.getDelayedPluginMessages() )
++            {
++                server.getCh().write( msg );
++            }
++            con.getDelayedPluginMessages().clear();
++        }
++    }
++    //BotFilter end
+ 
+     @Override
+     public void exception(Throwable t) throws Exception
+     {
+         if ( server.isObsolete() )
+         {
+             // do not perform any actions if the user has already moved
+             return;
+@@ -284,17 +301,16 @@
+                     // Prepare new data to send
+                     out.writeUTF( channel );
+                     out.writeShort( data.length );
+                     out.write( data );
+                     byte[] payload = out.toByteArray();
+ 
+                     target.getServer().sendData( "BungeeCord", payload );
+                 }
+-
+                 // Null out stream, important as we don't want to send to ourselves
+                 out = null;
+             }
+             if ( subChannel.equals( "Forward" ) )
+             {
+                 // Read data from server
+                 String target = in.readUTF();
+                 String channel = in.readUTF();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -18,16 +18,17 @@
+ import io.netty.channel.unix.DomainSocketAddress;
+ import java.io.DataInput;
+ import java.net.InetSocketAddress;
+ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Map;
+ import lombok.RequiredArgsConstructor;
+ import net.md_5.bungee.ServerConnection;
++import net.md_5.bungee.ServerConnection.KeepAliveData;
+ import net.md_5.bungee.UserConnection;
+ import net.md_5.bungee.Util;
+ import net.md_5.bungee.api.ProxyServer;
+ import net.md_5.bungee.api.chat.TextComponent;
+ import net.md_5.bungee.api.config.ServerInfo;
+ import net.md_5.bungee.api.connection.ProxiedPlayer;
+ import net.md_5.bungee.api.event.PluginMessageEvent;
+ import net.md_5.bungee.api.event.ServerConnectEvent;
+@@ -119,18 +120,20 @@
+     {
+         con.getEntityRewrite().rewriteClientbound( packet.buf, con.getServerEntityId(), con.getClientEntityId(), con.getPendingConnection().getVersion() );
+         con.sendPacket( packet );
+     }
+ 
+     @Override
+     public void handle(KeepAlive alive) throws Exception
+     {
+-        server.setSentPingId( alive.getRandomId() );
+-        con.setSentPingTime( System.currentTimeMillis() );
++        if ( server.getKeepAlives().size() < bungee.getConfig().getTimeout() / 50 ) // Allow a theoretical maximum of 1 keepalive per tick
++        {
++            server.getKeepAlives().add( new KeepAliveData( alive.getRandomId(), System.currentTimeMillis() ) );
++        }
+     }
+ 
+     @Override
+     public void handle(PlayerListItem playerList) throws Exception
+     {
+         con.getTabListHandler().onUpdate( TabList.rewrite( playerList ) );
+         throw CancelSendSignal.INSTANCE; // Always throw because of profile rewriting
+     }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/7: proxy/src/main/java/net/md_5/bungee/connection/UpstreamBridge.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,15 +1,14 @@
+ package net.md_5.bungee.connection;
+ 
+ import com.google.common.base.Preconditions;
+ import com.mojang.brigadier.context.StringRange;
+ import com.mojang.brigadier.suggestion.Suggestion;
+ import com.mojang.brigadier.suggestion.Suggestions;
+-import io.netty.channel.Channel;
+ import java.util.ArrayList;
+ import java.util.LinkedList;
+ import java.util.List;
+ import net.md_5.bungee.BungeeCord;
+ import net.md_5.bungee.UserConnection;
+ import net.md_5.bungee.Util;
+ import net.md_5.bungee.api.ProxyServer;
+ import net.md_5.bungee.api.connection.ProxiedPlayer;
+@@ -32,25 +31,63 @@
+ import net.md_5.bungee.protocol.packet.TabCompleteResponse;
+ 
+ public class UpstreamBridge extends PacketHandler
+ {
+ 
+     private final ProxyServer bungee;
+     private final UserConnection con;
+ 
++    private long lastTabCompletion = -1; //BotFilter
++
+     public UpstreamBridge(ProxyServer bungee, UserConnection con)
+     {
+         this.bungee = bungee;
+         this.con = con;
+ 
+         BungeeCord.getInstance().addConnection( con );
+         con.getTabListHandler().onConnect();
+         con.unsafe().sendPacket( BungeeCord.getInstance().registerChannels( con.getPendingConnection().getVersion() ) );
+-    }
++
++        //BotFilter start
++        if ( con.isCallSettingsEvent() )
++        {
++            SettingsChangedEvent settingsEvent = new SettingsChangedEvent( con );
++            bungee.getPluginManager().callEvent( settingsEvent );
++            con.setCallSettingsEvent( false );
++        }
++        if ( !con.getDelayedPluginMessages().isEmpty() )
++        {
++            con.setDelayedPluginMessages( clearPluginMessages( con.getDelayedPluginMessages() ) );
++        }
++        //BotFilter end
++    }
++
++    //BotFilter start
++    private List<PluginMessage> clearPluginMessages(List<PluginMessage> delayedPluginMessages)
++    {
++        List<PluginMessage> cleared = new ArrayList<>();
++        for ( PluginMessage message : delayedPluginMessages )
++        {
++            try
++            {
++                this.handle( message );
++                cleared.add( message );
++            } catch ( Throwable t )
++            {
++                if ( !( t instanceof CancelSendSignal ) )
++                {
++                    throw new RuntimeException( t.getMessage(), t );
++                }
++            }
++        }
++        delayedPluginMessages.clear();
++        return cleared;
++    }
++    //BotFilter end
+ 
+     @Override
+     public void exception(Throwable t) throws Exception
+     {
+         con.disconnect( Util.exception( t ) );
+     }
+ 
+     @Override
+@@ -86,24 +123,17 @@
+         }
+     }
+ 
+     @Override
+     public void writabilityChanged(ChannelWrapper channel) throws Exception
+     {
+         if ( con.getServer() != null )
+         {
+-            Channel server = con.getServer().getCh().getHandle();
+-            if ( channel.getHandle().isWritable() )
+-            {
+-                server.config().setAutoRead( true );
+-            } else
+-            {
+-                server.config().setAutoRead( false );
+-            }
++            con.getServer().getCh().getHandle().config().setAutoRead( channel.getHandle().isWritable() );
+         }
+     }
+ 
+     @Override
+     public boolean shouldHandle(PacketWrapper packet) throws Exception
+     {
+         return con.getServer() != null || packet.packet instanceof PluginMessage;
+     }
+@@ -148,16 +178,25 @@
+             }
+         }
+         throw CancelSendSignal.INSTANCE;
+     }
+ 
+     @Override
+     public void handle(TabCompleteRequest tabComplete) throws Exception
+     {
++        //BotFilter start
++        long now = System.currentTimeMillis();
++        if ( con.getPendingConnection().getVersion() <= ProtocolConstants.MINECRAFT_1_12_2 && lastTabCompletion > 0 && ( now - lastTabCompletion ) <= 500 )
++        {
++            throw CancelSendSignal.INSTANCE;
++        }
++        lastTabCompletion = now;
++        //BotFilter end
++
+         List<String> suggestions = new ArrayList<>();
+ 
+         if ( tabComplete.getCursor().startsWith( "/" ) )
+         {
+             bungee.getPluginManager().dispatchCommand( con, tabComplete.getCursor().substring( 1 ), suggestions );
+         }
+ 
+         TabCompleteEvent tabCompleteEvent = new TabCompleteEvent( con, con.getServer(), tabComplete.getCursor(), suggestions );
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -4,16 +4,17 @@
+ import com.mojang.brigadier.context.StringRange;
+ import com.mojang.brigadier.suggestion.Suggestion;
+ import com.mojang.brigadier.suggestion.Suggestions;
+ import io.netty.channel.Channel;
+ import java.util.ArrayList;
+ import java.util.LinkedList;
+ import java.util.List;
+ import net.md_5.bungee.BungeeCord;
++import net.md_5.bungee.ServerConnection.KeepAliveData;
+ import net.md_5.bungee.UserConnection;
+ import net.md_5.bungee.Util;
+ import net.md_5.bungee.api.ProxyServer;
+ import net.md_5.bungee.api.connection.ProxiedPlayer;
+ import net.md_5.bungee.api.event.ChatEvent;
+ import net.md_5.bungee.api.event.PlayerDisconnectEvent;
+ import net.md_5.bungee.api.event.PluginMessageEvent;
+ import net.md_5.bungee.api.event.SettingsChangedEvent;
+@@ -116,19 +117,21 @@
+             con.getEntityRewrite().rewriteServerbound( packet.buf, con.getClientEntityId(), con.getServerEntityId(), con.getPendingConnection().getVersion() );
+             con.getServer().getCh().write( packet );
+         }
+     }
+ 
+     @Override
+     public void handle(KeepAlive alive) throws Exception
+     {
+-        if ( alive.getRandomId() == con.getServer().getSentPingId() )
+-        {
+-            int newPing = (int) ( System.currentTimeMillis() - con.getSentPingTime() );
++        KeepAliveData keepAliveData = con.getServer().getKeepAlives().poll();
++
++        if ( keepAliveData != null && alive.getRandomId() == keepAliveData.getId() )
++        {
++            int newPing = (int) ( System.currentTimeMillis() - keepAliveData.getTime() );
+             con.getTabListHandler().onPingChange( newPing );
+             con.setPing( newPing );
+         } else
+         {
+             throw CancelSendSignal.INSTANCE;
+         }
+     }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/7: proxy/src/main/java/net/md_5/bungee/entitymap/EntityMap.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -53,16 +53,17 @@
+             case ProtocolConstants.MINECRAFT_1_14:
+             case ProtocolConstants.MINECRAFT_1_14_1:
+             case ProtocolConstants.MINECRAFT_1_14_2:
+             case ProtocolConstants.MINECRAFT_1_14_3:
+             case ProtocolConstants.MINECRAFT_1_14_4:
+                 return EntityMap_1_14.INSTANCE;
+             case ProtocolConstants.MINECRAFT_1_15:
+             case ProtocolConstants.MINECRAFT_1_15_1:
++            case ProtocolConstants.MINECRAFT_1_15_2:
+                 return EntityMap_1_15.INSTANCE;
+         }
+         throw new RuntimeException( "Version " + version + " has no entity map" );
+     }
+ 
+     protected void addRewrite(int id, ProtocolConstants.Direction direction, boolean varint)
+     {
+         if ( direction == ProtocolConstants.Direction.TO_CLIENT )
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -53,16 +53,17 @@
+             case ProtocolConstants.MINECRAFT_1_14:
+             case ProtocolConstants.MINECRAFT_1_14_1:
+             case ProtocolConstants.MINECRAFT_1_14_2:
+             case ProtocolConstants.MINECRAFT_1_14_3:
+             case ProtocolConstants.MINECRAFT_1_14_4:
+                 return EntityMap_1_14.INSTANCE;
+             case ProtocolConstants.MINECRAFT_1_15:
+             case ProtocolConstants.MINECRAFT_1_15_1:
++            case ProtocolConstants.MINECRAFT_1_15_2:
+                 return EntityMap_1_15.INSTANCE;
+         }
+         throw new RuntimeException( "Version " + version + " has no entity map" );
+     }
+ 
+     protected void addRewrite(int id, ProtocolConstants.Direction direction, boolean varint)
+     {
+         if ( direction == ProtocolConstants.Direction.TO_CLIENT )
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,2052 @@
+UNIT spigotmc_bungeecord__84babbd5fe
+repo: spigotmc_bungeecord   merge: 84babbd5fef859431916891313dff458241e556c   stratum: B
+files shown: 7 of 7 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T1  (merged files windowed ±40 around base-differing regions)
+
+=== FILE 1/7: api/src/main/java/net/md_5/bungee/api/connection/ProxiedPlayer.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -74,16 +74,32 @@
+ 
+     /**
+      * Send a message to the specified screen position of this player.
+      *
+      * @param position the screen position
+      * @param message the message to send
+      */
+     public void sendMessage(ChatMessageType position, BaseComponent message);
++
++    /**
++     * Send a message to this player.
++     *
++     * @param sender the sender of the message
++     * @param message the message to send
++     */
++    public void sendMessage(UUID sender, BaseComponent... message);
++
++    /**
++     * Send a message to this player.
++     *
++     * @param sender the sender of the message
++     * @param message the message to send
++     */
++    public void sendMessage(UUID sender, BaseComponent message);
+ 
+     /**
+      * Connects / transfers this user to the specified connection, gracefully
+      * closing the current one. Depending on the implementation, this method
+      * might return before the user has been connected.
+      *
+      * @param target the new server to connect to
+      */
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -74,16 +74,32 @@
+ 
+     /**
+      * Send a message to the specified screen position of this player.
+      *
+      * @param position the screen position
+      * @param message the message to send
+      */
+     public void sendMessage(ChatMessageType position, BaseComponent message);
++
++    /**
++     * Send a message to this player.
++     *
++     * @param sender the sender of the message
++     * @param message the message to send
++     */
++    public void sendMessage(UUID sender, BaseComponent... message);
++
++    /**
++     * Send a message to this player.
++     *
++     * @param sender the sender of the message
++     * @param message the message to send
++     */
++    public void sendMessage(UUID sender, BaseComponent message);
+ 
+     /**
+      * Connects / transfers this user to the specified connection, gracefully
+      * closing the current one. Depending on the implementation, this method
+      * might return before the user has been connected.
+      *
+      * @param target the new server to connect to
+      */
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package net.md_5.bungee.api.connection;
+        // ... 1 lines elided ...
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import net.md_5.bungee.api.Callback;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.CommandSender;
+import net.md_5.bungee.api.ServerConnectRequest;
+import net.md_5.bungee.api.SkinConfiguration;
+import net.md_5.bungee.api.Title;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.config.ServerInfo;
+import net.md_5.bungee.api.event.ServerConnectEvent;
+import net.md_5.bungee.api.score.Scoreboard;
+        // ... 5 lines elided ...
+public interface ProxiedPlayer extends Connection, CommandSender
+        // ... 5 lines elided ...
+    public enum ChatMode
+        // ... 14 lines elided ...
+
+    }
+
+    public enum MainHand
+    {
+
+        LEFT,
+        RIGHT;
+    }
+
+    /**
+     * Gets this player's display name.
+     *
+     * @return the players current display name
+     */
+    String getDisplayName();
+
+    /**
+     * Sets this players display name to be used as their nametag and tab list
+     * name.
+     *
+     * @param name the name to set
+     */
+    void setDisplayName(String name);
+
+    /**
+     * Send a message to the specified screen position of this player.
+     *
+     * @param position the screen position
+     * @param message the message to send
+     */
+    public void sendMessage(ChatMessageType position, BaseComponent... message);
+
+    /**
+     * Send a message to the specified screen position of this player.
+     *
+     * @param position the screen position
+     * @param message the message to send
+     */
+    public void sendMessage(ChatMessageType position, BaseComponent message);
+
+    /**
+     * Send a message to this player.
+     *
+     * @param sender the sender of the message
+     * @param message the message to send
+     */
+    public void sendMessage(UUID sender, BaseComponent... message);
+
+    /**
+     * Send a message to this player.
+     *
+     * @param sender the sender of the message
+     * @param message the message to send
+     */
+    public void sendMessage(UUID sender, BaseComponent message);
+
+    /**
+     * Connects / transfers this user to the specified connection, gracefully
+     * closing the current one. Depending on the implementation, this method
+     * might return before the user has been connected.
+     *
+     * @param target the new server to connect to
+     */
+    void connect(ServerInfo target);
+
+    /**
+     * Connects / transfers this user to the specified connection, gracefully
+     * closing the current one. Depending on the implementation, this method
+     * might return before the user has been connected.
+     *
+     * @param target the new server to connect to
+     * @param reason the reason for connecting to the new server
+     */
+    void connect(ServerInfo target, ServerConnectEvent.Reason reason);
+
+    /**
+     * Connects / transfers this user to the specified connection, gracefully
+     * closing the current one. Depending on the implementation, this method
+     * might return before the user has been connected.
+     *
+     * @param target the new server to connect to
+     * @param callback the method called when the connection is complete, or
+     * when an exception is encountered. The boolean parameter denotes success
+     * (true) or failure (false).
+     */
+    void connect(ServerInfo target, Callback<Boolean> callback);
+
+    /**
+     * Connects / transfers this user to the specified connection, gracefully
+     * closing the current one. Depending on the implementation, this method
+     * might return before the user has been connected.
+     *
+     * @param target the new server to connect to
+     * @param callback the method called when the connection is complete, or
+     * when an exception is encountered. The boolean parameter denotes success
+        // ... 203 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/7: api/src/main/java/net/md_5/bungee/api/plugin/Command.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,27 +1,30 @@
+ package net.md_5.bungee.api.plugin;
+ 
+ import com.google.common.base.Preconditions;
+ import lombok.AccessLevel;
+ import lombok.Data;
+ import lombok.RequiredArgsConstructor;
++import lombok.Setter;
+ import net.md_5.bungee.api.CommandSender;
+ 
+ /**
+  * A command that can be executed by a {@link CommandSender}.
+  */
+ @Data
+ @RequiredArgsConstructor(access = AccessLevel.NONE)
+ public abstract class Command
+ {
+ 
+     private final String name;
+     private final String permission;
+     private final String[] aliases;
++    @Setter(AccessLevel.PROTECTED)
++    private String permissionMessage;
+ 
+     /**
+      * Construct a new command with no permissions or aliases.
+      *
+      * @param name the name of this command
+      */
+     public Command(String name)
+     {
+@@ -37,16 +40,17 @@
+      * @param aliases aliases which map back to this command
+      */
+     public Command(String name, String permission, String... aliases)
+     {
+         Preconditions.checkArgument( name != null, "name" );
+         this.name = name;
+         this.permission = permission;
+         this.aliases = aliases;
++        this.permissionMessage = null;
+     }
+ 
+     /**
+      * Execute this command with the specified sender and arguments.
+      *
+      * @param sender the executor of this command
+      * @param args arguments used to invoke this command
+      */
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,27 +1,30 @@
+ package net.md_5.bungee.api.plugin;
+ 
+ import com.google.common.base.Preconditions;
+ import lombok.AccessLevel;
+ import lombok.Data;
+ import lombok.RequiredArgsConstructor;
++import lombok.Setter;
+ import net.md_5.bungee.api.CommandSender;
+ 
+ /**
+  * A command that can be executed by a {@link CommandSender}.
+  */
+ @Data
+ @RequiredArgsConstructor(access = AccessLevel.NONE)
+ public abstract class Command
+ {
+ 
+     private final String name;
+     private final String permission;
+     private final String[] aliases;
++    @Setter(AccessLevel.PROTECTED)
++    private String permissionMessage;
+ 
+     /**
+      * Construct a new command with no permissions or aliases.
+      *
+      * @param name the name of this command
+      */
+     public Command(String name)
+     {
+@@ -37,16 +40,17 @@
+      * @param aliases aliases which map back to this command
+      */
+     public Command(String name, String permission, String... aliases)
+     {
+         Preconditions.checkArgument( name != null, "name" );
+         this.name = name;
+         this.permission = permission;
+         this.aliases = aliases;
++        this.permissionMessage = null;
+     }
+ 
+     /**
+      * Execute this command with the specified sender and arguments.
+      *
+      * @param sender the executor of this command
+      * @param args arguments used to invoke this command
+      */
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package net.md_5.bungee.api.plugin;
+
+import com.google.common.base.Preconditions;
+import lombok.AccessLevel;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import net.md_5.bungee.api.CommandSender;
+
+/**
+ * A command that can be executed by a {@link CommandSender}.
+ */
+@Data
+@RequiredArgsConstructor(access = AccessLevel.NONE)
+public abstract class Command
+{
+
+    private final String name;
+    private final String permission;
+    private final String[] aliases;
+    @Setter(AccessLevel.PROTECTED)
+    private String permissionMessage;
+
+    /**
+     * Construct a new command with no permissions or aliases.
+     *
+     * @param name the name of this command
+     */
+    public Command(String name)
+    {
+        this( name, null );
+    }
+
+    /**
+     * Construct a new command.
+     *
+     * @param name primary name of this command
+     * @param permission the permission node required to execute this command,
+     * null or empty string allows it to be executed by everyone
+     * @param aliases aliases which map back to this command
+     */
+    public Command(String name, String permission, String... aliases)
+    {
+        Preconditions.checkArgument( name != null, "name" );
+        this.name = name;
+        this.permission = permission;
+        this.aliases = aliases;
+        this.permissionMessage = null;
+    }
+
+    /**
+     * Execute this command with the specified sender and arguments.
+     *
+     * @param sender the executor of this command
+     * @param args arguments used to invoke this command
+     */
+    public abstract void execute(CommandSender sender, String[] args);
+
+    /**
+     * Check if this command can be executed by the given sender.
+     *
+     * @param sender the sender to check
+     * @return whether the sender can execute this
+     */
+    public boolean hasPermission(CommandSender sender)
+    {
+        return permission == null || permission.isEmpty() || sender.hasPermission( permission );
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/7: api/src/main/java/net/md_5/bungee/api/plugin/PluginManager.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -167,17 +167,17 @@
+         {
+             return false;
+         }
+ 
+         if ( !command.hasPermission( sender ) )
+         {
+             if ( tabResults == null )
+             {
+-                sender.sendMessage( proxy.getTranslation( "no_permission" ) );
++                sender.sendMessage( ( command.getPermissionMessage() == null ) ? proxy.getTranslation( "no_permission" ) : command.getPermissionMessage() );
+             }
+             return true;
+         }
+ 
+         String[] args = Arrays.copyOfRange( split, 1, split.length );
+         try
+         {
+             if ( tabResults == null )
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -167,17 +167,17 @@
+         {
+             return false;
+         }
+ 
+         if ( !command.hasPermission( sender ) )
+         {
+             if ( tabResults == null )
+             {
+-                sender.sendMessage( proxy.getTranslation( "no_permission" ) );
++                sender.sendMessage( ( command.getPermissionMessage() == null ) ? proxy.getTranslation( "no_permission" ) : command.getPermissionMessage() );
+             }
+             return true;
+         }
+ 
+         String[] args = Arrays.copyOfRange( split, 1, split.length );
+         try
+         {
+             if ( tabResults == null )
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package net.md_5.bungee.api.plugin;
+        // ... 1 lines elided ...
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
+import com.google.common.eventbus.Subscribe;
+import java.io.File;
+import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.logging.Level;
+import lombok.RequiredArgsConstructor;
+import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.CommandSender;
+import net.md_5.bungee.api.ProxyServer;
+import net.md_5.bungee.api.connection.ProxiedPlayer;
+import net.md_5.bungee.event.EventBus;
+import net.md_5.bungee.event.EventHandler;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.introspector.PropertyUtils;
+        // ... 6 lines elided ...
+public final class PluginManager
+        // ... 34 lines elided ...
+    public void registerCommand(Plugin plugin, Command command)
+        // ... 14 lines elided ...
+    public void unregisterCommand(Command command)
+        // ... 10 lines elided ...
+    public void unregisterCommands(Plugin plugin)
+        // ... 9 lines elided ...
+    private Command getCommandIfEnabled(String commandName, CommandSender sender)
+        // ... 20 lines elided ...
+    public boolean isExecutableCommand(String commandName, CommandSender sender)
+    {
+        return getCommandIfEnabled( commandName, sender ) != null;
+    }
+
+    public boolean dispatchCommand(CommandSender sender, String commandLine)
+    {
+        return dispatchCommand( sender, commandLine, null );
+    }
+
+    /**
+     * Execute a command if it is registered, else return false.
+     *
+     * @param sender the sender executing the command
+     * @param commandLine the complete command line including command name and
+     * arguments
+     * @param tabResults list to place tab results into. If this list is non
+     * null then the command will not be executed and tab results will be
+     * returned instead.
+     * @return whether the command was handled
+     */
+    public boolean dispatchCommand(CommandSender sender, String commandLine, List<String> tabResults)
+    {
+        String[] split = commandLine.split( " ", -1 );
+        // Check for chat that only contains " "
+        if ( split.length == 0 || split[0].isEmpty() )
+        {
+            return false;
+        }
+
+        Command command = getCommandIfEnabled( split[0], sender );
+        if ( command == null )
+        {
+            return false;
+        }
+
+        if ( !command.hasPermission( sender ) )
+        {
+            if ( tabResults == null )
+            {
+                sender.sendMessage( ( command.getPermissionMessage() == null ) ? proxy.getTranslation( "no_permission" ) : command.getPermissionMessage() );
+            }
+            return true;
+        }
+
+        String[] args = Arrays.copyOfRange( split, 1, split.length );
+        try
+        {
+            if ( tabResults == null )
+            {
+                if ( proxy.getConfig().isLogCommands() )
+                {
+                    proxy.getLogger().log( Level.INFO, "{0} executed command: /{1}", new Object[]
+                    {
+                        sender.getName(), commandLine
+                    } );
+                }
+                command.execute( sender, args );
+            } else if ( commandLine.contains( " " ) && command instanceof TabExecutor )
+            {
+                for ( String s : ( (TabExecutor) command ).onTabComplete( sender, args ) )
+                {
+                    tabResults.add( s );
+                }
+            }
+        } catch ( Exception ex )
+        {
+            sender.sendMessage( ChatColor.RED + "An internal error occurred whilst executing this command, please check the console log for details." );
+            ProxyServer.getInstance().getLogger().log( Level.WARNING, "Error in dispatching command", ex );
+        }
+        return true;
+    }
+
+    /**
+     * Returns the {@link Plugin} objects corresponding to all loaded plugins.
+     *
+     * @return the set of loaded plugins
+     */
+    public Collection<Plugin> getPlugins()
+    {
+        return plugins.values();
+        // ... 8 lines elided ...
+    public Plugin getPlugin(String name)
+        // ... 4 lines elided ...
+    public void loadPlugins()
+        // ... 14 lines elided ...
+    public void enablePlugins()
+        // ... 17 lines elided ...
+    private boolean enablePlugin(Map<PluginDescription, Boolean> pluginStatuses, Stack<PluginDescription> dependStack, PluginDescription plugin)
+        // ... 88 lines elided ...
+    public void detectPlugins(File folder)
+        // ... 42 lines elided ...
+    public <T extends Event> T callEvent(T event)
+        // ... 26 lines elided ...
+    public void registerListener(Plugin plugin, Listener listener)
+        // ... 15 lines elided ...
+    public void unregisterListener(Listener listener)
+        // ... 10 lines elided ...
+    public void unregisterListeners(Plugin plugin)
+        // ... 13 lines elided ...
+    public Collection<Map.Entry<String, Command>> getCommands()
+        // ... 4 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/7: protocol/src/main/java/net/md_5/bungee/protocol/ProtocolConstants.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,16 +1,17 @@
+ package net.md_5.bungee.protocol;
+ 
+ import java.util.Arrays;
+ import java.util.List;
+ 
+ public class ProtocolConstants
+ {
+-
++    public static final int MINECRAFT_1_7_2 = 4;
++    public static final int MINECRAFT_1_7_6 = 5;
+     public static final int MINECRAFT_1_8 = 47;
+     public static final int MINECRAFT_1_9 = 107;
+     public static final int MINECRAFT_1_9_1 = 108;
+     public static final int MINECRAFT_1_9_2 = 109;
+     public static final int MINECRAFT_1_9_4 = 110;
+     public static final int MINECRAFT_1_10 = 210;
+     public static final int MINECRAFT_1_11 = 315;
+     public static final int MINECRAFT_1_11_1 = 316;
+@@ -27,28 +28,32 @@
+     public static final int MINECRAFT_1_14_4 = 498;
+     public static final int MINECRAFT_1_15 = 573;
+     public static final int MINECRAFT_1_15_1 = 575;
+     public static final int MINECRAFT_1_15_2 = 578;
+     public static final int MINECRAFT_1_16 = 735;
+     public static final int MINECRAFT_1_16_1 = 736;
+     public static final int MINECRAFT_1_16_2 = 751;
+     public static final int MINECRAFT_1_16_3 = 753;
++    public static final int MINECRAFT_1_16_4 = 754;
+     public static final List<String> SUPPORTED_VERSIONS = Arrays.asList(
++            "1.7.x",
+             "1.8.x",
+             "1.9.x",
+             "1.10.x",
+             "1.11.x",
+             "1.12.x",
+             "1.13.x",
+             "1.14.x",
+             "1.15.x",
+             "1.16.x"
+     );
+     public static final List<Integer> SUPPORTED_VERSION_IDS = Arrays.asList(
++            ProtocolConstants.MINECRAFT_1_7_2,
++            ProtocolConstants.MINECRAFT_1_7_6,
+             ProtocolConstants.MINECRAFT_1_8,
+             ProtocolConstants.MINECRAFT_1_9,
+             ProtocolConstants.MINECRAFT_1_9_1,
+             ProtocolConstants.MINECRAFT_1_9_2,
+             ProtocolConstants.MINECRAFT_1_9_4,
+             ProtocolConstants.MINECRAFT_1_10,
+             ProtocolConstants.MINECRAFT_1_11,
+             ProtocolConstants.MINECRAFT_1_11_1,
+@@ -64,17 +69,18 @@
+             ProtocolConstants.MINECRAFT_1_14_3,
+             ProtocolConstants.MINECRAFT_1_14_4,
+             ProtocolConstants.MINECRAFT_1_15,
+             ProtocolConstants.MINECRAFT_1_15_1,
+             ProtocolConstants.MINECRAFT_1_15_2,
+             ProtocolConstants.MINECRAFT_1_16,
+             ProtocolConstants.MINECRAFT_1_16_1,
+             ProtocolConstants.MINECRAFT_1_16_2,
+-            ProtocolConstants.MINECRAFT_1_16_3
++            ProtocolConstants.MINECRAFT_1_16_3,
++            ProtocolConstants.MINECRAFT_1_16_4
+     );
+ 
+     public enum Direction
+     {
+ 
+         TO_CLIENT, TO_SERVER;
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -27,16 +27,17 @@
+     public static final int MINECRAFT_1_14_4 = 498;
+     public static final int MINECRAFT_1_15 = 573;
+     public static final int MINECRAFT_1_15_1 = 575;
+     public static final int MINECRAFT_1_15_2 = 578;
+     public static final int MINECRAFT_1_16 = 735;
+     public static final int MINECRAFT_1_16_1 = 736;
+     public static final int MINECRAFT_1_16_2 = 751;
+     public static final int MINECRAFT_1_16_3 = 753;
++    public static final int MINECRAFT_1_16_4 = 754;
+     public static final List<String> SUPPORTED_VERSIONS = Arrays.asList(
+             "1.8.x",
+             "1.9.x",
+             "1.10.x",
+             "1.11.x",
+             "1.12.x",
+             "1.13.x",
+             "1.14.x",
+@@ -64,17 +65,18 @@
+             ProtocolConstants.MINECRAFT_1_14_3,
+             ProtocolConstants.MINECRAFT_1_14_4,
+             ProtocolConstants.MINECRAFT_1_15,
+             ProtocolConstants.MINECRAFT_1_15_1,
+             ProtocolConstants.MINECRAFT_1_15_2,
+             ProtocolConstants.MINECRAFT_1_16,
+             ProtocolConstants.MINECRAFT_1_16_1,
+             ProtocolConstants.MINECRAFT_1_16_2,
+-            ProtocolConstants.MINECRAFT_1_16_3
++            ProtocolConstants.MINECRAFT_1_16_3,
++            ProtocolConstants.MINECRAFT_1_16_4
+     );
+ 
+     public enum Direction
+     {
+ 
+         TO_CLIENT, TO_SERVER;
+     }
+ }
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package net.md_5.bungee.protocol;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class ProtocolConstants
+{
+    public static final int MINECRAFT_1_7_2 = 4;
+    public static final int MINECRAFT_1_7_6 = 5;
+    public static final int MINECRAFT_1_8 = 47;
+    public static final int MINECRAFT_1_9 = 107;
+    public static final int MINECRAFT_1_9_1 = 108;
+    public static final int MINECRAFT_1_9_2 = 109;
+    public static final int MINECRAFT_1_9_4 = 110;
+    public static final int MINECRAFT_1_10 = 210;
+    public static final int MINECRAFT_1_11 = 315;
+    public static final int MINECRAFT_1_11_1 = 316;
+    public static final int MINECRAFT_1_12 = 335;
+    public static final int MINECRAFT_1_12_1 = 338;
+    public static final int MINECRAFT_1_12_2 = 340;
+    public static final int MINECRAFT_1_13 = 393;
+    public static final int MINECRAFT_1_13_1 = 401;
+    public static final int MINECRAFT_1_13_2 = 404;
+    public static final int MINECRAFT_1_14 = 477;
+    public static final int MINECRAFT_1_14_1 = 480;
+    public static final int MINECRAFT_1_14_2 = 485;
+    public static final int MINECRAFT_1_14_3 = 490;
+    public static final int MINECRAFT_1_14_4 = 498;
+    public static final int MINECRAFT_1_15 = 573;
+    public static final int MINECRAFT_1_15_1 = 575;
+    public static final int MINECRAFT_1_15_2 = 578;
+    public static final int MINECRAFT_1_16 = 735;
+    public static final int MINECRAFT_1_16_1 = 736;
+    public static final int MINECRAFT_1_16_2 = 751;
+    public static final int MINECRAFT_1_16_3 = 753;
+    public static final int MINECRAFT_1_16_4 = 754;
+    public static final List<String> SUPPORTED_VERSIONS = Arrays.asList(
+            "1.7.x",
+            "1.8.x",
+            "1.9.x",
+            "1.10.x",
+            "1.11.x",
+            "1.12.x",
+            "1.13.x",
+            "1.14.x",
+            "1.15.x",
+            "1.16.x"
+    );
+    public static final List<Integer> SUPPORTED_VERSION_IDS = Arrays.asList(
+            ProtocolConstants.MINECRAFT_1_7_2,
+            ProtocolConstants.MINECRAFT_1_7_6,
+            ProtocolConstants.MINECRAFT_1_8,
+            ProtocolConstants.MINECRAFT_1_9,
+            ProtocolConstants.MINECRAFT_1_9_1,
+            ProtocolConstants.MINECRAFT_1_9_2,
+            ProtocolConstants.MINECRAFT_1_9_4,
+            ProtocolConstants.MINECRAFT_1_10,
+            ProtocolConstants.MINECRAFT_1_11,
+            ProtocolConstants.MINECRAFT_1_11_1,
+            ProtocolConstants.MINECRAFT_1_12,
+            ProtocolConstants.MINECRAFT_1_12_1,
+            ProtocolConstants.MINECRAFT_1_12_2,
+            ProtocolConstants.MINECRAFT_1_13,
+            ProtocolConstants.MINECRAFT_1_13_1,
+            ProtocolConstants.MINECRAFT_1_13_2,
+            ProtocolConstants.MINECRAFT_1_14,
+            ProtocolConstants.MINECRAFT_1_14_1,
+            ProtocolConstants.MINECRAFT_1_14_2,
+            ProtocolConstants.MINECRAFT_1_14_3,
+            ProtocolConstants.MINECRAFT_1_14_4,
+            ProtocolConstants.MINECRAFT_1_15,
+            ProtocolConstants.MINECRAFT_1_15_1,
+            ProtocolConstants.MINECRAFT_1_15_2,
+            ProtocolConstants.MINECRAFT_1_16,
+            ProtocolConstants.MINECRAFT_1_16_1,
+            ProtocolConstants.MINECRAFT_1_16_2,
+            ProtocolConstants.MINECRAFT_1_16_3,
+            ProtocolConstants.MINECRAFT_1_16_4
+    );
+
+    public enum Direction
+    {
+
+        TO_CLIENT, TO_SERVER;
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/7: protocol/src/main/java/net/md_5/bungee/protocol/packet/Chat.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,23 +1,21 @@
+ package net.md_5.bungee.protocol.packet;
+ 
+ import io.netty.buffer.ByteBuf;
+ import java.util.UUID;
+-import lombok.AllArgsConstructor;
+ import lombok.Data;
+ import lombok.EqualsAndHashCode;
+ import lombok.NoArgsConstructor;
+ import net.md_5.bungee.protocol.AbstractPacketHandler;
+ import net.md_5.bungee.protocol.DefinedPacket;
+ import net.md_5.bungee.protocol.ProtocolConstants;
+ 
+ @Data
+ @NoArgsConstructor
+-@AllArgsConstructor
+ @EqualsAndHashCode(callSuper = false)
+ public class Chat extends DefinedPacket
+ {
+ 
+     private static final UUID EMPTY_UUID = new UUID( 0L, 0L );
+     private String message;
+     private byte position;
+     private UUID sender;
+@@ -27,35 +25,42 @@
+         this( message, (byte) 0 );
+     }
+ 
+     public Chat(String message, byte position)
+     {
+         this( message, position, EMPTY_UUID );
+     }
+ 
++    public Chat(String message, byte position, UUID sender)
++    {
++        this.message = message;
++        this.position = position;
++        this.sender = sender == null ? EMPTY_UUID : sender;
++    }
++
+     @Override
+     public void read(ByteBuf buf, ProtocolConstants.Direction direction, int protocolVersion)
+     {
+         message = readString( buf );
+-        if ( direction == ProtocolConstants.Direction.TO_CLIENT )
++        if ( direction == ProtocolConstants.Direction.TO_CLIENT && protocolVersion >= ProtocolConstants.MINECRAFT_1_8 )
+         {
+             position = buf.readByte();
+             if ( protocolVersion >= ProtocolConstants.MINECRAFT_1_16 )
+             {
+                 sender = readUUID( buf );
+             }
+         }
+     }
+ 
+     @Override
+     public void write(ByteBuf buf, ProtocolConstants.Direction direction, int protocolVersion)
+     {
+         writeString( message, buf );
+-        if ( direction == ProtocolConstants.Direction.TO_CLIENT )
++        if ( direction == ProtocolConstants.Direction.TO_CLIENT && protocolVersion >= ProtocolConstants.MINECRAFT_1_8 )
+         {
+             buf.writeByte( position );
+             if ( protocolVersion >= ProtocolConstants.MINECRAFT_1_16 )
+             {
+                 writeUUID( sender, buf );
+             }
+         }
+     }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,23 +1,21 @@
+ package net.md_5.bungee.protocol.packet;
+ 
+ import io.netty.buffer.ByteBuf;
+ import java.util.UUID;
+-import lombok.AllArgsConstructor;
+ import lombok.Data;
+ import lombok.EqualsAndHashCode;
+ import lombok.NoArgsConstructor;
+ import net.md_5.bungee.protocol.AbstractPacketHandler;
+ import net.md_5.bungee.protocol.DefinedPacket;
+ import net.md_5.bungee.protocol.ProtocolConstants;
+ 
+ @Data
+ @NoArgsConstructor
+-@AllArgsConstructor
+ @EqualsAndHashCode(callSuper = false)
+ public class Chat extends DefinedPacket
+ {
+ 
+     private static final UUID EMPTY_UUID = new UUID( 0L, 0L );
+     private String message;
+     private byte position;
+     private UUID sender;
+@@ -25,16 +23,23 @@
+     public Chat(String message)
+     {
+         this( message, (byte) 0 );
+     }
+ 
+     public Chat(String message, byte position)
+     {
+         this( message, position, EMPTY_UUID );
++    }
++
++    public Chat(String message, byte position, UUID sender)
++    {
++        this.message = message;
++        this.position = position;
++        this.sender = sender == null ? EMPTY_UUID : sender;
+     }
+ 
+     @Override
+     public void read(ByteBuf buf, ProtocolConstants.Direction direction, int protocolVersion)
+     {
+         message = readString( buf );
+         if ( direction == ProtocolConstants.Direction.TO_CLIENT )
+         {
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package net.md_5.bungee.protocol.packet;
+
+import io.netty.buffer.ByteBuf;
+import java.util.UUID;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import net.md_5.bungee.protocol.AbstractPacketHandler;
+import net.md_5.bungee.protocol.DefinedPacket;
+import net.md_5.bungee.protocol.ProtocolConstants;
+
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = false)
+public class Chat extends DefinedPacket
+{
+
+    private static final UUID EMPTY_UUID = new UUID( 0L, 0L );
+    private String message;
+    private byte position;
+    private UUID sender;
+
+    public Chat(String message)
+    {
+        this( message, (byte) 0 );
+    }
+
+    public Chat(String message, byte position)
+    {
+        this( message, position, EMPTY_UUID );
+    }
+
+    public Chat(String message, byte position, UUID sender)
+    {
+        this.message = message;
+        this.position = position;
+        this.sender = sender == null ? EMPTY_UUID : sender;
+    }
+
+    @Override
+    public void read(ByteBuf buf, ProtocolConstants.Direction direction, int protocolVersion)
+    {
+        message = readString( buf );
+        if ( direction == ProtocolConstants.Direction.TO_CLIENT && protocolVersion >= ProtocolConstants.MINECRAFT_1_8 )
+        {
+            position = buf.readByte();
+            if ( protocolVersion >= ProtocolConstants.MINECRAFT_1_16 )
+            {
+                sender = readUUID( buf );
+            }
+        }
+    }
+
+    @Override
+    public void write(ByteBuf buf, ProtocolConstants.Direction direction, int protocolVersion)
+    {
+        writeString( message, buf );
+        if ( direction == ProtocolConstants.Direction.TO_CLIENT && protocolVersion >= ProtocolConstants.MINECRAFT_1_8 )
+        {
+            buf.writeByte( position );
+            if ( protocolVersion >= ProtocolConstants.MINECRAFT_1_16 )
+            {
+                writeUUID( sender, buf );
+            }
+        }
+    }
+
+    @Override
+    public void handle(AbstractPacketHandler handler) throws Exception
+    {
+        handler.handle( this );
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/7: proxy/src/main/java/net/md_5/bungee/UserConnection.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -158,18 +158,22 @@
+         g.addAll( bungee.getConfigurationAdapter().getGroups( getUniqueId().toString() ) );
+         for ( String s : g )
+         {
+             addGroups( s );
+         }
+ 
+         forgeClientHandler = new ForgeClientHandler( this );
+ 
++        // No-config FML handshake marker.
+         // Set whether the connection has a 1.8 FML marker in the handshake.
+-        forgeClientHandler.setFmlTokenInHandshake( this.getPendingConnection().getExtraDataInHandshake().contains( ForgeConstants.FML_HANDSHAKE_TOKEN ) );
++        if ( this.getPendingConnection().getExtraDataInHandshake().contains( ForgeConstants.FML_HANDSHAKE_TOKEN ) )
++        {
++            forgeClientHandler.setFmlTokenInHandshake( true );
++        }
+     }
+ 
+     public void sendPacket(PacketWrapper packet)
+     {
+         ch.write( packet );
+     }
+ 
+     @Deprecated
+@@ -177,16 +181,20 @@
+     {
+         return !ch.isClosed();
+     }
+ 
+     @Override
+     public void setDisplayName(String name)
+     {
+         Preconditions.checkNotNull( name, "displayName" );
++        if ( pendingConnection.getVersion() <= ProtocolConstants.MINECRAFT_1_7_6 )
++        {
++            Preconditions.checkArgument( name.length() <= 16, "Display name cannot be longer than 16 characters" );
++        }
+         displayName = name;
+     }
+ 
+     @Override
+     public void connect(ServerInfo target)
+     {
+         connect( target, null, ServerConnectEvent.Reason.PLUGIN );
+     }
+@@ -436,59 +444,67 @@
+     }
+ 
+     @Override
+     public void sendMessage(BaseComponent message)
+     {
+         sendMessage( ChatMessageType.SYSTEM, message );
+     }
+ 
+-    private void sendMessage(ChatMessageType position, String message)
+-    {
+-        unsafe().sendPacket( new Chat( message, (byte) position.ordinal() ) );
+-    }
+-
+     @Override
+     public void sendMessage(ChatMessageType position, BaseComponent... message)
++    {
++        sendMessage( position, null, message );
++    }
++
++    @Override
++    public void sendMessage(ChatMessageType position, BaseComponent message)
++    {
++        sendMessage( position, (UUID) null, message );
++    }
++
++    @Override
++    public void sendMessage(UUID sender, BaseComponent... message)
++    {
++        sendMessage( ChatMessageType.CHAT, sender, message );
++    }
++
++    @Override
++    public void sendMessage(UUID sender, BaseComponent message)
++    {
++        sendMessage( ChatMessageType.CHAT, sender, message );
++    }
++
++    private void sendMessage(ChatMessageType position, UUID sender, String message)
++    {
++        unsafe().sendPacket( new Chat( message, (byte) position.ordinal(), sender ) );
++    }
++
++    private void sendMessage(ChatMessageType position, UUID sender, BaseComponent... message)
+     {
+         // transform score components
+         message = ChatComponentTransformer.getInstance().transform( this, true, message );
+ 
+-        if ( position == ChatMessageType.ACTION_BAR )
++        if ( position == ChatMessageType.ACTION_BAR && pendingConnection.getVersion() >= ProtocolConstants.MINECRAFT_1_8 )
+         {
+             // Versions older than 1.11 cannot send the Action bar with the new JSON formattings
+             // Fix by converting to a legacy message, see https://bugs.mojang.com/browse/MC-119145
+             if ( getPendingConnection().getVersion() <= ProtocolConstants.MINECRAFT_1_10 )
+             {
+-                sendMessage( position, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
++                sendMessage( position, sender, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
+             } else
+             {
+                 net.md_5.bungee.protocol.packet.Title title = new net.md_5.bungee.protocol.packet.Title();
+                 title.setAction( net.md_5.bungee.protocol.packet.Title.Action.ACTIONBAR );
+                 title.setText( ComponentSerializer.toString( message ) );
+                 unsafe.sendPacket( title );
+             }
+         } else
+         {
+-            sendMessage( position, ComponentSerializer.toString( message ) );
+-        }
+-    }
+-
+-    @Override
+-    public void sendMessage(ChatMessageType position, BaseComponent message)
+-    {
+-        message = ChatComponentTransformer.getInstance().transform( this, true, message )[0];
+-
+-        // Action bar doesn't display the new JSON formattings, legacy works - send it using this for now
+-        if ( position == ChatMessageType.ACTION_BAR )
+-        {
+-            sendMessage( position, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
+-        } else
+-        {
+-            sendMessage( position, ComponentSerializer.toString( message ) );
++            sendMessage( position, sender, ComponentSerializer.toString( message ) );
+         }
+     }
+ 
+     @Override
+     public void sendData(String channel, byte[] data)
+     {
+         unsafe().sendPacket( new PluginMessage( channel, data, forgeClientHandler.isForgeUser() ) );
+     }
+@@ -658,35 +674,41 @@
+         }
+ 
+         return ImmutableMap.copyOf( forgeClientHandler.getClientModList() );
+     }
+ 
+     @Override
+     public void setTabHeader(BaseComponent header, BaseComponent footer)
+     {
+-        header = ChatComponentTransformer.getInstance().transform( this, true, header )[0];
+-        footer = ChatComponentTransformer.getInstance().transform( this, true, footer )[0];
+-
+-        unsafe().sendPacket( new PlayerListHeaderFooter(
+-                ComponentSerializer.toString( header ),
+-                ComponentSerializer.toString( footer )
+-        ) );
++        if ( pendingConnection.getVersion() >= ProtocolConstants.MINECRAFT_1_8 )
++        {
++            header = ChatComponentTransformer.getInstance().transform( this, true, header )[0];
++            footer = ChatComponentTransformer.getInstance().transform( this, true, footer )[0];
++
++            unsafe().sendPacket( new PlayerListHeaderFooter(
++                    ComponentSerializer.toString( header ),
++                    ComponentSerializer.toString( footer )
++            ) );
++        }
+     }
+ 
+     @Override
+     public void setTabHeader(BaseComponent[] header, BaseComponent[] footer)
+     {
+-        header = ChatComponentTransformer.getInstance().transform( this, true, header );
+-        footer = ChatComponentTransformer.getInstance().transform( this, true, footer );
+-
+-        unsafe().sendPacket( new PlayerListHeaderFooter(
+-                ComponentSerializer.toString( header ),
+-                ComponentSerializer.toString( footer )
+-        ) );
++        if ( pendingConnection.getVersion() >= ProtocolConstants.MINECRAFT_1_8 )
++        {
++            header = ChatComponentTransformer.getInstance().transform( this, true, header );
++            footer = ChatComponentTransformer.getInstance().transform( this, true, footer );
++
++            unsafe().sendPacket( new PlayerListHeaderFooter(
++                    ComponentSerializer.toString( header ),
++                    ComponentSerializer.toString( footer )
++            ) );
++        }
+     }
+ 
+     @Override
+     public void resetTabHeader()
+     {
+         // Mojang did not add a way to remove the header / footer completely, we can only set it to empty
+         setTabHeader( (BaseComponent) null, null );
+     }
+@@ -699,17 +721,17 @@
+ 
+     public String getExtraDataInHandshake()
+     {
+         return this.getPendingConnection().getExtraDataInHandshake();
+     }
+ 
+     public void setCompressionThreshold(int compressionThreshold)
+     {
+-        if ( !ch.isClosing() && this.compressionThreshold == -1 && compressionThreshold >= 0 )
++        if ( !ch.isClosing() && this.compressionThreshold == -1 && getPendingConnection().getVersion() >= ProtocolConstants.MINECRAFT_1_8 && compressionThreshold >= 0 )
+         {
+             this.compressionThreshold = compressionThreshold;
+             unsafe.sendPacket( new SetCompression( compressionThreshold ) );
+             ch.setCompressionThreshold( compressionThreshold );
+         }
+     }
+ 
+     @Override
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -436,59 +436,67 @@
+     }
+ 
+     @Override
+     public void sendMessage(BaseComponent message)
+     {
+         sendMessage( ChatMessageType.SYSTEM, message );
+     }
+ 
+-    private void sendMessage(ChatMessageType position, String message)
+-    {
+-        unsafe().sendPacket( new Chat( message, (byte) position.ordinal() ) );
+-    }
+-
+     @Override
+     public void sendMessage(ChatMessageType position, BaseComponent... message)
++    {
++        sendMessage( position, null, message );
++    }
++
++    @Override
++    public void sendMessage(ChatMessageType position, BaseComponent message)
++    {
++        sendMessage( position, (UUID) null, message );
++    }
++
++    @Override
++    public void sendMessage(UUID sender, BaseComponent... message)
++    {
++        sendMessage( ChatMessageType.CHAT, sender, message );
++    }
++
++    @Override
++    public void sendMessage(UUID sender, BaseComponent message)
++    {
++        sendMessage( ChatMessageType.CHAT, sender, message );
++    }
++
++    private void sendMessage(ChatMessageType position, UUID sender, String message)
++    {
++        unsafe().sendPacket( new Chat( message, (byte) position.ordinal(), sender ) );
++    }
++
++    private void sendMessage(ChatMessageType position, UUID sender, BaseComponent... message)
+     {
+         // transform score components
+         message = ChatComponentTransformer.getInstance().transform( this, true, message );
+ 
+         if ( position == ChatMessageType.ACTION_BAR )
+         {
+             // Versions older than 1.11 cannot send the Action bar with the new JSON formattings
+             // Fix by converting to a legacy message, see https://bugs.mojang.com/browse/MC-119145
+             if ( getPendingConnection().getVersion() <= ProtocolConstants.MINECRAFT_1_10 )
+             {
+-                sendMessage( position, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
++                sendMessage( position, sender, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
+             } else
+             {
+                 net.md_5.bungee.protocol.packet.Title title = new net.md_5.bungee.protocol.packet.Title();
+                 title.setAction( net.md_5.bungee.protocol.packet.Title.Action.ACTIONBAR );
+                 title.setText( ComponentSerializer.toString( message ) );
+                 unsafe.sendPacket( title );
+             }
+         } else
+         {
+-            sendMessage( position, ComponentSerializer.toString( message ) );
+-        }
+-    }
+-
+-    @Override
+-    public void sendMessage(ChatMessageType position, BaseComponent message)
+-    {
+-        message = ChatComponentTransformer.getInstance().transform( this, true, message )[0];
+-
+-        // Action bar doesn't display the new JSON formattings, legacy works - send it using this for now
+-        if ( position == ChatMessageType.ACTION_BAR )
+-        {
+-            sendMessage( position, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
+-        } else
+-        {
+-            sendMessage( position, ComponentSerializer.toString( message ) );
++            sendMessage( position, sender, ComponentSerializer.toString( message ) );
+         }
+     }
+ 
+     @Override
+     public void sendData(String channel, byte[] data)
+     {
+         unsafe().sendPacket( new PluginMessage( channel, data, forgeClientHandler.isForgeUser() ) );
+     }
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package net.md_5.bungee;
+        // ... 1 lines elided ...
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.util.internal.PlatformDependent;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Queue;
+import java.util.UUID;
+import java.util.logging.Level;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import net.md_5.bungee.api.Callback;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.ProxyServer;
+import net.md_5.bungee.api.ServerConnectRequest;
+import net.md_5.bungee.api.SkinConfiguration;
+import net.md_5.bungee.api.Title;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.config.ServerInfo;
+import net.md_5.bungee.api.connection.ProxiedPlayer;
+import net.md_5.bungee.api.event.PermissionCheckEvent;
+import net.md_5.bungee.api.event.ServerConnectEvent;
+import net.md_5.bungee.api.score.Scoreboard;
+import net.md_5.bungee.chat.ComponentSerializer;
+import net.md_5.bungee.connection.InitialHandler;
+import net.md_5.bungee.entitymap.EntityMap;
+import net.md_5.bungee.forge.ForgeClientHandler;
+import net.md_5.bungee.forge.ForgeConstants;
+import net.md_5.bungee.forge.ForgeServerHandler;
+import net.md_5.bungee.netty.ChannelWrapper;
+import net.md_5.bungee.netty.HandlerBoss;
+import net.md_5.bungee.netty.PipelineUtils;
+import net.md_5.bungee.protocol.DefinedPacket;
+import net.md_5.bungee.protocol.MinecraftDecoder;
+import net.md_5.bungee.protocol.MinecraftEncoder;
+import net.md_5.bungee.protocol.PacketWrapper;
+import net.md_5.bungee.protocol.Protocol;
+import net.md_5.bungee.protocol.ProtocolConstants;
+import net.md_5.bungee.protocol.packet.Chat;
+import net.md_5.bungee.protocol.packet.ClientSettings;
+import net.md_5.bungee.protocol.packet.Kick;
+import net.md_5.bungee.protocol.packet.PlayerListHeaderFooter;
+import net.md_5.bungee.protocol.packet.PluginMessage;
+import net.md_5.bungee.protocol.packet.SetCompression;
+import net.md_5.bungee.tab.ServerUnique;
+import net.md_5.bungee.tab.TabList;
+import net.md_5.bungee.util.CaseInsensitiveSet;
+import net.md_5.bungee.util.ChatComponentTransformer;
+        // ... 2 lines elided ...
+public final class UserConnection implements ProxiedPlayer
+        // ... 57 lines elided ...
+    /*========================================================================*/
+    @Getter
+    private String displayName;
+    @Getter
+    private EntityMap entityRewrite;
+    private Locale locale;
+    /*========================================================================*/
+    @Getter
+    @Setter
+    private ForgeClientHandler forgeClientHandler;
+    @Getter
+    @Setter
+    private ForgeServerHandler forgeServerHandler;
+    /*========================================================================*/
+    private final Unsafe unsafe = new Unsafe()
+    {
+        @Override
+        public void sendPacket(DefinedPacket packet)
+        {
+            ch.write( packet );
+        }
+    };
+
+    public void init()
+    {
+        this.entityRewrite = EntityMap.getEntityMap( getPendingConnection().getVersion() );
+
+        this.displayName = name;
+
+        tabListHandler = new ServerUnique( this );
+
+        Collection<String> g = bungee.getConfigurationAdapter().getGroups( name );
+        g.addAll( bungee.getConfigurationAdapter().getGroups( getUniqueId().toString() ) );
+        for ( String s : g )
+        {
+            addGroups( s );
+        }
+
+        forgeClientHandler = new ForgeClientHandler( this );
+
+        // No-config FML handshake marker.
+        // Set whether the connection has a 1.8 FML marker in the handshake.
+        if ( this.getPendingConnection().getExtraDataInHandshake().contains( ForgeConstants.FML_HANDSHAKE_TOKEN ) )
+        {
+            forgeClientHandler.setFmlTokenInHandshake( true );
+        }
+    }
+
+    public void sendPacket(PacketWrapper packet)
+    {
+        ch.write( packet );
+    }
+
+    @Deprecated
+    public boolean isActive()
+    {
+        return !ch.isClosed();
+    }
+
+    @Override
+    public void setDisplayName(String name)
+    {
+        Preconditions.checkNotNull( name, "displayName" );
+        if ( pendingConnection.getVersion() <= ProtocolConstants.MINECRAFT_1_7_6 )
+        {
+            Preconditions.checkArgument( name.length() <= 16, "Display name cannot be longer than 16 characters" );
+        }
+        displayName = name;
+    }
+
+    @Override
+    public void connect(ServerInfo target)
+    {
+        connect( target, null, ServerConnectEvent.Reason.PLUGIN );
+    }
+
+    @Override
+    public void connect(ServerInfo target, ServerConnectEvent.Reason reason)
+    {
+        connect( target, null, false, reason );
+    }
+
+    @Override
+    public void connect(ServerInfo target, Callback<Boolean> callback)
+    {
+        connect( target, callback, false, ServerConnectEvent.Reason.PLUGIN );
+    }
+
+    @Override
+    public void connect(ServerInfo target, Callback<Boolean> callback, ServerConnectEvent.Reason reason)
+    {
+        connect( target, callback, false, reason );
+    }
+
+    @Deprecated
+    public void connectNow(ServerInfo target)
+    {
+        connectNow( target, ServerConnectEvent.Reason.UNKNOWN );
+    }
+
+    public void connectNow(ServerInfo target, ServerConnectEvent.Reason reason)
+    {
+        dimensionChange = true;
+        connect( target, reason );
+    }
+
+    public ServerInfo updateAndGetNextServer(ServerInfo currentTarget)
+        // ... 20 lines elided ...
+    public void connect(ServerInfo info, final Callback<Boolean> callback, final boolean retry)
+        // ... 4 lines elided ...
+    public void connect(ServerInfo info, final Callback<Boolean> callback, final boolean retry, ServerConnectEvent.Reason reason)
+        // ... 10 lines elided ...
+                public void done(ServerConnectRequest.Result result, Throwable error)
+        // ... 10 lines elided ...
+    public void connect(final ServerConnectRequest request)
+        // ... 47 lines elided ...
+            protected void initChannel(Channel ch) throws Exception
+        // ... 11 lines elided ...
+            public void operationComplete(ChannelFuture future) throws Exception
+        // ... 41 lines elided ...
+    public void disconnect(String reason)
+        // ... 5 lines elided ...
+    public void disconnect(BaseComponent... reason)
+        // ... 5 lines elided ...
+    public void disconnect(BaseComponent reason)
+        // ... 4 lines elided ...
+    public void disconnect0(final BaseComponent... reason)
+        // ... 12 lines elided ...
+                server.setObsolete( true );
+                server.disconnect( "Quitting" );
+            }
+        }
+    }
+
+    @Override
+    public void chat(String message)
+    {
+        Preconditions.checkState( server != null, "Not connected to server" );
+        server.getCh().write( new Chat( message ) );
+    }
+
+    @Override
+    public void sendMessage(String message)
+    {
+        sendMessage( TextComponent.fromLegacyText( message ) );
+    }
+
+    @Override
+    public void sendMessages(String... messages)
+    {
+        for ( String message : messages )
+        {
+            sendMessage( message );
+        }
+    }
+
+    @Override
+    public void sendMessage(BaseComponent... message)
+    {
+        sendMessage( ChatMessageType.SYSTEM, message );
+    }
+
+    @Override
+    public void sendMessage(BaseComponent message)
+    {
+        sendMessage( ChatMessageType.SYSTEM, message );
+    }
+
+    @Override
+    public void sendMessage(ChatMessageType position, BaseComponent... message)
+    {
+        sendMessage( position, null, message );
+    }
+
+    @Override
+    public void sendMessage(ChatMessageType position, BaseComponent message)
+    {
+        sendMessage( position, (UUID) null, message );
+    }
+
+    @Override
+    public void sendMessage(UUID sender, BaseComponent... message)
+    {
+        sendMessage( ChatMessageType.CHAT, sender, message );
+    }
+
+    @Override
+    public void sendMessage(UUID sender, BaseComponent message)
+    {
+        sendMessage( ChatMessageType.CHAT, sender, message );
+    }
+
+    private void sendMessage(ChatMessageType position, UUID sender, String message)
+    {
+        unsafe().sendPacket( new Chat( message, (byte) position.ordinal(), sender ) );
+    }
+
+    private void sendMessage(ChatMessageType position, UUID sender, BaseComponent... message)
+    {
+        // transform score components
+        message = ChatComponentTransformer.getInstance().transform( this, true, message );
+
+        if ( position == ChatMessageType.ACTION_BAR && pendingConnection.getVersion() >= ProtocolConstants.MINECRAFT_1_8 )
+        {
+            // Versions older than 1.11 cannot send the Action bar with the new JSON formattings
+            // Fix by converting to a legacy message, see https://bugs.mojang.com/browse/MC-119145
+            if ( getPendingConnection().getVersion() <= ProtocolConstants.MINECRAFT_1_10 )
+            {
+                sendMessage( position, sender, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
+            } else
+            {
+                net.md_5.bungee.protocol.packet.Title title = new net.md_5.bungee.protocol.packet.Title();
+                title.setAction( net.md_5.bungee.protocol.packet.Title.Action.ACTIONBAR );
+                title.setText( ComponentSerializer.toString( message ) );
+                unsafe.sendPacket( title );
+            }
+        } else
+        {
+            sendMessage( position, sender, ComponentSerializer.toString( message ) );
+        }
+    }
+
+    @Override
+    public void sendData(String channel, byte[] data)
+    {
+        unsafe().sendPacket( new PluginMessage( channel, data, forgeClientHandler.isForgeUser() ) );
+    }
+
+    @Override
+    public InetSocketAddress getAddress()
+    {
+        return (InetSocketAddress) getSocketAddress();
+    }
+
+    @Override
+    public SocketAddress getSocketAddress()
+    {
+        return ch.getRemoteAddress();
+    }
+
+    @Override
+    public Collection<String> getGroups()
+    {
+        return Collections.unmodifiableCollection( groups );
+    }
+
+    @Override
+    public void addGroups(String... groups)
+    {
+        for ( String group : groups )
+        {
+            this.groups.add( group );
+            for ( String permission : bungee.getConfigurationAdapter().getPermissions( group ) )
+            {
+                setPermission( permission, true );
+            }
+        }
+    }
+
+        // ... 1 lines elided ...
+    public void removeGroups(String... groups)
+        // ... 12 lines elided ...
+    public boolean hasPermission(String permission)
+        // ... 5 lines elided ...
+    public void setPermission(String permission, boolean value)
+        // ... 11 lines elided ...
+    public Collection<String> getPermissions()
+        // ... 5 lines elided ...
+    public String toString()
+        // ... 5 lines elided ...
+    public Unsafe unsafe()
+        // ... 5 lines elided ...
+    public String getUUID()
+        // ... 5 lines elided ...
+    public UUID getUniqueId()
+        // ... 4 lines elided ...
+    public void setSettings(ClientSettings settings)
+        // ... 6 lines elided ...
+    public Locale getLocale()
+        // ... 5 lines elided ...
+    public byte getViewDistance()
+        // ... 5 lines elided ...
+    public ProxiedPlayer.ChatMode getChatMode()
+        // ... 18 lines elided ...
+    @Override
+    public boolean hasChatColors()
+    {
+        return settings == null || settings.isChatColours();
+    }
+
+    @Override
+    public SkinConfiguration getSkinParts()
+    {
+        return ( settings != null ) ? new PlayerSkinConfiguration( settings.getSkinParts() ) : PlayerSkinConfiguration.SKIN_SHOW_ALL;
+    }
+
+    @Override
+    public ProxiedPlayer.MainHand getMainHand()
+    {
+        return ( settings == null || settings.getMainHand() == 1 ) ? ProxiedPlayer.MainHand.RIGHT : ProxiedPlayer.MainHand.LEFT;
+    }
+
+    @Override
+    public boolean isForgeUser()
+    {
+        return forgeClientHandler.isForgeUser();
+    }
+
+    @Override
+    public Map<String, String> getModList()
+    {
+        if ( forgeClientHandler.getClientModList() == null )
+        {
+            // Return an empty map, rather than a null, if the client hasn't got any mods,
+            // or is yet to complete a handshake.
+            return ImmutableMap.of();
+        }
+
+        return ImmutableMap.copyOf( forgeClientHandler.getClientModList() );
+    }
+
+    @Override
+    public void setTabHeader(BaseComponent header, BaseComponent footer)
+    {
+        if ( pendingConnection.getVersion() >= ProtocolConstants.MINECRAFT_1_8 )
+        {
+            header = ChatComponentTransformer.getInstance().transform( this, true, header )[0];
+            footer = ChatComponentTransformer.getInstance().transform( this, true, footer )[0];
+
+            unsafe().sendPacket( new PlayerListHeaderFooter(
+                    ComponentSerializer.toString( header ),
+                    ComponentSerializer.toString( footer )
+            ) );
+        }
+    }
+
+    @Override
+    public void setTabHeader(BaseComponent[] header, BaseComponent[] footer)
+    {
+        if ( pendingConnection.getVersion() >= ProtocolConstants.MINECRAFT_1_8 )
+        {
+            header = ChatComponentTransformer.getInstance().transform( this, true, header );
+            footer = ChatComponentTransformer.getInstance().transform( this, true, footer );
+
+            unsafe().sendPacket( new PlayerListHeaderFooter(
+                    ComponentSerializer.toString( header ),
+                    ComponentSerializer.toString( footer )
+            ) );
+        }
+    }
+
+    @Override
+    public void resetTabHeader()
+    {
+        // Mojang did not add a way to remove the header / footer completely, we can only set it to empty
+        setTabHeader( (BaseComponent) null, null );
+    }
+
+    @Override
+    public void sendTitle(Title title)
+    {
+        title.send( this );
+    }
+
+    public String getExtraDataInHandshake()
+    {
+        return this.getPendingConnection().getExtraDataInHandshake();
+    }
+
+    public void setCompressionThreshold(int compressionThreshold)
+    {
+        if ( !ch.isClosing() && this.compressionThreshold == -1 && getPendingConnection().getVersion() >= ProtocolConstants.MINECRAFT_1_8 && compressionThreshold >= 0 )
+        {
+            this.compressionThreshold = compressionThreshold;
+            unsafe.sendPacket( new SetCompression( compressionThreshold ) );
+            ch.setCompressionThreshold( compressionThreshold );
+        }
+    }
+
+    @Override
+    public boolean isConnected()
+    {
+        return !ch.isClosed();
+    }
+
+    @Override
+    public Scoreboard getScoreboard()
+    {
+        return serverSentScoreboard;
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/7: proxy/src/main/java/net/md_5/bungee/entitymap/EntityMap.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -24,16 +24,20 @@
+     private final boolean[] serverboundInts = new boolean[ 256 ];
+     private final boolean[] serverboundVarInts = new boolean[ 256 ];
+ 
+     // Returns the correct entity map for the protocol version
+     public static EntityMap getEntityMap(int version)
+     {
+         switch ( version )
+         {
++            case ProtocolConstants.MINECRAFT_1_7_2:
++                return EntityMap_1_7_2.INSTANCE;
++            case ProtocolConstants.MINECRAFT_1_7_6:
++                return EntityMap_1_7_6.INSTANCE;
+             case ProtocolConstants.MINECRAFT_1_8:
+                 return EntityMap_1_8.INSTANCE;
+             case ProtocolConstants.MINECRAFT_1_9:
+             case ProtocolConstants.MINECRAFT_1_9_1:
+             case ProtocolConstants.MINECRAFT_1_9_2:
+                 return EntityMap_1_9.INSTANCE;
+             case ProtocolConstants.MINECRAFT_1_9_4:
+                 return EntityMap_1_9_4.INSTANCE;
+@@ -61,16 +65,17 @@
+             case ProtocolConstants.MINECRAFT_1_15_1:
+             case ProtocolConstants.MINECRAFT_1_15_2:
+                 return EntityMap_1_15.INSTANCE;
+             case ProtocolConstants.MINECRAFT_1_16:
+             case ProtocolConstants.MINECRAFT_1_16_1:
+                 return EntityMap_1_16.INSTANCE;
+             case ProtocolConstants.MINECRAFT_1_16_2:
+             case ProtocolConstants.MINECRAFT_1_16_3:
++            case ProtocolConstants.MINECRAFT_1_16_4:
+                 return EntityMap_1_16_2.INSTANCE;
+         }
+         throw new RuntimeException( "Version " + version + " has no entity map" );
+     }
+ 
+     protected void addRewrite(int id, ProtocolConstants.Direction direction, boolean varint)
+     {
+         if ( direction == ProtocolConstants.Direction.TO_CLIENT )
+@@ -316,18 +321,21 @@
+ 
+     // Handles simple packets
+     private static void rewrite(ByteBuf packet, int oldId, int newId, boolean[] ints, boolean[] varints)
+     {
+         int readerIndex = packet.readerIndex();
+         int packetId = DefinedPacket.readVarInt( packet );
+         int packetIdLength = packet.readerIndex() - readerIndex;
+ 
+-        if ( ints[packetId] )
+-        {
+-            rewriteInt( packet, oldId, newId, readerIndex + packetIdLength );
+-        } else if ( varints[packetId] )
+-        {
+-            rewriteVarInt( packet, oldId, newId, readerIndex + packetIdLength );
++        if ( packetId >= 0 )
++        {
++            if ( ints[ packetId ] )
++            {
++                rewriteInt( packet, oldId, newId, readerIndex + packetIdLength );
++            } else if ( varints[ packetId ] )
++            {
++                rewriteVarInt( packet, oldId, newId, readerIndex + packetIdLength );
++            }
+         }
+         packet.readerIndex( readerIndex );
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -61,16 +61,17 @@
+             case ProtocolConstants.MINECRAFT_1_15_1:
+             case ProtocolConstants.MINECRAFT_1_15_2:
+                 return EntityMap_1_15.INSTANCE;
+             case ProtocolConstants.MINECRAFT_1_16:
+             case ProtocolConstants.MINECRAFT_1_16_1:
+                 return EntityMap_1_16.INSTANCE;
+             case ProtocolConstants.MINECRAFT_1_16_2:
+             case ProtocolConstants.MINECRAFT_1_16_3:
++            case ProtocolConstants.MINECRAFT_1_16_4:
+                 return EntityMap_1_16_2.INSTANCE;
+         }
+         throw new RuntimeException( "Version " + version + " has no entity map" );
+     }
+ 
+     protected void addRewrite(int id, ProtocolConstants.Direction direction, boolean varint)
+     {
+         if ( direction == ProtocolConstants.Direction.TO_CLIENT )
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package net.md_5.bungee.entitymap;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
+import java.io.DataInputStream;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import net.md_5.bungee.protocol.DefinedPacket;
+import net.md_5.bungee.protocol.ProtocolConstants;
+import se.llbit.nbt.NamedTag;
+import se.llbit.nbt.Tag;
+
+/**
+ * Class to rewrite integers within packets.
+ */
+@NoArgsConstructor(access = AccessLevel.PACKAGE)
+public abstract class EntityMap
+{
+
+    private final boolean[] clientboundInts = new boolean[ 256 ];
+    private final boolean[] clientboundVarInts = new boolean[ 256 ];
+
+    private final boolean[] serverboundInts = new boolean[ 256 ];
+    private final boolean[] serverboundVarInts = new boolean[ 256 ];
+
+    // Returns the correct entity map for the protocol version
+    public static EntityMap getEntityMap(int version)
+    {
+        switch ( version )
+        {
+            case ProtocolConstants.MINECRAFT_1_7_2:
+                return EntityMap_1_7_2.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_7_6:
+                return EntityMap_1_7_6.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_8:
+                return EntityMap_1_8.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_9:
+            case ProtocolConstants.MINECRAFT_1_9_1:
+            case ProtocolConstants.MINECRAFT_1_9_2:
+                return EntityMap_1_9.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_9_4:
+                return EntityMap_1_9_4.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_10:
+                return EntityMap_1_10.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_11:
+            case ProtocolConstants.MINECRAFT_1_11_1:
+                return EntityMap_1_11.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_12:
+                return EntityMap_1_12.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_12_1:
+            case ProtocolConstants.MINECRAFT_1_12_2:
+                return EntityMap_1_12_1.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_13:
+            case ProtocolConstants.MINECRAFT_1_13_1:
+            case ProtocolConstants.MINECRAFT_1_13_2:
+                return EntityMap_1_13.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_14:
+            case ProtocolConstants.MINECRAFT_1_14_1:
+            case ProtocolConstants.MINECRAFT_1_14_2:
+            case ProtocolConstants.MINECRAFT_1_14_3:
+            case ProtocolConstants.MINECRAFT_1_14_4:
+                return EntityMap_1_14.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_15:
+            case ProtocolConstants.MINECRAFT_1_15_1:
+            case ProtocolConstants.MINECRAFT_1_15_2:
+                return EntityMap_1_15.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_16:
+            case ProtocolConstants.MINECRAFT_1_16_1:
+                return EntityMap_1_16.INSTANCE;
+            case ProtocolConstants.MINECRAFT_1_16_2:
+            case ProtocolConstants.MINECRAFT_1_16_3:
+            case ProtocolConstants.MINECRAFT_1_16_4:
+                return EntityMap_1_16_2.INSTANCE;
+        }
+        throw new RuntimeException( "Version " + version + " has no entity map" );
+    }
+
+    protected void addRewrite(int id, ProtocolConstants.Direction direction, boolean varint)
+    {
+        if ( direction == ProtocolConstants.Direction.TO_CLIENT )
+        {
+            if ( varint )
+            {
+                clientboundVarInts[id] = true;
+            } else
+            {
+                clientboundInts[id] = true;
+            }
+        } else if ( varint )
+        {
+            serverboundVarInts[id] = true;
+        } else
+        {
+            serverboundInts[id] = true;
+        }
+    }
+
+    public void rewriteServerbound(ByteBuf packet, int oldId, int newId)
+    {
+        rewrite( packet, oldId, newId, serverboundInts, serverboundVarInts );
+    }
+
+    public void rewriteServerbound(ByteBuf packet, int oldId, int newId, int protocolVersion)
+    {
+        rewriteServerbound( packet, oldId, newId );
+    }
+
+    public void rewriteClientbound(ByteBuf packet, int oldId, int newId)
+    {
+        rewrite( packet, oldId, newId, clientboundInts, clientboundVarInts );
+    }
+
+    public void rewriteClientbound(ByteBuf packet, int oldId, int newId, int protocolVersion)
+        // ... 4 lines elided ...
+    protected static void rewriteInt(ByteBuf packet, int oldId, int newId, int offset)
+        // ... 12 lines elided ...
+    protected static void rewriteVarInt(ByteBuf packet, int oldId, int newId, int offset)
+        // ... 15 lines elided ...
+    protected static void rewriteMetaVarInt(ByteBuf packet, int oldId, int newId, int metaIndex)
+        // ... 4 lines elided ...
+    protected static void rewriteMetaVarInt(ByteBuf packet, int oldId, int newId, int metaIndex, int protocolVersion)
+        // ... 135 lines elided ...
+                    break;
+                default:
+                    throw new IllegalArgumentException( "Unknown meta type " + type );
+            }
+        }
+
+        packet.readerIndex( readerIndex );
+    }
+
+    private static void readSkipSlot(ByteBuf packet, int protocolVersion)
+    {
+        if ( ( protocolVersion >= ProtocolConstants.MINECRAFT_1_13_2 ) ? packet.readBoolean() : packet.readShort() != -1 )
+        {
+            if ( protocolVersion >= ProtocolConstants.MINECRAFT_1_13_2 )
+            {
+                DefinedPacket.readVarInt( packet );
+            }
+            packet.skipBytes( ( protocolVersion >= ProtocolConstants.MINECRAFT_1_13 ) ? 1 : 3 ); // byte vs byte, short
+
+            int position = packet.readerIndex();
+            if ( packet.readByte() != 0 )
+            {
+                packet.readerIndex( position );
+
+                Tag tag = NamedTag.read( new DataInputStream( new ByteBufInputStream( packet ) ) );
+                if ( tag.isError() )
+                {
+                    throw new RuntimeException( tag.error() );
+                }
+            }
+        }
+    }
+
+    // Handles simple packets
+    private static void rewrite(ByteBuf packet, int oldId, int newId, boolean[] ints, boolean[] varints)
+    {
+        int readerIndex = packet.readerIndex();
+        int packetId = DefinedPacket.readVarInt( packet );
+        int packetIdLength = packet.readerIndex() - readerIndex;
+
+        if ( packetId >= 0 )
+        {
+            if ( ints[ packetId ] )
+            {
+                rewriteInt( packet, oldId, newId, readerIndex + packetIdLength );
+            } else if ( varints[ packetId ] )
+            {
+                rewriteVarInt( packet, oldId, newId, readerIndex + packetIdLength );
+            }
+        }
+        packet.readerIndex( readerIndex );
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

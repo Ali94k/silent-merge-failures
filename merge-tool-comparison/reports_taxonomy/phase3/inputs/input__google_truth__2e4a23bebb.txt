@@ -1,0 +1,819 @@
+UNIT google_truth__2e4a23bebb
+repo: google_truth   merge: 2e4a23bebbce280861453c0d6f6f0a3dfd0e6dde   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: core/src/main/java/org/truth0/subjects/StringSubject.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -12,18 +12,21 @@
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package org.truth0.subjects;
+ 
+ import com.google.common.annotations.GwtCompatible;
++import com.google.common.annotations.GwtIncompatible;
+ 
+ import org.truth0.FailureStrategy;
++
++import java.util.regex.Pattern;
+ 
+ /**
+  * Propositions for String subjects
+  *
+  * @author David Saff
+  * @author Christian Gruber (cgruber@israfil.net)
+  */
+ @GwtCompatible
+@@ -111,9 +114,37 @@
+         @Override public StringSubject getSubject(FailureStrategy fs, String target) {
+           return new StringSubject(fs, target);
+         }
+       };
+ 
+   private static String quote(String toBeWrapped) {
+     return "\"" + toBeWrapped + "\"";
+   }
++
++  @GwtIncompatible("java.util.regex.Pattern")
++  public void matches(String regex) {
++    if (!getSubject().matches(regex)) {
++      fail("matches", regex);
++    }
++  }
++
++  @GwtIncompatible("java.util.regex.Pattern")
++  public void matches(Pattern regex) {
++    if(!regex.matcher(getSubject()).matches()) {
++      fail("matches", regex);
++    }
++  }
++
++  @GwtIncompatible("java.util.regex.Pattern")
++  public void doesNotMatch(String regex) {
++    if (getSubject().matches(regex)) {
++      fail("fails to match", regex);
++    }
++  }
++
++  @GwtIncompatible("java.util.regex.Pattern")
++  public void doesNotMatch(Pattern regex) {
++    if(regex.matcher(getSubject()).matches()) {
++      fail("fails to match", regex);
++    }
++  }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,11 +1,12 @@
+ /*
+  * Copyright (c) 2011 David Saff
+  * Copyright (c) 2011 Christian Gruber
++ * Copyright (c) 2014 Google, Inc.
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+@@ -72,40 +73,55 @@
+ 
+   @Override public void isNull() {
+     if (getSubject() != null) {
+       failWithRawMessage("Not true that %s is null", getDisplaySubject());
+     }
+   }
+ 
+   public void contains(String string) {
++    if (string == null) {
++      throw new IllegalArgumentException("Cannot test that a string contains a null reference.");
++    }
+     if (getSubject() == null) {
+-      if (string != null) {
+-        failWithRawMessage("Not true that null reference contains <%s>", quote(string));
+-      }
++      failWithRawMessage("Not true that null reference contains <%s>", quote(string));
+     } else if (!getSubject().contains(string)) {
+       fail("contains", quote(string));
+     }
+   }
+ 
++  public void doesNotContain(String string) {
++    if (string == null) {
++      throw new IllegalArgumentException(
++              "Cannot test that a string does not contain a null reference.");
++    }
++    if (getSubject() == null) {
++      failWithRawMessage("Not true that null reference contains <%s>", quote(string));
++    } else if (getSubject().contains(string)) {
++      failWithRawMessage("%s unexpectedly contains <%s>", getDisplaySubject(), quote(string));
++    }
++  }
++
+   public void startsWith(String string) {
++    if (string == null) {
++      throw new IllegalArgumentException("Cannot test that a string starts with a null reference.");
++    }
+     if (getSubject() == null) {
+-      if (string != null) {
+-        failWithRawMessage("Not true that null reference starts with <%s>", quote(string));
+-      }
++      failWithRawMessage("Not true that null reference starts with <%s>", quote(string));
+     } else if (!getSubject().startsWith(string)) {
+       fail("starts with", quote(string));
+     }
+   }
+ 
+   public void endsWith(String string) {
++    if (string == null) {
++      throw new IllegalArgumentException("Cannot test that a string ends with a null reference.");
++    }
+     if (getSubject() == null) {
+-      if (string != null) {
+-        failWithRawMessage("Not true that null reference ends with <%s>", quote(string));
+-      }
++      failWithRawMessage("Not true that null reference ends with <%s>", quote(string));
+     } else if (!getSubject().endsWith(string)) {
+       fail("ends with", quote(string));
+     }
+   }
+ 
+   public static final SubjectFactory<StringSubject, String> STRING =
+       new SubjectFactory<StringSubject, String>() {
+         @Override public StringSubject getSubject(FailureStrategy fs, String target) {
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (c) 2011 David Saff
+ * Copyright (c) 2011 Christian Gruber
+ * Copyright (c) 2014 Google, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.truth0.subjects;
+
+import com.google.common.annotations.GwtCompatible;
+import com.google.common.annotations.GwtIncompatible;
+
+import org.truth0.FailureStrategy;
+
+import java.util.regex.Pattern;
+
+/**
+ * Propositions for String subjects
+ *
+ * @author David Saff
+ * @author Christian Gruber (cgruber@israfil.net)
+ */
+@GwtCompatible
+public class StringSubject extends Subject<StringSubject, String> {
+  public StringSubject(FailureStrategy failureStrategy, String string) {
+    super(failureStrategy, string);
+  }
+
+  @Override protected String getDisplaySubject() {
+    return (internalCustomLabel() == null)
+            ? "<" + quote(getSubject()) + ">"
+            : "\"" + internalCustomLabel() + "\"";
+  }
+
+  @Override public void is(Object expected) {
+    isEqualTo(expected);
+  }
+
+  @Override public void isEqualTo(Object expected) {
+    if (getSubject() == null) {
+      if (expected != null) {
+        if (expected instanceof String) {
+          failWithRawMessage("Not true that null reference is equal to <%s>",
+              quote((String) expected));
+        } else {
+          failWithRawMessage("Not true that null reference is equal to (%s)<%s>",
+              expected.getClass().getName(), expected);
+        }
+      }
+    } else {
+      if (expected == null) {
+        isNull();
+      } else if (!(expected instanceof String)) {
+        failWithRawMessage("Not true that %s is equal to (%s)<%s>",
+            getDisplaySubject(), expected.getClass().getName(), expected);
+      } else if (!getSubject().equals(expected)) {
+        if (expected instanceof String) {
+          failureStrategy.failComparing("", (String) expected, getSubject());
+        } else {
+          failWithRawMessage("Not true that %s equal to (%s)<%s>",
+              getDisplaySubject(), expected.getClass().getName(), expected);
+        }
+      }
+    }
+  }
+
+  @Override public void isNull() {
+    if (getSubject() != null) {
+      failWithRawMessage("Not true that %s is null", getDisplaySubject());
+    }
+  }
+
+  public void contains(String string) {
+    if (string == null) {
+      throw new IllegalArgumentException("Cannot test that a string contains a null reference.");
+    }
+    if (getSubject() == null) {
+      failWithRawMessage("Not true that null reference contains <%s>", quote(string));
+    } else if (!getSubject().contains(string)) {
+      fail("contains", quote(string));
+    }
+  }
+
+  public void doesNotContain(String string) {
+    if (string == null) {
+      throw new IllegalArgumentException(
+              "Cannot test that a string does not contain a null reference.");
+    }
+    if (getSubject() == null) {
+      failWithRawMessage("Not true that null reference contains <%s>", quote(string));
+    } else if (getSubject().contains(string)) {
+      failWithRawMessage("%s unexpectedly contains <%s>", getDisplaySubject(), quote(string));
+    }
+  }
+
+  public void startsWith(String string) {
+    if (string == null) {
+      throw new IllegalArgumentException("Cannot test that a string starts with a null reference.");
+    }
+    if (getSubject() == null) {
+      failWithRawMessage("Not true that null reference starts with <%s>", quote(string));
+    } else if (!getSubject().startsWith(string)) {
+      fail("starts with", quote(string));
+    }
+  }
+
+  public void endsWith(String string) {
+    if (string == null) {
+      throw new IllegalArgumentException("Cannot test that a string ends with a null reference.");
+    }
+    if (getSubject() == null) {
+      failWithRawMessage("Not true that null reference ends with <%s>", quote(string));
+    } else if (!getSubject().endsWith(string)) {
+      fail("ends with", quote(string));
+    }
+  }
+
+  public static final SubjectFactory<StringSubject, String> STRING =
+      new SubjectFactory<StringSubject, String>() {
+        @Override public StringSubject getSubject(FailureStrategy fs, String target) {
+          return new StringSubject(fs, target);
+        }
+      };
+
+  private static String quote(String toBeWrapped) {
+    return "\"" + toBeWrapped + "\"";
+  }
+
+  @GwtIncompatible("java.util.regex.Pattern")
+  public void matches(String regex) {
+    if (!getSubject().matches(regex)) {
+      fail("matches", regex);
+    }
+  }
+
+  @GwtIncompatible("java.util.regex.Pattern")
+  public void matches(Pattern regex) {
+    if(!regex.matcher(getSubject()).matches()) {
+      fail("matches", regex);
+    }
+  }
+
+  @GwtIncompatible("java.util.regex.Pattern")
+  public void doesNotMatch(String regex) {
+    if (getSubject().matches(regex)) {
+      fail("fails to match", regex);
+    }
+  }
+
+  @GwtIncompatible("java.util.regex.Pattern")
+  public void doesNotMatch(Pattern regex) {
+    if(regex.matcher(getSubject()).matches()) {
+      fail("fails to match", regex);
+    }
+  }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: core/src/test/java/org/truth0/subjects/StringTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -11,23 +11,24 @@
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package org.truth0.subjects;
+ 
+-import static org.junit.Assert.fail;
+ import static org.truth0.Truth.ASSERT;
+ 
+ import org.junit.ComparisonFailure;
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ import org.junit.runners.JUnit4;
++
++import java.util.regex.Pattern;
+ 
+ /**
+  * Tests for String Subjects.
+  *
+  * @author David Saff
+  * @author Christian Gruber (cgruber@israfil.net)
+  */
+ @RunWith(JUnit4.class)
+@@ -35,78 +36,73 @@
+ 
+   @Test public void stringContains() {
+     ASSERT.that("abc").contains("c");
+   }
+ 
+   @Test public void stringContainsFail() {
+     try {
+       ASSERT.that("abc").contains("d");
++      throw new Error("Expected to fail.");
+     } catch (AssertionError expected) {
+       ASSERT.that(expected.getMessage())
+           .contains("Not true that <\"abc\"> contains <\"d\">");
+-      return;
+     }
+-    fail("Should have thrown");
+   }
+ 
+   @Test public void stringEquality() {
+     ASSERT.that("abc").is("abc");
+   }
+ 
+   @Test public void stringEqualityToNull() {
+     try {
+       ASSERT.that("abc").is(null);
++      throw new Error("Expected to fail.");
+     } catch (AssertionError expected) {
+       ASSERT.that(expected.getMessage())
+           .contains("Not true that <\"abc\"> is null");
+-      return;
+     }
+-    fail("Should have thrown");
+   }
+ 
+   @Test public void stringEqualityFail() {
+     try {
+       ASSERT.that("abc").is("abd");
++      throw new Error("Expected to fail.");
+     } catch (ComparisonFailure expected) {
+       ASSERT.that(expected.getMessage())
+           .contains("expected:<ab[d]> but was:<ab[c]>");
+-      return;
+     }
+-    fail("Should have thrown");
+   }
+ 
+   @Test public void stringStartsWith() {
+     ASSERT.that("abc").startsWith("ab");
+   }
+ 
+   @Test public void stringStartsWithFail() {
+     try {
+       ASSERT.that("abc").startsWith("bc");
++      throw new Error("Expected to fail.");
+     } catch (AssertionError expected) {
+       ASSERT.that(expected.getMessage())
+           .contains("Not true that <\"abc\"> starts with <\"bc\">");
+-      return;
+     }
+-    fail("Should have thrown");
+   }
+ 
+   @Test public void stringEndsWith() {
+     ASSERT.that("abc").endsWith("bc");
+   }
+ 
+   @Test public void stringEndsWithFail() {
+     try {
+       ASSERT.that("abc").endsWith("ab");
++      throw new Error("Expected to fail.");
+     } catch (AssertionError expected) {
+       ASSERT.that(expected.getMessage())
+           .contains("Not true that <\"abc\"> ends with <\"ab\">");
+-      return;
+     }
+-    fail("Should have thrown");
+   }
+ 
+   @Test public void emptyStringTests() {
+     ASSERT.that("").contains("");
+     ASSERT.that("").startsWith("");
+     ASSERT.that("").endsWith("");
+     ASSERT.that("a").contains("");
+     ASSERT.that("a").startsWith("");
+@@ -118,39 +114,63 @@
+     ASSERT.that((String)null).contains(null);
+     ASSERT.that((String)null).startsWith(null);
+     ASSERT.that((String)null).endsWith(null);
+   }
+ 
+   @Test public void stringNullContains() {
+     try {
+       ASSERT.that((String)null).contains("a");
++      throw new Error("Expected to fail.");
+     } catch (AssertionError expected) {
+       ASSERT.that(expected.getMessage())
+           .contains("Not true that null reference contains <\"a\">");
+-      return;
+     }
+-    fail("Should have thrown");
+   }
+ 
+   @Test public void stringNullStartsWith() {
+     try {
+       ASSERT.that((String)null).startsWith("a");
++      throw new Error("Expected to fail.");
+     } catch (AssertionError expected) {
+       ASSERT.that(expected.getMessage())
+           .contains("Not true that null reference starts with <\"a\">");
+-      return;
+     }
+-    fail("Should have thrown");
+   }
+ 
+   @Test public void stringNullEndsWith() {
+     try {
+       ASSERT.that((String)null).endsWith("a");
++      throw new Error("Expected to fail.");
+     } catch (AssertionError expected) {
+       ASSERT.that(expected.getMessage())
+           .contains("Not true that null reference ends with <\"a\">");
+-      return;
+     }
+-    fail("Should have thrown");
+   }
+ 
++  @Test public void stringMatchesString() {
++    ASSERT.that("abcaaadev").matches(".*aaa.*");
++  }
++
++  @Test public void stringMatchesStringWithFail() {
++    try {
++      ASSERT.that("abcaqadev").matches(".*aaa.*");
++      throw new Error("Expected to fail.");
++    } catch (AssertionError expected) {
++      ASSERT.that(expected.getMessage())
++          .contains("Not true that <\"abcaqadev\"> matches <.*aaa.*>");
++    }
++  }
++
++  @Test public void stringMatchesPattern() {
++    ASSERT.that("abcaqadev").doesNotMatch(Pattern.compile(".*aaa.*"));
++  }
++
++  @Test public void stringMatchesPatternWithFail() {
++    try {
++      ASSERT.that("abcaaadev").doesNotMatch(Pattern.compile(".*aaa.*"));
++      throw new Error("Expected to fail.");
++    } catch (AssertionError expected) {
++      ASSERT.that(expected.getMessage())
++          .contains("Not true that <\"abcaaadev\"> fails to match <.*aaa.*>");
++    }
++  }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,11 +1,12 @@
+ /*
+  * Copyright (c) 2011 David Saff
+  * Copyright (c) 2011 Christian Gruber
++ * Copyright (c) 2014 Google, Inc.
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+@@ -43,18 +44,34 @@
+     } catch (AssertionError expected) {
+       ASSERT.that(expected.getMessage())
+           .contains("Not true that <\"abc\"> contains <\"d\">");
+       return;
+     }
+     fail("Should have thrown");
+   }
+ 
++  @Test public void stringDoesNotContain() {
++    ASSERT.that("abc").doesNotContain("d");
++  }
++
++  @Test public void stringDoesNotContainFail() {
++    try {
++      ASSERT.that("abc").doesNotContain("b");
++    } catch (AssertionError expected) {
++      ASSERT.that(expected.getMessage())
++          .contains("<\"abc\"> unexpectedly contains <\"b\">");
++      return;
++    }
++    fail("Should have thrown");
++  }
++
+   @Test public void stringEquality() {
+     ASSERT.that("abc").is("abc");
++    ASSERT.that("abc").isEqualTo("abc");
+   }
+ 
+   @Test public void stringEqualityToNull() {
+     try {
+       ASSERT.that("abc").is(null);
+     } catch (AssertionError expected) {
+       ASSERT.that(expected.getMessage())
+           .contains("Not true that <\"abc\"> is null");
+@@ -110,19 +127,33 @@
+     ASSERT.that("").endsWith("");
+     ASSERT.that("a").contains("");
+     ASSERT.that("a").startsWith("");
+     ASSERT.that("a").endsWith("");
+   }
+ 
+   @Test public void stringNullNullTests() {
+     ASSERT.that((String)null).is(null);
+-    ASSERT.that((String)null).contains(null);
+-    ASSERT.that((String)null).startsWith(null);
+-    ASSERT.that((String)null).endsWith(null);
++    ASSERT.that((String)null).isEqualTo(null);
++    try {
++      ASSERT.that((String)null).contains(null);
++      ASSERT.fail("Expected to throw");
++    } catch (IllegalArgumentException expected) {}
++    try {
++      ASSERT.that((String)null).doesNotContain(null);
++      ASSERT.fail("Expected to throw");
++    } catch (IllegalArgumentException expected) {}
++    try {
++      ASSERT.that((String)null).startsWith(null);
++      ASSERT.fail("Expected to throw");
++    } catch (IllegalArgumentException expected) {}
++    try {
++      ASSERT.that((String)null).endsWith(null);
++      ASSERT.fail("Expected to throw");
++    } catch (IllegalArgumentException expected) {}
+   }
+ 
+   @Test public void stringNullContains() {
+     try {
+       ASSERT.that((String)null).contains("a");
+     } catch (AssertionError expected) {
+       ASSERT.that(expected.getMessage())
+           .contains("Not true that null reference contains <\"a\">");
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (c) 2011 David Saff
+ * Copyright (c) 2011 Christian Gruber
+ * Copyright (c) 2014 Google, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.truth0.subjects;
+
+import static org.truth0.Truth.ASSERT;
+
+import org.junit.ComparisonFailure;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+import java.util.regex.Pattern;
+
+/**
+ * Tests for String Subjects.
+ *
+ * @author David Saff
+ * @author Christian Gruber (cgruber@israfil.net)
+ */
+@RunWith(JUnit4.class)
+public class StringTest {
+
+  @Test public void stringContains() {
+    ASSERT.that("abc").contains("c");
+  }
+
+  @Test public void stringContainsFail() {
+    try {
+      ASSERT.that("abc").contains("d");
+      throw new Error("Expected to fail.");
+    } catch (AssertionError expected) {
+      ASSERT.that(expected.getMessage())
+          .contains("Not true that <\"abc\"> contains <\"d\">");
+    }
+  }
+
+  @Test public void stringDoesNotContain() {
+    ASSERT.that("abc").doesNotContain("d");
+  }
+
+  @Test public void stringDoesNotContainFail() {
+    try {
+      ASSERT.that("abc").doesNotContain("b");
+    } catch (AssertionError expected) {
+      ASSERT.that(expected.getMessage())
+          .contains("<\"abc\"> unexpectedly contains <\"b\">");
+      return;
+    }
+    fail("Should have thrown");
+  }
+
+  @Test public void stringEquality() {
+    ASSERT.that("abc").is("abc");
+    ASSERT.that("abc").isEqualTo("abc");
+  }
+
+  @Test public void stringEqualityToNull() {
+    try {
+      ASSERT.that("abc").is(null);
+      throw new Error("Expected to fail.");
+    } catch (AssertionError expected) {
+      ASSERT.that(expected.getMessage())
+          .contains("Not true that <\"abc\"> is null");
+    }
+  }
+
+  @Test public void stringEqualityFail() {
+    try {
+      ASSERT.that("abc").is("abd");
+      throw new Error("Expected to fail.");
+    } catch (ComparisonFailure expected) {
+      ASSERT.that(expected.getMessage())
+          .contains("expected:<ab[d]> but was:<ab[c]>");
+    }
+  }
+
+  @Test public void stringStartsWith() {
+    ASSERT.that("abc").startsWith("ab");
+  }
+
+  @Test public void stringStartsWithFail() {
+    try {
+      ASSERT.that("abc").startsWith("bc");
+      throw new Error("Expected to fail.");
+    } catch (AssertionError expected) {
+      ASSERT.that(expected.getMessage())
+          .contains("Not true that <\"abc\"> starts with <\"bc\">");
+    }
+  }
+
+  @Test public void stringEndsWith() {
+    ASSERT.that("abc").endsWith("bc");
+  }
+
+  @Test public void stringEndsWithFail() {
+    try {
+      ASSERT.that("abc").endsWith("ab");
+      throw new Error("Expected to fail.");
+    } catch (AssertionError expected) {
+      ASSERT.that(expected.getMessage())
+          .contains("Not true that <\"abc\"> ends with <\"ab\">");
+    }
+  }
+
+  @Test public void emptyStringTests() {
+    ASSERT.that("").contains("");
+    ASSERT.that("").startsWith("");
+    ASSERT.that("").endsWith("");
+    ASSERT.that("a").contains("");
+    ASSERT.that("a").startsWith("");
+    ASSERT.that("a").endsWith("");
+  }
+
+  @Test public void stringNullNullTests() {
+    ASSERT.that((String)null).is(null);
+    ASSERT.that((String)null).isEqualTo(null);
+    try {
+      ASSERT.that((String)null).contains(null);
+      ASSERT.fail("Expected to throw");
+    } catch (IllegalArgumentException expected) {}
+    try {
+      ASSERT.that((String)null).doesNotContain(null);
+      ASSERT.fail("Expected to throw");
+    } catch (IllegalArgumentException expected) {}
+    try {
+      ASSERT.that((String)null).startsWith(null);
+      ASSERT.fail("Expected to throw");
+    } catch (IllegalArgumentException expected) {}
+    try {
+      ASSERT.that((String)null).endsWith(null);
+      ASSERT.fail("Expected to throw");
+    } catch (IllegalArgumentException expected) {}
+  }
+
+  @Test public void stringNullContains() {
+    try {
+      ASSERT.that((String)null).contains("a");
+      throw new Error("Expected to fail.");
+    } catch (AssertionError expected) {
+      ASSERT.that(expected.getMessage())
+          .contains("Not true that null reference contains <\"a\">");
+    }
+  }
+
+  @Test public void stringNullStartsWith() {
+    try {
+      ASSERT.that((String)null).startsWith("a");
+      throw new Error("Expected to fail.");
+    } catch (AssertionError expected) {
+      ASSERT.that(expected.getMessage())
+          .contains("Not true that null reference starts with <\"a\">");
+    }
+  }
+
+  @Test public void stringNullEndsWith() {
+    try {
+      ASSERT.that((String)null).endsWith("a");
+      throw new Error("Expected to fail.");
+    } catch (AssertionError expected) {
+      ASSERT.that(expected.getMessage())
+          .contains("Not true that null reference ends with <\"a\">");
+    }
+  }
+
+  @Test public void stringMatchesString() {
+    ASSERT.that("abcaaadev").matches(".*aaa.*");
+  }
+
+  @Test public void stringMatchesStringWithFail() {
+    try {
+      ASSERT.that("abcaqadev").matches(".*aaa.*");
+      throw new Error("Expected to fail.");
+    } catch (AssertionError expected) {
+      ASSERT.that(expected.getMessage())
+          .contains("Not true that <\"abcaqadev\"> matches <.*aaa.*>");
+    }
+  }
+
+  @Test public void stringMatchesPattern() {
+    ASSERT.that("abcaqadev").doesNotMatch(Pattern.compile(".*aaa.*"));
+  }
+
+  @Test public void stringMatchesPatternWithFail() {
+    try {
+      ASSERT.that("abcaaadev").doesNotMatch(Pattern.compile(".*aaa.*"));
+      throw new Error("Expected to fail.");
+    } catch (AssertionError expected) {
+      ASSERT.that(expected.getMessage())
+          .contains("Not true that <\"abcaaadev\"> fails to match <.*aaa.*>");
+    }
+  }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

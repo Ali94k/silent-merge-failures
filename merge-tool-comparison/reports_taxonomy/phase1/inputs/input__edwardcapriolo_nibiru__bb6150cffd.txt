@@ -1,0 +1,1232 @@
+UNIT edwardcapriolo_nibiru__bb6150cffd
+repo: edwardcapriolo_nibiru   merge: bb6150cffd19a67941797bb3a08739c24879fb3c   stratum: B
+files shown: 4 of 4 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/4: src/main/java/io/teknek/nibiru/cli/Cli.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -59,17 +59,17 @@
+           System.out.println(e);
+         }
+       }
+       
+       else if ("createcolumnfamily".equalsIgnoreCase(parts[0])) {
+         try {
+           Map m = new HashMap<String,Object>();
+           m.put("implementing_class", DefaultColumnFamily.class.getName());
+-          meta.createOrUpdateStore(parts[1], parts[2], m);
++          meta.createOrUpdateStore(parts[1], parts[2], m, true);
+         } catch (ClientException e) {
+           System.out.println(e);
+         }
+       }
+       
+       else if ("showkeyspaces".equalsIgnoreCase(parts[0])) { 
+         try {
+           System.out.println(meta.listKeyspaces());
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -17,16 +17,18 @@
+ public class Cli {
+ 
+   public static void main (String [] args) throws IOException{
+     MetaDataClient meta = null;
+     ColumnFamilyClient client = null;
+     Session session = null;
+     BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+     String line;
++    System.out.println("Welcome to a very minimal Cli type 'connect <host> <port>' to get started ");
++    System.out.println("ok> ");
+     while ((line = br.readLine()) != null){
+       String [] parts = line.split("\\s+");
+       if  ("connect".equalsIgnoreCase(parts[0])){
+         meta = new MetaDataClient(parts[1],Integer.parseInt(parts[2]));
+         client = new ColumnFamilyClient(new Client(parts[1], Integer.parseInt(parts[2]), 10000,
+                 10000));
+       } else if  ("showcluster".equalsIgnoreCase(parts[0])){
+         try {
+--- MERGED RESULT (mergiraf; full) ---
+package io.teknek.nibiru.cli;
+
+import io.teknek.nibiru.Val;
+import io.teknek.nibiru.client.Client;
+import io.teknek.nibiru.client.ClientException;
+import io.teknek.nibiru.client.ColumnFamilyClient;
+import io.teknek.nibiru.client.MetaDataClient;
+import io.teknek.nibiru.client.Session;
+import io.teknek.nibiru.engine.DefaultColumnFamily;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.Map;
+
+public class Cli {
+
+  public static void main (String [] args) throws IOException{
+    MetaDataClient meta = null;
+    ColumnFamilyClient client = null;
+    Session session = null;
+    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+    String line;
+    System.out.println("Welcome to a very minimal Cli type 'connect <host> <port>' to get started ");
+    System.out.println("ok> ");
+    while ((line = br.readLine()) != null){
+      String [] parts = line.split("\\s+");
+      if  ("connect".equalsIgnoreCase(parts[0])){
+        meta = new MetaDataClient(parts[1],Integer.parseInt(parts[2]));
+        client = new ColumnFamilyClient(new Client(parts[1], Integer.parseInt(parts[2]), 10000,
+                10000));
+      } else if  ("showcluster".equalsIgnoreCase(parts[0])){
+        try {
+          System.out.println(meta.getLiveMembers());
+        } catch (ClientException e) {
+          System.out.println(e.getMessage());
+        }
+      } else if ("use".equalsIgnoreCase(parts[0])){
+        session = client.createBuilder().withKeyspace(parts[1]).withStore(parts[2]).build();
+      } else if ("set".equalsIgnoreCase(parts[0])) {
+        try {
+          session.put(parts[1], parts[2], parts[3], System.currentTimeMillis()*1000);
+        } catch (ClientException e) {
+          e.printStackTrace();
+        }
+      } else if ("get".equalsIgnoreCase(parts[0])) {
+        try {
+          Val v = session.get(parts[1], parts[2]);
+          System.out.println(v);
+        } catch (ClientException e) {
+          e.printStackTrace();
+        }
+      }
+      
+      else if ("createkeyspace".equalsIgnoreCase(parts[0])) {
+        
+        try {
+          meta.createOrUpdateKeyspace(parts[1], new HashMap<String,Object>(), true);
+        } catch (ClientException e) {
+          System.out.println(e);
+        }
+      }
+      
+      else if ("createcolumnfamily".equalsIgnoreCase(parts[0])) {
+        try {
+          Map m = new HashMap<String,Object>();
+          m.put("implementing_class", DefaultColumnFamily.class.getName());
+          meta.createOrUpdateStore(parts[1], parts[2], m, true);
+        } catch (ClientException e) {
+          System.out.println(e);
+        }
+      }
+      
+      else if ("showkeyspaces".equalsIgnoreCase(parts[0])) { 
+        try {
+          System.out.println(meta.listKeyspaces());
+        } catch (ClientException e) {
+          System.out.println(e);
+        }
+      }
+      
+      else if ("describekeyspace".equalsIgnoreCase(parts[0])) { 
+        try {
+          System.out.println(meta.listStores(parts[1]));
+        } catch (ClientException e) {
+          System.out.println(e);
+        }
+      }
+      
+      else if ("exit".equalsIgnoreCase(parts[0])){
+        break;
+      } else {
+        System.out.println("no command for "+ parts[0]);
+      }
+      System.out.println("ok>");
+    }
+  }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/4: src/main/java/io/teknek/nibiru/client/MetaDataClient.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -12,153 +12,142 @@
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package io.teknek.nibiru.client;
+ 
+ import io.teknek.nibiru.ContactInformation;
+ import io.teknek.nibiru.cluster.ClusterMember;
+-import io.teknek.nibiru.metadata.KeyspaceMetaData;
+ import io.teknek.nibiru.personality.LocatorPersonality;
+ import io.teknek.nibiru.personality.MetaPersonality;
+ import io.teknek.nibiru.transport.Message;
+ import io.teknek.nibiru.transport.Response;
++import io.teknek.nibiru.transport.metadata.CreateOrUpdateKeyspace;
++import io.teknek.nibiru.transport.metadata.CreateOrUpdateStore;
++import io.teknek.nibiru.transport.metadata.GetKeyspaceMetaData;
++import io.teknek.nibiru.transport.metadata.GetStoreMetaData;
++import io.teknek.nibiru.transport.metadata.ListKeyspaces;
++import io.teknek.nibiru.transport.metadata.ListStores;
+ 
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ 
+ import org.codehaus.jackson.map.ObjectMapper;
+ import org.codehaus.jackson.type.TypeReference;
+ 
+ public class MetaDataClient extends Client {
+ 
++  @Deprecated
+   public MetaDataClient(String host, int port) {
+     super(host, port);
+   }
++  
++  public MetaDataClient(String host, int port, int c, int s) {
++    super(host, port, c, s);
++  }
+ 
+   public List<ClusterMember> getLiveMembers() throws ClientException {
+-    Message m = new Message();
+-    m.setKeyspace("system");
+-    m.setPersonality(MetaPersonality.META_PERSONALITY);
+-    Map<String,Object> payload = new HashMap<>();
+-    payload.put("type", MetaPersonality.LIST_LIVE_MEMBERS);
+-    m.setPayload(payload);
++    Message m = new io.teknek.nibiru.transport.metadata.ListLiveMembers();
+     try {
+       Response response = post(m); 
+       List<Map> payloadAsMap = (List<Map>) response.get("payload");
+       List<ClusterMember> res = new ArrayList<>(payloadAsMap.size());
+       for (Map entry : payloadAsMap){
+         res.add(MAPPER.convertValue(entry, ClusterMember.class));
+       }
+       return res;
+     } catch (IOException | RuntimeException e) {
+       throw new ClientException(e);
+     }
+   }
+   
+   public void createOrUpdateKeyspace(String keyspace, Map<String,Object> properties, boolean isClient) throws ClientException {
+-    Message m = new Message();
+-    m.setKeyspace("system");
+-    m.setStore(null);
+-    m.setPersonality(MetaPersonality.META_PERSONALITY);
+-    Map<String,Object> payload = new HashMap<>();
+-            payload.put("type", MetaPersonality.CREATE_OR_UPDATE_KEYSPACE);
+-            payload.put("keyspace", keyspace);
+-            payload.put("properties", properties);
+-            if(!isClient){
+-              payload.put("reroute", "");
+-            }
+-    m.setPayload(payload);
++    CreateOrUpdateKeyspace k = new CreateOrUpdateKeyspace();
++    k.setKeyspace("system");
++    k.setTargetKeyspace(keyspace);
++    if(isClient){
++      k.setShouldReRoute(true);
++    }
++    k.setProperties(properties);
+     try {
+-      Response response = post(m);
++      Response response = post(k);
+     } catch (IOException | RuntimeException e) {
+       throw new ClientException(e);
+     }
+   }
+   
+-  public void createOrUpdateStore(String keyspace, String store,  Map<String,Object> properties) throws ClientException {
++  public void createOrUpdateStore(String keyspace, String store,  Map<String,Object> properties, boolean isClient) throws ClientException {
++    CreateOrUpdateStore m = new CreateOrUpdateStore();
++    m.setKeyspace(keyspace);
++    m.setStore(store);
++    m.setProperties(properties);
++    if (isClient){
++      m.setShouldReroute(true);
++    }
++    /*
+     Message m = new Message();
+     m.setKeyspace("system");
+     m.setStore(null);
+     m.setPersonality(MetaPersonality.META_PERSONALITY);
+     Map<String, Object> payload = new HashMap<>();
+     payload.put("type", MetaPersonality.CREATE_OR_UPDATE_STORE);
+     payload.put("keyspace", keyspace);
+     payload.put("store", store);
+     payload.putAll(properties);
+     m.setPayload(payload);
++    */
+     try {
+       Response response = post(m);
+     } catch (IOException | RuntimeException e) {
+       throw new ClientException(e);
+     }
+   }
+   
+   public Collection<String> listKeyspaces() throws ClientException {
+-    Message m = new Message();
+-    m.setKeyspace("system");
+-    m.setPersonality(MetaPersonality.META_PERSONALITY);
+-    Map<String, Object> payload = new HashMap<>();
+-    payload.put("type", MetaPersonality.LIST_KEYSPACES);
+-    m.setPayload(payload);
++    ListKeyspaces m = new ListKeyspaces();
+     try {
+       Response response = post(m);
+       return (Collection<String>) response.get("payload");
+     } catch (IOException | RuntimeException e) {
+       throw new ClientException(e);
+     }
+   }
+   
+   public Collection<String> listStores(String keyspace) throws ClientException {
+-    Message m = new Message();
+-    m.setKeyspace("system");
+-    m.setPersonality(MetaPersonality.META_PERSONALITY);
+-    Map<String, Object> payload = new HashMap<>();
+-    payload.put("keyspace", keyspace);
+-    payload.put("type", MetaPersonality.LIST_STORES);
+-    m.setPayload(payload);
++   ListStores m = new ListStores();
++   m.setKeyspace(keyspace);
+     try {
+       Response response = post(m);
+       return (Collection<String>) response.get("payload");
+     } catch (IOException | RuntimeException e) {
+       throw new ClientException(e);
+     }
+   }
+   
+   public Map<String,Object> getKeyspaceMetadata(String keyspace) throws ClientException {
+-    Message m = new Message();
+-    m.setKeyspace("system");
+-    m.setPersonality(MetaPersonality.META_PERSONALITY);
+-    Map<String, Object> payload = new HashMap<>();
+-    payload.put("keyspace", keyspace);
+-    payload.put("type", MetaPersonality.GET_KEYSPACE_METADATA);
+-    m.setPayload(payload);
++    GetKeyspaceMetaData  m = new GetKeyspaceMetaData();
++    m.setKeyspace(keyspace);
+     try {
+       Response response = post(m);
+       return (Map<String,Object>) response.get("payload");
+     } catch (IOException | RuntimeException e) {
+       throw new ClientException(e);
+     }
+   }
+   
+   
+   public Map<String,Object> getStoreMetadata(String keyspace, String store) throws ClientException {
+-    Message m = new Message();
+-    m.setKeyspace("system");
+-    m.setPersonality(MetaPersonality.META_PERSONALITY);
+-    Map<String, Object> payload = new HashMap<>();
+-    payload.put("keyspace", keyspace);
+-    payload.put("store", store);
+-    payload.put("type", MetaPersonality.GET_STORE_METADATA);
+-    m.setPayload(payload);
++    GetStoreMetaData m = new GetStoreMetaData();
++    m.setKeyspace(keyspace);
++    m.setStore(store);
+     try {
+       Response response = post(m);
+       return (Map<String,Object>) response.get("payload");
+     } catch (IOException | RuntimeException e) {
+       throw new ClientException(e);
+     }
+   }
+   
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -176,9 +176,10 @@
+       Response response = post(m);
+       ObjectMapper om = new ObjectMapper();
+       return (List<ContactInformation>) om.convertValue(response.get("payload"), tf);
+     } catch (IOException | RuntimeException e) {
+       throw new ClientException(e);
+     }
+   }
+   
++  
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright 2015 Edward Capriolo
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.teknek.nibiru.client;
+
+import io.teknek.nibiru.ContactInformation;
+import io.teknek.nibiru.cluster.ClusterMember;
+import io.teknek.nibiru.personality.LocatorPersonality;
+import io.teknek.nibiru.personality.MetaPersonality;
+import io.teknek.nibiru.transport.Message;
+import io.teknek.nibiru.transport.Response;
+import io.teknek.nibiru.transport.metadata.CreateOrUpdateKeyspace;
+import io.teknek.nibiru.transport.metadata.CreateOrUpdateStore;
+import io.teknek.nibiru.transport.metadata.GetKeyspaceMetaData;
+import io.teknek.nibiru.transport.metadata.GetStoreMetaData;
+import io.teknek.nibiru.transport.metadata.ListKeyspaces;
+import io.teknek.nibiru.transport.metadata.ListStores;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
+
+public class MetaDataClient extends Client {
+
+  @Deprecated
+  public MetaDataClient(String host, int port) {
+    super(host, port);
+  }
+  
+  public MetaDataClient(String host, int port, int c, int s) {
+    super(host, port, c, s);
+  }
+
+  public List<ClusterMember> getLiveMembers() throws ClientException {
+    Message m = new io.teknek.nibiru.transport.metadata.ListLiveMembers();
+    try {
+      Response response = post(m); 
+      List<Map> payloadAsMap = (List<Map>) response.get("payload");
+      List<ClusterMember> res = new ArrayList<>(payloadAsMap.size());
+      for (Map entry : payloadAsMap){
+        res.add(MAPPER.convertValue(entry, ClusterMember.class));
+      }
+      return res;
+    } catch (IOException | RuntimeException e) {
+      throw new ClientException(e);
+    }
+  }
+  
+  public void createOrUpdateKeyspace(String keyspace, Map<String,Object> properties, boolean isClient) throws ClientException {
+    CreateOrUpdateKeyspace k = new CreateOrUpdateKeyspace();
+    k.setKeyspace("system");
+    k.setTargetKeyspace(keyspace);
+    if(isClient){
+      k.setShouldReRoute(true);
+    }
+    k.setProperties(properties);
+    try {
+      Response response = post(k);
+    } catch (IOException | RuntimeException e) {
+      throw new ClientException(e);
+    }
+  }
+  
+  public void createOrUpdateStore(String keyspace, String store,  Map<String,Object> properties, boolean isClient) throws ClientException {
+    CreateOrUpdateStore m = new CreateOrUpdateStore();
+    m.setKeyspace(keyspace);
+    m.setStore(store);
+    m.setProperties(properties);
+    if (isClient){
+      m.setShouldReroute(true);
+    }
+    /*
+    Message m = new Message();
+    m.setKeyspace("system");
+    m.setStore(null);
+    m.setPersonality(MetaPersonality.META_PERSONALITY);
+    Map<String, Object> payload = new HashMap<>();
+    payload.put("type", MetaPersonality.CREATE_OR_UPDATE_STORE);
+    payload.put("keyspace", keyspace);
+    payload.put("store", store);
+    payload.putAll(properties);
+    m.setPayload(payload);
+    */
+    try {
+      Response response = post(m);
+    } catch (IOException | RuntimeException e) {
+      throw new ClientException(e);
+    }
+  }
+  
+  public Collection<String> listKeyspaces() throws ClientException {
+    ListKeyspaces m = new ListKeyspaces();
+    try {
+      Response response = post(m);
+      return (Collection<String>) response.get("payload");
+    } catch (IOException | RuntimeException e) {
+      throw new ClientException(e);
+    }
+  }
+  
+  public Collection<String> listStores(String keyspace) throws ClientException {
+   ListStores m = new ListStores();
+   m.setKeyspace(keyspace);
+    try {
+      Response response = post(m);
+      return (Collection<String>) response.get("payload");
+    } catch (IOException | RuntimeException e) {
+      throw new ClientException(e);
+    }
+  }
+  
+  public Map<String,Object> getKeyspaceMetadata(String keyspace) throws ClientException {
+    GetKeyspaceMetaData  m = new GetKeyspaceMetaData();
+    m.setKeyspace(keyspace);
+    try {
+      Response response = post(m);
+      return (Map<String,Object>) response.get("payload");
+    } catch (IOException | RuntimeException e) {
+      throw new ClientException(e);
+    }
+  }
+  
+  
+  public Map<String,Object> getStoreMetadata(String keyspace, String store) throws ClientException {
+    GetStoreMetaData m = new GetStoreMetaData();
+    m.setKeyspace(keyspace);
+    m.setStore(store);
+    try {
+      Response response = post(m);
+      return (Map<String,Object>) response.get("payload");
+    } catch (IOException | RuntimeException e) {
+      throw new ClientException(e);
+    }
+  }
+  
+  public List<ContactInformation> getLocationForRowKey(String keyspace, String store, String rowkey) throws ClientException{
+    Message m = new Message();
+    m.setKeyspace(keyspace);
+    m.setStore(store);
+    m.setPersonality(LocatorPersonality.PERSONALITY);
+    Map<String, Object> payload = new HashMap<>();
+    payload.put("type", LocatorPersonality.LOCATE_ROW_KEY);
+    payload.put("rowkey", rowkey);
+    m.setPayload(payload);
+    TypeReference tf = new TypeReference<List<ContactInformation>>() {};
+    try {
+      Response response = post(m);
+      ObjectMapper om = new ObjectMapper();
+      return (List<ContactInformation>) om.convertValue(response.get("payload"), tf);
+    } catch (IOException | RuntimeException e) {
+      throw new ClientException(e);
+    }
+  }
+  
+  
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/4: src/main/java/io/teknek/nibiru/coordinator/Coordinator.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -34,16 +34,17 @@
+ import io.teknek.nibiru.engine.atom.AtomKey;
+ import io.teknek.nibiru.engine.atom.AtomValue;
+ import io.teknek.nibiru.engine.atom.ColumnKey;
+ import io.teknek.nibiru.personality.ColumnFamilyPersonality;
+ import io.teknek.nibiru.personality.KeyValuePersonality;
+ import io.teknek.nibiru.personality.LocatorPersonality;
+ import io.teknek.nibiru.transport.Message;
+ import io.teknek.nibiru.transport.Response;
++import io.teknek.nibiru.transport.metadata.MetaDataMessage;
+ 
+ public class Coordinator {
+ 
+   private static final String SYSTEM_KEYSPACE = "system";  
+   private final Server server;
+   private Destination destinationLocal;
+   private final MetaDataCoordinator metaDataCoordinator;
+   //TODO. this needs to be a per column family value
+@@ -120,17 +121,18 @@
+   //ah switchboad logic
+   public Response handle(Message message) { 
+     if (DirectSsTableWriter.PERSONALITY.equals(message.getPersonality())){
+       return handleStreamRequest(message);
+     }
+     if (message.getPayload().containsKey("sponsor_request")){
+       return sponsorCoordinator.handleSponsorRequest(message);
+     }
+-    if (SYSTEM_KEYSPACE.equals(message.getKeyspace())) {
++    
++    if (SYSTEM_KEYSPACE.equals(message.getKeyspace()) || message instanceof MetaDataMessage ) {
+       return metaDataCoordinator.handleSystemMessage(message);
+     }
+     Keyspace keyspace = server.getKeyspaces().get(message.getKeyspace());
+     if (keyspace == null){
+       throw new RuntimeException(message.getKeyspace() + " is not found");
+     }
+     Store columnFamily = keyspace.getStores().get(message.getStore());
+     if (columnFamily == null){
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -15,82 +15,85 @@
+  */
+ package io.teknek.nibiru.coordinator;
+ 
+ import java.util.List;
+ import java.util.SortedMap;
+ import java.util.TreeMap;
+ 
+ import org.codehaus.jackson.map.ObjectMapper;
+-import org.codehaus.jackson.map.jsontype.NamedType;
+ import org.codehaus.jackson.type.TypeReference;
+ 
+ import io.teknek.nibiru.Store;
+ import io.teknek.nibiru.Destination;
+ import io.teknek.nibiru.Keyspace;
+ import io.teknek.nibiru.Server;
+ import io.teknek.nibiru.Token;
+ import io.teknek.nibiru.client.InternodeClient.AtomPair;
+ import io.teknek.nibiru.engine.DirectSsTableWriter;
+-import io.teknek.nibiru.engine.SsTableStreamWriter;
+ import io.teknek.nibiru.engine.atom.AtomKey;
+ import io.teknek.nibiru.engine.atom.AtomValue;
+-import io.teknek.nibiru.engine.atom.ColumnKey;
++import io.teknek.nibiru.personality.ColumnFamilyAdminPersonality;
+ import io.teknek.nibiru.personality.ColumnFamilyPersonality;
+ import io.teknek.nibiru.personality.KeyValuePersonality;
+ import io.teknek.nibiru.personality.LocatorPersonality;
+ import io.teknek.nibiru.transport.Message;
+ import io.teknek.nibiru.transport.Response;
++import io.teknek.nibiru.trigger.TriggerManager;
+ 
+ public class Coordinator {
+ 
+   private static final String SYSTEM_KEYSPACE = "system";  
+   private final Server server;
+   private Destination destinationLocal;
+   private final MetaDataCoordinator metaDataCoordinator;
+   //TODO. this needs to be a per column family value
+   private final EventualCoordinator eventualCoordinator;
+   private final SponsorCoordinator sponsorCoordinator;
+   private final Locator locator;
++  private final TriggerManager triggerManager;
+   
+   private Hinter hinter;
+   private Tracer tracer;
+   
+   
+   public Coordinator(Server server) {
+     this.server = server;
+     metaDataCoordinator = new MetaDataCoordinator(this, server.getConfiguration(),
+             server.getMetaDataManager(), server.getClusterMembership(), server.getServerId());
+     eventualCoordinator = new EventualCoordinator(server.getClusterMembership(), server.getConfiguration());
+     sponsorCoordinator = new SponsorCoordinator(server.getClusterMembership(), server.getMetaDataManager(), metaDataCoordinator, server);
+     locator = new Locator(server.getConfiguration(), server.getClusterMembership());
++    triggerManager = new TriggerManager(server);
+   }
+   
+   public void init(){
+     destinationLocal = new Destination();
+     destinationLocal.setDestinationId(server.getServerId().getU().toString());
+     metaDataCoordinator.init();
+     eventualCoordinator.init();
+     hinter = createHinter();
+     tracer = new Tracer();
++    triggerManager.init();
+   }
+   
+   public static ColumnFamilyPersonality getHintCf(Server server){
+     Store cf = server.getKeyspaces().get("system").getStores().get("hints");
+     ColumnFamilyPersonality pers = (ColumnFamilyPersonality) cf;
+     return pers;
+   }
+   
+   private Hinter createHinter(){
+     return new Hinter(getHintCf(server));  
+   }
+   
+   public void shutdown(){
+     metaDataCoordinator.shutdown();
+     eventualCoordinator.shutdown();
++    triggerManager.shutdown();
+   }
+ 
+   public Response handleStreamRequest(Message m){
+     
+     ObjectMapper om = new ObjectMapper();
+ 
+     
+     Store store = this.server.getKeyspaces().get(m.getPayload().get("keyspace"))
+@@ -112,18 +115,27 @@
+       w.write(om.convertValue( m.getPayload().get("token"), Token.class), mp,
+               (String)m.getPayload().get("id"));
+       return new Response();
+     }
+     return null;
+    
+   }
+   
++  public List<Destination> destinationsForToken(Token token, Keyspace keyspace){
++    return keyspace.getKeyspaceMetaData().getRouter()
++            .routesTo(server.getServerId(), keyspace, server.getClusterMembership(), token);
++  }
++  
+   //ah switchboad logic
+-  public Response handle(Message message) { 
++  public Response handle(Message message) {
++    if (ColumnFamilyAdminPersonality.PERSONALITY.equals(message.getPersonality())){
++      ColumnFamilyAdminCoordinator d = new ColumnFamilyAdminCoordinator(this.server);
++      return d.handleMessage(message);
++    }
+     if (DirectSsTableWriter.PERSONALITY.equals(message.getPersonality())){
+       return handleStreamRequest(message);
+     }
+     if (message.getPayload().containsKey("sponsor_request")){
+       return sponsorCoordinator.handleSponsorRequest(message);
+     }
+     if (SYSTEM_KEYSPACE.equals(message.getKeyspace())) {
+       return metaDataCoordinator.handleSystemMessage(message);
+@@ -132,48 +144,56 @@
+     if (keyspace == null){
+       throw new RuntimeException(message.getKeyspace() + " is not found");
+     }
+     Store columnFamily = keyspace.getStores().get(message.getStore());
+     if (columnFamily == null){
+       throw new RuntimeException(message.getStore() + " is not found");
+     }
+     Token token = keyspace.getKeyspaceMetaData().getPartitioner().partition((String) message.getPayload().get("rowkey"));
+-    List<Destination> destinations = keyspace.getKeyspaceMetaData().getRouter()
+-            .routesTo(message, server.getServerId(), keyspace, server.getClusterMembership(), token);
++    List<Destination> destinations = destinationsForToken(token, keyspace);
+     if (LocatorPersonality.PERSONALITY.equals(message.getPersonality())){
+       return locator.locate(destinations);
+     }
+     
+     
+     if (sponsorCoordinator.getProtege() != null && destinations.contains(destinationLocal)){
+       //TODO they only need some of the messages by range
+       String type = (String) message.getPayload().get("type");
+       if (type.equals("put") || type.equals("delete") ){ 
+         destinations.add(sponsorCoordinator.getProtege());
+       }
+     }
+     long timeoutInMs = determineTimeout(columnFamily, message);
++    long requestStart = System.currentTimeMillis();
+ 
+     if (ColumnFamilyPersonality.PERSONALITY.equals(message.getPersonality())) {
+       LocalAction action = new LocalColumnFamilyAction(message, keyspace, columnFamily);
+       ResultMerger merger = new HighestTimestampResultMerger();
+-      return eventualCoordinator.handleMessage(token, message, destinations, 
++      Response response = eventualCoordinator.handleMessage(token, message, destinations, 
+               timeoutInMs, destinationLocal, action, merger, getHinterForMessage(message, columnFamily));
++      if (!response.containsKey("exception")){
++        response = triggerManager.executeTriggers(message, response, keyspace, columnFamily, timeoutInMs, requestStart);
++      }
++      return response;
+     } else if (KeyValuePersonality.KEY_VALUE_PERSONALITY.equals(message.getPersonality())) {
+       LocalAction action = new LocalKeyValueAction(message, keyspace, columnFamily);
+       ResultMerger merger = new MajorityValueResultMerger();
+-      return eventualCoordinator.handleMessage(token, message, destinations, 
++      Response response = eventualCoordinator.handleMessage(token, message, destinations, 
+               timeoutInMs, destinationLocal, action, merger, null);
++      triggerManager.executeTriggers(message, response, keyspace, columnFamily, timeoutInMs, requestStart);
++      if (!response.containsKey("exception")){
++        response = triggerManager.executeTriggers(message, response, keyspace, columnFamily, timeoutInMs, requestStart);
++      }
++      return response;
+     } else {
+       throw new UnsupportedOperationException(message.getPersonality());
+     }
+ 
+   }
+-  
+   
+   public Tracer getTracer(){
+     return this.tracer;
+   }
+   
+   private Hinter getHinterForMessage(Message message, Store columnFamily){
+     String type = (String) message.getPayload().get("type");
+     if (!columnFamily.getStoreMetadata().isEnableHints()){
+@@ -197,9 +217,13 @@
+       return columnFamily.getStoreMetadata().getOperationTimeoutInMs();
+     }
+   }
+ 
+   public SponsorCoordinator getSponsorCoordinator() {
+     return sponsorCoordinator;
+   }
+ 
++  public Destination getDestinationLocal() {
++    return destinationLocal;
++  }
++
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright 2015 Edward Capriolo
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.teknek.nibiru.coordinator;
+
+import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
+
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
+
+import io.teknek.nibiru.Store;
+import io.teknek.nibiru.Destination;
+import io.teknek.nibiru.Keyspace;
+import io.teknek.nibiru.Server;
+import io.teknek.nibiru.Token;
+import io.teknek.nibiru.client.InternodeClient.AtomPair;
+import io.teknek.nibiru.engine.DirectSsTableWriter;
+import io.teknek.nibiru.engine.atom.AtomKey;
+import io.teknek.nibiru.engine.atom.AtomValue;
+import io.teknek.nibiru.personality.ColumnFamilyAdminPersonality;
+import io.teknek.nibiru.personality.ColumnFamilyPersonality;
+import io.teknek.nibiru.personality.KeyValuePersonality;
+import io.teknek.nibiru.personality.LocatorPersonality;
+import io.teknek.nibiru.transport.Message;
+import io.teknek.nibiru.transport.Response;
+import io.teknek.nibiru.transport.metadata.MetaDataMessage;
+import io.teknek.nibiru.trigger.TriggerManager;
+
+public class Coordinator {
+
+  private static final String SYSTEM_KEYSPACE = "system";  
+  private final Server server;
+  private Destination destinationLocal;
+  private final MetaDataCoordinator metaDataCoordinator;
+  //TODO. this needs to be a per column family value
+  private final EventualCoordinator eventualCoordinator;
+  private final SponsorCoordinator sponsorCoordinator;
+  private final Locator locator;
+  private final TriggerManager triggerManager;
+  
+  private Hinter hinter;
+  private Tracer tracer;
+  
+  
+  public Coordinator(Server server) {
+    this.server = server;
+    metaDataCoordinator = new MetaDataCoordinator(this, server.getConfiguration(),
+            server.getMetaDataManager(), server.getClusterMembership(), server.getServerId());
+    eventualCoordinator = new EventualCoordinator(server.getClusterMembership(), server.getConfiguration());
+    sponsorCoordinator = new SponsorCoordinator(server.getClusterMembership(), server.getMetaDataManager(), metaDataCoordinator, server);
+    locator = new Locator(server.getConfiguration(), server.getClusterMembership());
+    triggerManager = new TriggerManager(server);
+  }
+  
+  public void init(){
+    destinationLocal = new Destination();
+    destinationLocal.setDestinationId(server.getServerId().getU().toString());
+    metaDataCoordinator.init();
+    eventualCoordinator.init();
+    hinter = createHinter();
+    tracer = new Tracer();
+    triggerManager.init();
+  }
+  
+  public static ColumnFamilyPersonality getHintCf(Server server){
+    Store cf = server.getKeyspaces().get("system").getStores().get("hints");
+    ColumnFamilyPersonality pers = (ColumnFamilyPersonality) cf;
+    return pers;
+  }
+  
+  private Hinter createHinter(){
+    return new Hinter(getHintCf(server));  
+  }
+  
+  public void shutdown(){
+    metaDataCoordinator.shutdown();
+    eventualCoordinator.shutdown();
+    triggerManager.shutdown();
+  }
+
+  public Response handleStreamRequest(Message m){
+    
+    ObjectMapper om = new ObjectMapper();
+
+    
+    Store store = this.server.getKeyspaces().get(m.getPayload().get("keyspace"))
+            .getStores().get(m.getPayload().get("store"));
+    DirectSsTableWriter w = (DirectSsTableWriter) store;
+    if (DirectSsTableWriter.OPEN.equals(m.getPayload().get("type"))){
+      w.open((String) m.getPayload().get("id"));
+      return new Response();
+    } else if (DirectSsTableWriter.CLOSE.equals(m.getPayload().get("type"))){
+      w.close((String) m.getPayload().get("id"));
+      return new Response();
+    } else if (DirectSsTableWriter.WRITE.equals(m.getPayload().get("type"))){
+      TypeReference<List<AtomPair>> t = new TypeReference<List<AtomPair>>() { };
+      List<AtomPair> pair = om.convertValue( m.getPayload().get("columns"), t);
+      SortedMap<AtomKey, AtomValue> mp = new TreeMap<>();
+      for (AtomPair aPair: pair){
+        mp.put(aPair.getKey(), aPair.getValue());
+      }
+      w.write(om.convertValue( m.getPayload().get("token"), Token.class), mp,
+              (String)m.getPayload().get("id"));
+      return new Response();
+    }
+    return null;
+   
+  }
+  
+  public List<Destination> destinationsForToken(Token token, Keyspace keyspace){
+    return keyspace.getKeyspaceMetaData().getRouter()
+            .routesTo(server.getServerId(), keyspace, server.getClusterMembership(), token);
+  }
+  
+  //ah switchboad logic
+  public Response handle(Message message) {
+    if (ColumnFamilyAdminPersonality.PERSONALITY.equals(message.getPersonality())){
+      ColumnFamilyAdminCoordinator d = new ColumnFamilyAdminCoordinator(this.server);
+      return d.handleMessage(message);
+    }
+    if (DirectSsTableWriter.PERSONALITY.equals(message.getPersonality())){
+      return handleStreamRequest(message);
+    }
+    if (message.getPayload().containsKey("sponsor_request")){
+      return sponsorCoordinator.handleSponsorRequest(message);
+    }
+    
+    if (SYSTEM_KEYSPACE.equals(message.getKeyspace()) || message instanceof MetaDataMessage ) {
+      return metaDataCoordinator.handleSystemMessage(message);
+    }
+    Keyspace keyspace = server.getKeyspaces().get(message.getKeyspace());
+    if (keyspace == null){
+      throw new RuntimeException(message.getKeyspace() + " is not found");
+    }
+    Store columnFamily = keyspace.getStores().get(message.getStore());
+    if (columnFamily == null){
+      throw new RuntimeException(message.getStore() + " is not found");
+    }
+    Token token = keyspace.getKeyspaceMetaData().getPartitioner().partition((String) message.getPayload().get("rowkey"));
+    List<Destination> destinations = destinationsForToken(token, keyspace);
+    if (LocatorPersonality.PERSONALITY.equals(message.getPersonality())){
+      return locator.locate(destinations);
+    }
+    
+    
+    if (sponsorCoordinator.getProtege() != null && destinations.contains(destinationLocal)){
+      //TODO they only need some of the messages by range
+      String type = (String) message.getPayload().get("type");
+      if (type.equals("put") || type.equals("delete") ){ 
+        destinations.add(sponsorCoordinator.getProtege());
+      }
+    }
+    long timeoutInMs = determineTimeout(columnFamily, message);
+    long requestStart = System.currentTimeMillis();
+
+    if (ColumnFamilyPersonality.PERSONALITY.equals(message.getPersonality())) {
+      LocalAction action = new LocalColumnFamilyAction(message, keyspace, columnFamily);
+      ResultMerger merger = new HighestTimestampResultMerger();
+      Response response = eventualCoordinator.handleMessage(token, message, destinations, 
+              timeoutInMs, destinationLocal, action, merger, getHinterForMessage(message, columnFamily));
+      if (!response.containsKey("exception")){
+        response = triggerManager.executeTriggers(message, response, keyspace, columnFamily, timeoutInMs, requestStart);
+      }
+      return response;
+    } else if (KeyValuePersonality.KEY_VALUE_PERSONALITY.equals(message.getPersonality())) {
+      LocalAction action = new LocalKeyValueAction(message, keyspace, columnFamily);
+      ResultMerger merger = new MajorityValueResultMerger();
+      Response response = eventualCoordinator.handleMessage(token, message, destinations, 
+              timeoutInMs, destinationLocal, action, merger, null);
+      triggerManager.executeTriggers(message, response, keyspace, columnFamily, timeoutInMs, requestStart);
+      if (!response.containsKey("exception")){
+        response = triggerManager.executeTriggers(message, response, keyspace, columnFamily, timeoutInMs, requestStart);
+      }
+      return response;
+    } else {
+      throw new UnsupportedOperationException(message.getPersonality());
+    }
+
+  }
+  
+  public Tracer getTracer(){
+    return this.tracer;
+  }
+  
+  private Hinter getHinterForMessage(Message message, Store columnFamily){
+    String type = (String) message.getPayload().get("type");
+    if (!columnFamily.getStoreMetadata().isEnableHints()){
+      return null;
+    }
+    if (type.equals("put") || type.equals("delete") ){
+      return hinter;
+    } else {
+      return null;
+    }
+  }
+  
+  public Hinter getHinter() {
+    return hinter;
+  }
+
+  private static long determineTimeout(Store columnFamily, Message message){
+    if (message.getPayload().containsKey("timeout")){
+      return ((Number) message.getPayload().get("timeout")).longValue();
+    } else {
+      return columnFamily.getStoreMetadata().getOperationTimeoutInMs();
+    }
+  }
+
+  public SponsorCoordinator getSponsorCoordinator() {
+    return sponsorCoordinator;
+  }
+
+  public Destination getDestinationLocal() {
+    return destinationLocal;
+  }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -133,18 +133,17 @@
+       return d.handleMessage(message);
+     }
+     if (DirectSsTableWriter.PERSONALITY.equals(message.getPersonality())){
+       return handleStreamRequest(message);
+     }
+     if (message.getPayload().containsKey("sponsor_request")){
+       return sponsorCoordinator.handleSponsorRequest(message);
+     }
+-    
+-    if (SYSTEM_KEYSPACE.equals(message.getKeyspace()) || message instanceof MetaDataMessage ) {
++    if (message instanceof MetaDataMessage ) {
+       return metaDataCoordinator.handleSystemMessage(message);
+     }
+     Keyspace keyspace = server.getKeyspaces().get(message.getKeyspace());
+     if (keyspace == null){
+       throw new RuntimeException(message.getKeyspace() + " is not found");
+     }
+     Store columnFamily = keyspace.getStores().get(message.getStore());
+     if (columnFamily == null){
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/4: src/test/java/io/teknek/nibiru/router/TestTokenRouter.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -29,22 +29,24 @@
+     return tokenMap;
+   }
+   
+   private ClusterMembership threeLiveNodes(){
+     ClusterMembership mock = new ClusterMembership(null, null) {
+       public void init() {}
+       public void shutdown() {}
+       public List<ClusterMember> getLiveMembers() {
+-       return Arrays.asList( new ClusterMember("127.0.0.1", 2000, 1, "id1"), 
++       return Arrays.asList( 
++               new ClusterMember("127.0.0.1", 2000, 1, "id1"), 
+                new ClusterMember("127.0.0.2", 2000, 1, "id2"),
+                new ClusterMember("127.0.0.3", 2000, 1, "id3"));
+       }
+-      public List<ClusterMember> getDeadMembers() { return null; }};
+-      return mock;
++      public List<ClusterMember> getDeadMembers() { return null; }
++    };
++    return mock;
+   }
+   
+   @Test
+   public void test(){
+     TokenRouter token = new TokenRouter();
+     Keyspace keyspace = new Keyspace(new Configuration());
+     KeyspaceMetaData meta = new KeyspaceMetaData();
+     Map<String,Object> props = new HashMap<>();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -47,39 +47,39 @@
+     TokenRouter token = new TokenRouter();
+     Keyspace keyspace = new Keyspace(new Configuration());
+     KeyspaceMetaData meta = new KeyspaceMetaData();
+     Map<String,Object> props = new HashMap<>();
+     props.put(TokenRouter.TOKEN_MAP_KEY, threeNodeRing());
+     meta.setProperties(props);
+     keyspace.setKeyspaceMetadata(meta);
+     Partitioner p = new NaturalPartitioner();
+-    Assert.assertEquals("id1", token.routesTo(null, null, keyspace, threeLiveNodes(), p.partition("a")).get(0).getDestinationId());
+-    Assert.assertEquals("id1", token.routesTo(null, null, keyspace, threeLiveNodes(), p.partition("aa")).get(0).getDestinationId());
+-    Assert.assertEquals("id2", token.routesTo(null, null, keyspace, threeLiveNodes(), p.partition("h")).get(0).getDestinationId());
+-    Assert.assertEquals("id3", token.routesTo(null, null, keyspace, threeLiveNodes(), p.partition("i")).get(0).getDestinationId());
+-    Assert.assertEquals("id1", token.routesTo(null, null, keyspace, threeLiveNodes(), p.partition("z")).get(0).getDestinationId());
++    Assert.assertEquals("id1", token.routesTo(null, keyspace, threeLiveNodes(), p.partition("a")).get(0).getDestinationId());
++    Assert.assertEquals("id1", token.routesTo(null, keyspace, threeLiveNodes(), p.partition("aa")).get(0).getDestinationId());
++    Assert.assertEquals("id2", token.routesTo(null, keyspace, threeLiveNodes(), p.partition("h")).get(0).getDestinationId());
++    Assert.assertEquals("id3", token.routesTo(null, keyspace, threeLiveNodes(), p.partition("i")).get(0).getDestinationId());
++    Assert.assertEquals("id1", token.routesTo(null, keyspace, threeLiveNodes(), p.partition("z")).get(0).getDestinationId());
+   }
+     
+   @Test
+   public void testWithReplicationFactor(){
+     TokenRouter token = new TokenRouter();
+     Keyspace keyspace = new Keyspace(new Configuration());
+     KeyspaceMetaData meta = new KeyspaceMetaData();
+     Map<String,Object> props = new HashMap<>();
+     props.put(TokenRouter.TOKEN_MAP_KEY, threeNodeRing());
+     props.put(TokenRouter.REPLICATION_FACTOR, 2);
+     meta.setProperties(props);
+     keyspace.setKeyspaceMetadata(meta);
+     Partitioner p = new NaturalPartitioner();
+     Assert.assertEquals(Arrays.asList(new Destination("id1"), new Destination("id2")),
+-            token.routesTo(null, null, keyspace, threeLiveNodes(), p.partition("a")));
++            token.routesTo(null, keyspace, threeLiveNodes(), p.partition("a")));
+     Assert.assertEquals(Arrays.asList(new Destination("id1"), new Destination("id2")),
+-            token.routesTo(null, null, keyspace, threeLiveNodes(), p.partition("aa")));
++            token.routesTo(null, keyspace, threeLiveNodes(), p.partition("aa")));
+     Assert.assertEquals(Arrays.asList(new Destination("id2"), new Destination("id3")),
+-            token.routesTo(null, null, keyspace, threeLiveNodes(), p.partition("h")));
++            token.routesTo(null, keyspace, threeLiveNodes(), p.partition("h")));
+     Assert.assertEquals(Arrays.asList(new Destination("id3"), new Destination("id1")),
+-            token.routesTo(null, null, keyspace, threeLiveNodes(), p.partition("i")));
++            token.routesTo(null, keyspace, threeLiveNodes(), p.partition("i")));
+     Assert.assertEquals(Arrays.asList(new Destination("id1"), new Destination("id2")),
+-            token.routesTo(null, null, keyspace, threeLiveNodes(), p.partition("z")));
++            token.routesTo(null, keyspace, threeLiveNodes(), p.partition("z")));
+   }
+   
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package io.teknek.nibiru.router;
+
+import io.teknek.nibiru.Configuration;
+import io.teknek.nibiru.Destination;
+import io.teknek.nibiru.Keyspace;
+import io.teknek.nibiru.cluster.ClusterMember;
+import io.teknek.nibiru.cluster.ClusterMembership;
+import io.teknek.nibiru.metadata.KeyspaceMetaData;
+import io.teknek.nibiru.partitioner.NaturalPartitioner;
+import io.teknek.nibiru.partitioner.Partitioner;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import junit.framework.Assert;
+
+import org.junit.Test;
+
+public class TestTokenRouter {
+
+  public static TreeMap<String,String> threeNodeRing(){
+    TreeMap<String,String> tokenMap = new TreeMap<>();
+    tokenMap.put("c", "id1");
+    tokenMap.put("h", "id2");
+    tokenMap.put("r", "id3");
+    return tokenMap;
+  }
+  
+  private ClusterMembership threeLiveNodes(){
+    ClusterMembership mock = new ClusterMembership(null, null) {
+      public void init() {}
+      public void shutdown() {}
+      public List<ClusterMember> getLiveMembers() {
+       return Arrays.asList( 
+               new ClusterMember("127.0.0.1", 2000, 1, "id1"), 
+               new ClusterMember("127.0.0.2", 2000, 1, "id2"),
+               new ClusterMember("127.0.0.3", 2000, 1, "id3"));
+      }
+      public List<ClusterMember> getDeadMembers() { return null; }
+    };
+    return mock;
+  }
+  
+  @Test
+  public void test(){
+    TokenRouter token = new TokenRouter();
+    Keyspace keyspace = new Keyspace(new Configuration());
+    KeyspaceMetaData meta = new KeyspaceMetaData();
+    Map<String,Object> props = new HashMap<>();
+    props.put(TokenRouter.TOKEN_MAP_KEY, threeNodeRing());
+    meta.setProperties(props);
+    keyspace.setKeyspaceMetadata(meta);
+    Partitioner p = new NaturalPartitioner();
+    Assert.assertEquals("id1", token.routesTo(null, keyspace, threeLiveNodes(), p.partition("a")).get(0).getDestinationId());
+    Assert.assertEquals("id1", token.routesTo(null, keyspace, threeLiveNodes(), p.partition("aa")).get(0).getDestinationId());
+    Assert.assertEquals("id2", token.routesTo(null, keyspace, threeLiveNodes(), p.partition("h")).get(0).getDestinationId());
+    Assert.assertEquals("id3", token.routesTo(null, keyspace, threeLiveNodes(), p.partition("i")).get(0).getDestinationId());
+    Assert.assertEquals("id1", token.routesTo(null, keyspace, threeLiveNodes(), p.partition("z")).get(0).getDestinationId());
+  }
+    
+  @Test
+  public void testWithReplicationFactor(){
+    TokenRouter token = new TokenRouter();
+    Keyspace keyspace = new Keyspace(new Configuration());
+    KeyspaceMetaData meta = new KeyspaceMetaData();
+    Map<String,Object> props = new HashMap<>();
+    props.put(TokenRouter.TOKEN_MAP_KEY, threeNodeRing());
+    props.put(TokenRouter.REPLICATION_FACTOR, 2);
+    meta.setProperties(props);
+    keyspace.setKeyspaceMetadata(meta);
+    Partitioner p = new NaturalPartitioner();
+    Assert.assertEquals(Arrays.asList(new Destination("id1"), new Destination("id2")),
+            token.routesTo(null, keyspace, threeLiveNodes(), p.partition("a")));
+    Assert.assertEquals(Arrays.asList(new Destination("id1"), new Destination("id2")),
+            token.routesTo(null, keyspace, threeLiveNodes(), p.partition("aa")));
+    Assert.assertEquals(Arrays.asList(new Destination("id2"), new Destination("id3")),
+            token.routesTo(null, keyspace, threeLiveNodes(), p.partition("h")));
+    Assert.assertEquals(Arrays.asList(new Destination("id3"), new Destination("id1")),
+            token.routesTo(null, keyspace, threeLiveNodes(), p.partition("i")));
+    Assert.assertEquals(Arrays.asList(new Destination("id1"), new Destination("id2")),
+            token.routesTo(null, keyspace, threeLiveNodes(), p.partition("z")));
+  }
+  
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

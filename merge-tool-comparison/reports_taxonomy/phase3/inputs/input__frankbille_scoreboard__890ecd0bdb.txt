@@ -1,0 +1,239 @@
+UNIT frankbille_scoreboard__890ecd0bdb
+repo: frankbille_scoreboard   merge: 890ecd0bdb07d80650ee9df19efd535085970431   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/main/java/dk/frankbille/scoreboard/domain/Player.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,12 +1,13 @@
+ package dk.frankbille.scoreboard.domain;
+ 
+ import java.io.Serializable;
+ 
++import javax.persistence.Column;
+ import javax.persistence.Entity;
+ import javax.persistence.GeneratedValue;
+ import javax.persistence.GenerationType;
+ import javax.persistence.Id;
+ import javax.persistence.Table;
+ 
+ import org.apache.commons.lang.builder.EqualsBuilder;
+ import org.apache.commons.lang.builder.HashCodeBuilder;
+@@ -14,16 +15,20 @@
+ @Entity
+ @Table(name="player")
+ public class Player implements Serializable {
+ 	private static final long serialVersionUID = 1L;
+ 
+ 	private Long id;
+ 
+ 	private String name;
++
++	private String fullName;
++
++	private String group;
+ 
+ 	@Id
+ 	@GeneratedValue(strategy=GenerationType.IDENTITY)
+ 	public Long getId() {
+ 		return id;
+ 	}
+ 
+ 	public void setId(Long id) {
+@@ -33,16 +38,33 @@
+ 	public String getName() {
+ 		return name;
+ 	}
+ 
+ 	public void setName(String name) {
+ 		this.name = name;
+ 	}
+ 
++	public String getFullName() {
++		return fullName;
++	}
++
++	public void setFullName(String fullName) {
++		this.fullName = fullName;
++	}
++
++	@Column(name="player_group")
++	public String getGroup() {
++		return group;
++	}
++
++	public void setGroup(String group) {
++		this.group = group;
++	}
++
+ 	@Override
+ 	public boolean equals(Object obj) {
+ 		return EqualsBuilder.reflectionEquals(this, obj);
+ 	}
+ 
+ 	@Override
+ 	public int hashCode() {
+ 		return new HashCodeBuilder().append(id).append(name).toHashCode();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,32 +1,22 @@
+ package dk.frankbille.scoreboard.domain;
+ 
+ import java.io.Serializable;
+ 
+-import javax.persistence.Entity;
+-import javax.persistence.GeneratedValue;
+-import javax.persistence.GenerationType;
+-import javax.persistence.Id;
+-import javax.persistence.Table;
+-
+ import org.apache.commons.lang.builder.EqualsBuilder;
+ import org.apache.commons.lang.builder.HashCodeBuilder;
+ 
+-@Entity
+-@Table(name="player")
+ public class Player implements Serializable {
+ 	private static final long serialVersionUID = 1L;
+ 
+ 	private Long id;
+ 
+ 	private String name;
+ 
+-	@Id
+-	@GeneratedValue(strategy=GenerationType.IDENTITY)
+ 	public Long getId() {
+ 		return id;
+ 	}
+ 
+ 	public void setId(Long id) {
+ 		this.id = id;
+ 	}
+ 
+@@ -42,10 +32,9 @@
+ 	public boolean equals(Object obj) {
+ 		return EqualsBuilder.reflectionEquals(this, obj);
+ 	}
+ 
+ 	@Override
+ 	public int hashCode() {
+ 		return new HashCodeBuilder().append(id).append(name).toHashCode();
+ 	}
+-
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package dk.frankbille.scoreboard.domain;
+
+import java.io.Serializable;
+
+import javax.persistence.Column;
+
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
+
+public class Player implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	private Long id;
+
+	private String name;
+
+	private String fullName;
+
+	private String group;
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public String getFullName() {
+		return fullName;
+	}
+
+	public void setFullName(String fullName) {
+		this.fullName = fullName;
+	}
+
+	@Column(name="player_group")
+	public String getGroup() {
+		return group;
+	}
+
+	public void setGroup(String group) {
+		this.group = group;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		return EqualsBuilder.reflectionEquals(this, obj);
+	}
+
+	@Override
+	public int hashCode() {
+		return new HashCodeBuilder().append(id).append(name).toHashCode();
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,13 +1,11 @@
+ package dk.frankbille.scoreboard.domain;
+ 
+ import java.io.Serializable;
+-
+-import javax.persistence.Column;
+ 
+ import org.apache.commons.lang.builder.EqualsBuilder;
+ import org.apache.commons.lang.builder.HashCodeBuilder;
+ 
+ public class Player implements Serializable {
+ 	private static final long serialVersionUID = 1L;
+ 
+ 	private Long id;
+@@ -37,17 +35,16 @@
+ 	public String getFullName() {
+ 		return fullName;
+ 	}
+ 
+ 	public void setFullName(String fullName) {
+ 		this.fullName = fullName;
+ 	}
+ 
+-	@Column(name="player_group")
+ 	public String getGroup() {
+ 		return group;
+ 	}
+ 
+ 	public void setGroup(String group) {
+ 		this.group = group;
+ 	}
+ 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package javax.persistence does not exist
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

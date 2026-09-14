@@ -1,0 +1,1254 @@
+UNIT urbanairship_datacube__b8bef94f4d
+repo: urbanairship_datacube   merge: b8bef94f4d640f31341ce32f872e616619b3ed80   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/main/java/com/urbanairship/datacube/DataCubeIo.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -13,18 +13,18 @@
+ 
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ import com.google.common.base.Optional;
+ import com.urbanairship.datacube.dbharnesses.AfterExecute;
+ import com.urbanairship.datacube.dbharnesses.FullQueueException;
+ import com.yammer.metrics.Metrics;
+-import com.yammer.metrics.core.Gauge;
+-import com.yammer.metrics.core.Meter;
++import com.yammer.metrics.core.GaugeMetric;
++import com.yammer.metrics.core.MeterMetric;
+ 
+ /**
+  * A DataCube does no IO, it merely returns batches that can be executed. This class wraps
+  * around a DataCube and does IO against a storage backend.
+  * 
+  * Thread safe. Writes can block for a long time if another thread is flushing to the database.
+  * 
+  * <h3>HOW INTERNAL ASYNC BATCH FLUSHING WORKS (for datacube developers, not clients):</h3>
+@@ -71,21 +71,21 @@
+     private final SyncLevel syncLevel;
+     private AsyncException asyncException = null;
+     
+     private final Object lock = new Object();
+     
+     // This executor will wait for DB writes to complete then check if they had an error.
+     private final ThreadPoolExecutor asyncErrorMonitorExecutor;
+     
+-    private final Meter writesMeter; 
+-    private final Meter asyncQueueBackoffMeter; 
+-    private final Meter runBatchMeter; 
+-    private final Meter ageFlushes; 
+-    private final Meter sizeFlushes; 
++    private final MeterMetric writesMeter; 
++    private final MeterMetric asyncQueueBackoffMeter; 
++    private final MeterMetric runBatchMeter; 
++    private final MeterMetric ageFlushes; 
++    private final MeterMetric sizeFlushes; 
+     
+     private Batch<T> batchInProgress = new Batch<T>();
+     private long batchFlushDeadlineMs;
+     
+     public DataCubeIo(DataCube<T> cube, DbHarness<T> db, int batchSize, long maxBatchAgeMs,
+             SyncLevel syncLevel) {
+         this(cube, db, batchSize, maxBatchAgeMs, syncLevel, null);
+     }
+@@ -115,17 +115,17 @@
+                 "flushes", TimeUnit.SECONDS);
+         sizeFlushes = Metrics.newMeter(DataCubeIo.class, "flushesDueToSize", metricsScope,
+                 "flushes", TimeUnit.SECONDS);
+         
+         this.asyncErrorMonitorExecutor = new ThreadPoolExecutor(Integer.MAX_VALUE, 
+                 Integer.MAX_VALUE, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), 
+                 new NamedThreadFactory("DataCubeIo async DB watcher"));
+         
+-        Metrics.newGauge(DataCubeIo.class, "errorMonitorActiveCount", metricsScope, new Gauge<Integer>() {
++        Metrics.newGauge(DataCubeIo.class, "errorMonitorActiveCount", metricsScope, new GaugeMetric<Integer>() {
+             @Override
+             public Integer value() {
+                 return asyncErrorMonitorExecutor.getActiveCount();
+             }
+         });
+ 
+     }
+     
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,21 +1,23 @@
+ /*
+ Copyright 2012 Urban Airship and Contributors
+ */
+ 
+ package com.urbanairship.datacube;
+ 
+ import java.io.IOException;
++import java.util.List;
+ import java.util.concurrent.ExecutionException;
+ import java.util.concurrent.Future;
+ import java.util.concurrent.LinkedBlockingQueue;
+ import java.util.concurrent.ThreadPoolExecutor;
+ import java.util.concurrent.TimeUnit;
+ 
++import com.google.common.collect.Lists;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ import com.google.common.base.Optional;
+ import com.urbanairship.datacube.dbharnesses.AfterExecute;
+ import com.urbanairship.datacube.dbharnesses.FullQueueException;
+ import com.yammer.metrics.Metrics;
+ import com.yammer.metrics.core.Gauge;
+@@ -280,17 +282,27 @@
+     public Optional<T> get(Address addr) throws IOException, InterruptedException  {
+         cube.checkValidReadOrThrow(addr);
+         return db.get(addr);
+     }
+     
+     public Optional<T> get(ReadBuilder readBuilder) throws IOException, InterruptedException  {
+         return this.get(readBuilder.build());
+     }
+-    
++
++    public List<Optional<T>> multiGet(List<ReadBuilder> readBuilders) throws IOException, InterruptedException  {
++        List<Address> addresses = Lists.newArrayListWithCapacity(readBuilders.size());
++        for (ReadBuilder readBuilder : readBuilders) {
++            Address address = readBuilder.build();
++            cube.checkValidReadOrThrow(address);
++            addresses.add(address);
++        }
++        return db.multiGet(addresses);
++    }
++
+     public void flush() throws InterruptedException {
+         Batch<T> batchToFlush;
+         synchronized(lock) {
+             batchToFlush = batchInProgress;
+             batchInProgress = new Batch<T>();
+         }
+         runBatch(batchToFlush);
+         db.flush();
+--- MERGED RESULT (mergiraf; full) ---
+/*
+Copyright 2012 Urban Airship and Contributors
+*/
+
+package com.urbanairship.datacube;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import com.google.common.collect.Lists;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Optional;
+import com.urbanairship.datacube.dbharnesses.AfterExecute;
+import com.urbanairship.datacube.dbharnesses.FullQueueException;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.GaugeMetric;
+import com.yammer.metrics.core.MeterMetric;
+
+/**
+ * A DataCube does no IO, it merely returns batches that can be executed. This class wraps
+ * around a DataCube and does IO against a storage backend.
+ * 
+ * Thread safe. Writes can block for a long time if another thread is flushing to the database.
+ * 
+ * <h3>HOW INTERNAL ASYNC BATCH FLUSHING WORKS (for datacube developers, not clients):</h3>
+ * 
+ * Batches accumulate here, in DataSyncIo objects. When they pass their size or age threshold, they
+ * are sent to the underlying DbHarness to be saved to the database. This is where it gets weird,
+ * since the DbHarness layer is completely asynchronous and non-blocking.
+ * 
+ * When a Batch is sent to the DbHarness to be saved, either we get back a Future, or we get a
+ * FullQueueException which means that the DbHarness cannot currently accept more batches for saving.
+ * 
+ * If we get back a Future, then one of two things will happen: 
+ * 
+ * <ul>
+ * <li>If the client requested a blocking write using writeSync(), we block and wait for the Future 
+ * to complete.</li>
+ * <li>If the client requested a non-blocking write using writeAsync(), we will return new Future
+ * that will wait for the DbHarness flush Future to complete.
+ * </ul>
+ * 
+ * <h3>Error handling</h3>
+ * 
+ * If batch flushing encounters an exception during a writeSync(), the exception will be thrown to
+ * the caller. If batch flushing encounters an exception during a writeAsync(), we can't throw the
+ * exception back to the caller since the writeAsync() call has already returned. We make sure the
+ * caller handles the error by doing two things.
+ * 
+ * First, we rethrow the exception from the Future returned by writeAsync(), which the caller will see
+ * as an ExecutionException thrown by Future.get(). This alone is not sufficient though, because the
+ * caller may never call Future.get().
+ * 
+ * Second, when an asynchronous batch flush has an exception, the exception is saved in
+ * {@link #asyncException}. When {@link #asyncException} is non-null, all future calls to writeAsync()
+ * will throw AsyncException and refuse to write. This prevents clients blithely throwing away data
+ * if the underlying database is stuck in a bad state.
+ */
+public class DataCubeIo<T extends Op> {
+    private static final Logger log = LoggerFactory.getLogger(DataCubeIo.class);
+    
+    private final DbHarness<T> db;
+    private final DataCube<T> cube;
+    private final int batchSize;
+    private final long maxBatchAgeMs;
+    private final SyncLevel syncLevel;
+    private AsyncException asyncException = null;
+    
+    private final Object lock = new Object();
+    
+    // This executor will wait for DB writes to complete then check if they had an error.
+    private final ThreadPoolExecutor asyncErrorMonitorExecutor;
+    
+    private final MeterMetric writesMeter; 
+    private final MeterMetric asyncQueueBackoffMeter; 
+    private final MeterMetric runBatchMeter; 
+    private final MeterMetric ageFlushes; 
+    private final MeterMetric sizeFlushes; 
+    
+    private Batch<T> batchInProgress = new Batch<T>();
+    private long batchFlushDeadlineMs;
+    
+    public DataCubeIo(DataCube<T> cube, DbHarness<T> db, int batchSize, long maxBatchAgeMs,
+            SyncLevel syncLevel) {
+        this(cube, db, batchSize, maxBatchAgeMs, syncLevel, null);
+    }
+    
+    /**
+     * @param batchSize if after doing a write the number of rows to be written to the database
+     * exceeds this number, a flush will be done.
+     * @param maxBatchAgeMs if after doing a write the batch's oldest write was more than this long ago,
+     * a flush will be done. This is not a hard ceiling on the age of writes in the batch, because the
+     * batch will not be flushed until the *next* write arrives after the timeout.
+     */
+    public DataCubeIo(DataCube<T> cube, DbHarness<T> db, int batchSize, long maxBatchAgeMs,
+            SyncLevel syncLevel, String metricsScope) {
+        this.cube = cube;
+        this.db = db;
+        this.batchSize = batchSize;
+        this.maxBatchAgeMs = maxBatchAgeMs;
+        this.syncLevel = syncLevel;
+        
+        writesMeter = Metrics.newMeter(DataCubeIo.class, "writes", metricsScope, "writes", 
+                TimeUnit.SECONDS);
+        asyncQueueBackoffMeter = Metrics.newMeter(DataCubeIo.class, "backoffMeter", metricsScope,
+                "fullQueueExceptions", TimeUnit.SECONDS);
+        runBatchMeter = Metrics.newMeter(DataCubeIo.class, "runBatchMeter", metricsScope,
+                "batches", TimeUnit.SECONDS);
+        ageFlushes = Metrics.newMeter(DataCubeIo.class, "flushesDueToAge", metricsScope,
+                "flushes", TimeUnit.SECONDS);
+        sizeFlushes = Metrics.newMeter(DataCubeIo.class, "flushesDueToSize", metricsScope,
+                "flushes", TimeUnit.SECONDS);
+        
+        this.asyncErrorMonitorExecutor = new ThreadPoolExecutor(Integer.MAX_VALUE, 
+                Integer.MAX_VALUE, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), 
+                new NamedThreadFactory("DataCubeIo async DB watcher"));
+        
+        Metrics.newGauge(DataCubeIo.class, "errorMonitorActiveCount", metricsScope, new GaugeMetric<Integer>() {
+            @Override
+            public Integer value() {
+                return asyncErrorMonitorExecutor.getActiveCount();
+            }
+        });
+
+    }
+    
+    /**
+     * Do some writes into the in-memory batch, possibly flushing to the backing database, depending
+     * on the {@link SyncLevel}.
+     * 
+     * @return If the operation did not cause a database flush, Optional.absent will be returned.
+     * Otherwise, if a batch flush is triggered, a Future will be returned. This Future's get() 
+     * method will return null when the database flush is finished, and rethrow any exceptions as
+     * ExecutionExceptions (see {@link java.util.concurrent.Future}). 
+     */
+    public Optional<Future<?>> writeAsync(T op, WriteBuilder at) throws AsyncException, InterruptedException {
+        if(asyncException != null) {
+            throw asyncException;
+        }
+        
+        writesMeter.mark();
+        
+        Batch<T> newBatch = cube.getWrites(at, op);
+        
+        return writeAsync(newBatch);
+    }
+
+    public Optional<Future<?>> writeAsync(Batch<T> newBatch) throws AsyncException, InterruptedException {
+        Batch<T> batchToFlush = null;
+
+        switch(syncLevel) {
+        case FULL_SYNC: 
+            // At this sync level we flush all batches immediately. No sharing between threads. 
+            batchToFlush = newBatch;
+            break;
+        case BATCH_ASYNC:
+        case BATCH_SYNC:
+            synchronized (lock) {
+                if(batchInProgress.getMap().isEmpty()) {
+                    // Start the timer for this batch, it should be flushed when it becomes old
+                    long nowTimeMs = System.currentTimeMillis();
+                    batchFlushDeadlineMs = nowTimeMs + maxBatchAgeMs; // Flush when we reach this timestamp
+                    
+                    // If the flush deadline timestamp overflowed its long, set it back to the largest 
+                    // possible value. This will occur if the client passes a very large max batch age.
+                    if(batchFlushDeadlineMs < nowTimeMs) {
+                        batchFlushDeadlineMs = Long.MAX_VALUE;
+                    }
+                }
+                batchInProgress.putAll(newBatch);
+                
+                boolean shouldFlush = false;
+                
+                if(batchInProgress.getMap().size() >= batchSize) {
+                    DebugHack.log("DataCubeIo flushing due to size, limit is " + batchSize);
+                    sizeFlushes.mark();
+                    shouldFlush = true;
+                } else if(System.currentTimeMillis() >= batchFlushDeadlineMs) {
+                    DebugHack.log("DataCubeIo flushing due to age, limit is " + maxBatchAgeMs);
+                    ageFlushes.mark();
+                    shouldFlush = true;
+                }
+                
+                if(shouldFlush) {
+                    batchToFlush = batchInProgress;
+                    batchInProgress = new Batch<T>();
+                }
+            }
+            break;
+        default:
+            throw new RuntimeException("Unknown sync level " + syncLevel);
+
+        }
+            
+        if(batchToFlush != null) {
+            return Optional.<Future<?>>of(runBatch(batchToFlush));
+        } else {
+            return Optional.absent();
+        }
+    }
+    
+    /**
+     * Hand off a batch to the DbHarness layer, retrying on FullQueueException.
+     */
+    private Future<?> runBatch(Batch<T> batch) throws InterruptedException {
+//        DebugHack.log("Running batch with stack trace:");
+//        for(StackTraceElement elem: Thread.currentThread().getStackTrace()) {
+//            DebugHack.log("\t" + elem.toString());
+//        }
+        while(true) {
+            try {
+                runBatchMeter.mark();
+                final Future<?> flushFuture = db.runBatchAsync(batch, flushErrorHandler);; 
+                return flushFuture;
+            } catch (FullQueueException e) {
+                asyncQueueBackoffMeter.mark();
+                
+                // Sleeping and retrying like this means batches may be flushed out of order
+                log.debug("Async queue is full, retrying soon");
+                Thread.sleep(100);
+            }
+        }
+    }
+    
+    /**
+     * If the {@link SyncLevel} is {@link SyncLevel#FULL_SYNC} or {@link SyncLevel#BATCH_SYNC}, then 
+     * no asynchronous IO is happening. You can use this function to write instead of 
+     * {@link #writeAsync(Op, WriteBuilder)} without catching AsyncException or InterruptedException.
+     * 
+     * IMPORTANT: the name of this function does not imply that the write is immediately flushed to
+     * the database. This is only true if {@link SyncLevel#FULL_SYNC} is set. Otherwise your write
+     * is probably just staged in a batch for writing later.
+     * 
+     * You can only use this function if this DataCubeIo was constructed with 
+     * {@link SyncLevel#FULL_SYNC} or {@link SyncLevel#BATCH_SYNC}.
+     */
+    public void writeSync(T op, WriteBuilder at) throws IOException, InterruptedException {
+        if(syncLevel == SyncLevel.BATCH_ASYNC) {
+            throw new IllegalArgumentException("You can't use WriteSync for this cube with " + 
+                    "SyncLevel " + syncLevel);
+        }
+        
+        Optional<Future<?>> optFuture;
+        try {
+            optFuture = writeAsync(op, at);
+        } catch (AsyncException pe) {
+            throw new RuntimeException("Internal error, when at a synchronized syncLevel there should" +
+            		" be no asynchronous exceptions");
+        }
+        
+        if(optFuture.isPresent()) {
+            // Our write triggered a batch flush. Wait for it to finish, rethrowing exceptions.
+            try {
+                optFuture.get().get();
+            } catch (ExecutionException ee) {
+                Throwable flushException = ee.getCause();
+                if(flushException instanceof IOException) {
+                    throw (IOException)flushException;
+                } else if(flushException instanceof InterruptedException) {
+                    throw (InterruptedException)flushException;
+                } else if(flushException instanceof RuntimeException) {
+                    throw new RuntimeException(flushException);
+                } else {
+                    throw new RuntimeException("Unreachable");
+                }
+            } 
+        } else {
+            // Our write updated a batch in memory without causing a flush. Return success.
+        }
+    }
+    
+    /**
+     * @return absent if the bucket doesn't exist, or the bucket if it does.
+     */
+    public Optional<T> get(Address addr) throws IOException, InterruptedException  {
+        cube.checkValidReadOrThrow(addr);
+        return db.get(addr);
+    }
+    
+    public Optional<T> get(ReadBuilder readBuilder) throws IOException, InterruptedException  {
+        return this.get(readBuilder.build());
+    }
+
+    public List<Optional<T>> multiGet(List<ReadBuilder> readBuilders) throws IOException, InterruptedException  {
+        List<Address> addresses = Lists.newArrayListWithCapacity(readBuilders.size());
+        for (ReadBuilder readBuilder : readBuilders) {
+            Address address = readBuilder.build();
+            cube.checkValidReadOrThrow(address);
+            addresses.add(address);
+        }
+        return db.multiGet(addresses);
+    }
+
+    public void flush() throws InterruptedException {
+        Batch<T> batchToFlush;
+        synchronized(lock) {
+            batchToFlush = batchInProgress;
+            batchInProgress = new Batch<T>();
+        }
+        runBatch(batchToFlush);
+        db.flush();
+    }
+    
+    private AfterExecute<T> flushErrorHandler = new AfterExecute<T>() {
+        @Override
+        public void afterExecute(Throwable t) {
+            if(t != null) {
+                asyncException = new AsyncException(t);
+                log.error("Putting DataCubeIo into an error state due to flush exception", t);
+            }
+        }
+    };
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/main/java/com/urbanairship/datacube/dbharnesses/HBaseDbHarness.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,52 +1,35 @@
+ /*
+ Copyright 2012 Urban Airship and Contributors
+ */
+ 
+ package com.urbanairship.datacube.dbharnesses;
+ 
+-import java.io.IOException;
+-import java.util.ArrayList;
+-import java.util.Arrays;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+-import java.util.concurrent.BlockingQueue;
+-import java.util.concurrent.Callable;
+-import java.util.concurrent.Future;
+-import java.util.concurrent.LinkedBlockingQueue;
+-import java.util.concurrent.RejectedExecutionException;
+-import java.util.concurrent.ThreadPoolExecutor;
+-import java.util.concurrent.TimeUnit;
+-
++import com.google.common.base.Optional;
++import com.google.common.collect.Sets;
++import com.urbanairship.datacube.*;
++import com.yammer.metrics.Metrics;
++import com.yammer.metrics.core.GaugeMetric;
++import com.yammer.metrics.core.HistogramMetric;
++import com.yammer.metrics.core.TimerMetric;
+ import org.apache.commons.codec.binary.Base64;
+ import org.apache.commons.lang.ArrayUtils;
+ import org.apache.commons.lang.NotImplementedException;
+ import org.apache.hadoop.hbase.client.Get;
+ import org.apache.hadoop.hbase.client.HTablePool;
+ import org.apache.hadoop.hbase.client.Put;
+ import org.apache.hadoop.hbase.client.Result;
+ import org.apache.hadoop.hbase.util.Bytes;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+-import com.google.common.base.Optional;
+-import com.google.common.collect.Sets;
+-import com.urbanairship.datacube.Address;
+-import com.urbanairship.datacube.Batch;
+-import com.urbanairship.datacube.DbHarness;
+-import com.urbanairship.datacube.Deserializer;
+-import com.urbanairship.datacube.IdService;
+-import com.urbanairship.datacube.NamedThreadFactory;
+-import com.urbanairship.datacube.Op;
+-import com.yammer.metrics.Metrics;
+-import com.yammer.metrics.core.Gauge;
+-import com.yammer.metrics.core.Histogram;
+-import com.yammer.metrics.core.Timer;
++import java.io.IOException;
++import java.util.*;
++import java.util.concurrent.*;
+ 
+ public class HBaseDbHarness<T extends Op> implements DbHarness<T> {
+     
+     private static final Logger log = LoggerFactory.getLogger(HBaseDbHarness.class);
+ 
+     public final static byte[] QUALIFIER = ArrayUtils.EMPTY_BYTE_ARRAY;
+         
+     private final HTablePool pool;
+@@ -54,20 +37,20 @@
+     private final byte[] uniqueCubeName;
+     private final byte[] tableName;
+     private final byte[] cf;
+     private final IdService idService;
+     private final ThreadPoolExecutor flushExecutor;
+     private final CommitType commitType; 
+     private final int numIoeTries;
+     private final int numCasTries;
+-    private final Timer flushSuccessTimer;
+-    private final Timer flushFailTimer;
+-    private final Timer singleWriteTimer;
+-    private final Histogram incrementSize;
++    private final TimerMetric flushSuccessTimer;
++    private final TimerMetric flushFailTimer;
++    private final TimerMetric singleWriteTimer;
++    private final HistogramMetric incrementSize;
+     
+     private final Set<Batch<T>> batchesInFlight = Sets.newHashSet();
+     
+     public HBaseDbHarness(HTablePool pool, byte[] uniqueCubeName, byte[] tableName, 
+             byte[] cf, Deserializer<T> deserializer, IdService idService, CommitType commitType) 
+                     throws IOException {
+         this(pool, uniqueCubeName, tableName, cf, deserializer, idService, commitType,
+                 5, 5, 10, null);
+@@ -96,24 +79,24 @@
+         incrementSize = Metrics.newHistogram(HBaseDbHarness.class, "incrementSize", 
+                 metricsScope, true);
+ 
+         String cubeName = new String(uniqueCubeName);
+         BlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(numFlushThreads);
+         this.flushExecutor = new ThreadPoolExecutor(numFlushThreads, numFlushThreads, 1,
+                 TimeUnit.MINUTES, workQueue, new NamedThreadFactory("HBase DB flusher "+cubeName));
+ 
+-        Metrics.newGauge(HBaseDbHarness.class, "asyncFlushQueueDepth", metricsScope, new Gauge<Integer>() {
++        Metrics.newGauge(HBaseDbHarness.class, "asyncFlushQueueDepth", metricsScope, new GaugeMetric<Integer>() {
+             @Override
+             public Integer value() {
+                 return flushExecutor.getQueue().size();
+             }
+         });
+         
+-        Metrics.newGauge(HBaseDbHarness.class, "asyncFlushersActive", metricsScope, new Gauge<Integer>() {
++        Metrics.newGauge(HBaseDbHarness.class, "asyncFlushersActive", metricsScope, new GaugeMetric<Integer>() {
+             @Override
+             public Integer value() {
+                 return flushExecutor.getActiveCount();
+             }
+         });
+     }
+ 
+     @Override
+@@ -212,36 +195,36 @@
+         incrementSize.update(amount);
+         WithHTable.increment(pool, tableName, rowKey, cf, QUALIFIER, amount);
+     }
+     
+     @SuppressWarnings("unchecked")
+     private void readCombineCas(byte[] rowKey, T newOp) throws IOException {
+         Get get = new Get(rowKey);
+         get.addColumn(cf, QUALIFIER);
+-        Result result = WithHTable.get(pool, tableName, get);
+-        
+-        byte[] prevSerializedOp = result.getValue(cf, QUALIFIER);
+-        T combinedOp;
+-        if(prevSerializedOp == null) {
+-            combinedOp = newOp;
+-        } else {
+-            T previousOp = (T)deserializer.fromBytes(prevSerializedOp);
+-            combinedOp = (T)previousOp.add(newOp);
+-        }
+-        
+-        
+-        Put put = new Put(rowKey);
+-        put.add(cf, QUALIFIER, combinedOp.serialize());
+-        
+-        for(int i=0; i<numCasTries; i++) {
+-            if(WithHTable.checkAndPut(pool, tableName, rowKey, cf, QUALIFIER, prevSerializedOp, put)) {
++
++        for (int i = 0; i < numCasTries; i++) {
++            Result result = WithHTable.get(pool, tableName, get);
++
++            byte[] prevSerializedOp = result.getValue(cf, QUALIFIER);
++            T combinedOp;
++            if (prevSerializedOp == null) {
++                combinedOp = newOp;
++            } else {
++                T previousOp = (T) deserializer.fromBytes(prevSerializedOp);
++                combinedOp = (T) previousOp.add(newOp);
++            }
++
++            Put put = new Put(rowKey);
++            put.add(cf, QUALIFIER, combinedOp.serialize());
++
++            if (WithHTable.checkAndPut(pool, tableName, rowKey, cf, QUALIFIER, prevSerializedOp, put)) {
+                 return; // successful write
+             } else {
+-                log.warn("checkAndPut failed on try " + (i+1) + " out of " + numCasTries);
++                log.warn("checkAndPut failed on try " + (i + 1) + " out of " + numCasTries);
+             }
+         }
+         
+         throw new IOException("Exhausted retries doing checkAndPut after " + numCasTries + 
+                 " tries");
+     }
+     
+     private void overwrite(byte[] rowKey, T op) throws IOException {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,52 +1,36 @@
+ /*
+ Copyright 2012 Urban Airship and Contributors
+ */
+ 
+ package com.urbanairship.datacube.dbharnesses;
+ 
+-import java.io.IOException;
+-import java.util.ArrayList;
+-import java.util.Arrays;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+-import java.util.concurrent.BlockingQueue;
+-import java.util.concurrent.Callable;
+-import java.util.concurrent.Future;
+-import java.util.concurrent.LinkedBlockingQueue;
+-import java.util.concurrent.RejectedExecutionException;
+-import java.util.concurrent.ThreadPoolExecutor;
+-import java.util.concurrent.TimeUnit;
+-
++import com.google.common.base.Optional;
++import com.google.common.collect.Lists;
++import com.google.common.collect.Sets;
++import com.urbanairship.datacube.*;
++import com.yammer.metrics.Metrics;
++import com.yammer.metrics.core.Gauge;
++import com.yammer.metrics.core.Histogram;
++import com.yammer.metrics.core.Timer;
+ import org.apache.commons.codec.binary.Base64;
+ import org.apache.commons.lang.ArrayUtils;
+ import org.apache.commons.lang.NotImplementedException;
+ import org.apache.hadoop.hbase.client.Get;
+ import org.apache.hadoop.hbase.client.HTablePool;
+ import org.apache.hadoop.hbase.client.Put;
+ import org.apache.hadoop.hbase.client.Result;
+ import org.apache.hadoop.hbase.util.Bytes;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+-import com.google.common.base.Optional;
+-import com.google.common.collect.Sets;
+-import com.urbanairship.datacube.Address;
+-import com.urbanairship.datacube.Batch;
+-import com.urbanairship.datacube.DbHarness;
+-import com.urbanairship.datacube.Deserializer;
+-import com.urbanairship.datacube.IdService;
+-import com.urbanairship.datacube.NamedThreadFactory;
+-import com.urbanairship.datacube.Op;
+-import com.yammer.metrics.Metrics;
+-import com.yammer.metrics.core.Gauge;
+-import com.yammer.metrics.core.Histogram;
+-import com.yammer.metrics.core.Timer;
++import java.io.IOException;
++import java.util.*;
++import java.util.concurrent.*;
+ 
+ public class HBaseDbHarness<T extends Op> implements DbHarness<T> {
+     
+     private static final Logger log = LoggerFactory.getLogger(HBaseDbHarness.class);
+ 
+     public final static byte[] QUALIFIER = ArrayUtils.EMPTY_BYTE_ARRAY;
+         
+     private final HTablePool pool;
+@@ -212,36 +196,37 @@
+         incrementSize.update(amount);
+         WithHTable.increment(pool, tableName, rowKey, cf, QUALIFIER, amount);
+     }
+     
+     @SuppressWarnings("unchecked")
+     private void readCombineCas(byte[] rowKey, T newOp) throws IOException {
+         Get get = new Get(rowKey);
+         get.addColumn(cf, QUALIFIER);
+-        Result result = WithHTable.get(pool, tableName, get);
+-        
+-        byte[] prevSerializedOp = result.getValue(cf, QUALIFIER);
+-        T combinedOp;
+-        if(prevSerializedOp == null) {
+-            combinedOp = newOp;
+-        } else {
+-            T previousOp = (T)deserializer.fromBytes(prevSerializedOp);
+-            combinedOp = (T)previousOp.add(newOp);
+-        }
+-        
+-        
+-        Put put = new Put(rowKey);
+-        put.add(cf, QUALIFIER, combinedOp.serialize());
+-        
+-        for(int i=0; i<numCasTries; i++) {
+-            if(WithHTable.checkAndPut(pool, tableName, rowKey, cf, QUALIFIER, prevSerializedOp, put)) {
++
++        for (int i = 0; i < numCasTries; i++) {
++            Result result = WithHTable.get(pool, tableName, get);
++
++            byte[] prevSerializedOp = result.getValue(cf, QUALIFIER);
++            T combinedOp;
++            if (prevSerializedOp == null) {
++                combinedOp = newOp;
++            } else {
++                T previousOp = (T) deserializer.fromBytes(prevSerializedOp);
++                combinedOp = (T) previousOp.add(newOp);
++            }
++
++
++            Put put = new Put(rowKey);
++            put.add(cf, QUALIFIER, combinedOp.serialize());
++
++            if (WithHTable.checkAndPut(pool, tableName, rowKey, cf, QUALIFIER, prevSerializedOp, put)) {
+                 return; // successful write
+             } else {
+-                log.warn("checkAndPut failed on try " + (i+1) + " out of " + numCasTries);
++                log.warn("checkAndPut failed on try " + (i + 1) + " out of " + numCasTries);
+             }
+         }
+         
+         throw new IOException("Exhausted retries doing checkAndPut after " + numCasTries + 
+                 " tries");
+     }
+     
+     private void overwrite(byte[] rowKey, T op) throws IOException {
+@@ -304,17 +289,61 @@
+         } 
+         
+         long batchDurationNanos = System.nanoTime() - nanoTimeBeforeBatch;
+         flushSuccessTimer.update(batchDurationNanos, TimeUnit.NANOSECONDS);
+     }
+     
+     @Override
+     public List<Optional<T>> multiGet(List<Address> addresses) throws IOException {
+-        throw new NotImplementedException();
++        int size = addresses.size();
++        List<Get> gets = Lists.newArrayListWithCapacity(size);
++        List<Optional<T>> resultsOptionals = Lists.newArrayListWithCapacity(size);
++        List<byte[]> rowKeys = Lists.newArrayListWithCapacity(size);
++
++        for (Address address : addresses) {
++            final byte[] rowKey;
++            try {
++                rowKey = ArrayUtils.addAll(uniqueCubeName, address.toKey(idService));
++            } catch (InterruptedException e) {
++                Thread.currentThread().interrupt();
++                throw new RuntimeException(e);
++            }
++            rowKeys.add(rowKey);
++            Get get = new Get(rowKey);
++            get.addFamily(cf);
++            gets.add(get);
++        }
++
++        Result[] results = WithHTable.get(pool, tableName, gets);
++        int idx = 0;
++
++        for (Result result : results) {
++            if(result == null || result.isEmpty()) {
++                if(log.isDebugEnabled()) {
++                    Address address = addresses.get(idx);
++                    byte[] rowKey = rowKeys.get(idx);
++                    log.debug("Returning absent for cube:" + Arrays.toString(uniqueCubeName) +
++                            " for address:" + address + " key " + Base64.encodeBase64String(rowKey));
++                }
++                resultsOptionals.add(Optional.<T>absent());
++            } else {
++                T deserialized = deserializer.fromBytes(result.value());
++                if(log.isDebugEnabled()) {
++                    Address address = addresses.get(idx);
++                    byte[] rowKey = rowKeys.get(idx);
++                    log.debug("Returning value for cube:" + Arrays.toString(uniqueCubeName) + " address:" +
++                             address + ": " + " key " + Base64.encodeBase64String(rowKey) + ": " + deserialized);
++                }
++                resultsOptionals.add(Optional.of(deserialized));
++            }
++
++            idx++;
++        }
++        return resultsOptionals;
+     }
+ 
+     @Override
+     public void flush() throws InterruptedException {
+         // Algorithm: get the set of batches that are in flight at the moment we start flushing.
+         // As soon as all those batches are done, the "flush" is complete. Disregard all batches
+         // that arrive after the flush starts.
+         
+--- MERGED RESULT (mergiraf; full) ---
+/*
+Copyright 2012 Urban Airship and Contributors
+*/
+
+package com.urbanairship.datacube.dbharnesses;
+
+import com.google.common.base.Optional;
+import com.google.common.collect.Sets;
+import com.urbanairship.datacube.*;
+import com.yammer.metrics.Metrics;
+import com.yammer.metrics.core.GaugeMetric;
+import com.yammer.metrics.core.HistogramMetric;
+import com.yammer.metrics.core.TimerMetric;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.*;
+import com.google.common.collect.Lists;
+import com.yammer.metrics.core.Gauge;
+import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.Timer;
+
+public class HBaseDbHarness<T extends Op> implements DbHarness<T> {
+    
+    private static final Logger log = LoggerFactory.getLogger(HBaseDbHarness.class);
+
+    public final static byte[] QUALIFIER = ArrayUtils.EMPTY_BYTE_ARRAY;
+        
+    private final HTablePool pool;
+    private final Deserializer<T> deserializer;
+    private final byte[] uniqueCubeName;
+    private final byte[] tableName;
+    private final byte[] cf;
+    private final IdService idService;
+    private final ThreadPoolExecutor flushExecutor;
+    private final CommitType commitType; 
+    private final int numIoeTries;
+    private final int numCasTries;
+    private final TimerMetric flushSuccessTimer;
+    private final TimerMetric flushFailTimer;
+    private final TimerMetric singleWriteTimer;
+    private final HistogramMetric incrementSize;
+    
+    private final Set<Batch<T>> batchesInFlight = Sets.newHashSet();
+    
+    public HBaseDbHarness(HTablePool pool, byte[] uniqueCubeName, byte[] tableName, 
+            byte[] cf, Deserializer<T> deserializer, IdService idService, CommitType commitType) 
+                    throws IOException {
+        this(pool, uniqueCubeName, tableName, cf, deserializer, idService, commitType,
+                5, 5, 10, null);
+    }
+    
+    public HBaseDbHarness(HTablePool pool, byte[] uniqueCubeName, byte[] tableName, 
+            byte[] cf, Deserializer<T> deserializer, IdService idService, CommitType commitType, 
+            int numFlushThreads, int numIoeTries, int numCasTries, String metricsScope)
+                    throws IOException {
+        this.pool = pool;
+        this.deserializer = deserializer;
+        this.uniqueCubeName = uniqueCubeName;
+        this.tableName = tableName;
+        this.cf = cf;
+        this.idService = idService;
+        this.commitType = commitType;
+        this.numIoeTries = numIoeTries;
+        this.numCasTries = numCasTries;
+        
+        flushSuccessTimer = Metrics.newTimer(HBaseDbHarness.class, "successfulBatchFlush", 
+                metricsScope, TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+        flushFailTimer = Metrics.newTimer(HBaseDbHarness.class, "failedBatchFlush", 
+                metricsScope, TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+        singleWriteTimer = Metrics.newTimer(HBaseDbHarness.class, "singleWrites", 
+                metricsScope, TimeUnit.MILLISECONDS, TimeUnit.SECONDS);
+        incrementSize = Metrics.newHistogram(HBaseDbHarness.class, "incrementSize", 
+                metricsScope, true);
+
+        String cubeName = new String(uniqueCubeName);
+        BlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<Runnable>(numFlushThreads);
+        this.flushExecutor = new ThreadPoolExecutor(numFlushThreads, numFlushThreads, 1,
+                TimeUnit.MINUTES, workQueue, new NamedThreadFactory("HBase DB flusher "+cubeName));
+
+        Metrics.newGauge(HBaseDbHarness.class, "asyncFlushQueueDepth", metricsScope, new GaugeMetric<Integer>() {
+            @Override
+            public Integer value() {
+                return flushExecutor.getQueue().size();
+            }
+        });
+        
+        Metrics.newGauge(HBaseDbHarness.class, "asyncFlushersActive", metricsScope, new GaugeMetric<Integer>() {
+            @Override
+            public Integer value() {
+                return flushExecutor.getActiveCount();
+            }
+        });
+    }
+
+    @Override
+    public Optional<T> get(Address c) throws IOException, InterruptedException  {
+        final byte[] rowKey = ArrayUtils.addAll(uniqueCubeName, c.toKey(idService));
+        
+        Get get = new Get(rowKey);
+        get.addFamily(cf);
+        Result result = WithHTable.get(pool, tableName, get);
+        if(result == null || result.isEmpty()) {
+            if(log.isDebugEnabled()) {
+                log.debug("Returning absent for cube:" + Arrays.toString(uniqueCubeName) + 
+                        " for address:" + c + " key " + Base64.encodeBase64String(rowKey));
+            }
+            return Optional.absent();
+        } else {
+            T deserialized = deserializer.fromBytes(result.value());
+            if(log.isDebugEnabled()) {
+                log.debug("Returning value for cube:" + Arrays.toString(uniqueCubeName) + " address:" + 
+                        c + ": " + " key " + Base64.encodeBase64String(rowKey) + ": " + deserialized);
+            }
+            return Optional.of(deserialized);
+        }
+    }
+
+    /**
+     * Hands off the given batch to the flush executor to be sent to the database soon. Doesn't
+     * throw IOException, since batches are just asynchronously submitted for execution, but
+     * will throw AsyncException if some previous batch had a RuntimeException.
+     * 
+     * @return a Future that the caller can use to detect when the database IO is done. The returned
+     * future will never have an ExecutionException. 
+     */
+    @Override
+    public Future<?> runBatchAsync(Batch<T> batch, AfterExecute<T> afterExecute) throws FullQueueException {
+        /* 
+         * Since ThreadPoolExecutor throws RejectedExecutionException when its queue is full,
+         * we have to backoff and retry if execute() throws RejectedExecutionHandler.
+         *
+         * This will cause all other threads writing to this cube to block. This is the desired
+         * behavior since we want to stop accepting new writes past a certain point if we can't
+         * send them to the database.
+         */
+        try {
+            // Submit this batch
+            synchronized(batchesInFlight) {
+                batchesInFlight.add(batch);
+            }
+            return flushExecutor.submit(new FlushWorkerRunnable(batch, afterExecute));
+        } catch (RejectedExecutionException ree) {
+            throw new FullQueueException();
+        }
+    }
+    
+    private class FlushWorkerRunnable implements Callable<Object> {
+        private final Batch<T> batch;
+        private final AfterExecute<T> afterExecute;
+        
+        public FlushWorkerRunnable(Batch<T> batch, AfterExecute<T> afterExecute) {
+            this.batch = batch;
+            this.afterExecute = afterExecute;
+        }
+
+        @Override
+        public Object call() throws Exception {
+            IOException lastIOException = null;
+            try {
+                for(int attempt=0; attempt<numIoeTries; attempt++) {
+                    try {
+                        flushBatch(batch);
+                        afterExecute.afterExecute(null); // null => no exception
+                        return null; // The return value of this callable is ignored
+                    } catch (IOException e) {
+                        lastIOException = e;
+                        log.error("IOException in worker thread flushing to HBase on attempt " + 
+                                attempt + "/" + numIoeTries + ", will retry", e);
+                        Thread.sleep(500);
+                    }
+                }
+            } catch (Exception e) {
+                afterExecute.afterExecute(e);
+                throw e;
+            } finally {
+                synchronized(batchesInFlight) {
+                    batchesInFlight.remove(batch);
+                }
+            }
+            
+            afterExecute.afterExecute(lastIOException);
+            throw lastIOException;
+        }
+    }
+
+    private void increment(byte[] rowKey, T op) throws IOException {
+        long amount = Bytes.toLong(op.serialize());
+        incrementSize.update(amount);
+        WithHTable.increment(pool, tableName, rowKey, cf, QUALIFIER, amount);
+    }
+    
+    @SuppressWarnings("unchecked")
+    private void readCombineCas(byte[] rowKey, T newOp) throws IOException {
+        Get get = new Get(rowKey);
+        get.addColumn(cf, QUALIFIER);
+
+        for (int i = 0; i < numCasTries; i++) {
+            Result result = WithHTable.get(pool, tableName, get);
+
+            byte[] prevSerializedOp = result.getValue(cf, QUALIFIER);
+            T combinedOp;
+            if (prevSerializedOp == null) {
+                combinedOp = newOp;
+            } else {
+                T previousOp = (T) deserializer.fromBytes(prevSerializedOp);
+                combinedOp = (T) previousOp.add(newOp);
+            }
+
+            Put put = new Put(rowKey);
+            put.add(cf, QUALIFIER, combinedOp.serialize());
+
+            if (WithHTable.checkAndPut(pool, tableName, rowKey, cf, QUALIFIER, prevSerializedOp, put)) {
+                return; // successful write
+            } else {
+                log.warn("checkAndPut failed on try " + (i + 1) + " out of " + numCasTries);
+            }
+        }
+        
+        throw new IOException("Exhausted retries doing checkAndPut after " + numCasTries + 
+                " tries");
+    }
+    
+    private void overwrite(byte[] rowKey, T op) throws IOException {
+        Put put = new Put(rowKey);
+        put.add(cf, QUALIFIER, op.serialize());
+        WithHTable.put(pool, tableName, put);
+    }
+    
+    private void flushBatch(Batch<T> batch) throws IOException, InterruptedException  {
+        Map<Address,T> batchMap = batch.getMap();
+        
+        List<Address> succesfullyWritten = new ArrayList<Address>(batch.getMap().size());
+        
+        long nanoTimeBeforeBatch = System.nanoTime();
+        
+        try {
+            for(Map.Entry<Address,T> entry: batchMap.entrySet()) {
+                Address address = entry.getKey();
+                T op = entry.getValue();
+
+                byte[] rowKey = ArrayUtils.addAll(uniqueCubeName, address.toKey(idService));
+                
+                long nanoTimeBeforeWrite = System.nanoTime();
+                
+                switch(commitType) {
+                case INCREMENT:
+                    increment(rowKey, op);
+                    break;
+                case READ_COMBINE_CAS:
+                    readCombineCas(rowKey, op);
+                    break;
+                case OVERWRITE:
+                    overwrite(rowKey, op);
+                    break;
+                default:
+                    throw new RuntimeException("Unsupported commit type " + commitType);
+                }
+                long writeDurationNanos = System.nanoTime() - nanoTimeBeforeWrite;
+                singleWriteTimer.update(writeDurationNanos, TimeUnit.NANOSECONDS);
+                
+                if(log.isDebugEnabled()) {
+                    log.debug("Succesfully wrote cube:" + Arrays.toString(uniqueCubeName) + 
+                            " address:" + address);
+                }
+                succesfullyWritten.add(address);
+            }
+        } catch (IOException e) {
+            // There was an IOException while attempting to use the DB. If we were successful with some
+            // of the pending writes, they should be removed from the batch so they are not retried later.
+            // The operations that didn't get into the DB should be left in the batch to be retried later.
+            log.warn("IOException when flushing batch to HBase", e);
+            for(Address address: succesfullyWritten) {
+                batch.getMap().remove(address);
+            }
+            
+            long batchDurationNanos = System.nanoTime() - nanoTimeBeforeBatch;
+            flushFailTimer.update(batchDurationNanos, TimeUnit.NANOSECONDS);
+
+            throw e;
+        } 
+        
+        long batchDurationNanos = System.nanoTime() - nanoTimeBeforeBatch;
+        flushSuccessTimer.update(batchDurationNanos, TimeUnit.NANOSECONDS);
+    }
+    
+    @Override
+    public List<Optional<T>> multiGet(List<Address> addresses) throws IOException {
+        int size = addresses.size();
+        List<Get> gets = Lists.newArrayListWithCapacity(size);
+        List<Optional<T>> resultsOptionals = Lists.newArrayListWithCapacity(size);
+        List<byte[]> rowKeys = Lists.newArrayListWithCapacity(size);
+
+        for (Address address : addresses) {
+            final byte[] rowKey;
+            try {
+                rowKey = ArrayUtils.addAll(uniqueCubeName, address.toKey(idService));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
+            rowKeys.add(rowKey);
+            Get get = new Get(rowKey);
+            get.addFamily(cf);
+            gets.add(get);
+        }
+
+        Result[] results = WithHTable.get(pool, tableName, gets);
+        int idx = 0;
+
+        for (Result result : results) {
+            if(result == null || result.isEmpty()) {
+                if(log.isDebugEnabled()) {
+                    Address address = addresses.get(idx);
+                    byte[] rowKey = rowKeys.get(idx);
+                    log.debug("Returning absent for cube:" + Arrays.toString(uniqueCubeName) +
+                            " for address:" + address + " key " + Base64.encodeBase64String(rowKey));
+                }
+                resultsOptionals.add(Optional.<T>absent());
+            } else {
+                T deserialized = deserializer.fromBytes(result.value());
+                if(log.isDebugEnabled()) {
+                    Address address = addresses.get(idx);
+                    byte[] rowKey = rowKeys.get(idx);
+                    log.debug("Returning value for cube:" + Arrays.toString(uniqueCubeName) + " address:" +
+                             address + ": " + " key " + Base64.encodeBase64String(rowKey) + ": " + deserialized);
+                }
+                resultsOptionals.add(Optional.of(deserialized));
+            }
+
+            idx++;
+        }
+        return resultsOptionals;
+    }
+
+    @Override
+    public void flush() throws InterruptedException {
+        // Algorithm: get the set of batches that are in flight at the moment we start flushing.
+        // As soon as all those batches are done, the "flush" is complete. Disregard all batches
+        // that arrive after the flush starts.
+        
+        Set<Batch<T>> batchesToWaitFor;
+        synchronized(batchesInFlight) {
+            batchesToWaitFor = Sets.newHashSet(batchesInFlight);
+        }
+        while(true) {
+            Set<Batch<T>> justFinished = Sets.newHashSet();
+            synchronized(batchesInFlight) {
+                for(Batch<T> batch: batchesToWaitFor) {
+                    if(!batchesInFlight.contains(batch)) {
+                        justFinished.add(batch);
+                    }
+                }
+            }
+            
+            for(Batch<T> finishedBatch: justFinished) {
+                batchesToWaitFor.remove(finishedBatch);
+            }
+            
+            if(batchesToWaitFor.isEmpty()) {
+                return;
+            }
+            
+            Thread.sleep(100);
+        }
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,38 +1,36 @@
+ /*
+ Copyright 2012 Urban Airship and Contributors
+ */
+ 
+ package com.urbanairship.datacube.dbharnesses;
+ 
+ import com.google.common.base.Optional;
++import com.google.common.collect.Lists;
+ import com.google.common.collect.Sets;
+ import com.urbanairship.datacube.*;
+ import com.yammer.metrics.Metrics;
+ import com.yammer.metrics.core.GaugeMetric;
+ import com.yammer.metrics.core.HistogramMetric;
+ import com.yammer.metrics.core.TimerMetric;
+ import org.apache.commons.codec.binary.Base64;
+ import org.apache.commons.lang.ArrayUtils;
+ import org.apache.commons.lang.NotImplementedException;
+ import org.apache.hadoop.hbase.client.Get;
+ import org.apache.hadoop.hbase.client.HTablePool;
+ import org.apache.hadoop.hbase.client.Put;
+ import org.apache.hadoop.hbase.client.Result;
+ import org.apache.hadoop.hbase.util.Bytes;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
++
+ import java.io.IOException;
+ import java.util.*;
+ import java.util.concurrent.*;
+-import com.google.common.collect.Lists;
+-import com.yammer.metrics.core.Gauge;
+-import com.yammer.metrics.core.Histogram;
+-import com.yammer.metrics.core.Timer;
+ 
+ public class HBaseDbHarness<T extends Op> implements DbHarness<T> {
+     
+     private static final Logger log = LoggerFactory.getLogger(HBaseDbHarness.class);
+ 
+     public final static byte[] QUALIFIER = ArrayUtils.EMPTY_BYTE_ARRAY;
+         
+     private final HTablePool pool;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

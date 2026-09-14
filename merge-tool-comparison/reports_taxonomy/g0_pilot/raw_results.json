@@ -1,0 +1,483 @@
+{
+  "blockchain_api-v1-client-java__e349598f95": {
+    "result_type": "succeeded",
+    "stop_reason": "end_turn",
+    "raw_text": "{\"unit_id\":\"blockchain_api-v1-client-java__e349598f95\",\"per_side_changes\":{\"ours\":\"In openURL's GET branch, added a guard: if encodedParams.isEmpty() build the URL as BASE_URL + resource (no '?'), else BASE_URL + resource + '?' + encodedParams. openURL signature unchanged (no baseURL param), so both branches use the BASE_URL constant.\",\"theirs\":\"Refactored openURL to accept a new baseURL parameter and use it (baseURL + resource ...) instead of the BASE_URL constant; added overloaded get(baseURL, resource, params); made getInstance() synchronized with double-checked locking.\"},\"interaction_point\":\"HttpClient.openURL(...) GET branch URL construction\",\"mechanism\":{\"summary\":\"Ours added an isEmpty guard whose new branch hardcodes the BASE_URL constant, while theirs replaced the URL-building expressions with the new baseURL parameter. Mergiraf combined both: the empty-params branch keeps `new URL(BASE_URL + resource)` (stale constant) while the else branch uses `new URL(baseURL + resource ...)`, so a call through the new get(baseURL,...) overload with empty params silently ignores the custom baseURL and hits the default blockchain.info host.\",\"tags\":[\"combined-edits-variable-capture-mismatch\",\"stale-constant-vs-new-parameter\",\"guard-branch-ignores-refactored-param\"],\"merge_induced\":\"yes\",\"counterfactual\":\"Ours alone has no baseURL parameter, so both GET branches consistently use BASE_URL. Theirs alone has no isEmpty guard, so the single GET line consistently uses the baseURL parameter. Only the merged combination produces the branch that uses BASE_URL while its sibling uses baseURL.\"},\"evidence\":[{\"source\":\"ours-diff\",\"quote\":\"if(encodedParams.isEmpty()) {\\n                url = new URL(BASE_URL + resource);\\n            }\",\"role\":\"Ours introduces the guard branch hardcoding BASE_URL\"},{\"source\":\"theirs-diff\",\"quote\":\"url = new URL(baseURL + resource + '?' + encodedParams);\",\"role\":\"Theirs switches URL construction to the new baseURL parameter\"},{\"source\":\"merged\",\"quote\":\"if(encodedParams.isEmpty()) {\\n                url = new URL(BASE_URL + resource);\\n            }\\n            else {\\n                url = new URL(baseURL + resource + '?' + encodedParams);\",\"role\":\"Merged result mixes BASE_URL and baseURL inconsistently across the two branches\"}],\"verdict\":\"attributed\",\"confidence\":\"low\",\"notes\":\"The merge clearly introduces a semantic inconsistency (BASE_URL in the empty-params guard vs baseURL in the else) that neither parent has; the developer's shipped version even rewrote both lines to BASE_URL (with residual conflict markers), confirming this region was the contested spot. However, this defect only manifests when a caller passes a custom baseURL with empty params; whether the failing test exercises that path is not visible. Alternative reading: this client's tests make live HTTP calls to blockchain.info and the failure could be network/flaky (flaky-suspect). Compile delta is RESOLVE-only noise. Would be settled by seeing the failing test names/bodies.\"}",
+    "parsed": {
+      "unit_id": "blockchain_api-v1-client-java__e349598f95",
+      "per_side_changes": {
+        "ours": "In openURL's GET branch, added a guard: if encodedParams.isEmpty() build the URL as BASE_URL + resource (no '?'), else BASE_URL + resource + '?' + encodedParams. openURL signature unchanged (no baseURL param), so both branches use the BASE_URL constant.",
+        "theirs": "Refactored openURL to accept a new baseURL parameter and use it (baseURL + resource ...) instead of the BASE_URL constant; added overloaded get(baseURL, resource, params); made getInstance() synchronized with double-checked locking."
+      },
+      "interaction_point": "HttpClient.openURL(...) GET branch URL construction",
+      "mechanism": {
+        "summary": "Ours added an isEmpty guard whose new branch hardcodes the BASE_URL constant, while theirs replaced the URL-building expressions with the new baseURL parameter. Mergiraf combined both: the empty-params branch keeps `new URL(BASE_URL + resource)` (stale constant) while the else branch uses `new URL(baseURL + resource ...)`, so a call through the new get(baseURL,...) overload with empty params silently ignores the custom baseURL and hits the default blockchain.info host.",
+        "tags": [
+          "combined-edits-variable-capture-mismatch",
+          "stale-constant-vs-new-parameter",
+          "guard-branch-ignores-refactored-param"
+        ],
+        "merge_induced": "yes",
+        "counterfactual": "Ours alone has no baseURL parameter, so both GET branches consistently use BASE_URL. Theirs alone has no isEmpty guard, so the single GET line consistently uses the baseURL parameter. Only the merged combination produces the branch that uses BASE_URL while its sibling uses baseURL."
+      },
+      "evidence": [
+        {
+          "source": "ours-diff",
+          "quote": "if(encodedParams.isEmpty()) {\n                url = new URL(BASE_URL + resource);\n            }",
+          "role": "Ours introduces the guard branch hardcoding BASE_URL"
+        },
+        {
+          "source": "theirs-diff",
+          "quote": "url = new URL(baseURL + resource + '?' + encodedParams);",
+          "role": "Theirs switches URL construction to the new baseURL parameter"
+        },
+        {
+          "source": "merged",
+          "quote": "if(encodedParams.isEmpty()) {\n                url = new URL(BASE_URL + resource);\n            }\n            else {\n                url = new URL(baseURL + resource + '?' + encodedParams);",
+          "role": "Merged result mixes BASE_URL and baseURL inconsistently across the two branches"
+        }
+      ],
+      "verdict": "attributed",
+      "confidence": "low",
+      "notes": "The merge clearly introduces a semantic inconsistency (BASE_URL in the empty-params guard vs baseURL in the else) that neither parent has; the developer's shipped version even rewrote both lines to BASE_URL (with residual conflict markers), confirming this region was the contested spot. However, this defect only manifests when a caller passes a custom baseURL with empty params; whether the failing test exercises that path is not visible. Alternative reading: this client's tests make live HTTP calls to blockchain.info and the failure could be network/flaky (flaky-suspect). Compile delta is RESOLVE-only noise. Would be settled by seeing the failing test names/bodies."
+    },
+    "conforms": true,
+    "reason": "ok",
+    "usage": {
+      "input": 4411,
+      "output": 3535
+    }
+  },
+  "blockchain_api-v1-client-java__abdf54e6ab": {
+    "result_type": "succeeded",
+    "stop_reason": "end_turn",
+    "raw_text": "{\"unit_id\":\"blockchain_api-v1-client-java__abdf54e6ab\",\"per_side_changes\":{\"ours\":\"Made getInstance() synchronized with double-checked locking, and parameterized openURL/get with an explicit baseURL argument (added get(baseURL, resource, params) overload); GET/POST now build URLs from the passed baseURL instead of the hardcoded BASE_URL constant.\",\"theirs\":\"In the GET branch of openURL, added an empty-params guard that builds the URL without the '?'+params suffix (using BASE_URL constant), and added reader.close() in inputStreamToString.\"},\"interaction_point\":\"openURL(...) GET branch URL construction\",\"mechanism\":{\"summary\":\"Ours rewrote the GET branch to build the URL from the new baseURL parameter; theirs inserted an empty-params guard branch still written against the hardcoded BASE_URL constant. Mergiraf combined them so the empty-params path uses BASE_URL while the non-empty path uses baseURL, making custom baseURL silently ignored when params are empty \u2014 an inconsistency present in neither parent.\",\"tags\":[\"parameterization-vs-inserted-branch\",\"stale-constant-in-new-branch\",\"inconsistent-state-source\"],\"merge_induced\":\"unclear\",\"counterfactual\":\"In ours alone the GET branch always uses baseURL; in theirs alone the GET branch always uses BASE_URL (with the empty check). Only the merged mixture uses BASE_URL in the empty-params sub-branch and baseURL in the other, so the inconsistency is merge-specific.  Whether this actually breaks the failing test cannot be shown from the visible files.\"},\"evidence\":[{\"source\":\"ours-diff\",\"quote\":\"url = new URL(baseURL + resource + '?' + encodedParams);\",\"role\":\"Ours drives GET URL from the new baseURL parameter\"},{\"source\":\"theirs-diff\",\"quote\":\"if(encodedParams.isEmpty()) {\\n                url = new URL(BASE_URL + resource);\",\"role\":\"Theirs adds empty-params branch hardcoding BASE_URL\"},{\"source\":\"merged\",\"quote\":\"url = new URL(BASE_URL + resource);\\n            }\\n            else {\\n                url = new URL(baseURL + resource + '?' + encodedParams);\",\"role\":\"Merged combination mixes BASE_URL and baseURL across the two sub-branches\"}],\"verdict\":\"indeterminate\",\"confidence\":\"low\",\"notes\":\"A genuine merge-induced semantic inconsistency exists (empty-params path ignores custom baseURL), but the test suite is not shown and this is a live-API client whose tests plausibly hit blockchain.info over the network (flaky-suspect alternative). Cannot confirm the merged inconsistency is what the failing test exercises. Developer resolution normalized both sub-branches to BASE_URL, which corroborates that the mix was undesired but is not itself a mechanism. Would need the failing test source to settle between indeterminate and flaky-suspect.\"}",
+    "parsed": {
+      "unit_id": "blockchain_api-v1-client-java__abdf54e6ab",
+      "per_side_changes": {
+        "ours": "Made getInstance() synchronized with double-checked locking, and parameterized openURL/get with an explicit baseURL argument (added get(baseURL, resource, params) overload); GET/POST now build URLs from the passed baseURL instead of the hardcoded BASE_URL constant.",
+        "theirs": "In the GET branch of openURL, added an empty-params guard that builds the URL without the '?'+params suffix (using BASE_URL constant), and added reader.close() in inputStreamToString."
+      },
+      "interaction_point": "openURL(...) GET branch URL construction",
+      "mechanism": {
+        "summary": "Ours rewrote the GET branch to build the URL from the new baseURL parameter; theirs inserted an empty-params guard branch still written against the hardcoded BASE_URL constant. Mergiraf combined them so the empty-params path uses BASE_URL while the non-empty path uses baseURL, making custom baseURL silently ignored when params are empty \u2014 an inconsistency present in neither parent.",
+        "tags": [
+          "parameterization-vs-inserted-branch",
+          "stale-constant-in-new-branch",
+          "inconsistent-state-source"
+        ],
+        "merge_induced": "unclear",
+        "counterfactual": "In ours alone the GET branch always uses baseURL; in theirs alone the GET branch always uses BASE_URL (with the empty check). Only the merged mixture uses BASE_URL in the empty-params sub-branch and baseURL in the other, so the inconsistency is merge-specific.  Whether this actually breaks the failing test cannot be shown from the visible files."
+      },
+      "evidence": [
+        {
+          "source": "ours-diff",
+          "quote": "url = new URL(baseURL + resource + '?' + encodedParams);",
+          "role": "Ours drives GET URL from the new baseURL parameter"
+        },
+        {
+          "source": "theirs-diff",
+          "quote": "if(encodedParams.isEmpty()) {\n                url = new URL(BASE_URL + resource);",
+          "role": "Theirs adds empty-params branch hardcoding BASE_URL"
+        },
+        {
+          "source": "merged",
+          "quote": "url = new URL(BASE_URL + resource);\n            }\n            else {\n                url = new URL(baseURL + resource + '?' + encodedParams);",
+          "role": "Merged combination mixes BASE_URL and baseURL across the two sub-branches"
+        }
+      ],
+      "verdict": "indeterminate",
+      "confidence": "low",
+      "notes": "A genuine merge-induced semantic inconsistency exists (empty-params path ignores custom baseURL), but the test suite is not shown and this is a live-API client whose tests plausibly hit blockchain.info over the network (flaky-suspect alternative). Cannot confirm the merged inconsistency is what the failing test exercises. Developer resolution normalized both sub-branches to BASE_URL, which corroborates that the mix was undesired but is not itself a mechanism. Would need the failing test source to settle between indeterminate and flaky-suspect."
+    },
+    "conforms": true,
+    "reason": "ok",
+    "usage": {
+      "input": 4338,
+      "output": 2650
+    }
+  },
+  "apache_olingo-odata4__820b462f49": {
+    "result_type": "succeeded",
+    "stop_reason": "end_turn",
+    "raw_text": "{\"unit_id\":\"apache_olingo-odata4__820b462f49\",\"per_side_changes\":{\"ours\":\"Added an isODataMetadataFull field/method and gated numerous metadata-emitting branches (reference context, serverLinks media-edit/association/navigation links, complexValue type, valuable type) on isODataMetadataFull instead of !isODataMetadataNone; also modernized try-with-resources, multi-catch, and diamond generics.\",\"theirs\":\"In valuable(), removed the `|| valuable.isNull()` disjunct from the condition that defaults an empty/null type to Edm.String.\"},\"interaction_point\":\"JsonSerializer.valuable() type-defaulting condition and the isODataMetadataFull-gated type-field write\",\"mechanism\":{\"summary\":\"\",\"tags\":[],\"merge_induced\":\"no\",\"counterfactual\":\"\"},\"evidence\":[{\"source\":\"dev-diff\",\"quote\":\"(no differences)\",\"role\":\"Merged output is byte-for-byte identical to the developer's shipped resolution, so no merge mistake exists in this file.\"},{\"source\":\"merged\",\"quote\":\"      if ((!valuable.isCollection() &&\\n          (type == null || type.isEmpty()) &&\\n          valuable.isPrimitive())) {\",\"role\":\"Shows theirs' removal of isNull() combined with ours' changes exactly as the developer intended.\"},{\"source\":\"compile-delta\",\"quote\":\"(none)\",\"role\":\"No parse/resolve regression introduced by the merge.\"}],\"verdict\":\"none-identified\",\"confidence\":\"high\",\"notes\":\"The tool-merged file equals the developer resolution exactly (MERGED vs DEVELOPER: no differences) and compiles cleanly. Ours' metadata-full gating and theirs' condition tweak are in different regions (except both touch valuable(), where they compose cleanly and match the developer). Any test failure at this merge commit therefore stems from files not shown here or is otherwise unrelated to this file's merge; no merge-induced mechanism is constructible from the parents for this file. Additional input (the failing test and other intersecting files) would be needed to explain the suite failure.\"}",
+    "parsed": {
+      "unit_id": "apache_olingo-odata4__820b462f49",
+      "per_side_changes": {
+        "ours": "Added an isODataMetadataFull field/method and gated numerous metadata-emitting branches (reference context, serverLinks media-edit/association/navigation links, complexValue type, valuable type) on isODataMetadataFull instead of !isODataMetadataNone; also modernized try-with-resources, multi-catch, and diamond generics.",
+        "theirs": "In valuable(), removed the `|| valuable.isNull()` disjunct from the condition that defaults an empty/null type to Edm.String."
+      },
+      "interaction_point": "JsonSerializer.valuable() type-defaulting condition and the isODataMetadataFull-gated type-field write",
+      "mechanism": {
+        "summary": "",
+        "tags": [],
+        "merge_induced": "no",
+        "counterfactual": ""
+      },
+      "evidence": [
+        {
+          "source": "dev-diff",
+          "quote": "(no differences)",
+          "role": "Merged output is byte-for-byte identical to the developer's shipped resolution, so no merge mistake exists in this file."
+        },
+        {
+          "source": "merged",
+          "quote": "      if ((!valuable.isCollection() &&\n          (type == null || type.isEmpty()) &&\n          valuable.isPrimitive())) {",
+          "role": "Shows theirs' removal of isNull() combined with ours' changes exactly as the developer intended."
+        },
+        {
+          "source": "compile-delta",
+          "quote": "(none)",
+          "role": "No parse/resolve regression introduced by the merge."
+        }
+      ],
+      "verdict": "none-identified",
+      "confidence": "high",
+      "notes": "The tool-merged file equals the developer resolution exactly (MERGED vs DEVELOPER: no differences) and compiles cleanly. Ours' metadata-full gating and theirs' condition tweak are in different regions (except both touch valuable(), where they compose cleanly and match the developer). Any test failure at this merge commit therefore stems from files not shown here or is otherwise unrelated to this file's merge; no merge-induced mechanism is constructible from the parents for this file. Additional input (the failing test and other intersecting files) would be needed to explain the suite failure."
+    },
+    "conforms": true,
+    "reason": "ok",
+    "usage": {
+      "input": 11353,
+      "output": 1179
+    }
+  },
+  "bguerout_jongo__3aaaf0e4c7": {
+    "result_type": "succeeded",
+    "stop_reason": "end_turn",
+    "raw_text": "{\"unit_id\":\"bguerout_jongo__3aaaf0e4c7\",\"per_side_changes\":{\"ours\":\"Added two instance methods requestStart()/requestDone() to Jongo that delegate to database.requestStart()/database.requestDone() (legacy com.mongodb.DB session API).\",\"theirs\":\"Migrated toward the modern MongoDB driver: added import com.mongodb.client.MongoDatabase, deprecated the DB-based constructors, and added static useNative(MongoDatabase...) factory methods.\"},\"interaction_point\":\"Jongo.java \u2014 new requestStart/requestDone methods calling database.requestStart()/requestDone() alongside theirs' introduction of the com.mongodb.client.* (new driver) API.\",\"mechanism\":{\"summary\":\"\",\"tags\":[],\"merge_induced\":\"unclear\",\"counterfactual\":\"\"},\"evidence\":[{\"source\":\"ours-diff\",\"quote\":\"public void requestStart() {\\n        database.requestStart();\\n    }\",\"role\":\"Ours introduces a call into the legacy DB session API (requestStart/requestDone).\"},{\"source\":\"theirs-diff\",\"quote\":\"import com.mongodb.client.MongoDatabase;\",\"role\":\"Theirs signals a migration toward the newer MongoDB driver where DB.requestStart()/requestDone() were removed.\"},{\"source\":\"dev-diff\",\"quote\":\"-    public void requestStart() {\\n-        database.requestStart();\\n-    }\",\"role\":\"Developer dropped exactly the ours-side methods, consistent with them being incompatible after the driver change \u2014 corroborating, not decisive.\"}],\"verdict\":\"indeterminate\",\"confidence\":\"medium\",\"notes\":\"Plausible mechanism: theirs migrates the project to the modern MongoDB Java driver (com.mongodb.client.MongoDatabase), in which DB.requestStart()/DB.requestDone() no longer exist; ours' newly added methods call exactly those removed methods, so the merged file would fail to compile and thus break the whole test suite. Ours alone (old driver) compiles; theirs alone lacks the requestStart/requestDone calls. However, the decisive fact \u2014 that the driver version was actually bumped and that these methods were removed \u2014 lives in pom.xml, which is not shown. The single-file compile delta is (none) because javac cannot resolve com.mongodb at all without the classpath (R7 noise), so it neither confirms nor refutes. The developer removing precisely the ours-side methods strongly corroborates the hypothesis but per R2 the dev-diff alone cannot establish it. Providing pom.xml diff and JongoNative would settle whether this is a compile-time API-removal collision (would then be 'attributed', tags: stale-caller-of-removed-api / driver-upgrade-vs-legacy-api-call).\"}",
+    "parsed": {
+      "unit_id": "bguerout_jongo__3aaaf0e4c7",
+      "per_side_changes": {
+        "ours": "Added two instance methods requestStart()/requestDone() to Jongo that delegate to database.requestStart()/database.requestDone() (legacy com.mongodb.DB session API).",
+        "theirs": "Migrated toward the modern MongoDB driver: added import com.mongodb.client.MongoDatabase, deprecated the DB-based constructors, and added static useNative(MongoDatabase...) factory methods."
+      },
+      "interaction_point": "Jongo.java \u2014 new requestStart/requestDone methods calling database.requestStart()/requestDone() alongside theirs' introduction of the com.mongodb.client.* (new driver) API.",
+      "mechanism": {
+        "summary": "",
+        "tags": [],
+        "merge_induced": "unclear",
+        "counterfactual": ""
+      },
+      "evidence": [
+        {
+          "source": "ours-diff",
+          "quote": "public void requestStart() {\n        database.requestStart();\n    }",
+          "role": "Ours introduces a call into the legacy DB session API (requestStart/requestDone)."
+        },
+        {
+          "source": "theirs-diff",
+          "quote": "import com.mongodb.client.MongoDatabase;",
+          "role": "Theirs signals a migration toward the newer MongoDB driver where DB.requestStart()/requestDone() were removed."
+        },
+        {
+          "source": "dev-diff",
+          "quote": "-    public void requestStart() {\n-        database.requestStart();\n-    }",
+          "role": "Developer dropped exactly the ours-side methods, consistent with them being incompatible after the driver change \u2014 corroborating, not decisive."
+        }
+      ],
+      "verdict": "indeterminate",
+      "confidence": "medium",
+      "notes": "Plausible mechanism: theirs migrates the project to the modern MongoDB Java driver (com.mongodb.client.MongoDatabase), in which DB.requestStart()/DB.requestDone() no longer exist; ours' newly added methods call exactly those removed methods, so the merged file would fail to compile and thus break the whole test suite. Ours alone (old driver) compiles; theirs alone lacks the requestStart/requestDone calls. However, the decisive fact \u2014 that the driver version was actually bumped and that these methods were removed \u2014 lives in pom.xml, which is not shown. The single-file compile delta is (none) because javac cannot resolve com.mongodb at all without the classpath (R7 noise), so it neither confirms nor refutes. The developer removing precisely the ours-side methods strongly corroborates the hypothesis but per R2 the dev-diff alone cannot establish it. Providing pom.xml diff and JongoNative would settle whether this is a compile-time API-removal collision (would then be 'attributed', tags: stale-caller-of-removed-api / driver-upgrade-vs-legacy-api-call)."
+    },
+    "conforms": true,
+    "reason": "ok",
+    "usage": {
+      "input": 2847,
+      "output": 2695
+    }
+  },
+  "apache_cayenne__f10ba77a97": {
+    "result_type": "succeeded",
+    "stop_reason": "end_turn",
+    "raw_text": "{\"unit_id\":\"apache_cayenne__f10ba77a97\",\"per_side_changes\":{\"ours\":\"Added a new method addWithOverride(from,to) to DIGraph that calls add(from,to) then removes the reverse edge; added test testTopSortDirectCycleOverride exercising it; collapsed mock imports to a wildcard and added two testListInjection_*_addOverrideValueOrdering tests.\",\"theirs\":\"Modified DIGraph.add(from,to) to remove the reverse edge (neighbors.get(to).remove(from)) before adding from->to; changed testTopSortDirectCycle from expecting DIRuntimeException to expecting a successful topological sort; same import collapse and added the same list-ordering tests.\"},\"interaction_point\":\"DIGraph.add(V,V) / addWithOverride(V,V) and the DIGraphTest topological-sort tests\",\"mechanism\":{\"summary\":\"\",\"tags\":[],\"merge_induced\":\"no\",\"counterfactual\":\"\"},\"evidence\":[{\"source\":\"dev-diff\",\"quote\":\"(no differences)\",\"role\":\"Merged DIGraph.java is byte-identical to the developer's shipped resolution\"},{\"source\":\"dev-diff\",\"quote\":\"(no differences)\",\"role\":\"Merged DIGraphTest.java and DefaultInjectorInjectionTest.java also match developer exactly\"},{\"source\":\"merged\",\"quote\":\"public void addWithOverride(V from, V to) {\\n\\t\\tadd(from, to);\\n\\t\\tneighbors.get(to).remove(from);\\n\\t}\",\"role\":\"Ours' new method combined cleanly with theirs' add() change; the extra remove is idempotent, so no semantic breakage\"},{\"source\":\"compile-delta\",\"quote\":\"(none)\",\"role\":\"No parse/resolve regression on any merged file\"}],\"verdict\":\"none-identified\",\"confidence\":\"high\",\"notes\":\"For all three shown files the mergiraf output equals the developer's resolution exactly (MERGED vs DEVELOPER = no differences), and the combined logic is coherent: theirs' reverse-edge removal in add() and ours' addWithOverride compose harmlessly (the duplicated remove is idempotent), and both the modified testTopSortDirectCycle and the new testTopSortDirectCycleOverride evaluate to the asserted [x,y] under the merged add(). Hand-tracing the graph confirms both tests pass. Any suite failure at this commit therefore likely originates outside the shown intersecting files (unshown code) or is environmental/flaky. Could reconsider as indeterminate, but the explicit 'semantically equivalent to developer' escape hatch applies.\"}",
+    "parsed": {
+      "unit_id": "apache_cayenne__f10ba77a97",
+      "per_side_changes": {
+        "ours": "Added a new method addWithOverride(from,to) to DIGraph that calls add(from,to) then removes the reverse edge; added test testTopSortDirectCycleOverride exercising it; collapsed mock imports to a wildcard and added two testListInjection_*_addOverrideValueOrdering tests.",
+        "theirs": "Modified DIGraph.add(from,to) to remove the reverse edge (neighbors.get(to).remove(from)) before adding from->to; changed testTopSortDirectCycle from expecting DIRuntimeException to expecting a successful topological sort; same import collapse and added the same list-ordering tests."
+      },
+      "interaction_point": "DIGraph.add(V,V) / addWithOverride(V,V) and the DIGraphTest topological-sort tests",
+      "mechanism": {
+        "summary": "",
+        "tags": [],
+        "merge_induced": "no",
+        "counterfactual": ""
+      },
+      "evidence": [
+        {
+          "source": "dev-diff",
+          "quote": "(no differences)",
+          "role": "Merged DIGraph.java is byte-identical to the developer's shipped resolution"
+        },
+        {
+          "source": "dev-diff",
+          "quote": "(no differences)",
+          "role": "Merged DIGraphTest.java and DefaultInjectorInjectionTest.java also match developer exactly"
+        },
+        {
+          "source": "merged",
+          "quote": "public void addWithOverride(V from, V to) {\n\t\tadd(from, to);\n\t\tneighbors.get(to).remove(from);\n\t}",
+          "role": "Ours' new method combined cleanly with theirs' add() change; the extra remove is idempotent, so no semantic breakage"
+        },
+        {
+          "source": "compile-delta",
+          "quote": "(none)",
+          "role": "No parse/resolve regression on any merged file"
+        }
+      ],
+      "verdict": "none-identified",
+      "confidence": "high",
+      "notes": "For all three shown files the mergiraf output equals the developer's resolution exactly (MERGED vs DEVELOPER = no differences), and the combined logic is coherent: theirs' reverse-edge removal in add() and ours' addWithOverride compose harmlessly (the duplicated remove is idempotent), and both the modified testTopSortDirectCycle and the new testTopSortDirectCycleOverride evaluate to the asserted [x,y] under the merged add(). Hand-tracing the graph confirms both tests pass. Any suite failure at this commit therefore likely originates outside the shown intersecting files (unshown code) or is environmental/flaky. Could reconsider as indeterminate, but the explicit 'semantically equivalent to developer' escape hatch applies."
+    },
+    "conforms": true,
+    "reason": "ok",
+    "usage": {
+      "input": 20212,
+      "output": 2982
+    }
+  },
+  "atam4j_atam4j__71fcecb071": {
+    "result_type": "succeeded",
+    "stop_reason": "end_turn",
+    "raw_text": "{\"unit_id\":\"atam4j_atam4j__71fcecb071\",\"per_side_changes\":{\"ours\":\"Rewrote PassingTestAcceptanceTest to use PassingTestWithNoCategory instead of PassingTest, removed the `import me.atam.atam4j.dummytests.PassingTest;` import, and refactored AcceptanceTest to make getTestRunResultFromServer take a URI plus new helper methods.\",\"theirs\":\"Added a new test method `givenSampleApplicationStartedWithPassingTest_whenCriticalHealthCheckCalledBeforeTestRun...` that references `PassingTest.class` and calls a new `getCriticalTestRunResultFromServer()` helper; also introduced a shared static Jersey `Client` field in AcceptanceTest.\"},\"interaction_point\":\"PassingTestAcceptanceTest.java: use of PassingTest.class (theirs) vs removal of its import (ours)\",\"mechanism\":{\"summary\":\"Ours deleted the `import me.atam.atam4j.dummytests.PassingTest;` line while theirs added a whole new test method that still references `PassingTest.class`. Mergiraf kept both edits, producing a merged file that uses the PassingTest symbol with no matching import, which fails to compile and breaks the test module.\",\"tags\":[\"removed-import-vs-added-usage\",\"stale-symbol-reference\",\"additive-method-merge-conflict\"],\"merge_induced\":\"yes\",\"counterfactual\":\"Theirs alone keeps the PassingTest import (it never touched imports) so its new method resolves; ours alone never references PassingTest so the removed import is harmless. Only the union \u2014 ours's import deletion plus theirs's new PassingTest.class usage \u2014 leaves an unresolved symbol.\"},\"evidence\":[{\"source\":\"ours-diff\",\"quote\":\"-import me.atam.atam4j.dummytests.PassingTest;\",\"role\":\"ours removed the import that theirs's new code depends on\"},{\"source\":\"theirs-diff\",\"quote\":\".startApplicationWith(TEN_SECONDS_IN_MILLIS, PassingTest.class);\",\"role\":\"theirs added a new test method that references PassingTest\"},{\"source\":\"merged\",\"quote\":\"import me.atam.atam4j.dummytests.PassingTestWithNoCategory;\",\"role\":\"merged file only imports PassingTestWithNoCategory, not PassingTest, yet retains the PassingTest.class usage\"},{\"source\":\"dev-diff\",\"quote\":\"-    public void givenSampleApplicationStartedWithPassingTest_whenCriticalHealthCheckCalledBeforeTestRun_thenTooEarlyMessageReceived(){\",\"role\":\"developer deleted the theirs-added method that referenced the missing symbol, avoiding the break\"}],\"verdict\":\"attributed\",\"confidence\":\"high\",\"notes\":\"The FILE 1 compile delta is (none) because single-file javac cannot resolve project imports at all (all symbols unresolved), so it does not specifically flag the missing PassingTest \u2014 the mechanism is nonetheless directly constructible from the two parent diffs. A secondary candidate is the theirs-added static Client field / javax.ws.rs.client import (FILE 2 RESOLVE error), but that is likely classpath noise per R7; the developer removed it too, but it does not require ours+theirs interaction to appear.\"}",
+    "parsed": {
+      "unit_id": "atam4j_atam4j__71fcecb071",
+      "per_side_changes": {
+        "ours": "Rewrote PassingTestAcceptanceTest to use PassingTestWithNoCategory instead of PassingTest, removed the `import me.atam.atam4j.dummytests.PassingTest;` import, and refactored AcceptanceTest to make getTestRunResultFromServer take a URI plus new helper methods.",
+        "theirs": "Added a new test method `givenSampleApplicationStartedWithPassingTest_whenCriticalHealthCheckCalledBeforeTestRun...` that references `PassingTest.class` and calls a new `getCriticalTestRunResultFromServer()` helper; also introduced a shared static Jersey `Client` field in AcceptanceTest."
+      },
+      "interaction_point": "PassingTestAcceptanceTest.java: use of PassingTest.class (theirs) vs removal of its import (ours)",
+      "mechanism": {
+        "summary": "Ours deleted the `import me.atam.atam4j.dummytests.PassingTest;` line while theirs added a whole new test method that still references `PassingTest.class`. Mergiraf kept both edits, producing a merged file that uses the PassingTest symbol with no matching import, which fails to compile and breaks the test module.",
+        "tags": [
+          "removed-import-vs-added-usage",
+          "stale-symbol-reference",
+          "additive-method-merge-conflict"
+        ],
+        "merge_induced": "yes",
+        "counterfactual": "Theirs alone keeps the PassingTest import (it never touched imports) so its new method resolves; ours alone never references PassingTest so the removed import is harmless. Only the union \u2014 ours's import deletion plus theirs's new PassingTest.class usage \u2014 leaves an unresolved symbol."
+      },
+      "evidence": [
+        {
+          "source": "ours-diff",
+          "quote": "-import me.atam.atam4j.dummytests.PassingTest;",
+          "role": "ours removed the import that theirs's new code depends on"
+        },
+        {
+          "source": "theirs-diff",
+          "quote": ".startApplicationWith(TEN_SECONDS_IN_MILLIS, PassingTest.class);",
+          "role": "theirs added a new test method that references PassingTest"
+        },
+        {
+          "source": "merged",
+          "quote": "import me.atam.atam4j.dummytests.PassingTestWithNoCategory;",
+          "role": "merged file only imports PassingTestWithNoCategory, not PassingTest, yet retains the PassingTest.class usage"
+        },
+        {
+          "source": "dev-diff",
+          "quote": "-    public void givenSampleApplicationStartedWithPassingTest_whenCriticalHealthCheckCalledBeforeTestRun_thenTooEarlyMessageReceived(){",
+          "role": "developer deleted the theirs-added method that referenced the missing symbol, avoiding the break"
+        }
+      ],
+      "verdict": "attributed",
+      "confidence": "high",
+      "notes": "The FILE 1 compile delta is (none) because single-file javac cannot resolve project imports at all (all symbols unresolved), so it does not specifically flag the missing PassingTest \u2014 the mechanism is nonetheless directly constructible from the two parent diffs. A secondary candidate is the theirs-added static Client field / javax.ws.rs.client import (FILE 2 RESOLVE error), but that is likely classpath noise per R7; the developer removed it too, but it does not require ours+theirs interaction to appear."
+    },
+    "conforms": true,
+    "reason": "ok",
+    "usage": {
+      "input": 8790,
+      "output": 2724
+    }
+  },
+  "apache_olingo-odata4__cf731c2cb8": {
+    "result_type": "succeeded",
+    "stop_reason": "end_turn",
+    "raw_text": "{\"unit_id\":\"apache_olingo-odata4__cf731c2cb8\",\"per_side_changes\":{\"ours\":\"Added a single new JUnit test testOLINGO1114 to JSONTest.java (serializing an entity with null-valued primitive properties) plus the imports it needs (HttpEntity, EntityUtils, ClientPrimitiveValue, ClientProperty, URIUtils, EdmPrimitiveTypeKind).\",\"theirs\":\"Large additive refactor of JSONTest.java: added isServerMode parameter to cleanup(), new cleanupWithFullMetadata/cleanupWithNoMetadata helpers, many new assert/entity/property helper methods and new @Test methods (server-mode / full- / no-metadata variants, issueOLINGO1152, issue2OLINGO1073, helper factories), plus many new imports.\"},\"interaction_point\":\"lib/client-core/.../JSONTest.java import block and appended test methods (both sides append to the same class)\",\"mechanism\":{\"summary\":\"\",\"tags\":[],\"merge_induced\":\"no\",\"counterfactual\":\"\"},\"evidence\":[{\"source\":\"compile-delta\",\"quote\":\"(none)\",\"role\":\"Merged JSONTest.java parses and (single-file) shows no compile errors absent on developer \u2014 no duplicate-import or syntactic breakage from combining both sides.\"},{\"source\":\"dev-diff\",\"quote\":\"-import org.apache.olingo.client.api.domain.ClientPrimitiveValue;\\n-import org.apache.olingo.client.api.domain.ClientProperty;\\n+import org.apache.olingo.client.api.domain.ClientPrimitiveValue;\",\"role\":\"Only difference between merged and developer imports is ordering \u2014 the shared imports were de-duplicated by the structured merge, not duplicated.\"},{\"source\":\"dev-diff\",\"quote\":\"+  public void testOLINGO1114() throws Exception {\",\"role\":\"The only body-level merged-vs-dev difference is that the developer relocated the identical testOLINGO1114 method earlier in the class; the test body is byte-identical, i.e. semantically equivalent.\"},{\"source\":\"merged\",\"quote\":\"lib/client-core/src/main/java/org/apache/olingo/client/core/serialization/JsonSerializer.java  (merged-vs-dev +0 -0)\",\"role\":\"The main serializer file the theirs-side tests depend on is identical between merged and developer, so no merge divergence there either.\"}],\"verdict\":\"none-identified\",\"confidence\":\"medium\",\"notes\":\"The two sides append disjoint test methods to the same test class; Mergiraf combined them and deduplicated the shared imports (ClientPrimitiveValue, ClientProperty, EdmPrimitiveTypeKind). The merged JSONTest.java differs from the developer's resolution only in import ordering and the placement of the (byte-identical) testOLINGO1114 method \u2014 i.e. semantically equivalent \u2014 and JsonSerializer is +0/-0 vs developer. No parent-interaction mechanism is constructible from the shown files. If the suite genuinely failed on the merged result, the cause most plausibly lies in unshown test-resource files (e.g. olingo1114.json, *_InServerMode fixtures) or JsonSerializer behavior that is a theirs-side property present in that parent alone, not a merge-induced interaction. Would need the JsonSerializer diff bodies and the resource fixtures to move beyond none-identified.\"}",
+    "parsed": {
+      "unit_id": "apache_olingo-odata4__cf731c2cb8",
+      "per_side_changes": {
+        "ours": "Added a single new JUnit test testOLINGO1114 to JSONTest.java (serializing an entity with null-valued primitive properties) plus the imports it needs (HttpEntity, EntityUtils, ClientPrimitiveValue, ClientProperty, URIUtils, EdmPrimitiveTypeKind).",
+        "theirs": "Large additive refactor of JSONTest.java: added isServerMode parameter to cleanup(), new cleanupWithFullMetadata/cleanupWithNoMetadata helpers, many new assert/entity/property helper methods and new @Test methods (server-mode / full- / no-metadata variants, issueOLINGO1152, issue2OLINGO1073, helper factories), plus many new imports."
+      },
+      "interaction_point": "lib/client-core/.../JSONTest.java import block and appended test methods (both sides append to the same class)",
+      "mechanism": {
+        "summary": "",
+        "tags": [],
+        "merge_induced": "no",
+        "counterfactual": ""
+      },
+      "evidence": [
+        {
+          "source": "compile-delta",
+          "quote": "(none)",
+          "role": "Merged JSONTest.java parses and (single-file) shows no compile errors absent on developer \u2014 no duplicate-import or syntactic breakage from combining both sides."
+        },
+        {
+          "source": "dev-diff",
+          "quote": "-import org.apache.olingo.client.api.domain.ClientPrimitiveValue;\n-import org.apache.olingo.client.api.domain.ClientProperty;\n+import org.apache.olingo.client.api.domain.ClientPrimitiveValue;",
+          "role": "Only difference between merged and developer imports is ordering \u2014 the shared imports were de-duplicated by the structured merge, not duplicated."
+        },
+        {
+          "source": "dev-diff",
+          "quote": "+  public void testOLINGO1114() throws Exception {",
+          "role": "The only body-level merged-vs-dev difference is that the developer relocated the identical testOLINGO1114 method earlier in the class; the test body is byte-identical, i.e. semantically equivalent."
+        },
+        {
+          "source": "merged",
+          "quote": "lib/client-core/src/main/java/org/apache/olingo/client/core/serialization/JsonSerializer.java  (merged-vs-dev +0 -0)",
+          "role": "The main serializer file the theirs-side tests depend on is identical between merged and developer, so no merge divergence there either."
+        }
+      ],
+      "verdict": "none-identified",
+      "confidence": "medium",
+      "notes": "The two sides append disjoint test methods to the same test class; Mergiraf combined them and deduplicated the shared imports (ClientPrimitiveValue, ClientProperty, EdmPrimitiveTypeKind). The merged JSONTest.java differs from the developer's resolution only in import ordering and the placement of the (byte-identical) testOLINGO1114 method \u2014 i.e. semantically equivalent \u2014 and JsonSerializer is +0/-0 vs developer. No parent-interaction mechanism is constructible from the shown files. If the suite genuinely failed on the merged result, the cause most plausibly lies in unshown test-resource files (e.g. olingo1114.json, *_InServerMode fixtures) or JsonSerializer behavior that is a theirs-side property present in that parent alone, not a merge-induced interaction. Would need the JsonSerializer diff bodies and the resource fixtures to move beyond none-identified."
+    },
+    "conforms": true,
+    "reason": "ok",
+    "usage": {
+      "input": 27729,
+      "output": 3988
+    }
+  },
+  "apache_commons-collections__f0c2e97529": {
+    "result_type": "succeeded",
+    "stop_reason": "end_turn",
+    "raw_text": "{\"unit_id\":\"apache_commons-collections__f0c2e97529\",\"per_side_changes\":{\"ours\":\"Rewrote BloomFilter.estimateN and estimateIntersection to handle infinite/NaN estimates (returning Integer.MAX_VALUE or throwing IllegalArgumentException), expanded javadoc in BloomFilter and Shape, and extended testEstimateIntersection/testEstimateN with new fullHasher-based cases including an assertThrows(IllegalArgumentException).\",\"theirs\":\"Purely cosmetic: added `final` qualifiers to parameters/locals across BloomFilter, Shape, and the test, plus minor javadoc typo fixes; no semantic behavior change.\"},\"interaction_point\":\"AbstractBloomFilterTest.testEstimateIntersection / BloomFilter.estimateIntersection\",\"mechanism\":{\"summary\":\"\",\"tags\":[],\"merge_induced\":\"unclear\",\"counterfactual\":\"\"},\"evidence\":[{\"source\":\"dev-diff\",\"quote\":\"(no differences)\",\"role\":\"Merged result for BloomFilter.java is byte-identical to what the developer shipped\"},{\"source\":\"dev-diff\",\"quote\":\"(no differences)\",\"role\":\"Merged result for the test file is byte-identical to the developer resolution, so no merge defect in the shown files\"},{\"source\":\"theirs-diff\",\"quote\":\"default int estimateIntersection(final BloomFilter other) {\",\"role\":\"Theirs only adds `final`; ours rewrote the body \u2014 these compose cleanly without semantic conflict\"}],\"verdict\":\"indeterminate\",\"confidence\":\"medium\",\"notes\":\"Ours makes semantic changes (estimateN/estimateIntersection + new test assertions) while theirs is entirely cosmetic (`final` additions); the two are orthogonal and merge cleanly. Critically, MERGED vs DEVELOPER shows no differences for all three files and the compile delta is empty, so the tool output exactly matches what the human shipped \u2014 meaning no merge-induced defect exists in the shown files. The suite-level failure therefore likely originates in files not shown (other bloomfilter classes changed by only one side, e.g. helper/hasher classes referenced by the new fullHasher test), or is environmental/flaky. Would need the full set of files each side changed (non-intersecting) to settle this.\"}",
+    "parsed": {
+      "unit_id": "apache_commons-collections__f0c2e97529",
+      "per_side_changes": {
+        "ours": "Rewrote BloomFilter.estimateN and estimateIntersection to handle infinite/NaN estimates (returning Integer.MAX_VALUE or throwing IllegalArgumentException), expanded javadoc in BloomFilter and Shape, and extended testEstimateIntersection/testEstimateN with new fullHasher-based cases including an assertThrows(IllegalArgumentException).",
+        "theirs": "Purely cosmetic: added `final` qualifiers to parameters/locals across BloomFilter, Shape, and the test, plus minor javadoc typo fixes; no semantic behavior change."
+      },
+      "interaction_point": "AbstractBloomFilterTest.testEstimateIntersection / BloomFilter.estimateIntersection",
+      "mechanism": {
+        "summary": "",
+        "tags": [],
+        "merge_induced": "unclear",
+        "counterfactual": ""
+      },
+      "evidence": [
+        {
+          "source": "dev-diff",
+          "quote": "(no differences)",
+          "role": "Merged result for BloomFilter.java is byte-identical to what the developer shipped"
+        },
+        {
+          "source": "dev-diff",
+          "quote": "(no differences)",
+          "role": "Merged result for the test file is byte-identical to the developer resolution, so no merge defect in the shown files"
+        },
+        {
+          "source": "theirs-diff",
+          "quote": "default int estimateIntersection(final BloomFilter other) {",
+          "role": "Theirs only adds `final`; ours rewrote the body \u2014 these compose cleanly without semantic conflict"
+        }
+      ],
+      "verdict": "indeterminate",
+      "confidence": "medium",
+      "notes": "Ours makes semantic changes (estimateN/estimateIntersection + new test assertions) while theirs is entirely cosmetic (`final` additions); the two are orthogonal and merge cleanly. Critically, MERGED vs DEVELOPER shows no differences for all three files and the compile delta is empty, so the tool output exactly matches what the human shipped \u2014 meaning no merge-induced defect exists in the shown files. The suite-level failure therefore likely originates in files not shown (other bloomfilter classes changed by only one side, e.g. helper/hasher classes referenced by the new fullHasher test), or is environmental/flaky. Would need the full set of files each side changed (non-intersecting) to settle this."
+    },
+    "conforms": true,
+    "reason": "ok",
+    "usage": {
+      "input": 17094,
+      "output": 1614
+    }
+  },
+  "apache_commons-lang__53184369d0": {
+    "result_type": "succeeded",
+    "stop_reason": "end_turn",
+    "raw_text": "{\"unit_id\":\"apache_commons-lang__53184369d0\",\"per_side_changes\":{\"ours\":\"Added a new 'includeFieldNames' feature: new imports (HashSet, Set, ObjectUtils), a protected includeFieldNames field, toStringInclude static methods, setIncludeFieldNames/getIncludeFieldNames, and logic in accept(Field) that checks include/exclude overlap (throwing IllegalStateException) and filters fields by includeFieldNames.\",\"theirs\":\"Pure Javadoc cosmetic changes only: replaced many {@code ...} references with {@link ...} (e.g. ToStringStyle, String, StringBuffer, Field, Object) throughout the doc comments; no behavioral code changes.\"},\"interaction_point\":\"ReflectionToStringBuilder.java \u2014 theirs only touched Javadoc while ours touched accept()/new members; regions are disjoint\",\"mechanism\":{\"summary\":\"\",\"tags\":[],\"merge_induced\":\"unclear\",\"counterfactual\":\"\"},\"evidence\":[{\"source\":\"dev-diff\",\"quote\":\"(no differences)\",\"role\":\"Merged file is byte-for-byte identical to what the developer shipped, so the tool did not introduce a divergent resolution\"},{\"source\":\"theirs-diff\",\"quote\":\"For example, this method does <i>not</i> include the {@code password} field in the returned {@link String}:\",\"role\":\"Shows the theirs side changes are purely Javadoc {@code}->{@link} cosmetics, semantically inert\"},{\"source\":\"ours-diff\",\"quote\":\"if (ArrayUtils.isNotEmpty(includeFieldNames)) {\",\"role\":\"Shows ours added new behavioral logic in accept(), unrelated to the doc regions theirs touched\"}],\"verdict\":\"none-identified\",\"confidence\":\"high\",\"notes\":\"Theirs is a Javadoc-only change; ours adds a new feature in disjoint code. The merged result equals the developer's own resolution (no dev-diff) and compile delta is clean, so any suite failure cannot be attributed to a bad merge of THIS file. If the feature-related tests failed, they would fail identically in the ours parent (pre-existing, not merge-induced). Root cause, if real, is outside the shown file or environmental; would need the failing test name/log to move beyond none-identified.\"}",
+    "parsed": {
+      "unit_id": "apache_commons-lang__53184369d0",
+      "per_side_changes": {
+        "ours": "Added a new 'includeFieldNames' feature: new imports (HashSet, Set, ObjectUtils), a protected includeFieldNames field, toStringInclude static methods, setIncludeFieldNames/getIncludeFieldNames, and logic in accept(Field) that checks include/exclude overlap (throwing IllegalStateException) and filters fields by includeFieldNames.",
+        "theirs": "Pure Javadoc cosmetic changes only: replaced many {@code ...} references with {@link ...} (e.g. ToStringStyle, String, StringBuffer, Field, Object) throughout the doc comments; no behavioral code changes."
+      },
+      "interaction_point": "ReflectionToStringBuilder.java \u2014 theirs only touched Javadoc while ours touched accept()/new members; regions are disjoint",
+      "mechanism": {
+        "summary": "",
+        "tags": [],
+        "merge_induced": "unclear",
+        "counterfactual": ""
+      },
+      "evidence": [
+        {
+          "source": "dev-diff",
+          "quote": "(no differences)",
+          "role": "Merged file is byte-for-byte identical to what the developer shipped, so the tool did not introduce a divergent resolution"
+        },
+        {
+          "source": "theirs-diff",
+          "quote": "For example, this method does <i>not</i> include the {@code password} field in the returned {@link String}:",
+          "role": "Shows the theirs side changes are purely Javadoc {@code}->{@link} cosmetics, semantically inert"
+        },
+        {
+          "source": "ours-diff",
+          "quote": "if (ArrayUtils.isNotEmpty(includeFieldNames)) {",
+          "role": "Shows ours added new behavioral logic in accept(), unrelated to the doc regions theirs touched"
+        }
+      ],
+      "verdict": "none-identified",
+      "confidence": "high",
+      "notes": "Theirs is a Javadoc-only change; ours adds a new feature in disjoint code. The merged result equals the developer's own resolution (no dev-diff) and compile delta is clean, so any suite failure cannot be attributed to a bad merge of THIS file. If the feature-related tests failed, they would fail identically in the ours parent (pre-existing, not merge-induced). Root cause, if real, is outside the shown file or environmental; would need the failing test name/log to move beyond none-identified."
+    },
+    "conforms": true,
+    "reason": "ok",
+    "usage": {
+      "input": 18067,
+      "output": 994
+    }
+  },
+  "apache_commons-collections__84e70353ad": {
+    "result_type": "succeeded",
+    "stop_reason": "end_turn",
+    "raw_text": "{\"unit_id\":\"apache_commons-collections__84e70353ad\",\"per_side_changes\":{\"ours\":\"Added a new public method partitionByChunkSize to CollectionUtils, plus a new test testPartitionByChunkSize in CollectionUtilsTest that calls fail(...) in several exception-scenario blocks. Kept the existing `import static ...Assertions.fail;` (only reordered assertThrows).\",\"theirs\":\"Refactored many existing tests to replace try/fail/catch idioms with assertThrows/assertAll, and consequently REMOVED the `import static org.junit.jupiter.api.Assertions.fail;` import (adding assertAll). Also unrelated CollectionUtils.containsAll iterator refactor.\"},\"interaction_point\":\"CollectionUtilsTest.java static import block for org.junit.jupiter.api.Assertions.fail and its usage in the new testPartitionByChunkSize\",\"mechanism\":{\"summary\":\"Theirs removed the `fail` static import because it eliminated every fail() call in the base tests; ours simultaneously added a brand-new test method that still calls fail(...). The clean merge kept theirs' import removal and ours' new fail()-using test, producing a file that references an unimported symbol and fails to compile.\",\"tags\":[\"import-removed-while-new-usage-added\",\"stale-static-import\",\"test-compile-break\"],\"merge_induced\":\"yes\",\"counterfactual\":\"In ours alone the `fail` import remains, so the new test compiles. In theirs alone all fail() calls were removed along with the import, so nothing references fail. Only the union \u2014 theirs' import removal plus ours' newly added fail() usage \u2014 leaves an unresolved reference.\"},\"evidence\":[{\"source\":\"theirs-diff\",\"quote\":\"-import static org.junit.jupiter.api.Assertions.fail;\",\"role\":\"Theirs removes the fail static import\"},{\"source\":\"ours-diff\",\"quote\":\"fail(\\\"failed to check if input chunk size is greater than 0\\\");\",\"role\":\"Ours' new test adds a call to fail() that depends on the import\"},{\"source\":\"dev-diff\",\"quote\":\"+import static org.junit.jupiter.api.Assertions.fail;\",\"role\":\"Developer's resolution re-adds the fail import, confirming the merged file was missing it\"}],\"verdict\":\"attributed\",\"confidence\":\"high\",\"notes\":\"Compile delta shows (none) because single-file javac lacks the JUnit classpath, so all static Assertions imports fail to resolve identically on both merged and dev files, masking the specific missing-import error (R7 caveat). The dev-diff re-adding exactly the `fail` import is corroborating, but the mechanism is fully constructible from the parents: theirs drops the import, ours introduces a new fail() usage.\"}",
+    "parsed": {
+      "unit_id": "apache_commons-collections__84e70353ad",
+      "per_side_changes": {
+        "ours": "Added a new public method partitionByChunkSize to CollectionUtils, plus a new test testPartitionByChunkSize in CollectionUtilsTest that calls fail(...) in several exception-scenario blocks. Kept the existing `import static ...Assertions.fail;` (only reordered assertThrows).",
+        "theirs": "Refactored many existing tests to replace try/fail/catch idioms with assertThrows/assertAll, and consequently REMOVED the `import static org.junit.jupiter.api.Assertions.fail;` import (adding assertAll). Also unrelated CollectionUtils.containsAll iterator refactor."
+      },
+      "interaction_point": "CollectionUtilsTest.java static import block for org.junit.jupiter.api.Assertions.fail and its usage in the new testPartitionByChunkSize",
+      "mechanism": {
+        "summary": "Theirs removed the `fail` static import because it eliminated every fail() call in the base tests; ours simultaneously added a brand-new test method that still calls fail(...). The clean merge kept theirs' import removal and ours' new fail()-using test, producing a file that references an unimported symbol and fails to compile.",
+        "tags": [
+          "import-removed-while-new-usage-added",
+          "stale-static-import",
+          "test-compile-break"
+        ],
+        "merge_induced": "yes",
+        "counterfactual": "In ours alone the `fail` import remains, so the new test compiles. In theirs alone all fail() calls were removed along with the import, so nothing references fail. Only the union \u2014 theirs' import removal plus ours' newly added fail() usage \u2014 leaves an unresolved reference."
+      },
+      "evidence": [
+        {
+          "source": "theirs-diff",
+          "quote": "-import static org.junit.jupiter.api.Assertions.fail;",
+          "role": "Theirs removes the fail static import"
+        },
+        {
+          "source": "ours-diff",
+          "quote": "fail(\"failed to check if input chunk size is greater than 0\");",
+          "role": "Ours' new test adds a call to fail() that depends on the import"
+        },
+        {
+          "source": "dev-diff",
+          "quote": "+import static org.junit.jupiter.api.Assertions.fail;",
+          "role": "Developer's resolution re-adds the fail import, confirming the merged file was missing it"
+        }
+      ],
+      "verdict": "attributed",
+      "confidence": "high",
+      "notes": "Compile delta shows (none) because single-file javac lacks the JUnit classpath, so all static Assertions imports fail to resolve identically on both merged and dev files, masking the specific missing-import error (R7 caveat). The dev-diff re-adding exactly the `fail` import is corroborating, but the mechanism is fully constructible from the parents: theirs drops the import, ours introduces a new fail() usage."
+    },
+    "conforms": true,
+    "reason": "ok",
+    "usage": {
+      "input": 19047,
+      "output": 2230
+    }
+  }
+}

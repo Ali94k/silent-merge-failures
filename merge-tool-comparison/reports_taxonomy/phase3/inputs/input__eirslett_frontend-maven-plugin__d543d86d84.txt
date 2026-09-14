@@ -1,0 +1,211 @@
+UNIT eirslett_frontend-maven-plugin__d543d86d84
+repo: eirslett_frontend-maven-plugin   merge: d543d86d84b8296cc62f5c5b070d78fb863df5af   stratum: B
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: frontend-plugin-core/src/main/java/com/github/eirslett/maven/plugins/frontend/lib/FrontendPluginFactory.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -20,17 +20,21 @@
+                 workingDirectory,
+                 defaultPlatform,
+                 new DefaultArchiveExtractor(),
+                 new DefaultFileDownloader(proxy));
+     }
+     
+     public BowerRunner getBowerRunner() {
+         return new DefaultBowerRunner(defaultPlatform, workingDirectory);
+-    }    
++    }
++
++    public JspmRunner getJspmRunner() {
++        return new DefaultJspmRunner(defaultPlatform, workingDirectory);
++    }
+ 
+     public NpmRunner getNpmRunner() {
+         return new DefaultNpmRunner(defaultPlatform, workingDirectory, proxy);
+     }
+ 
+     public GruntRunner getGruntRunner(){
+         return new DefaultGruntRunner(defaultPlatform, workingDirectory);
+     }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,53 +1,58 @@
+ package com.github.eirslett.maven.plugins.frontend.lib;
+ 
+ import java.io.File;
+ 
+ public final class FrontendPluginFactory {
+     private static final Platform defaultPlatform = Platform.guess();
++
+     private final File workingDirectory;
+-    private final ProxyConfig proxy;
++    private final File installDirectory;
+ 
+-    public FrontendPluginFactory(File workingDirectory){
+-        this(workingDirectory, null);
+-    }
+-    public FrontendPluginFactory(File workingDirectory, ProxyConfig proxy){
++    public FrontendPluginFactory(File workingDirectory, File installDirectory){
+         this.workingDirectory = workingDirectory;
+-        this.proxy = proxy;
++        this.installDirectory = installDirectory;
+     }
+ 
+-    public NodeAndNPMInstaller getNodeAndNPMInstaller(){
++    public NodeAndNPMInstaller getNodeAndNPMInstaller(ProxyConfig proxy){
+         return new DefaultNodeAndNPMInstaller(
+-                workingDirectory,
+-                defaultPlatform,
++                getInstallConfig(),
+                 new DefaultArchiveExtractor(),
+                 new DefaultFileDownloader(proxy));
+     }
+     
+     public BowerRunner getBowerRunner() {
+-        return new DefaultBowerRunner(defaultPlatform, workingDirectory);
++        return new DefaultBowerRunner(getExecutorConfig());
+     }    
+ 
+-    public NpmRunner getNpmRunner() {
+-        return new DefaultNpmRunner(defaultPlatform, workingDirectory, proxy);
++    public NpmRunner getNpmRunner(ProxyConfig proxy) {
++        return new DefaultNpmRunner(getExecutorConfig(), proxy);
+     }
+ 
+     public GruntRunner getGruntRunner(){
+-        return new DefaultGruntRunner(defaultPlatform, workingDirectory);
++        return new DefaultGruntRunner(getExecutorConfig());
+     }
+ 
+     public EmberRunner getEmberRunner() {
+-        return new DefaultEmberRunner(defaultPlatform, workingDirectory);
++        return new DefaultEmberRunner(getExecutorConfig());
+     }
+ 
+     public KarmaRunner getKarmaRunner(){
+-        return new DefaultKarmaRunner(defaultPlatform, workingDirectory);
++        return new DefaultKarmaRunner(getExecutorConfig());
+     }
+ 
+     public GulpRunner getGulpRunner(){
+-        return new DefaultGulpRunner(defaultPlatform, workingDirectory);
++        return new DefaultGulpRunner(getExecutorConfig());
+     }
+ 
+     public WebpackRunner getWebpackRunner(){
+-        return new DefaultWebpackRunner(defaultPlatform, workingDirectory);
++        return new DefaultWebpackRunner(getExecutorConfig());
++    }
++
++    private NodeExecutorConfig getExecutorConfig() {
++        return new InstallNodeExecutorConfig(getInstallConfig());
++    }
++
++    private InstallConfig getInstallConfig() {
++        return new DefaultInstallConfig(installDirectory, workingDirectory, defaultPlatform);
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package com.github.eirslett.maven.plugins.frontend.lib;
+
+import java.io.File;
+
+public final class FrontendPluginFactory {
+    private static final Platform defaultPlatform = Platform.guess();
+
+    private final File workingDirectory;
+    private final File installDirectory;
+
+    public FrontendPluginFactory(File workingDirectory, File installDirectory){
+        this.workingDirectory = workingDirectory;
+        this.installDirectory = installDirectory;
+    }
+
+    public NodeAndNPMInstaller getNodeAndNPMInstaller(ProxyConfig proxy){
+        return new DefaultNodeAndNPMInstaller(
+                getInstallConfig(),
+                new DefaultArchiveExtractor(),
+                new DefaultFileDownloader(proxy));
+    }
+    
+    public BowerRunner getBowerRunner() {
+        return new DefaultBowerRunner(getExecutorConfig());
+    }
+
+    public JspmRunner getJspmRunner() {
+        return new DefaultJspmRunner(defaultPlatform, workingDirectory);
+    }
+
+    public NpmRunner getNpmRunner(ProxyConfig proxy) {
+        return new DefaultNpmRunner(getExecutorConfig(), proxy);
+    }
+
+    public GruntRunner getGruntRunner(){
+        return new DefaultGruntRunner(getExecutorConfig());
+    }
+
+    public EmberRunner getEmberRunner() {
+        return new DefaultEmberRunner(getExecutorConfig());
+    }
+
+    public KarmaRunner getKarmaRunner(){
+        return new DefaultKarmaRunner(getExecutorConfig());
+    }
+
+    public GulpRunner getGulpRunner(){
+        return new DefaultGulpRunner(getExecutorConfig());
+    }
+
+    public WebpackRunner getWebpackRunner(){
+        return new DefaultWebpackRunner(getExecutorConfig());
+    }
+
+    private NodeExecutorConfig getExecutorConfig() {
+        return new InstallNodeExecutorConfig(getInstallConfig());
+    }
+
+    private InstallConfig getInstallConfig() {
+        return new DefaultInstallConfig(installDirectory, workingDirectory, defaultPlatform);
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -17,17 +17,17 @@
+         return new DefaultNodeAndNPMInstaller(
+                 getInstallConfig(),
+                 new DefaultArchiveExtractor(),
+                 new DefaultFileDownloader(proxy));
+     }
+     
+     public BowerRunner getBowerRunner() {
+         return new DefaultBowerRunner(getExecutorConfig());
+-    }
++    }    
+ 
+     public JspmRunner getJspmRunner() {
+         return new DefaultJspmRunner(defaultPlatform, workingDirectory);
+     }
+ 
+     public NpmRunner getNpmRunner(ProxyConfig proxy) {
+         return new DefaultNpmRunner(getExecutorConfig(), proxy);
+     }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

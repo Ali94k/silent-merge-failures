@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Merge Tool Comparison — Architecture Diagram</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --bg-2: #151b24;
+    --panel: #1c2430;
+    --panel-2: #232c3b;
+    --border: #2d3748;
+    --ink: #e2e8f0;
+    --ink-dim: #94a3b8;
+    --ink-faint: #64748b;
+    --accent: #60a5fa;
+    --accent-2: #818cf8;
+    --success: #4ade80;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --purple: #c084fc;
+    --teal: #5eead4;
+    --pink: #f472b6;
+    --orange: #fb923c;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 32px 24px 64px;
+    background: radial-gradient(1200px 800px at 20% -10%, #1e293b 0%, var(--bg) 55%) fixed;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  header.title {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  header.title h1 {
+    font-size: 32px;
+    margin: 0 0 8px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -0.5px;
+  }
+  header.title .sub {
+    color: var(--ink-dim);
+    font-size: 14px;
+  }
+  header.title .badges {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .badge {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    color: var(--ink-dim);
+    font-family: var(--mono);
+  }
+
+  section {
+    margin-bottom: 48px;
+  }
+  h2.section-title {
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ---------- Pipeline (stages) ---------- */
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    align-items: stretch;
+  }
+  .stage {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 14px;
+    text-align: center;
+  }
+  .stage::after {
+    content: "▶";
+    position: absolute;
+    right: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-size: 14px;
+    z-index: 2;
+  }
+  .stage:last-child::after { display: none; }
+  .stage .num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .stage .label {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .stage .hint {
+    color: var(--ink-dim);
+    font-size: 11px;
+    font-family: var(--mono);
+  }
+  .stage[data-color="1"] { border-color: rgba(96, 165, 250, .4); }
+  .stage[data-color="2"] { border-color: rgba(192, 132, 252, .4); }
+  .stage[data-color="3"] { border-color: rgba(94, 234, 212, .4); }
+  .stage[data-color="4"] { border-color: rgba(251, 191, 36, .4); }
+  .stage[data-color="5"] { border-color: rgba(74, 222, 128, .4); }
+
+  /* ---------- Architecture grid ---------- */
+  .arch {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  .layer {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .layer h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .layer h3 .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+  }
+  .layer[data-accent="purple"] h3 { color: var(--purple); }
+  .layer[data-accent="purple"] h3 .dot { background: var(--purple); box-shadow: 0 0 10px var(--purple); }
+  .layer[data-accent="teal"] h3 { color: var(--teal); }
+  .layer[data-accent="teal"] h3 .dot { background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+  .layer[data-accent="orange"] h3 { color: var(--orange); }
+  .layer[data-accent="orange"] h3 .dot { background: var(--orange); box-shadow: 0 0 10px var(--orange); }
+  .layer[data-accent="pink"] h3 { color: var(--pink); }
+  .layer[data-accent="pink"] h3 .dot { background: var(--pink); box-shadow: 0 0 10px var(--pink); }
+
+  .module {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .module:last-child { margin-bottom: 0; }
+  .module .m-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .module .m-desc {
+    color: var(--ink-dim);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  /* ---------- Tools row ---------- */
+  .tools {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .tool {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .tool::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+  }
+  .tool[data-type="textual"]::before { background: linear-gradient(90deg, #60a5fa, #22d3ee); }
+  .tool[data-type="structured"]::before { background: linear-gradient(90deg, #c084fc, #f472b6); }
+  .tool .t-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .tool .t-name {
+    font-size: 15px;
+    font-weight: 700;
+    font-family: var(--mono);
+  }
+  .tool .t-type {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .tool .t-invoke {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(96, 165, 250, .08);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 6px;
+  }
+  .tool[data-type="structured"] .t-invoke {
+    color: var(--purple);
+    background: rgba(192, 132, 252, .08);
+  }
+  .tool .t-desc {
+    color: var(--ink-dim);
+    font-size: 12px;
+    margin-top: 8px;
+  }
+
+  /* ---------- Flow diagram (data flow) ---------- */
+  .flow {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    min-width: 900px;
+  }
+  .flow-row:last-child { margin-bottom: 0; }
+  .node {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    min-width: 130px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .node.input { border-color: rgba(96, 165, 250, .5); color: var(--accent); }
+  .node.process { border-color: rgba(192, 132, 252, .5); color: var(--purple); }
+  .node.store { border-color: rgba(94, 234, 212, .5); color: var(--teal); background: rgba(94, 234, 212, .05); }
+  .node.output { border-color: rgba(74, 222, 128, .5); color: var(--success); }
+  .node .n-label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .node .n-sub {
+    display: block;
+    color: var(--ink-faint);
+    font-size: 10px;
+    font-family: -apple-system, sans-serif;
+  }
+  .arrow {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), var(--accent), var(--border));
+    position: relative;
+    min-width: 40px;
+  }
+  .arrow::after {
+    content: "";
+    position: absolute;
+    right: -1px;
+    top: -4px;
+    border: 4px solid transparent;
+    border-left-color: var(--accent);
+  }
+  .arrow .lbl {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    background: var(--panel);
+    padding: 0 6px;
+  }
+
+  /* ---------- Classification table ---------- */
+  .classify {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .class-cell {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .class-cell .c-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .class-cell .c-tag {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .class-cell .c-pill {
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+  }
+  .class-cell .c-rule {
+    color: var(--ink-dim);
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+  .class-cell[data-t="tp"] { border-left-color: var(--success); }
+  .class-cell[data-t="tp"] .c-tag { color: var(--success); }
+  .class-cell[data-t="tp"] .c-pill { background: rgba(74, 222, 128, .12); color: var(--success); }
+  .class-cell[data-t="tn"] { border-left-color: var(--accent); }
+  .class-cell[data-t="tn"] .c-tag { color: var(--accent); }
+  .class-cell[data-t="tn"] .c-pill { background: rgba(96, 165, 250, .12); color: var(--accent); }
+  .class-cell[data-t="fp"] { border-left-color: var(--danger); }
+  .class-cell[data-t="fp"] .c-tag { color: var(--danger); }
+  .class-cell[data-t="fp"] .c-pill { background: rgba(248, 113, 113, .12); color: var(--danger); }
+  .class-cell[data-t="fn"] { border-left-color: var(--warn); }
+  .class-cell[data-t="fn"] .c-tag { color: var(--warn); }
+  .class-cell[data-t="fn"] .c-pill { background: rgba(251, 191, 36, .12); color: var(--warn); }
+
+  /* ---------- Metrics ---------- */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .metric {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .metric .m-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent-2);
+    margin-bottom: 4px;
+  }
+  .metric .m-formula {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink);
+    background: var(--bg-2);
+    padding: 6px 8px;
+    border-radius: 4px;
+    margin: 6px 0;
+    display: inline-block;
+  }
+  .metric .m-desc {
+    color: var(--ink-dim);
+    font-size: 12px;
+  }
+
+  footer.foot {
+    text-align: center;
+    color: var(--ink-faint);
+    font-size: 11px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="title">
+    <h1>Merge Tool Comparison Framework</h1>
+    <div class="sub">A research pipeline for evaluating Git merge tools on real-world Java scenarios</div>
+    <div class="badges">
+      <span class="badge">Python 3.10+</span>
+      <span class="badge">Click · GitPython · PyYAML</span>
+      <span class="badge">Docker (linux/amd64)</span>
+      <span class="badge">pytest · 37 tests</span>
+    </div>
+  </header>
+
+  <!-- PIPELINE -->
+  <section>
+    <h2 class="section-title">Pipeline — 5 Stages</h2>
+    <div class="pipeline">
+      <div class="stage" data-color="1">
+        <span class="num">01</span>
+        <div class="label">Load / Collect</div>
+        <div class="hint">scenarios/*.json</div>
+      </div>
+      <div class="stage" data-color="2">
+        <span class="num">02</span>
+        <div class="label">Run Tools</div>
+        <div class="hint">per scenario × tool</div>
+      </div>
+      <div class="stage" data-color="3">
+        <span class="num">03</span>
+        <div class="label">Classify</div>
+        <div class="hint">TP / FP / TN / FN</div>
+      </div>
+      <div class="stage" data-color="4">
+        <span class="num">04</span>
+        <div class="label">Compute Metrics</div>
+        <div class="hint">precision · recall · F1</div>
+      </div>
+      <div class="stage" data-color="5">
+        <span class="num">05</span>
+        <div class="label">Report</div>
+        <div class="hint">csv · json · latex</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DATA FLOW -->
+  <section>
+    <h2 class="section-title">Data Flow</h2>
+    <div class="flow">
+      <div class="flow-row">
+        <div class="node input">
+          <span class="n-label">datasets.yaml</span>
+          <span class="n-sub">repos.yaml</span>
+        </div>
+        <div class="arrow"><span class="lbl">parse</span></div>
+        <div class="node process">
+          <span class="n-label">schesch_loader</span>
+          <span class="n-sub">collector.py</span>
+        </div>
+        <div class="arrow"><span class="lbl">extract</span></div>
+        <div class="node store">
+          <span class="n-label">data/scenarios/</span>
+          <span class="n-sub">MergeScenario JSON</span>
+        </div>
+      </div>
+      <div class="flow-row">
+        <div class="node store">
+          <span class="n-label">data/scenarios/</span>
+          <span class="n-sub">base · ours · theirs · resolution</span>
+        </div>
+        <div class="arrow"><span class="lbl">for each</span></div>
+        <div class="node process">
+          <span class="n-label">ComparisonRunner</span>
+          <span class="n-sub">runner.py</span>
+        </div>
+        <div class="arrow"><span class="lbl">invoke</span></div>
+        <div class="node process">
+          <span class="n-label">MergeTool adapter</span>
+          <span class="n-sub">via docker_runner</span>
+        </div>
+      </div>
+      <div class="flow-row">
+        <div class="node process">
+          <span class="n-label">MergeTool adapter</span>
+          <span class="n-sub">git / jdime / spork / mastery</span>
+        </div>
+        <div class="arrow"><span class="lbl">MergeResult</span></div>
+        <div class="node store">
+          <span class="n-label">data/results/</span>
+          <span class="n-sub">{scenario_id}/{tool}.json</span>
+        </div>
+        <div class="arrow"><span class="lbl">classify</span></div>
+        <div class="node process">
+          <span class="n-label">comparator.py</span>
+          <span class="n-sub">vs developer resolution</span>
+        </div>
+      </div>
+      <div class="flow-row">
+        <div class="node process">
+          <span class="n-label">comparator.py</span>
+          <span class="n-sub">TP / FP / TN / FN</span>
+        </div>
+        <div class="arrow"><span class="lbl">aggregate</span></div>
+        <div class="node process">
+          <span class="n-label">metrics.py</span>
+          <span class="n-sub">compute_metrics()</span>
+        </div>
+        <div class="arrow"><span class="lbl">render</span></div>
+        <div class="node output">
+          <span class="n-label">reports/</span>
+          <span class="n-sub">csv · json · tex · console</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE LAYERS -->
+  <section>
+    <h2 class="section-title">Module Architecture</h2>
+    <div class="arch">
+      <div class="layer" data-accent="purple">
+        <h3><span class="dot"></span>src/core</h3>
+        <div class="module">
+          <div class="m-name">interfaces.py</div>
+          <div class="m-desc">ABCs: MergeTool, MergeResult, MergeScenario</div>
+        </div>
+        <div class="module">
+          <div class="m-name">runner.py</div>
+          <div class="m-desc">ComparisonRunner — orchestrates + caches</div>
+        </div>
+        <div class="module">
+          <div class="m-name">docker_runner.py</div>
+          <div class="m-desc">run_in_docker / run_native / workspace</div>
+        </div>
+        <div class="module">
+          <div class="m-name">plugin_loader.py</div>
+          <div class="m-desc">Dynamic MergeTool discovery (pkgutil)</div>
+        </div>
+      </div>
+
+      <div class="layer" data-accent="teal">
+        <h3><span class="dot"></span>src/data</h3>
+        <div class="module">
+          <div class="m-name">collector.py</div>
+          <div class="m-desc">Clones repos, mines merge commits</div>
+        </div>
+        <div class="module">
+          <div class="m-name">schesch_loader.py</div>
+          <div class="m-desc">Loads Schesch et al. (ASE 2024) dataset</div>
+        </div>
+        <h3 style="margin-top:16px"><span class="dot"></span>src/tools</h3>
+        <div class="module">
+          <div class="m-name">git_merge_file.py</div>
+          <div class="m-desc">Native 3-way textual merge</div>
+        </div>
+        <div class="module">
+          <div class="m-name">jdime · spork · mastery</div>
+          <div class="m-desc">Dockerized AST-level adapters</div>
+        </div>
+      </div>
+
+      <div class="layer" data-accent="orange">
+        <h3><span class="dot"></span>src/evaluation</h3>
+        <div class="module">
+          <div class="m-name">comparator.py</div>
+          <div class="m-desc">classify_result() → TP/FP/TN/FN</div>
+        </div>
+        <div class="module">
+          <div class="m-name">metrics.py</div>
+          <div class="m-desc">precision · recall · F1 · weighted cost</div>
+        </div>
+        <div class="module">
+          <div class="m-name">report.py</div>
+          <div class="m-desc">console · csv · json · latex booktabs</div>
+        </div>
+        <h3 style="margin-top:16px"><span class="dot"></span>src/cli.py</h3>
+        <div class="module">
+          <div class="m-name">Click CLI</div>
+          <div class="m-desc">collect · run · evaluate · report · all</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOOLS -->
+  <section>
+    <h2 class="section-title">Supported Merge Tools</h2>
+    <div class="tools">
+      <div class="tool" data-type="textual">
+        <div class="t-head">
+          <span class="t-name">git merge-file</span>
+          <span class="t-type">Textual</span>
+        </div>
+        <span class="t-invoke">native</span>
+        <div class="t-desc">Standard Git 3-way line-level merge. Baseline for comparison.</div>
+      </div>
+      <div class="tool" data-type="structured">
+        <div class="t-head">
+          <span class="t-name">JDime</span>
+          <span class="t-type">Structured</span>
+        </div>
+        <span class="t-invoke">docker</span>
+        <div class="t-desc">AST-level structured merge — Seibt et al. 2022.</div>
+      </div>
+      <div class="tool" data-type="structured">
+        <div class="t-head">
+          <span class="t-name">Spork</span>
+          <span class="t-type">Structured</span>
+        </div>
+        <span class="t-invoke">docker</span>
+        <div class="t-desc">Structured merge with code-move support (ASSERT-KTH).</div>
+      </div>
+      <div class="tool" data-type="structured">
+        <div class="t-head">
+          <span class="t-name">Mastery</span>
+          <span class="t-type">Structured</span>
+        </div>
+        <span class="t-invoke">docker</span>
+        <div class="t-desc">Shifted-code-aware structured merge — Zhu et al. 2022.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLASSIFICATION -->
+  <section>
+    <h2 class="section-title">Classification Logic (comparator.py)</h2>
+    <div class="classify">
+      <div class="class-cell" data-t="tp">
+        <div class="c-head">
+          <span class="c-tag">TP</span>
+          <span class="c-pill">True Positive</span>
+        </div>
+        <div class="c-rule">CLEAN + output == developer resolution → correct merge</div>
+      </div>
+      <div class="class-cell" data-t="fp">
+        <div class="c-head">
+          <span class="c-tag">FP</span>
+          <span class="c-pill">False Positive</span>
+        </div>
+        <div class="c-rule">CLEAN + output ≠ developer resolution → silent error</div>
+      </div>
+      <div class="class-cell" data-t="tn">
+        <div class="c-head">
+          <span class="c-tag">TN</span>
+          <span class="c-pill">True Negative</span>
+        </div>
+        <div class="c-rule">CONFLICT + both sides changed, dev picked / wrote novel</div>
+      </div>
+      <div class="class-cell" data-t="fn">
+        <div class="c-head">
+          <span class="c-tag">FN</span>
+          <span class="c-pill">False Negative</span>
+        </div>
+        <div class="c-rule">CONFLICT + only one side changed, or dev reverted to base → false alarm</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- METRICS -->
+  <section>
+    <h2 class="section-title">Metrics (per tool, per category)</h2>
+    <div class="metrics">
+      <div class="metric">
+        <div class="m-title">Precision</div>
+        <span class="m-formula">TP / (TP + FP)</span>
+        <div class="m-desc">How often a "clean" merge is actually correct.</div>
+      </div>
+      <div class="metric">
+        <div class="m-title">Recall</div>
+        <span class="m-formula">TP / (TP + FN)</span>
+        <div class="m-desc">How often correct merges are produced without false conflicts.</div>
+      </div>
+      <div class="metric">
+        <div class="m-title">F1 Score</div>
+        <span class="m-formula">2·P·R / (P + R)</span>
+        <div class="m-desc">Harmonic mean of precision and recall.</div>
+      </div>
+      <div class="metric">
+        <div class="m-title">Incorrect Merge Rate</div>
+        <span class="m-formula">FP / (TP + FP)</span>
+        <div class="m-desc">Rate of silent wrong merges — most dangerous failure mode.</div>
+      </div>
+      <div class="metric">
+        <div class="m-title">Weighted Cost</div>
+        <span class="m-formula">FP·10 + (FN+TN)·1 + (CRASH+TIMEOUT)·1</span>
+        <div class="m-desc">Schesch et al. cost model — FP weighted 10× heavier.</div>
+      </div>
+      <div class="metric">
+        <div class="m-title">Avg Runtime</div>
+        <span class="m-formula">mean(runtime_seconds)</span>
+        <div class="m-desc">Mean wall-clock time per scenario.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    src/ · config/ · docker/ · tests/ · reports/ — see README.md for details
+  </footer>
+
+</div>
+</body>
+</html>

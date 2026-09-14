@@ -1,0 +1,1616 @@
+UNIT imixs_imixs-workflow__d370e1aa34
+repo: imixs_imixs-workflow   merge: d370e1aa34f91a86d2bf35363b8699dab4d56a6b   stratum: B
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: imixs-workflow-engine/src/main/java/org/imixs/workflow/engine/SetupService.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -30,52 +30,55 @@
+ 
+ import java.io.ByteArrayInputStream;
+ import java.io.ByteArrayOutputStream;
+ import java.io.File;
+ import java.io.FileInputStream;
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.text.ParseException;
++import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.List;
+ import java.util.Optional;
+ import java.util.Vector;
+ import java.util.logging.Logger;
+ 
+-import javax.annotation.PostConstruct;
+-import javax.annotation.Resource;
+-import javax.annotation.security.DeclareRoles;
+-import javax.annotation.security.RunAs;
+-import javax.ejb.Singleton;
+-import javax.ejb.Startup;
+-import javax.ejb.Timer;
+-import javax.enterprise.event.Event;
+-import javax.inject.Inject;
+-import javax.xml.bind.JAXBContext;
+-import javax.xml.bind.JAXBException;
+-import javax.xml.bind.Unmarshaller;
+ import javax.xml.parsers.ParserConfigurationException;
+ 
+ import org.eclipse.microprofile.config.inject.ConfigProperty;
+ import org.imixs.workflow.ItemCollection;
+ import org.imixs.workflow.WorkflowKernel;
+ import org.imixs.workflow.bpmn.BPMNModel;
+ import org.imixs.workflow.bpmn.BPMNParser;
+ import org.imixs.workflow.engine.index.SearchService;
++import org.imixs.workflow.engine.index.UpdateService;
+ import org.imixs.workflow.engine.scheduler.Scheduler;
+ import org.imixs.workflow.engine.scheduler.SchedulerService;
+ import org.imixs.workflow.exceptions.AccessDeniedException;
+ import org.imixs.workflow.exceptions.InvalidAccessException;
+ import org.imixs.workflow.exceptions.ModelException;
+ import org.imixs.workflow.exceptions.QueryException;
+ import org.imixs.workflow.xml.XMLDataCollection;
+ import org.imixs.workflow.xml.XMLDocument;
+ import org.imixs.workflow.xml.XMLDocumentAdapter;
+ import org.xml.sax.SAXException;
++
++import jakarta.annotation.PostConstruct;
++import jakarta.annotation.Resource;
++import jakarta.annotation.security.DeclareRoles;
++import jakarta.annotation.security.RunAs;
++import jakarta.ejb.Singleton;
++import jakarta.ejb.Startup;
++import jakarta.ejb.Timer;
++import jakarta.enterprise.event.Event;
++import jakarta.inject.Inject;
++import jakarta.xml.bind.JAXBContext;
++import jakarta.xml.bind.JAXBException;
++import jakarta.xml.bind.Unmarshaller;
+ 
+ /**
+  * The SetupService EJB initializes the Imxis-Workflow engine and returns the
+  * current status.
+  * <p>
+  * During startup, the service loads a default model defined by the optional
+  * environment variable 'MODEL_DEFAULT_DATA'. This variable can point to
+  * multiple model resources separated by a ';'. A model resource file must have
+@@ -117,42 +120,45 @@
+     @ConfigProperty(name = "model.default.data.overwrite", defaultValue = "false")
+     private boolean modelDefaultDataOverwrite;
+ 
+     @Inject
+     private DocumentService documentService;
+ 
+     @Inject
+     private SearchService indexSearchService;
++    
++    @Inject
++    private UpdateService indexUpdateService;
+ 
+     @Inject
+     private ModelService modelService;
+ 
+     @Inject
+     private SchedulerService schedulerService;
+ 
+     @Resource
+-    private javax.ejb.TimerService timerService;
++    private jakarta.ejb.TimerService timerService;
+ 
+     @Inject
+     protected Event<SetupEvent> setupEvents;
+ 
+     /**
+      * This method start the system setup during deployment
+      * 
+      * @throws AccessDeniedException
+      */
+     @PostConstruct
+     public void startup() {
+ 
+         // created with linux figlet
+         logger.info("   ____      _");
+         logger.info("  /  _/_ _  (_)_ __ ___   Workflow");
+         logger.info(" _/ //  ' \\/ /\\ \\ /(_-<   Engine");
+-        logger.info("/___/_/_/_/_//_\\_\\/___/   V5.2");
++        logger.info("/___/_/_/_/_//_\\_\\/___/   V6.0");
+         logger.info("");
+ 
+         logger.info("...initalizing models...");
+ 
+         // first we scan for default models
+         List<String> models = modelService.getVersions();
+         if (models.isEmpty() || modelDefaultDataOverwrite == true) {
+             scanDefaultModels();
+@@ -220,19 +226,34 @@
+      * Check database index
+      * <p>
+      * 
+      * @return true if database index access was successful
+      */
+     public boolean checkIndex() {
+         try {
+             // check the index
+-            // findStubs...
+-            indexSearchService.search("type:workitem", 1, 0, null, null, true);
+-            // we do not care about the result - just if the call was successful
++        	// write dummy 
++        	ItemCollection dummy=new ItemCollection();
++        	// ([0-9a-f]{8}-.*|[0-9a-f]{11}-.*)
++        	dummy.setItemValueUnique(WorkflowKernel.UNIQUEID,"00000000-aaaa-0000-0000-luceneindexcheck");
++        	String checksum=""+System.currentTimeMillis();
++        	dummy.setItemValue("$workflowsummary", checksum);
++        	List<ItemCollection> dummyList=new ArrayList<ItemCollection>();
++        	dummyList.add(dummy);
++        	indexUpdateService.updateIndex(dummyList);
++        	
++            // findStubs with the dummy unqiueid...
++            List<ItemCollection> result = indexSearchService.search("$uniqueid:00000000-aaaa-0000-0000-luceneindexcheck", 1, 0, null, null, true);
++            // verify checksum
++            dummy=result.get(0);
++            if (!checksum.equals(dummy.getItemValueString("$workflowsummary"))) {
++            	logger.warning("SetupService - CheckIndex failed!");
++            	throw new Exception("lucene index check failed!");
++            }
+         } catch (Exception e) {
+             // database/index failed!
+             return false;
+         }
+         return true;
+     }
+ 
+     /**
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -30,16 +30,17 @@
+ 
+ import java.io.ByteArrayInputStream;
+ import java.io.ByteArrayOutputStream;
+ import java.io.File;
+ import java.io.FileInputStream;
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.text.ParseException;
++import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.List;
+ import java.util.Optional;
+ import java.util.Vector;
+ import java.util.logging.Logger;
+ 
+ import javax.annotation.PostConstruct;
+ import javax.annotation.Resource;
+@@ -56,16 +57,17 @@
+ import javax.xml.parsers.ParserConfigurationException;
+ 
+ import org.eclipse.microprofile.config.inject.ConfigProperty;
+ import org.imixs.workflow.ItemCollection;
+ import org.imixs.workflow.WorkflowKernel;
+ import org.imixs.workflow.bpmn.BPMNModel;
+ import org.imixs.workflow.bpmn.BPMNParser;
+ import org.imixs.workflow.engine.index.SearchService;
++import org.imixs.workflow.engine.index.UpdateService;
+ import org.imixs.workflow.engine.scheduler.Scheduler;
+ import org.imixs.workflow.engine.scheduler.SchedulerService;
+ import org.imixs.workflow.exceptions.AccessDeniedException;
+ import org.imixs.workflow.exceptions.InvalidAccessException;
+ import org.imixs.workflow.exceptions.ModelException;
+ import org.imixs.workflow.exceptions.QueryException;
+ import org.imixs.workflow.xml.XMLDataCollection;
+ import org.imixs.workflow.xml.XMLDocument;
+@@ -117,16 +119,19 @@
+     @ConfigProperty(name = "model.default.data.overwrite", defaultValue = "false")
+     private boolean modelDefaultDataOverwrite;
+ 
+     @Inject
+     private DocumentService documentService;
+ 
+     @Inject
+     private SearchService indexSearchService;
++    
++    @Inject
++    private UpdateService indexUpdateService;
+ 
+     @Inject
+     private ModelService modelService;
+ 
+     @Inject
+     private SchedulerService schedulerService;
+ 
+     @Resource
+@@ -220,19 +225,34 @@
+      * Check database index
+      * <p>
+      * 
+      * @return true if database index access was successful
+      */
+     public boolean checkIndex() {
+         try {
+             // check the index
+-            // findStubs...
+-            indexSearchService.search("type:workitem", 1, 0, null, null, true);
+-            // we do not care about the result - just if the call was successful
++        	// write dummy 
++        	ItemCollection dummy=new ItemCollection();
++        	// ([0-9a-f]{8}-.*|[0-9a-f]{11}-.*)
++        	dummy.setItemValueUnique(WorkflowKernel.UNIQUEID,"00000000-aaaa-0000-0000-luceneindexcheck");
++        	String checksum=""+System.currentTimeMillis();
++        	dummy.setItemValue("$workflowsummary", checksum);
++        	List<ItemCollection> dummyList=new ArrayList<ItemCollection>();
++        	dummyList.add(dummy);
++        	indexUpdateService.updateIndex(dummyList);
++        	
++            // findStubs with the dummy unqiueid...
++            List<ItemCollection> result = indexSearchService.search("$uniqueid:00000000-aaaa-0000-0000-luceneindexcheck", 1, 0, null, null, true);
++            // verify checksum
++            dummy=result.get(0);
++            if (!checksum.equals(dummy.getItemValueString("$workflowsummary"))) {
++            	logger.warning("SetupService - CheckIndex failed!");
++            	throw new Exception("lucene index check failed!");
++            }
+         } catch (Exception e) {
+             // database/index failed!
+             return false;
+         }
+         return true;
+     }
+ 
+     /**
+--- MERGED RESULT (mergiraf; full) ---
+/*  
+ *  Imixs-Workflow 
+ *  
+ *  Copyright (C) 2001-2020 Imixs Software Solutions GmbH,  
+ *  http://www.imixs.com
+ *  
+ *  This program is free software; you can redistribute it and/or 
+ *  modify it under the terms of the GNU General Public License 
+ *  as published by the Free Software Foundation; either version 2 
+ *  of the License, or (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ *  General Public License for more details.
+ *  
+ *  You can receive a copy of the GNU General Public
+ *  License at http://www.gnu.org/licenses/gpl.html
+ *  
+ *  Project: 
+ *      https://www.imixs.org
+ *      https://github.com/imixs/imixs-workflow
+ *  
+ *  Contributors:  
+ *      Imixs Software Solutions GmbH - Project Management
+ *      Ralph Soika - Software Developer
+ */
+
+package org.imixs.workflow.engine;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.Vector;
+import java.util.logging.Logger;
+
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.imixs.workflow.ItemCollection;
+import org.imixs.workflow.WorkflowKernel;
+import org.imixs.workflow.bpmn.BPMNModel;
+import org.imixs.workflow.bpmn.BPMNParser;
+import org.imixs.workflow.engine.index.SearchService;
+import org.imixs.workflow.engine.index.UpdateService;
+import org.imixs.workflow.engine.scheduler.Scheduler;
+import org.imixs.workflow.engine.scheduler.SchedulerService;
+import org.imixs.workflow.exceptions.AccessDeniedException;
+import org.imixs.workflow.exceptions.InvalidAccessException;
+import org.imixs.workflow.exceptions.ModelException;
+import org.imixs.workflow.exceptions.QueryException;
+import org.imixs.workflow.xml.XMLDataCollection;
+import org.imixs.workflow.xml.XMLDocument;
+import org.imixs.workflow.xml.XMLDocumentAdapter;
+import org.xml.sax.SAXException;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Resource;
+import jakarta.annotation.security.DeclareRoles;
+import jakarta.annotation.security.RunAs;
+import jakarta.ejb.Singleton;
+import jakarta.ejb.Startup;
+import jakarta.ejb.Timer;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
+import jakarta.xml.bind.JAXBContext;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.Unmarshaller;
+
+/**
+ * The SetupService EJB initializes the Imxis-Workflow engine and returns the
+ * current status.
+ * <p>
+ * During startup, the service loads a default model defined by the optional
+ * environment variable 'MODEL_DEFAULT_DATA'. This variable can point to
+ * multiple model resources separated by a ';'. A model resource file must have
+ * the file extension '.bpmn'.
+ * <p>
+ * The variable can be defined also in the imixs.properties file. In this case
+ * the variable is named: 'model.default.data'.
+ * <p>
+ * Optional it is also possible to provide setup workflow initial data in a XML
+ * file.
+ * <p>
+ * Finally the service starts optional registered scheduler services.
+ * <p>
+ * With the method 'getModelCount' the service returns the current status of the
+ * workflow engine by returning the count of valid workflow models.
+ * <p>
+ * The SetupSerivce has a migration method to migrate old Workflow Schedulers
+ * into the new Scheduler concept. The method migrateWorkflowScheduler is nust
+ * for migration and can be deprecated in future releases.
+ * 
+ * @author rsoika
+ * @version 1.0
+ */
+@DeclareRoles({ "org.imixs.ACCESSLEVEL.MANAGERACCESS" })
+@RunAs("org.imixs.ACCESSLEVEL.MANAGERACCESS")
+@Startup
+@Singleton
+public class SetupService {
+    public static String SETUP_OK = "OK";
+    public static String MODEL_INITIALIZED = "MODEL_INITIALIZED";
+
+    private static Logger logger = Logger.getLogger(SetupService.class.getName());
+
+    @Inject
+    @ConfigProperty(name = "model.default.data")
+    private Optional<String> modelDefaultData;
+
+    @Inject
+    @ConfigProperty(name = "model.default.data.overwrite", defaultValue = "false")
+    private boolean modelDefaultDataOverwrite;
+
+    @Inject
+    private DocumentService documentService;
+
+    @Inject
+    private SearchService indexSearchService;
+    
+    @Inject
+    private UpdateService indexUpdateService;
+
+    @Inject
+    private ModelService modelService;
+
+    @Inject
+    private SchedulerService schedulerService;
+
+    @Resource
+    private jakarta.ejb.TimerService timerService;
+
+    @Inject
+    protected Event<SetupEvent> setupEvents;
+
+    /**
+     * This method start the system setup during deployment
+     * 
+     * @throws AccessDeniedException
+     */
+    @PostConstruct
+    public void startup() {
+
+        // created with linux figlet
+        logger.info("   ____      _");
+        logger.info("  /  _/_ _  (_)_ __ ___   Workflow");
+        logger.info(" _/ //  ' \\/ /\\ \\ /(_-<   Engine");
+        logger.info("/___/_/_/_/_//_\\_\\/___/   V6.0");
+        logger.info("");
+
+        logger.info("...initalizing models...");
+
+        // first we scan for default models
+        List<String> models = modelService.getVersions();
+        if (models.isEmpty() || modelDefaultDataOverwrite == true) {
+            scanDefaultModels();
+        } else {
+            for (String model : models) {
+                logger.info("...model: " + model + " ...OK");
+            }
+        }
+
+        // Finally fire the SetupEvent. This allows CDI Observers to react on the setup
+        if (setupEvents != null) {
+            // create Group Event
+            SetupEvent setupEvent = new SetupEvent();
+            setupEvents.fire(setupEvent);
+        } else {
+            logger.warning("Missing CDI support for Event<SetupEvent> !");
+        }
+
+        // migrate old workflow scheduler
+        migrateWorkflowScheduler();
+
+        // Finally start optional schedulers
+        logger.info("...initalizing schedulers...");
+        schedulerService.startAllSchedulers();
+
+    }
+
+    /**
+     * Returns the count of available model versions
+     * 
+     * @return
+     */
+    public int getModelVersionCount() {
+        return modelService.getVersions().size();
+    }
+
+    /**
+     * Returns the count of available unique model groups
+     * 
+     * @return
+     */
+    public int getModelGroupCount() {
+        return modelService.getGroups().size();
+    }
+
+    /**
+     * Check database access
+     * <p>
+     * 
+     * @return true if database access was successful
+     */
+    public boolean checkDatabase() {
+        try {
+            // check database access - with a random uniqueid
+            documentService.load(WorkflowKernel.generateUniqueID());
+            // we do not care about the result - just if the call was sucessful
+        } catch (Exception e) {
+            // database/index failed!
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Check database index
+     * <p>
+     * 
+     * @return true if database index access was successful
+     */
+    public boolean checkIndex() {
+        try {
+            // check the index
+        	// write dummy 
+        	ItemCollection dummy=new ItemCollection();
+        	// ([0-9a-f]{8}-.*|[0-9a-f]{11}-.*)
+        	dummy.setItemValueUnique(WorkflowKernel.UNIQUEID,"00000000-aaaa-0000-0000-luceneindexcheck");
+        	String checksum=""+System.currentTimeMillis();
+        	dummy.setItemValue("$workflowsummary", checksum);
+        	List<ItemCollection> dummyList=new ArrayList<ItemCollection>();
+        	dummyList.add(dummy);
+        	indexUpdateService.updateIndex(dummyList);
+        	
+            // findStubs with the dummy unqiueid...
+            List<ItemCollection> result = indexSearchService.search("$uniqueid:00000000-aaaa-0000-0000-luceneindexcheck", 1, 0, null, null, true);
+            // verify checksum
+            dummy=result.get(0);
+            if (!checksum.equals(dummy.getItemValueString("$workflowsummary"))) {
+            	logger.warning("SetupService - CheckIndex failed!");
+            	throw new Exception("lucene index check failed!");
+            }
+        } catch (Exception e) {
+            // database/index failed!
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * This method loads the default model if no models exist in the current
+     * instance
+     * 
+     * @return - status
+     */
+    public void scanDefaultModels() {
+        logger.finest("......scan default models...");
+        // test if we have an environment variable or a property value...
+
+        if (!modelDefaultData.isPresent() || modelDefaultData.get().isEmpty()) {
+            // no model data to scan
+            return;
+        }
+
+        String modelData = modelDefaultData.get();
+
+        String[] modelResources = modelData.split(";");
+        for (String modelResource : modelResources) {
+            // try to load the resource file....
+            if (modelResource.endsWith(".bpmn") || modelResource.endsWith(".xml")) {
+                logger.info("...uploading default model file: '" + modelResource + "'....");
+                // if resource starts with '/' then we pickup the file form the filesystem.
+                // otherwise we load it as a resource bundle.
+                InputStream inputStream = null;
+                try {
+                    if (modelResource.startsWith("/")) {
+                        File initialFile = new File(modelResource);
+                        inputStream = new FileInputStream(initialFile);
+                    } else {
+                        inputStream = SetupService.class.getClassLoader().getResourceAsStream(modelResource);
+                        if (inputStream == null) {
+                            throw new IOException("the resource '" + modelResource + "' could not be found!");
+                        }
+                    }
+                    // parse model file....
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    int next;
+
+                    next = inputStream.read();
+                    while (next > -1) {
+                        bos.write(next);
+                        next = inputStream.read();
+                    }
+                    bos.flush();
+                    byte[] result = bos.toByteArray();
+
+                    // test if it is a bpmn model?
+                    if (modelResource.endsWith(".bpmn")) {
+                        BPMNModel model = BPMNParser.parseModel(result, "UTF-8");
+                        modelService.saveModel(model);
+                    } else {
+                        // XML
+                        importXmlEntityData(result);
+                    }
+
+                    // issue #600 return; // MODEL_INITIALIZED;
+                } catch (IOException | ModelException | ParseException | ParserConfigurationException
+                        | SAXException e) {
+                    throw new RuntimeException(
+                            "Failed to load model configuration: " + e.getMessage() + " check 'model.default.data'", e);
+                } finally {
+                    if (inputStream != null) {
+                        try {
+                            inputStream.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+            } else {
+                logger.severe("Wrong model format: '" + modelResource + "' - expected *.bpmn or *.xml");
+            }
+
+        }
+        // SETUP_OK;
+
+    }
+
+    /**
+     * this method imports an xml entity data stream. This is used to provide model
+     * uploads during the system setup. The method can also import general entity
+     * data like configuration data.
+     * 
+     * @param event
+     * @throws Exception
+     */
+    public void importXmlEntityData(byte[] filestream) {
+        XMLDocument entity;
+        ItemCollection itemCollection;
+        String sModelVersion = null;
+
+        if (filestream == null)
+            return;
+        try {
+
+            XMLDataCollection ecol = null;
+            logger.fine("importXmlEntityData - importModel, verifing file content....");
+
+            JAXBContext context;
+            Object jaxbObject = null;
+            // unmarshall the model file
+            ByteArrayInputStream input = new ByteArrayInputStream(filestream);
+            try {
+                context = JAXBContext.newInstance(XMLDataCollection.class);
+                Unmarshaller m = context.createUnmarshaller();
+                jaxbObject = m.unmarshal(input);
+            } catch (JAXBException e) {
+                throw new ModelException(ModelException.INVALID_MODEL,
+                        "error - wrong xml file format - unable to import model file: ", e);
+            }
+            if (jaxbObject == null)
+                throw new ModelException(ModelException.INVALID_MODEL,
+                        "error - wrong xml file format - unable to import model file!");
+
+            ecol = (XMLDataCollection) jaxbObject;
+            // import the model entities....
+            if (ecol.getDocument().length > 0) {
+
+                Vector<String> vModelVersions = new Vector<String>();
+                // first iterrate over all enttity and find if model entries are
+                // included
+                for (XMLDocument aentity : ecol.getDocument()) {
+                    itemCollection = XMLDocumentAdapter.putDocument(aentity);
+                    // test if this is a model entry
+                    // (type=WorkflowEnvironmentEntity)
+                    if ("WorkflowEnvironmentEntity".equals(itemCollection.getItemValueString("type"))
+                            && "environment.profile".equals(itemCollection.getItemValueString("txtName"))) {
+
+                        sModelVersion = itemCollection.getItemValueString("$ModelVersion");
+                        if (vModelVersions.indexOf(sModelVersion) == -1)
+                            vModelVersions.add(sModelVersion);
+                    }
+                }
+                // now remove old model entries....
+                for (String aModelVersion : vModelVersions) {
+                    logger.fine("importXmlEntityData - removing existing configuration for model version '"
+                            + aModelVersion + "'");
+                    modelService.removeModel(aModelVersion);
+                }
+                // save new entities into database and update modelversion.....
+                for (int i = 0; i < ecol.getDocument().length; i++) {
+                    entity = ecol.getDocument()[i];
+                    itemCollection = XMLDocumentAdapter.putDocument(entity);
+                    // save entity
+                    documentService.save(itemCollection);
+                }
+
+                logger.fine("importXmlEntityData - " + ecol.getDocument().length + " entries sucessfull imported");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     * This method migrates the deprecated WorkflowScheduelr configuration into the
+     * new Imixs Scheduler API
+     */
+    public void migrateWorkflowScheduler() {
+        // lets see if we have an old scheduler configuration....
+
+        ItemCollection configItemCollection = null;
+        String searchTerm = "(type:\"configuration\" AND txtname:\"org.imixs.workflow.scheduler\")";
+        Collection<ItemCollection> col;
+        try {
+            col = documentService.find(searchTerm, 1, 0);
+        } catch (QueryException e) {
+            logger.severe("loadConfiguration - invalid param: " + e.getMessage());
+            throw new InvalidAccessException(InvalidAccessException.INVALID_ID, e.getMessage(), e);
+        }
+
+        if (col.size() == 1) {
+
+            configItemCollection = col.iterator().next();
+            ItemCollection scheduler = new ItemCollection();
+
+            // create new scheduler??
+            if (schedulerService.loadConfiguration(WorkflowScheduler.NAME) == null) {
+                logger.info("...migrating deprecated workflow scheduler configuration...");
+                scheduler.setItemValue("type", SchedulerService.DOCUMENT_TYPE);
+                scheduler.setItemValue(Scheduler.ITEM_SCHEDULER_DEFINITION,
+                        configItemCollection.getItemValue("txtConfiguration"));
+                scheduler.setItemValue(Scheduler.ITEM_SCHEDULER_CLASS, WorkflowScheduler.class.getName());
+
+                scheduler.setItemValue(Scheduler.ITEM_SCHEDULER_ENABLED,
+                        configItemCollection.getItemValueBoolean("_enabled"));
+
+                scheduler.setItemValue("txtname", WorkflowScheduler.NAME);
+                schedulerService.saveConfiguration(scheduler);
+
+            }
+            Timer oldTimer = this.findTimer(configItemCollection.getUniqueID());
+            if (oldTimer != null) {
+                logger.info("...stopping deprecated workflow scheduler");
+            }
+            logger.info("...deleting deprecated workflow scheduler");
+            documentService.remove(configItemCollection);
+
+        }
+
+    }
+
+    /**
+     * This method returns a timer for a corresponding id if such a timer object
+     * exists.
+     * 
+     * @param id
+     * @return Timer
+     * @throws Exception
+     */
+    Timer findTimer(String id) {
+        Timer timer = null;
+        for (Object obj : timerService.getTimers()) {
+            Timer atimer = (Timer) obj;
+            String timerID = atimer.getInfo().toString();
+            if (id.equals(timerID)) {
+                if (timer != null) {
+                    logger.severe("more then one timer with id " + id + " was found!");
+                }
+                timer = atimer;
+            }
+        }
+        return timer;
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: imixs-workflow-engine/src/main/java/org/imixs/workflow/engine/WorkflowService.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -37,44 +37,47 @@
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.StringTokenizer;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ import java.util.regex.Matcher;
+ import java.util.regex.Pattern;
+-import javax.annotation.Resource;
+-import javax.annotation.security.DeclareRoles;
+-import javax.annotation.security.RolesAllowed;
+-import javax.ejb.LocalBean;
+-import javax.ejb.SessionContext;
+-import javax.ejb.Stateless;
+-import javax.ejb.TransactionAttribute;
+-import javax.ejb.TransactionAttributeType;
+-import javax.enterprise.event.Event;
+-import javax.enterprise.inject.Any;
+-import javax.enterprise.inject.Instance;
+-import javax.inject.Inject;
++
++import jakarta.annotation.Resource;
++import jakarta.annotation.security.DeclareRoles;
++import jakarta.annotation.security.RolesAllowed;
++import jakarta.enterprise.event.Event;
++import jakarta.enterprise.inject.Any;
++import jakarta.enterprise.inject.Instance;
++import jakarta.inject.Inject;
++
+ import org.imixs.workflow.Adapter;
+ import org.imixs.workflow.ItemCollection;
+ import org.imixs.workflow.Model;
+ import org.imixs.workflow.ModelManager;
+ import org.imixs.workflow.Plugin;
+ import org.imixs.workflow.WorkflowContext;
+ import org.imixs.workflow.WorkflowKernel;
+ import org.imixs.workflow.WorkflowManager;
+ import org.imixs.workflow.engine.plugins.ResultPlugin;
+ import org.imixs.workflow.exceptions.AccessDeniedException;
+ import org.imixs.workflow.exceptions.InvalidAccessException;
+ import org.imixs.workflow.exceptions.ModelException;
+ import org.imixs.workflow.exceptions.PluginException;
+ import org.imixs.workflow.exceptions.ProcessingErrorException;
+ import org.imixs.workflow.exceptions.QueryException;
+ 
++import jakarta.ejb.LocalBean;
++import jakarta.ejb.SessionContext;
++import jakarta.ejb.Stateless;
++import jakarta.ejb.TransactionAttribute;
++import jakarta.ejb.TransactionAttributeType;
++
+ /**
+  * The WorkflowService is the Java EE Implementation for the Imixs Workflow Core
+  * API. This interface acts as a service facade and supports basic methods to
+  * create, process and access workitems. The Interface extends the core api
+  * interface org.imixs.workflow.WorkflowManager with getter methods to fetch
+  * collections of workitems.
+  * 
+  * @author rsoika
+@@ -121,24 +124,31 @@
+     @Inject
+     ModelService modelService;
+ 
+     @Inject
+     ReportService reportService;
+ 
+     @Resource
+     SessionContext ctx;
+-
++   
+     @Inject
+     protected Event<ProcessingEvent> processingEvents;
+ 
+     @Inject
+     protected Event<TextEvent> textEvents;
+ 
+     private static Logger logger = Logger.getLogger(WorkflowService.class.getName());
++
++    
++    
++    
++    public WorkflowService() {
++        super();
++    }
+ 
+     /**
+      * This method loads a Workitem with the corresponding uniqueid.
+      * 
+      */
+     public ItemCollection getWorkItem(String uniqueid) {
+         return documentService.load(uniqueid);
+     }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -877,148 +877,155 @@
+             return null;
+         }
+ 
+         // replace dynamic values?
+         if (resolveItemValues) {
+             workflowResult = adaptText(workflowResult, documentContext);
+         }
+ 
+-        // Extract all tags with attributes using regex (including empty tags)
+-        // see also:
+-        // https://stackoverflow.com/questions/1732348/regex-match-open-tags-except-xhtml-self-contained-tags
+-        // e.g. <item(.*?)>(.*?)</item>|<item(.*?)./>
+-        Pattern pattern = Pattern.compile("(?s)(?:(<" + tag + "(?>\\b(?:\".*?\"|'.*?'|[^>]*?)*>)(?<=/>))|(<" + tag
+-                + "(?>\\b(?:\".*?\"|'.*?'|[^>]*?)*>)(?<!/>))(.*?)(</" + tag + "\\s*>))", Pattern.DOTALL);
+-
+-        boolean invalidPattern = true;
+-        Matcher matcher = pattern.matcher(workflowResult);
+-        while (matcher.find()) {
+-            invalidPattern = false;
+-            // we expect up to 4 different result groups
+-            // group 0 contains complete tag string
+-            // groups 1 or 2 contain the attributes
+-
+-            String content = "";
+-            String attributes = matcher.group(1);
+-            if (attributes == null) {
+-                attributes = matcher.group(2);
+-                content = matcher.group(3);
+-            } else {
+-                content = matcher.group(2);
+-            }
+-
+-            if (content == null) {
+-                content = "";
+-            }
+-
+-            // now extract the attributes to verify the tag name..
+-            if (attributes != null && !attributes.isEmpty()) {
+-                // parse attributes...
+-                String spattern = "(\\S+)=[\"']?((?:.(?![\"']?\\s+(?:\\S+)=|[>\"']))+.)[\"']?";
+-                Pattern attributePattern = Pattern.compile(spattern);
+-                Matcher attributeMatcher = attributePattern.matcher(attributes);
+-                Map<String, String> attrMap = new HashMap<String, String>();
+-                while (attributeMatcher.find()) {
+-                    String attrName = attributeMatcher.group(1); // name
+-                    String attrValue = attributeMatcher.group(2); // value
+-                    attrMap.put(attrName, attrValue);
++        boolean invalidPattern = false;
++        // Fast first test if the tag really exists....
++        Pattern patternSimple = Pattern.compile("<" + tag + " (.*?)>(.*?)|<" + tag + " (.*?)./>", Pattern.DOTALL);
++        Matcher matcherSimple = patternSimple.matcher(workflowResult);
++        if (matcherSimple.find()) {
++            invalidPattern = true;
++            // we found the starting tag.....
++
++            // Extract all tags with attributes using regex (including empty tags)
++            // see also:
++            // https://stackoverflow.com/questions/1732348/regex-match-open-tags-except-xhtml-self-contained-tags
++            // e.g. <item(.*?)>(.*?)</item>|<item(.*?)./>
++            Pattern pattern = Pattern.compile("(?s)(?:(<" + tag + "(?>\\b(?:\".*?\"|'.*?'|[^>]*?)*>)(?<=/>))|(<" + tag
++                    + "(?>\\b(?:\".*?\"|'.*?'|[^>]*?)*>)(?<!/>))(.*?)(</" + tag + "\\s*>))", Pattern.DOTALL);
++            Matcher matcher = pattern.matcher(workflowResult);
++            while (matcher.find()) {
++                invalidPattern = false;
++                // we expect up to 4 different result groups
++                // group 0 contains complete tag string
++                // groups 1 or 2 contain the attributes
++
++                String content = "";
++                String attributes = matcher.group(1);
++                if (attributes == null) {
++                    attributes = matcher.group(2);
++                    content = matcher.group(3);
++                } else {
++                    content = matcher.group(2);
+                 }
+ 
+-                String tagName = attrMap.get("name");
+-                if (tagName == null) {
++                if (content == null) {
++                    content = "";
++                }
++
++                // now extract the attributes to verify the tag name..
++                if (attributes != null && !attributes.isEmpty()) {
++                    // parse attributes...
++                    String spattern = "(\\S+)=[\"']?((?:.(?![\"']?\\s+(?:\\S+)=|[>\"']))+.)[\"']?";
++                    Pattern attributePattern = Pattern.compile(spattern);
++                    Matcher attributeMatcher = attributePattern.matcher(attributes);
++                    Map<String, String> attrMap = new HashMap<String, String>();
++                    while (attributeMatcher.find()) {
++                        String attrName = attributeMatcher.group(1); // name
++                        String attrValue = attributeMatcher.group(2); // value
++                        attrMap.put(attrName, attrValue);
++                    }
++
++                    String tagName = attrMap.get("name");
++                    if (tagName == null) {
++                        throw new PluginException(ResultPlugin.class.getSimpleName(), INVALID_TAG_FORMAT,
++                                "<" + tag + "> tag contains no name attribute.");
++                    }
++
++                    // now add optional attributes if available
++                    for (String attrName : attrMap.keySet()) {
++                        // we need to skip the 'name' attribute
++                        if (!"name".equals(attrName)) {
++                            result.appendItemValue(tagName + "." + attrName, attrMap.get(attrName));
++                        }
++                    }
++
++                    // test if the type attribute was provided to convert content?
++                    String sType = result.getItemValueString(tagName + ".type");
++                    String sFormat = result.getItemValueString(tagName + ".format");
++                    if (!sType.isEmpty()) {
++                        // convert content type
++                        if ("boolean".equalsIgnoreCase(sType)) {
++                            result.appendItemValue(tagName, Boolean.valueOf(content));
++                        } else if ("integer".equalsIgnoreCase(sType)) {
++                            try {
++                                result.appendItemValue(tagName, Integer.valueOf(content));
++                            } catch (NumberFormatException e) {
++                                // append 0 value
++                                result.appendItemValue(tagName, new Integer(0));
++                            }
++                        } else if ("double".equalsIgnoreCase(sType)) {
++                            try {
++                                result.appendItemValue(tagName, Double.valueOf(content));
++                            } catch (NumberFormatException e) {
++                                // append 0 value
++                                result.appendItemValue(tagName, new Double(0));
++                            }
++                        } else if ("float".equalsIgnoreCase(sType)) {
++                            try {
++                                result.appendItemValue(tagName, Float.valueOf(content));
++                            } catch (NumberFormatException e) {
++                                // append 0 value
++                                result.appendItemValue(tagName, new Float(0));
++                            }
++                        } else if ("long".equalsIgnoreCase(sType)) {
++                            try {
++                                result.appendItemValue(tagName, Long.valueOf(content));
++                            } catch (NumberFormatException e) {
++                                // append 0 value
++                                result.appendItemValue(tagName, new Long(0));
++                            }
++                        } else if ("date".equalsIgnoreCase(sType)) {
++                            if (content == null || content.isEmpty()) {
++                                // no value available - no op!
++                                if (debug) {
++                                    logger.finer("......can not convert empty string into date object");
++                                }
++                            } else {
++                                // convert content value to date object
++                                try {
++                                    if (debug) {
++                                        logger.finer("......convert string into date object");
++                                    }
++                                    Date dateResult = null;
++                                    if (sFormat == null || sFormat.isEmpty()) {
++                                        // use standard format short/short
++                                        dateResult = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
++                                                .parse(content);
++                                    } else {
++                                        // use given formatter (see: TextItemValueAdapter)
++                                        DateFormat dateFormat = new SimpleDateFormat(sFormat);
++                                        dateResult = dateFormat.parse(content);
++                                    }
++                                    result.appendItemValue(tagName, dateResult);
++                                } catch (ParseException e) {
++                                    if (debug) {
++                                        logger.finer("failed to convert string into date object: " + e.getMessage());
++                                    }
++                                }
++                            }
++
++                        } else
++                            // no type conversion
++                            result.appendItemValue(tagName, content);
++                    } else {
++                        // no type definition
++                        result.appendItemValue(tagName, content);
++                    }
++
++                } else {
+                     throw new PluginException(ResultPlugin.class.getSimpleName(), INVALID_TAG_FORMAT,
+                             "<" + tag + "> tag contains no name attribute.");
++
+                 }
+-
+-                // now add optional attributes if available
+-                for (String attrName : attrMap.keySet()) {
+-                    // we need to skip the 'name' attribute
+-                    if (!"name".equals(attrName)) {
+-                        result.appendItemValue(tagName + "." + attrName, attrMap.get(attrName));
+-                    }
+-                }
+-
+-                // test if the type attribute was provided to convert content?
+-                String sType = result.getItemValueString(tagName + ".type");
+-                String sFormat = result.getItemValueString(tagName + ".format");
+-                if (!sType.isEmpty()) {
+-                    // convert content type
+-                    if ("boolean".equalsIgnoreCase(sType)) {
+-                        result.appendItemValue(tagName, Boolean.valueOf(content));
+-                    } else if ("integer".equalsIgnoreCase(sType)) {
+-                        try {
+-                            result.appendItemValue(tagName, Integer.valueOf(content));
+-                        } catch (NumberFormatException e) {
+-                            // append 0 value
+-                            result.appendItemValue(tagName, new Integer(0));
+-                        }
+-                    } else if ("double".equalsIgnoreCase(sType)) {
+-                        try {
+-                            result.appendItemValue(tagName, Double.valueOf(content));
+-                        } catch (NumberFormatException e) {
+-                            // append 0 value
+-                            result.appendItemValue(tagName, new Double(0));
+-                        }
+-                    } else if ("float".equalsIgnoreCase(sType)) {
+-                        try {
+-                            result.appendItemValue(tagName, Float.valueOf(content));
+-                        } catch (NumberFormatException e) {
+-                            // append 0 value
+-                            result.appendItemValue(tagName, new Float(0));
+-                        }
+-                    } else if ("long".equalsIgnoreCase(sType)) {
+-                        try {
+-                            result.appendItemValue(tagName, Long.valueOf(content));
+-                        } catch (NumberFormatException e) {
+-                            // append 0 value
+-                            result.appendItemValue(tagName, new Long(0));
+-                        }
+-                    } else if ("date".equalsIgnoreCase(sType)) {
+-                        if (content == null || content.isEmpty()) {
+-                            // no value available - no op!
+-                            if (debug) {
+-                                logger.finer("......can not convert empty string into date object");
+-                            }
+-                        } else {
+-                            // convert content value to date object
+-                            try {
+-                                if (debug) {
+-                                    logger.finer("......convert string into date object");
+-                                }
+-                                Date dateResult = null;
+-                                if (sFormat == null || sFormat.isEmpty()) {
+-                                    // use standard format short/short
+-                                    dateResult = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+-                                            .parse(content);
+-                                } else {
+-                                    // use given formatter (see: TextItemValueAdapter)
+-                                    DateFormat dateFormat = new SimpleDateFormat(sFormat);
+-                                    dateResult = dateFormat.parse(content);
+-                                }
+-                                result.appendItemValue(tagName, dateResult);
+-                            } catch (ParseException e) {
+-                                if (debug) {
+-                                    logger.finer("failed to convert string into date object: " + e.getMessage());
+-                                }
+-                            }
+-                        }
+-
+-                    } else
+-                        // no type conversion
+-                        result.appendItemValue(tagName, content);
+-                } else {
+-                    // no type definition
+-                    result.appendItemValue(tagName, content);
+-                }
+-
+-            } else {
+-                throw new PluginException(ResultPlugin.class.getSimpleName(), INVALID_TAG_FORMAT,
+-                        "<" + tag + "> tag contains no name attribute.");
+-
+             }
+         }
+ 
+         // test for general invalid format
+         if (invalidPattern) {
+             throw new PluginException(ResultPlugin.class.getSimpleName(), INVALID_TAG_FORMAT,
+                     "invalid <" + tag + "> tag format in workflowResult: " + workflowResult + "  , expected format is <"
+                             + tag + " name=\"...\">...</item> ");
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+ *  http://www.imixs.com
+ *  
+ *  This program is free software; you can redistribute it and/or 
+ *  modify it under the terms of the GNU General Public License 
+ *  as published by the Free Software Foundation; either version 2 
+ *  of the License, or (at your option) any later version.
+ *  
+ *  This program is distributed in the hope that it will be useful, 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ *  General Public License for more details.
+ *  
+ *  You can receive a copy of the GNU General Public
+ *  License at http://www.gnu.org/licenses/gpl.html
+ *  
+ *  Project: 
+ *      https://www.imixs.org
+ *      https://github.com/imixs/imixs-workflow
+ *  
+ *  Contributors:  
+ *      Imixs Software Solutions GmbH - Project Management
+ *      Ralph Soika - Software Developer
+ */
+
+package org.imixs.workflow.engine;
+
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.StringTokenizer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import jakarta.annotation.Resource;
+import jakarta.annotation.security.DeclareRoles;
+import jakarta.annotation.security.RolesAllowed;
+import jakarta.enterprise.event.Event;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
+
+import org.imixs.workflow.Adapter;
+import org.imixs.workflow.ItemCollection;
+import org.imixs.workflow.Model;
+import org.imixs.workflow.ModelManager;
+import org.imixs.workflow.Plugin;
+import org.imixs.workflow.WorkflowContext;
+import org.imixs.workflow.WorkflowKernel;
+import org.imixs.workflow.WorkflowManager;
+import org.imixs.workflow.engine.plugins.ResultPlugin;
+import org.imixs.workflow.exceptions.AccessDeniedException;
+import org.imixs.workflow.exceptions.InvalidAccessException;
+import org.imixs.workflow.exceptions.ModelException;
+import org.imixs.workflow.exceptions.PluginException;
+import org.imixs.workflow.exceptions.ProcessingErrorException;
+import org.imixs.workflow.exceptions.QueryException;
+
+import jakarta.ejb.LocalBean;
+import jakarta.ejb.SessionContext;
+import jakarta.ejb.Stateless;
+import jakarta.ejb.TransactionAttribute;
+import jakarta.ejb.TransactionAttributeType;
+
+/**
+ * The WorkflowService is the Java EE Implementation for the Imixs Workflow Core
+ * API. This interface acts as a service facade and supports basic methods to
+ * create, process and access workitems. The Interface extends the core api
+ * interface org.imixs.workflow.WorkflowManager with getter methods to fetch
+ * collections of workitems.
+ * 
+ * @author rsoika
+ * 
+ */
+
+@DeclareRoles({ "org.imixs.ACCESSLEVEL.NOACCESS", "org.imixs.ACCESSLEVEL.READERACCESS",
+        "org.imixs.ACCESSLEVEL.AUTHORACCESS", "org.imixs.ACCESSLEVEL.EDITORACCESS",
+        "org.imixs.ACCESSLEVEL.MANAGERACCESS" })
+@RolesAllowed({ "org.imixs.ACCESSLEVEL.NOACCESS", "org.imixs.ACCESSLEVEL.READERACCESS",
+        "org.imixs.ACCESSLEVEL.AUTHORACCESS", "org.imixs.ACCESSLEVEL.EDITORACCESS",
+        "org.imixs.ACCESSLEVEL.MANAGERACCESS" })
+@Stateless
+@LocalBean
+public class WorkflowService implements WorkflowManager, WorkflowContext {
+
+    // workitem properties
+    public static final String UNIQUEIDREF = "$uniqueidref";
+    public static final String READACCESS = "$readaccess";
+    public static final String WRITEACCESS = "$writeaccess";
+    public static final String PARTICIPANTS = "$participants";
+    public static final String DEFAULT_TYPE = "workitem";
+
+    // view properties
+    public static final int SORT_ORDER_CREATED_DESC = 0;
+    public static final int SORT_ORDER_CREATED_ASC = 1;
+    public static final int SORT_ORDER_MODIFIED_DESC = 2;
+    public static final int SORT_ORDER_MODIFIED_ASC = 3;
+
+    public static final String INVALID_ITEMVALUE_FORMAT = "INVALID_ITEMVALUE_FORMAT";
+    public static final String INVALID_TAG_FORMAT = "INVALID_TAG_FORMAT";
+
+    @Inject
+    @Any
+    private Instance<Plugin> plugins;
+
+    @Inject
+    @Any
+    protected Instance<Adapter> adapters;
+
+    @Inject
+    DocumentService documentService;
+
+    @Inject
+    ModelService modelService;
+
+    @Inject
+    ReportService reportService;
+
+    @Resource
+    SessionContext ctx;
+   
+    @Inject
+    protected Event<ProcessingEvent> processingEvents;
+
+    @Inject
+    protected Event<TextEvent> textEvents;
+
+    private static Logger logger = Logger.getLogger(WorkflowService.class.getName());
+
+    
+    
+    
+    public WorkflowService() {
+        super();
+    }
+
+    /**
+     * This method loads a Workitem with the corresponding uniqueid.
+     * 
+     */
+    public ItemCollection getWorkItem(String uniqueid) {
+        return documentService.load(uniqueid);
+    }
+
+    /**
+     * Returns a collection of workitems containing a '$owner' item belonging to a
+     * specified username. The '$owner' item can be controlled by the plug-in
+     * {@code org.imixs.workflow.plugins.OwnerPlugin}
+     * 
+     * @param name        = username for itme '$owner' - if null current username
+     *                    will be used
+     * @param pageSize    = optional page count (default 20)
+     * @param pageIndex   = optional start position
+     * @param type        = defines the type property of the workitems to be
+     *                    returnd. can be null
+     * @param sortBy      -optional field to sort the result
+     * @param sortReverse - optional sort direction
+     * 
+     * @return List of workitems
+     * 
+     */
+    public List<ItemCollection> getWorkListByOwner(String name, String type, int pageSize, int pageIndex, String sortBy,
+            boolean sortReverse) {
+
+        if (name == null || "".equals(name))
+            name = ctx.getCallerPrincipal().getName();
+
+        String searchTerm = "(";
+        if (type != null && !"".equals(type)) {
+            searchTerm += " type:\"" + type + "\" AND ";
+        }
+
+        // support deprecated namowner field
+        searchTerm += " (namowner:\"" + name + "\" OR $owner:\"" + name + "\") )";
+        try {
+        // ... 26 lines elided ...
+    public List<ItemCollection> getWorkListByAuthor(String name, String type, int pageSize, int pageIndex,
+        // ... 36 lines elided ...
+    public List<ItemCollection> getWorkListByCreator(String name, String type, int pageSize, int pageIndex,
+        // ... 37 lines elided ...
+    public List<ItemCollection> getWorkListByWriteAccess(String type, int pageSize, int pageIndex, String sortBy,
+        // ... 50 lines elided ...
+    public List<ItemCollection> getWorkListByGroup(String name, String type, int pageSize, int pageIndex, String sortBy,
+        // ... 31 lines elided ...
+    public List<ItemCollection> getWorkListByProcessID(int aid, String type, int pageSize, int pageIndex, String sortBy,
+        // ... 32 lines elided ...
+    public List<ItemCollection> getWorkListByRef(String aref, String type, int pageSize, int pageIndex, String sortBy,
+        // ... 21 lines elided ...
+    public List<ItemCollection> getWorkListByRef(String aref) {
+        // ... 21 lines elided ...
+    public List<ItemCollection> getEvents(ItemCollection workitem) throws ModelException {
+        // ... 93 lines elided ...
+    public ItemCollection processWorkItem(ItemCollection workitem)
+        // ... 130 lines elided ...
+    public ItemCollection processWorkItem(ItemCollection workitem, ItemCollection event)
+        // ... 20 lines elided ...
+    public ItemCollection processWorkItem(ItemCollection workitem, int eventID)
+        // ... 16 lines elided ...
+    public ItemCollection processWorkItemByNewTransaction(ItemCollection workitem)
+        // ... 8 lines elided ...
+    public void removeWorkItem(ItemCollection aworkitem) throws AccessDeniedException {
+        // ... 9 lines elided ...
+    public ModelManager getModelManager() {
+        // ... 8 lines elided ...
+    public SessionContext getSessionContext() {
+        // ... 8 lines elided ...
+    public DocumentService getDocumentService() {
+        // ... 8 lines elided ...
+    public ReportService getReportService() {
+        // ... 9 lines elided ...
+    public String getUserName() {
+        // ... 10 lines elided ...
+    public boolean isUserInRole(String rolename) {
+        // ... 14 lines elided ...
+    public List<String> getUserNameList() {
+        // ... 13 lines elided ...
+    public String adaptText(String text, ItemCollection documentContext) throws PluginException {
+        // ... 21 lines elided ...
+    public List<String> adaptTextList(String text, ItemCollection documentContext) throws PluginException {
+        // ... 25 lines elided ...
+     * <p>
+     * {@code
+     * 		<somedata>ABC<itemvalue>$uniqueid</itemvalue></somedata>
+     * }
+     * <p>
+     * This example will result in a new item 'somedata' with the $uniqueid prefixed
+     * with 'ABC'
+     * 
+     * @see https://stackoverflow.com/questions/1732348/regex-match-open-tags-except-xhtml-self-contained-tags
+     * @param event
+     * @param tag               - tag to be evaluated
+     * @param documentContext
+     * @param resolveItemValues - if true, itemValue tags will be resolved.
+     * @return eval itemCollection or null if no tags are contained in the workflow
+     *         result.
+     * @throws PluginException if the xml structure is invalid
+     */
+    public ItemCollection evalWorkflowResult(ItemCollection event, String tag, ItemCollection documentContext,
+            boolean resolveItemValues) throws PluginException {
+        boolean debug = logger.isLoggable(Level.FINE);
+        ItemCollection result = new ItemCollection();
+        String workflowResult = event.getItemValueString("txtActivityResult");
+        if (workflowResult.trim().isEmpty()) {
+            return null;
+        }
+        if (tag == null || tag.isEmpty()) {
+            logger.warning("cannot eval workflow result - no tag name specified. Verify model!");
+            return null;
+        }
+
+        // if no <tag exists we skip the evaluation...
+        if (workflowResult.indexOf("<" + tag) == -1) {
+            return null;
+        }
+
+        // replace dynamic values?
+        if (resolveItemValues) {
+            workflowResult = adaptText(workflowResult, documentContext);
+        }
+
+        boolean invalidPattern = false;
+        // Fast first test if the tag really exists....
+        Pattern patternSimple = Pattern.compile("<" + tag + " (.*?)>(.*?)|<" + tag + " (.*?)./>", Pattern.DOTALL);
+        Matcher matcherSimple = patternSimple.matcher(workflowResult);
+        if (matcherSimple.find()) {
+            invalidPattern = true;
+            // we found the starting tag.....
+
+            // Extract all tags with attributes using regex (including empty tags)
+            // see also:
+            // https://stackoverflow.com/questions/1732348/regex-match-open-tags-except-xhtml-self-contained-tags
+            // e.g. <item(.*?)>(.*?)</item>|<item(.*?)./>
+            Pattern pattern = Pattern.compile("(?s)(?:(<" + tag + "(?>\\b(?:\".*?\"|'.*?'|[^>]*?)*>)(?<=/>))|(<" + tag
+                    + "(?>\\b(?:\".*?\"|'.*?'|[^>]*?)*>)(?<!/>))(.*?)(</" + tag + "\\s*>))", Pattern.DOTALL);
+            Matcher matcher = pattern.matcher(workflowResult);
+            while (matcher.find()) {
+                invalidPattern = false;
+                // we expect up to 4 different result groups
+                // group 0 contains complete tag string
+                // groups 1 or 2 contain the attributes
+
+                String content = "";
+                String attributes = matcher.group(1);
+                if (attributes == null) {
+                    attributes = matcher.group(2);
+                    content = matcher.group(3);
+                } else {
+                    content = matcher.group(2);
+                }
+
+                if (content == null) {
+                    content = "";
+                }
+
+                // now extract the attributes to verify the tag name..
+                if (attributes != null && !attributes.isEmpty()) {
+                    // parse attributes...
+                    String spattern = "(\\S+)=[\"']?((?:.(?![\"']?\\s+(?:\\S+)=|[>\"']))+.)[\"']?";
+                    Pattern attributePattern = Pattern.compile(spattern);
+                    Matcher attributeMatcher = attributePattern.matcher(attributes);
+                    Map<String, String> attrMap = new HashMap<String, String>();
+                    while (attributeMatcher.find()) {
+                        String attrName = attributeMatcher.group(1); // name
+                        String attrValue = attributeMatcher.group(2); // value
+                        attrMap.put(attrName, attrValue);
+                    }
+
+                    String tagName = attrMap.get("name");
+                    if (tagName == null) {
+                        throw new PluginException(ResultPlugin.class.getSimpleName(), INVALID_TAG_FORMAT,
+                                "<" + tag + "> tag contains no name attribute.");
+                    }
+
+                    // now add optional attributes if available
+                    for (String attrName : attrMap.keySet()) {
+                        // we need to skip the 'name' attribute
+                        if (!"name".equals(attrName)) {
+                            result.appendItemValue(tagName + "." + attrName, attrMap.get(attrName));
+                        }
+                    }
+
+                    // test if the type attribute was provided to convert content?
+                    String sType = result.getItemValueString(tagName + ".type");
+                    String sFormat = result.getItemValueString(tagName + ".format");
+                    if (!sType.isEmpty()) {
+                        // convert content type
+                        if ("boolean".equalsIgnoreCase(sType)) {
+                            result.appendItemValue(tagName, Boolean.valueOf(content));
+                        } else if ("integer".equalsIgnoreCase(sType)) {
+                            try {
+                                result.appendItemValue(tagName, Integer.valueOf(content));
+                            } catch (NumberFormatException e) {
+                                // append 0 value
+                                result.appendItemValue(tagName, new Integer(0));
+                            }
+                        } else if ("double".equalsIgnoreCase(sType)) {
+                            try {
+                                result.appendItemValue(tagName, Double.valueOf(content));
+                            } catch (NumberFormatException e) {
+                                // append 0 value
+                                result.appendItemValue(tagName, new Double(0));
+                            }
+                        } else if ("float".equalsIgnoreCase(sType)) {
+                            try {
+                                result.appendItemValue(tagName, Float.valueOf(content));
+                            } catch (NumberFormatException e) {
+                                // append 0 value
+                                result.appendItemValue(tagName, new Float(0));
+                            }
+                        } else if ("long".equalsIgnoreCase(sType)) {
+                            try {
+                                result.appendItemValue(tagName, Long.valueOf(content));
+                            } catch (NumberFormatException e) {
+                                // append 0 value
+                                result.appendItemValue(tagName, new Long(0));
+                            }
+                        } else if ("date".equalsIgnoreCase(sType)) {
+                            if (content == null || content.isEmpty()) {
+                                // no value available - no op!
+                                if (debug) {
+                                    logger.finer("......can not convert empty string into date object");
+                                }
+                            } else {
+                                // convert content value to date object
+                                try {
+                                    if (debug) {
+                                        logger.finer("......convert string into date object");
+                                    }
+                                    Date dateResult = null;
+                                    if (sFormat == null || sFormat.isEmpty()) {
+                                        // use standard format short/short
+                                        dateResult = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+                                                .parse(content);
+                                    } else {
+                                        // use given formatter (see: TextItemValueAdapter)
+                                        DateFormat dateFormat = new SimpleDateFormat(sFormat);
+                                        dateResult = dateFormat.parse(content);
+                                    }
+                                    result.appendItemValue(tagName, dateResult);
+                                } catch (ParseException e) {
+                                    if (debug) {
+                                        logger.finer("failed to convert string into date object: " + e.getMessage());
+                                    }
+                                }
+                            }
+
+                        } else
+                            // no type conversion
+                            result.appendItemValue(tagName, content);
+                    } else {
+                        // no type definition
+                        result.appendItemValue(tagName, content);
+                    }
+
+                } else {
+                    throw new PluginException(ResultPlugin.class.getSimpleName(), INVALID_TAG_FORMAT,
+                            "<" + tag + "> tag contains no name attribute.");
+
+                }
+            }
+        }
+
+        // test for general invalid format
+        if (invalidPattern) {
+            throw new PluginException(ResultPlugin.class.getSimpleName(), INVALID_TAG_FORMAT,
+                    "invalid <" + tag + "> tag format in workflowResult: " + workflowResult + "  , expected format is <"
+                            + tag + " name=\"...\">...</item> ");
+        }
+        return result;
+    }
+
+    /**
+     * The method evaluates the WorkflowResult for a given BPMN event and returns a
+     * ItemColleciton containing all item values of a specified tag name. Each tag
+     * definition of a WorkflowResult contains a name and a optional list of
+     * additional attributes. The method generates a item for each content element
+     * and attribute value. <br>
+     * e.g. <item name="comment" ignore="true">text</item> <br>
+     * will result in the attributes 'comment' with value 'text' and
+     * 'comment.ignore' with the value 'true'
+     * <p>
+     * Also embedded itemVaues can be resolved (resolveItemValues=true):
+     * <p>
+     * {@code
+     *      <somedata>ABC<itemvalue>$uniqueid</itemvalue></somedata>
+     * }
+     * <p>
+     * This example will result in a new item 'somedata' with the $uniqueid prefixed
+     * with 'ABC'
+     * 
+     * @see evalWorkflowResult(ItemCollection event, String tag, ItemCollection
+     *      documentContext,boolean resolveItemValues)
+     * @param event
+     * @param tag             - tag to be evaluated
+     * @param documentContext
+     * @return
+     * @throws PluginException
+     */
+    public ItemCollection evalWorkflowResult(ItemCollection event, String tag, ItemCollection documentContext)
+        // ... 5 lines elided ...
+    public ItemCollection evalWorkflowResult(ItemCollection event, ItemCollection documentContext,
+        // ... 7 lines elided ...
+    public ItemCollection evalWorkflowResult(ItemCollection event, ItemCollection documentContext)
+        // ... 22 lines elided ...
+    public ItemCollection evalNextTask(ItemCollection documentContext) throws PluginException, ModelException {
+        // ... 12 lines elided ...
+    protected void registerPlugins(WorkflowKernel workflowkernel, Model model) throws PluginException {
+        // ... 24 lines elided ...
+    protected void registerAdapters(WorkflowKernel workflowkernel) {
+        // ... 29 lines elided ...
+    protected void updateMetadata(ItemCollection workitem) {
+        // ... 38 lines elided ...
+    private Plugin findPluginByName(String pluginClassName) {
+        // ... 23 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

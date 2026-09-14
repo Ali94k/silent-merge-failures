@@ -1,0 +1,1430 @@
+UNIT flaxsearch_luwak__9f54b4463e
+repo: flaxsearch_luwak   merge: 9f54b4463ef9561b7253837b0853cfc253e0427a   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: luwak/src/main/java/uk/co/flax/luwak/Monitor.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -560,16 +560,17 @@
+             try {
+                 queryCount++;
+                 matcher.matchQuery(id, query.matchQuery, query.metadata);
+             }
+             catch (Exception e) {
+                 matcher.reportError(new MatchError(id, e));
+             }
+         }
++
+     }
+ 
+     /**
+      * Match a DocumentBatch against the queries stored in the Monitor, also returning information
+      * about which queries were selected by the presearcher, and why.
+      * @param docs a DocumentBatch to match against the index
+      * @param factory a {@link MatcherFactory} to use to create a {@link CandidateMatcher} for the match run
+      * @param <T> the type of QueryMatch produced by the CandidateMatcher
+@@ -637,11 +638,15 @@
+                 }
+             };
+ 
+             SpanExtractor.collect(dataValues.scorer, collector, false);
+ 
+             super.matchQuery(id, query, dataValues);
+         }
+ 
++        @Override
++        public boolean needsScores() {
++            return true;
++        }
+     }
+ 
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -614,16 +614,21 @@
+             super(matcher);
+         }
+ 
+         public PresearcherMatches<T> getMatches() {
+             return new PresearcherMatches<>(matchingTerms, matcher.getMatches());
+         }
+ 
+         @Override
++        public boolean needsScores() {
++            return true;
++        }
++
++        @Override
+         public void matchQuery(final String id, QueryCacheEntry query, QueryIndex.DataValues dataValues) throws IOException {
+ 
+             SpanCollector collector = new SpanCollector() {
+                 @Override
+                 public void collectLeaf(PostingsEnum postingsEnum, int position, Term term) throws IOException {
+                     matchingTerms.computeIfAbsent(id, i -> new StringBuilder())
+                             .append(" ")
+                             .append(term.field())
+--- MERGED RESULT (mergiraf; full) ---
+package uk.co.flax.luwak;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
+import org.apache.lucene.analysis.core.KeywordAnalyzer;
+import org.apache.lucene.document.*;
+import org.apache.lucene.index.*;
+import org.apache.lucene.search.*;
+import org.apache.lucene.search.spans.SpanCollector;
+import uk.co.flax.luwak.util.RewriteException;
+import uk.co.flax.luwak.util.SpanExtractor;
+import uk.co.flax.luwak.util.SpanRewriter;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.RAMDirectory;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import uk.co.flax.luwak.presearcher.PresearcherMatches;
+import uk.co.flax.luwak.util.ForceNoBulkScoringQuery;
+
+/*
+ * Copyright (c) 2015 Lemur Consulting Ltd.
+ * <p/>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p/>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p/>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * A Monitor contains a set of MonitorQuery objects, and runs them against
+ * passed-in InputDocuments.
+ */
+public class Monitor implements Closeable {
+
+    protected final MonitorQueryParser queryParser;
+    protected final Presearcher presearcher;
+    protected final QueryDecomposer decomposer;
+
+    private final QueryIndex queryIndex;
+
+    private final List<QueryIndexUpdateListener> listeners = new ArrayList<>();
+
+    protected long slowLogLimit = 2000000;
+
+    private final long commitBatchSize;
+    private final boolean storeQueries;
+
+    public static final class FIELDS {
+        public static final String id = "_id";
+        public static final String del = "_del";
+        public static final String hash = "_hash";
+        public static final String mq = "_mq";
+    }
+
+    private final ScheduledExecutorService purgeExecutor;
+
+    private long lastPurged = -1;
+
+    /**
+     * Create a new Monitor instance, using a passed in IndexWriter for its queryindex
+     *
+     * Note that when the Monitor is closed, both the IndexWriter and its underlying
+     * Directory will also be closed.
+     *
+     * @param queryParser the query parser to use
+     * @param presearcher the presearcher to use
+     * @param indexWriter an indexWriter for the query index
+     * @param configuration the MonitorConfiguration
+     * @throws IOException on IO errors
+     */
+    public Monitor(MonitorQueryParser queryParser, Presearcher presearcher,
+                   IndexWriter indexWriter, QueryIndexConfiguration configuration) throws IOException {
+
+        this.queryParser = queryParser;
+        this.presearcher = presearcher;
+        this.decomposer = configuration.getQueryDecomposer();
+        
+        this.queryIndex = new QueryIndex(indexWriter);
+
+        this.storeQueries = configuration.storeQueries();
+        prepareQueryCache(this.storeQueries);
+
+        long purgeFrequency = configuration.getPurgeFrequency();
+        this.purgeExecutor = Executors.newSingleThreadScheduledExecutor();
+        this.purgeExecutor.scheduleAtFixedRate(() -> {
+            try {
+                purgeCache();
+            }
+            catch (Throwable e) {
+                afterPurgeError(e);
+            }
+        }, purgeFrequency, purgeFrequency, configuration.getPurgeFrequencyUnits());
+
+        this.commitBatchSize = configuration.getQueryUpdateBufferSize();
+    }
+
+    /**
+     * Create a new Monitor instance, using a RAMDirectory and the default configuration
+     * @param queryParser the query parser to use
+     * @param presearcher the presearcher to use
+     * @throws IOException on IO errors
+     */
+    public Monitor(MonitorQueryParser queryParser, Presearcher presearcher) throws IOException {
+        this(queryParser, presearcher, defaultIndexWriter(new RAMDirectory()), new QueryIndexConfiguration());
+    }
+
+    /**
+     * Create a new Monitor instance using a RAMDirectory
+     * @param queryParser the query parser to use
+     * @param presearcher the presearcher to use
+     * @param config the monitor configuration
+     * @throws IOException on IO errors
+     */
+    public Monitor(MonitorQueryParser queryParser, Presearcher presearcher, QueryIndexConfiguration config) throws IOException {
+        this(queryParser, presearcher, defaultIndexWriter(new RAMDirectory()), config);
+    }
+
+    /**
+     * Create a new Monitor instance, using the default QueryDecomposer and IndexWriter configuration
+     * @param queryParser the query parser to use
+     * @param presearcher the presearcher to use
+     * @param directory the directory where the queryindex is stored
+     * @throws IOException on IO errors
+     */
+    public Monitor(MonitorQueryParser queryParser, Presearcher presearcher, Directory directory) throws IOException {
+        this(queryParser, presearcher, defaultIndexWriter(directory), new QueryIndexConfiguration());
+    }
+
+    /**
+     * Create a new Monitor instance
+     * @param queryParser the query parser to use
+     * @param presearcher the presearcher to use
+     * @param directory the directory where the queryindex is to be stored
+     * @param config the monitor configuration
+     * @throws IOException on IO errors
+     */
+    public Monitor(MonitorQueryParser queryParser, Presearcher presearcher, Directory directory, QueryIndexConfiguration config) throws IOException {
+        this(queryParser, presearcher, defaultIndexWriter(directory), config);
+    }
+
+    /**
+     * Create a new Monitor instance, using the default QueryDecomposer
+     * @param queryParser the query parser to use
+     * @param presearcher the presearcher to use
+     * @param indexWriter a {@link IndexWriter} for the Monitor's query index
+     * @throws IOException on IO errors
+     */
+    public Monitor(MonitorQueryParser queryParser, Presearcher presearcher, IndexWriter indexWriter) throws IOException {
+        this(queryParser, presearcher, indexWriter, new QueryIndexConfiguration());
+    }
+
+    // package-private for testing
+    static IndexWriter defaultIndexWriter(Directory directory) throws IOException {
+
+        IndexWriterConfig iwc = new IndexWriterConfig(new KeywordAnalyzer());
+        TieredMergePolicy mergePolicy = new TieredMergePolicy();
+        mergePolicy.setSegmentsPerTier(4);
+        iwc.setMergePolicy(mergePolicy);
+        iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
+
+        return new IndexWriter(directory, iwc);
+
+    }
+
+    /**
+     * Register a {@link QueryIndexUpdateListener} that will be notified whenever changes
+     * are made to the Monitor's queryindex
+     *
+     * @param listener listener to register
+     */
+    public void addQueryIndexUpdateListener(QueryIndexUpdateListener listener) {
+        listeners.add(listener);
+    }
+
+    /**
+     * @return Statistics for the internal query index and cache
+     */
+    public QueryCacheStats getQueryCacheStats() {
+        return new QueryCacheStats(queryIndex.numDocs(), queryIndex.cacheSize(), lastPurged);
+    }
+
+    /**
+     * Statistics for the query cache and query index
+     */
+    public static class QueryCacheStats {
+
+        /** Total number of queries in the query index */
+        public final int queries;
+
+        /** Total number of queries int the query cache */
+        public final int cachedQueries;
+
+        /** Time the query cache was last purged */
+        public final long lastPurged;
+
+        public QueryCacheStats(int queries, int cachedQueries, long lastPurged) {
+            this.queries = queries;
+            this.cachedQueries = cachedQueries;
+            this.lastPurged = lastPurged;
+        }
+    }
+
+    private void prepareQueryCache(boolean storeQueries) throws IOException {
+
+        if (storeQueries == false) {
+            // we're not storing the queries, so ensure that the queryindex is empty
+            // before we add any.
+            clear();
+            return;
+        }
+
+        // load any queries that have already been added to the queryindex
+        final List<Exception> parseErrors = new LinkedList<>();
+        final Set<BytesRef> seenHashes = new HashSet<>();
+        final Set<String> seenIds = new HashSet<>();
+
+        queryIndex.purgeCache(newCache -> queryIndex.scan((id, query, dataValues) -> {
+            if (seenIds.contains(id)) {
+                return;
+            }
+            seenIds.add(id);
+
+            BytesRef serializedMQ = dataValues.mq.get(dataValues.doc);
+            MonitorQuery mq = MonitorQuery.deserialize(serializedMQ);
+
+            BytesRef hash = mq.hash();
+            if (seenHashes.contains(hash)) {
+                return;
+            }
+            seenHashes.add(hash);
+
+            try {
+                for (QueryCacheEntry ce : decomposeQuery(mq)) {
+                    newCache.put(ce.hash, ce);
+                }
+            } catch (Exception e) {
+                parseErrors.add(e);
+            }
+        }));
+        if (parseErrors.size() != 0)
+            throw new IOException("Error populating cache - some queries couldn't be parsed:" + parseErrors);
+    }
+
+    private void commit(List<Indexable> updates) throws IOException {
+        beforeCommit(updates);
+        queryIndex.commit(updates);
+        afterCommit(updates);
+    }
+
+    private void afterPurge() {
+        for (QueryIndexUpdateListener listener : listeners) {
+            listener.onPurge();
+        }
+    }
+
+    private void afterPurgeError(Throwable t) {
+        for (QueryIndexUpdateListener listener : listeners) {
+            listener.onPurgeError(t);
+        }
+    }
+
+    private void beforeCommit(List<Indexable> updates) {
+        if (updates == null) {
+            for (QueryIndexUpdateListener listener : listeners) {
+                listener.beforeDelete();
+            }
+        }
+        else {
+            for (QueryIndexUpdateListener listener : listeners) {
+                listener.beforeUpdate(updates);
+            }
+        }
+    }
+
+    private void afterCommit(List<Indexable> updates) {
+        if (updates == null) {
+            for (QueryIndexUpdateListener listener : listeners) {
+                listener.afterDelete();
+            }
+        }
+        else {
+            for (QueryIndexUpdateListener listener : listeners) {
+                listener.afterUpdate(updates);
+            }
+        }
+    }
+    
+    /**
+     * Remove unused queries from the query cache.
+     *
+     * This is normally called from a background thread at a rate set by configurePurgeFrequency().
+     *
+     * @throws IOException on IO errors
+     */
+    public void purgeCache() throws IOException {
+        queryIndex.purgeCache(newCache -> queryIndex.scan((id, query, dataValues) -> {
+            if (query != null)
+                newCache.put(BytesRef.deepCopyOf(query.hash), query);
+        }));
+        
+        lastPurged = System.nanoTime();
+        afterPurge();
+    }
+
+    /**
+     * Set the slow log limit
+     *
+     * All queries that take longer than t nanoseconds to run will be recorded in
+     * the slow log.  The default is 2,000,000 (2 milliseconds)
+     *
+     * @param limit the limit in nanoseconds
+     *
+     * @see Matches#getSlowLog()
+     */
+    public void setSlowLogLimit(long limit) {
+        this.slowLogLimit = limit;
+    }
+
+    @Override
+    public void close() throws IOException {
+        purgeExecutor.shutdown();
+        queryIndex.closeWhileHandlingException();
+    }
+
+    /**
+     * Add new queries to the monitor
+     * @param queries the MonitorQueries to add
+     * @throws IOException on IO errors
+     * @throws UpdateException if any of the queries could not be added
+     */
+    public void update(Iterable<MonitorQuery> queries) throws IOException, UpdateException {
+
+        List<QueryError> errors = new ArrayList<>();
+        List<Indexable> updates = new ArrayList<>();
+
+        for (MonitorQuery query : queries) {
+            try {
+                for (QueryCacheEntry queryCacheEntry : decomposeQuery(query)) {
+                    updates.add(new Indexable(query.getId(), queryCacheEntry, buildIndexableQuery(query.getId(), query, queryCacheEntry)));
+                }
+            } catch (Exception e) {
+                errors.add(new QueryError(query, e));
+            }
+            if (updates.size() > commitBatchSize) {
+                commit(updates);
+                updates.clear();
+            }
+        }
+        commit(updates);
+
+        if (errors.isEmpty() == false)
+            throw new UpdateException(errors);
+    }
+
+    private Iterable<QueryCacheEntry> decomposeQuery(MonitorQuery query) throws Exception {
+
+        Query q = queryParser.parse(query.getQuery(), query.getMetadata());
+
+        BytesRef rootHash = query.hash();
+
+        int upto = 0;
+        List<QueryCacheEntry> cacheEntries = new LinkedList<>();
+        for (Query subquery : decomposer.decompose(q)) {
+            BytesRefBuilder subHash = new BytesRefBuilder();
+            subHash.append(rootHash);
+            subHash.append(new BytesRef("_" + upto++));
+            cacheEntries.add(new QueryCacheEntry(subHash.toBytesRef(), subquery, query.getMetadata()));
+        }
+
+        return cacheEntries;
+    }
+
+    /**
+     * Add new queries to the monitor
+     * @param queries the MonitorQueries to add
+     * @throws IOException on IO errors
+     * @throws UpdateException if any of the queries could not be added
+     */
+    public void update(MonitorQuery... queries) throws IOException, UpdateException {
+        update(Arrays.asList(queries));
+    }
+
+    /**
+     * Delete queries from the monitor
+     * @param queries the queries to remove
+     * @throws IOException on IO errors
+     */
+    public void delete(Iterable<MonitorQuery> queries) throws IOException {
+        for (MonitorQuery mq : queries) {
+            queryIndex.deleteDocuments(new Term(Monitor.FIELDS.del, mq.getId()));
+        }
+        commit(null);
+    }
+
+    /**
+     * Delete queries from the monitor by ID
+     * @param queryIds the IDs to delete
+     * @throws IOException on IO errors
+     */
+    public void deleteById(Iterable<String> queryIds) throws IOException {
+        for (String queryId : queryIds) {
+            queryIndex.deleteDocuments(new Term(FIELDS.del, queryId));
+        }
+        commit(null);
+    }
+
+    /**
+     * Delete queries from the monitor by ID
+     * @param queryIds the IDs to delete
+     * @throws IOException on IO errors
+     */
+    public void deleteById(String... queryIds) throws IOException {
+        deleteById(Arrays.asList(queryIds));
+    }
+
+    /**
+     * Delete all queries from the monitor
+     * @throws IOException on IO errors
+     */
+    public void clear() throws IOException {
+        queryIndex.deleteDocuments(new MatchAllDocsQuery());
+        commit(null);
+    }
+
+    /**
+     * Match a {@link DocumentBatch} against the queryindex, calling a {@link CandidateMatcher} produced by the
+     * supplied {@link MatcherFactory} for each possible matching query.
+     * @param docs the DocumentBatch to match
+     * @param factory a {@link MatcherFactory} to use to create a {@link CandidateMatcher} for the match run
+     * @param <T> the type of {@link QueryMatch} to return
+     * @return a {@link Matches} object summarizing the match run.
+     * @throws IOException on IO errors
+     */
+    public <T extends QueryMatch> Matches<T> match(DocumentBatch docs, MatcherFactory<T> factory) throws IOException {
+        CandidateMatcher<T> matcher = factory.createMatcher(docs);
+        matcher.setSlowLogLimit(slowLogLimit);
+        match(matcher);
+        return matcher.getMatches();
+    }
+
+    /**
+     * Match a single {@link InputDocument} against the queryindex, calling a {@link CandidateMatcher} produced by the
+     * supplied {@link MatcherFactory} for each possible matching query.
+     * @param doc the InputDocument to match
+     * @param factory a {@link MatcherFactory} to use to create a {@link CandidateMatcher} for the match run
+     * @param <T> the type of {@link QueryMatch} to return
+     * @return a {@link Matches} object summarizing the match run.
+     * @throws IOException on IO errors
+     */
+    public <T extends QueryMatch> Matches<T> match(InputDocument doc, MatcherFactory<T> factory) throws IOException {
+        return match(DocumentBatch.of(doc), factory);
+    }
+
+    private class PresearcherQueryBuilder implements QueryIndex.QueryBuilder {
+
+        final LeafReader batchIndexReader;
+
+        private PresearcherQueryBuilder(LeafReader batchIndexReader) {
+            this.batchIndexReader = batchIndexReader;
+        }
+
+        @Override
+        public Query buildQuery(QueryTermFilter termFilter) throws IOException {
+            return presearcher.buildQuery(batchIndexReader, termFilter);
+        }
+    }
+
+    private <T extends QueryMatch> void match(CandidateMatcher<T> matcher) throws IOException {
+        StandardQueryCollector<T> collector = new StandardQueryCollector<>(matcher);
+        long buildTime = queryIndex.search(new PresearcherQueryBuilder(matcher.getIndexReader()), collector);
+        matcher.finish(buildTime, collector.queryCount);
+    }
+
+    /**
+     * Get the MonitorQuery for a given query id
+     * @param queryId the id of the query to get
+     * @return the MonitorQuery stored for this id, or null if not found
+     * @throws IOException on IO errors
+     * @throws IllegalStateException if queries are not stored in the queryindex
+     */
+    public MonitorQuery getQuery(final String queryId) throws IOException {
+        if (storeQueries == false)
+            throw new IllegalStateException("Cannot call getQuery() as queries are not stored");
+        final MonitorQuery[] queryHolder = new MonitorQuery[]{ null };
+        queryIndex.search(new TermQuery(new Term(FIELDS.id, queryId)), (id, query, dataValues) -> {
+            BytesRef serializedMQ = dataValues.mq.get(dataValues.doc);
+            queryHolder[0] = MonitorQuery.deserialize(serializedMQ);
+        });
+        return queryHolder[0];
+    }
+
+    /**
+     * @return the number of queries (after decomposition) stored in this Monitor
+     */
+    public int getDisjunctCount() {
+        return queryIndex.numDocs();
+    }
+
+    /**
+     * @return the number of queries stored in this Monitor
+     * @throws IOException on IO errors
+     */
+    public int getQueryCount() throws IOException {
+        return getQueryIds().size();
+    }
+
+    /**
+     * @return the set of query ids of the queries stored in this Monitor
+     * @throws IOException on IO errors
+     */
+    public Set<String> getQueryIds() throws IOException {
+        final Set<String> ids = new HashSet<>();
+        queryIndex.scan((id, query, dataValues) -> ids.add(id));
+        return ids;
+    }
+
+    /**
+     * Build a lucene {@link Document} to be stored in the queryindex from a query entry
+     * @param id the query id
+     * @param mq the MonitorQuery to be indexed
+     * @param query the (possibly partial after decomposition) query to be indexed
+     * @return a Document that will be indexed in the Monitor's queryindex
+     */
+    protected Document buildIndexableQuery(String id, MonitorQuery mq, QueryCacheEntry query) {
+        Document doc = presearcher.indexQuery(query.matchQuery, mq.getMetadata());
+        doc.add(new StringField(FIELDS.id, id, Field.Store.NO));
+        doc.add(new StringField(FIELDS.del, id, Field.Store.NO));
+        doc.add(new SortedDocValuesField(FIELDS.id, new BytesRef(id)));
+        doc.add(new BinaryDocValuesField(FIELDS.hash, query.hash));
+        if (storeQueries)
+            doc.add(new BinaryDocValuesField(FIELDS.mq, MonitorQuery.serialize(mq)));
+        return doc;
+    }
+
+    // For each query selected by the presearcher, pass on to a CandidateMatcher
+    private static class StandardQueryCollector<T extends QueryMatch> implements QueryIndex.QueryCollector {
+
+        final CandidateMatcher<T> matcher;
+        int queryCount = 0;
+
+        private StandardQueryCollector(CandidateMatcher<T> matcher) {
+            this.matcher = matcher;
+        }
+
+        @Override
+        public void matchQuery(String id, QueryCacheEntry query, QueryIndex.DataValues dataValues) throws IOException {
+            if (query == null)
+                return;
+            try {
+                queryCount++;
+                matcher.matchQuery(id, query.matchQuery, query.metadata);
+            }
+            catch (Exception e) {
+                matcher.reportError(new MatchError(id, e));
+            }
+        }
+
+    }
+
+    /**
+     * Match a DocumentBatch against the queries stored in the Monitor, also returning information
+     * about which queries were selected by the presearcher, and why.
+     * @param docs a DocumentBatch to match against the index
+     * @param factory a {@link MatcherFactory} to use to create a {@link CandidateMatcher} for the match run
+     * @param <T> the type of QueryMatch produced by the CandidateMatcher
+     * @return a {@link PresearcherMatches} object containing debug information
+     * @throws IOException on IO errors
+     */
+    public <T extends QueryMatch> PresearcherMatches<T> debug(final DocumentBatch docs, MatcherFactory<T> factory)
+            throws IOException {
+        PresearcherQueryCollector<T> collector = new PresearcherQueryCollector<>(factory.createMatcher(docs));
+        QueryIndex.QueryBuilder queryBuilder = new PresearcherQueryBuilder(docs.getIndexReader()){
+            @Override
+            public Query buildQuery(QueryTermFilter termFilter) throws IOException {
+                try {
+                    return new ForceNoBulkScoringQuery(SpanRewriter.INSTANCE.rewrite(super.buildQuery(termFilter), null));
+                } catch (RewriteException e) {
+                    throw new IOException(e);
+                }
+            }
+        };
+        queryIndex.search(queryBuilder, collector);
+        return collector.getMatches();
+    }
+
+    /**
+     * Match a single {@link InputDocument} against the queries stored in the Monitor, also returning information
+     * about which queries were selected by the presearcher, and why.
+     * @param doc an InputDocument to match against the index
+     * @param factory a {@link MatcherFactory} to use to create a {@link CandidateMatcher} for the match run
+     * @param <T> the type of QueryMatch produced by the CandidateMatcher
+     * @return a {@link PresearcherMatches} object containing debug information
+     * @throws IOException on IO errors
+     */
+    public <T extends QueryMatch> PresearcherMatches<T> debug(InputDocument doc, MatcherFactory<T> factory) throws IOException {
+        return debug(DocumentBatch.of(doc), factory);
+    }
+
+    private class PresearcherQueryCollector<T extends QueryMatch> extends StandardQueryCollector<T> {
+
+        public final Map<String, StringBuilder> matchingTerms = new HashMap<>();
+
+        private PresearcherQueryCollector(CandidateMatcher<T> matcher) {
+            super(matcher);
+        }
+
+        public PresearcherMatches<T> getMatches() {
+            return new PresearcherMatches<>(matchingTerms, matcher.getMatches());
+        }
+
+        @Override
+        public void matchQuery(final String id, QueryCacheEntry query, QueryIndex.DataValues dataValues) throws IOException {
+
+            SpanCollector collector = new SpanCollector() {
+                @Override
+                public void collectLeaf(PostingsEnum postingsEnum, int position, Term term) throws IOException {
+                    matchingTerms.computeIfAbsent(id, i -> new StringBuilder())
+                            .append(" ")
+                            .append(term.field())
+                            .append(":")
+                            .append(term.bytes().utf8ToString());
+                }
+
+                @Override
+                public void reset() {
+
+                }
+            };
+
+            SpanExtractor.collect(dataValues.scorer, collector, false);
+
+            super.matchQuery(id, query, dataValues);
+        }
+
+        @Override
+        public boolean needsScores() {
+            return true;
+        }
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -615,16 +615,21 @@
+             super(matcher);
+         }
+ 
+         public PresearcherMatches<T> getMatches() {
+             return new PresearcherMatches<>(matchingTerms, matcher.getMatches());
+         }
+ 
+         @Override
++        public boolean needsScores() {
++            return true;
++        }
++
++        @Override
+         public void matchQuery(final String id, QueryCacheEntry query, QueryIndex.DataValues dataValues) throws IOException {
+ 
+             SpanCollector collector = new SpanCollector() {
+                 @Override
+                 public void collectLeaf(PostingsEnum postingsEnum, int position, Term term) throws IOException {
+                     matchingTerms.computeIfAbsent(id, i -> new StringBuilder())
+                             .append(" ")
+                             .append(term.field())
+@@ -638,15 +643,11 @@
+                 }
+             };
+ 
+             SpanExtractor.collect(dataValues.scorer, collector, false);
+ 
+             super.matchQuery(id, query, dataValues);
+         }
+ 
+-        @Override
+-        public boolean needsScores() {
+-            return true;
+-        }
+     }
+ 
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: luwak/src/main/java/uk/co/flax/luwak/QueryIndex.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -201,16 +201,20 @@
+     void deleteDocuments(Query query) throws IOException {
+         writer.deleteDocuments(query);            
+     }
+ 
+     interface QueryCollector {
+ 
+         void matchQuery(String id, QueryCacheEntry query, DataValues dataValues) throws IOException;
+ 
++        default boolean needsScores() {
++            return false;
++        }
++
+     }
+ 
+     // ---------------------------------------------
+     //  Helper classes...
+     // ---------------------------------------------
+ 
+     static final class DataValues {
+         public BinaryDocValues hash;
+@@ -252,13 +256,13 @@
+         public void doSetNextReader(LeafReaderContext context) throws IOException {
+             this.dataValues.hash = context.reader().getBinaryDocValues(Monitor.FIELDS.hash);
+             this.dataValues.id = context.reader().getSortedDocValues(Monitor.FIELDS.id);
+             this.dataValues.mq = context.reader().getBinaryDocValues(Monitor.FIELDS.mq);
+         }
+ 
+         @Override
+         public boolean needsScores() {
+-            return false;
++            return matcher.needsScores();
+         }
+ 
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -201,16 +201,20 @@
+     void deleteDocuments(Query query) throws IOException {
+         writer.deleteDocuments(query);            
+     }
+ 
+     interface QueryCollector {
+ 
+         void matchQuery(String id, QueryCacheEntry query, DataValues dataValues) throws IOException;
+ 
++        default boolean needsScores() {
++            return false;
++        }
++
+     }
+ 
+     // ---------------------------------------------
+     //  Helper classes...
+     // ---------------------------------------------
+ 
+     static final class DataValues {
+         public BinaryDocValues hash;
+@@ -252,13 +256,13 @@
+         public void doSetNextReader(LeafReaderContext context) throws IOException {
+             this.dataValues.hash = context.reader().getBinaryDocValues(Monitor.FIELDS.hash);
+             this.dataValues.id = context.reader().getSortedDocValues(Monitor.FIELDS.id);
+             this.dataValues.mq = context.reader().getBinaryDocValues(Monitor.FIELDS.mq);
+         }
+ 
+         @Override
+         public boolean needsScores() {
+-            return false;
++            return matcher.needsScores();
+         }
+ 
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package uk.co.flax.luwak;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import org.apache.lucene.index.*;
+import org.apache.lucene.search.*;
+import org.apache.lucene.store.RAMDirectory;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
+
+class QueryIndex {
+    
+    private final IndexWriter writer;
+    private final SearcherManager manager;
+
+    /* Used to cache updates while a purge is ongoing */
+    private volatile Map<BytesRef, QueryCacheEntry> purgeCache = null;
+
+    /* Used to lock around the creation of the purgeCache */
+    private final ReadWriteLock purgeLock = new ReentrantReadWriteLock();
+    private final Object commitLock = new Object();
+
+    /* The current query cache */
+    private volatile ConcurrentMap<BytesRef, QueryCacheEntry> queries = new ConcurrentHashMap<>();
+    // NB this is not final because it can be replaced by purgeCache()
+
+    // package-private for testing
+    final Map<IndexReader, QueryTermFilter> termFilters = new HashMap<>();
+    
+    QueryIndex(IndexWriter indexWriter) throws IOException {
+        this.writer = indexWriter;
+        this.manager = new SearcherManager(writer, true, true, new TermsHashBuilder());
+    }
+    
+    QueryIndex() throws IOException {
+        this(Monitor.defaultIndexWriter(new RAMDirectory()));
+    }
+
+    private class TermsHashBuilder extends SearcherFactory {
+        @Override
+        public IndexSearcher newSearcher(IndexReader reader, IndexReader previousReader) throws IOException {
+            IndexSearcher searcher = super.newSearcher(reader, previousReader);
+            searcher.setQueryCache(null);
+            termFilters.put(reader, new QueryTermFilter(reader));
+            reader.addReaderClosedListener(termFilters::remove);
+            return searcher;
+        }
+    }
+
+    void commit(List<Indexable> updates) throws IOException {
+        synchronized (commitLock) {
+            purgeLock.readLock().lock();
+            try {
+                if (updates != null) {
+                    Set<String> ids = new HashSet<>();
+                    for (Indexable update : updates) {
+                        ids.add(update.id);
+                    }
+                    for (String id : ids) {
+                        writer.deleteDocuments(new Term(Monitor.FIELDS.del, id));
+                    }
+                    for (Indexable update : updates) {
+                        this.queries.put(update.queryCacheEntry.hash, update.queryCacheEntry);
+                        writer.addDocument(update.document);
+                        if (purgeCache != null)
+                            purgeCache.put(update.queryCacheEntry.hash, update.queryCacheEntry);
+                    }
+                }
+                writer.commit();
+                manager.maybeRefresh();
+            } finally {
+                purgeLock.readLock().unlock();
+            }
+        }
+    }
+
+    interface QueryBuilder {
+        Query buildQuery(QueryTermFilter termFilter) throws IOException;
+    }
+
+    long scan(QueryCollector matcher) throws IOException {
+        return search(new MatchAllDocsQuery(), matcher);
+    }
+
+    long search(final Query query, QueryCollector matcher) throws IOException {
+        QueryBuilder builder = termFilter -> query;
+        return search(builder, matcher);
+    }
+
+    long search(QueryBuilder queryBuilder, QueryCollector matcher) throws IOException {
+        IndexSearcher searcher = null;
+        try {
+            Map<BytesRef, QueryCacheEntry> queries;
+
+            purgeLock.readLock().lock();
+            try {
+                searcher = manager.acquire();
+                queries = this.queries;
+            }
+            finally {
+                purgeLock.readLock().unlock();
+            }
+
+            MonitorQueryCollector collector = new MonitorQueryCollector(queries, matcher);
+            long buildTime = System.nanoTime();
+            Query query = queryBuilder.buildQuery(termFilters.get(searcher.getIndexReader()));
+            buildTime = System.nanoTime() - buildTime;
+            searcher.search(query, collector);
+            return buildTime;
+        }
+        finally {
+            if (searcher != null) {
+                manager.release(searcher);
+            }
+        }
+    }
+    
+    interface CachePopulator {
+        void populateCacheWithIndex(Map<BytesRef, QueryCacheEntry> newCache) throws IOException;
+    }
+    
+    /**
+     * Remove unused queries from the query cache.
+     *
+     * This is normally called from a background thread at a rate set by configurePurgeFrequency().
+     *
+     * @throws IOException on IO errors
+     */
+    synchronized void purgeCache(CachePopulator populator) throws IOException {
+
+        /*
+            Note on implementation
+
+            The purge works by scanning the query index and creating a new query cache populated
+            for each query in the index.  When the scan is complete, the old query cache is swapped
+            for the new, allowing it to be garbage-collected.
+
+            In order to not drop cached queries that have been added while a purge is ongoing,
+            we use a ReadWriteLock to guard the creation and removal of an update log.  Commits take
+            the read lock.  If the update log has been created, then a purge is ongoing, and queries
+            are added to the update log within the read lock guard.
+
+            The purge takes the write lock when creating the update log, and then when swapping out
+            the old query cache.  Within the second write lock guard, the contents of the update log
+            are added to the new query cache, and the update log itself is removed.
+         */
+
+        final ConcurrentMap<BytesRef, QueryCacheEntry> newCache = new ConcurrentHashMap<>();
+
+        purgeLock.writeLock().lock();
+        try {
+            purgeCache = new ConcurrentHashMap<>();
+        }
+        finally {
+            purgeLock.writeLock().unlock();
+        }
+        
+        populator.populateCacheWithIndex(newCache);
+
+        purgeLock.writeLock().lock();
+        try {
+            newCache.putAll(purgeCache);
+            purgeCache = null;
+            queries = newCache;
+        }
+        finally {
+            purgeLock.writeLock().unlock();
+        }
+    }
+    
+    
+    // ---------------------------------------------
+    //  Proxy trivial operations...
+    // ---------------------------------------------
+
+    void closeWhileHandlingException() throws IOException {
+        IOUtils.closeWhileHandlingException(manager, writer, writer.getDirectory());
+    }
+
+    int numDocs() {
+        return writer.numDocs();
+    }
+
+    int numRamDocs() {
+        return writer.numRamDocs();
+    }
+
+    int cacheSize() {
+        return queries.size();
+    }
+
+    void deleteDocuments(Term term) throws IOException {
+        writer.deleteDocuments(term);
+    }
+
+    void deleteDocuments(Query query) throws IOException {
+        writer.deleteDocuments(query);            
+    }
+
+    interface QueryCollector {
+
+        void matchQuery(String id, QueryCacheEntry query, DataValues dataValues) throws IOException;
+
+        default boolean needsScores() {
+            return false;
+        }
+
+    }
+
+    // ---------------------------------------------
+    //  Helper classes...
+    // ---------------------------------------------
+
+    static final class DataValues {
+        public BinaryDocValues hash;
+        public SortedDocValues id;
+        public BinaryDocValues mq;
+        public Scorer scorer;
+        public int doc;
+    }
+
+    /**
+     * A Collector that decodes the stored query for each document hit.
+     */
+    static final class MonitorQueryCollector extends SimpleCollector {
+
+        private final Map<BytesRef, QueryCacheEntry> queries;
+        private final QueryCollector matcher;
+        private final DataValues dataValues = new DataValues();
+
+        public MonitorQueryCollector(Map<BytesRef, QueryCacheEntry> queries, QueryCollector matcher) {
+            this.queries = queries;
+            this.matcher = matcher;
+        }
+
+        @Override
+        public void setScorer(Scorer scorer) throws IOException {
+            this.dataValues.scorer = scorer;
+        }
+
+        @Override
+        public void collect(int doc) throws IOException {
+            BytesRef hash = dataValues.hash.get(doc);
+            BytesRef id = dataValues.id.get(doc);
+            QueryCacheEntry query = queries.get(hash);
+            dataValues.doc = doc;
+            matcher.matchQuery(id.utf8ToString(), query, dataValues);
+        }
+
+        @Override
+        public void doSetNextReader(LeafReaderContext context) throws IOException {
+            this.dataValues.hash = context.reader().getBinaryDocValues(Monitor.FIELDS.hash);
+            this.dataValues.id = context.reader().getSortedDocValues(Monitor.FIELDS.id);
+            this.dataValues.mq = context.reader().getBinaryDocValues(Monitor.FIELDS.mq);
+        }
+
+        @Override
+        public boolean needsScores() {
+            return matcher.needsScores();
+        }
+
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: luwak/src/test/java/uk/co/flax/luwak/presearcher/FieldFilterPresearcherComponentTestBase.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -4,16 +4,17 @@
+ 
+ import com.google.common.collect.ImmutableMap;
+ import org.apache.lucene.analysis.Analyzer;
+ import org.apache.lucene.analysis.standard.StandardAnalyzer;
+ import org.assertj.core.api.Assertions;
+ import org.junit.Test;
+ import uk.co.flax.luwak.*;
+ import uk.co.flax.luwak.matchers.SimpleMatcher;
++import uk.co.flax.luwak.termextractor.weights.TermWeightor;
+ 
+ import static org.assertj.core.api.Fail.fail;
+ import static uk.co.flax.luwak.assertions.MatchesAssert.assertThat;
+ 
+ /**
+  * Copyright (c) 2014 Lemur Consulting Ltd.
+  * <p/>
+  * Licensed under the Apache License, Version 2.0 (the "License");
+@@ -29,25 +30,25 @@
+  * limitations under the License.
+  */
+ public abstract class FieldFilterPresearcherComponentTestBase extends PresearcherTestBase {
+ 
+     public static class TestTermFiltered extends FieldFilterPresearcherComponentTestBase {
+ 
+         @Override
+         protected Presearcher createPresearcher() {
+-            return new TermFilteredPresearcher(new FieldFilterPresearcherComponent("language"));
++            return new TermFilteredPresearcher(TermWeightor.DEFAULT, new FieldFilterPresearcherComponent("language"));
+         }
+     }
+ 
+     public static class TestMultipass extends FieldFilterPresearcherComponentTestBase {
+ 
+         @Override
+         protected Presearcher createPresearcher() {
+-            return new MultipassTermFilteredPresearcher(2, 0.0f, new FieldFilterPresearcherComponent("language"));
++            return new MultipassTermFilteredPresearcher(2, TermWeightor.DEFAULT, new FieldFilterPresearcherComponent("language"));
+         }
+     }
+ 
+     public static final Analyzer ANALYZER = new StandardAnalyzer();
+ 
+     @Test
+     public void testBatchFiltering() throws IOException, UpdateException {
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -24,32 +24,16 @@
+  * <p/>
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ public abstract class FieldFilterPresearcherComponentTestBase extends PresearcherTestBase {
+-
+-    public static class TestTermFiltered extends FieldFilterPresearcherComponentTestBase {
+-
+-        @Override
+-        protected Presearcher createPresearcher() {
+-            return new TermFilteredPresearcher(new FieldFilterPresearcherComponent("language"));
+-        }
+-    }
+-
+-    public static class TestMultipass extends FieldFilterPresearcherComponentTestBase {
+-
+-        @Override
+-        protected Presearcher createPresearcher() {
+-            return new MultipassTermFilteredPresearcher(2, 0.0f, new FieldFilterPresearcherComponent("language"));
+-        }
+-    }
+ 
+     public static final Analyzer ANALYZER = new StandardAnalyzer();
+ 
+     @Test
+     public void testBatchFiltering() throws IOException, UpdateException {
+ 
+         monitor.update(new MonitorQuery("1", "test", ImmutableMap.of("language", "en")),
+                 new MonitorQuery("2", "wahl", ImmutableMap.of("language", "de")),
+--- MERGED RESULT (mergiraf; full) ---
+package uk.co.flax.luwak.presearcher;
+
+import java.io.IOException;
+
+import com.google.common.collect.ImmutableMap;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.assertj.core.api.Assertions;
+import org.junit.Test;
+import uk.co.flax.luwak.*;
+import uk.co.flax.luwak.matchers.SimpleMatcher;
+import uk.co.flax.luwak.termextractor.weights.TermWeightor;
+
+import static org.assertj.core.api.Fail.fail;
+import static uk.co.flax.luwak.assertions.MatchesAssert.assertThat;
+
+/**
+ * Copyright (c) 2014 Lemur Consulting Ltd.
+ * <p/>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p/>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p/>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+public abstract class FieldFilterPresearcherComponentTestBase extends PresearcherTestBase {
+
+    public static class TestTermFiltered extends FieldFilterPresearcherComponentTestBase {
+
+        @Override
+        protected Presearcher createPresearcher() {
+            return new TermFilteredPresearcher(TermWeightor.DEFAULT, new FieldFilterPresearcherComponent("language"));
+        }
+    }
+
+    public static class TestMultipass extends FieldFilterPresearcherComponentTestBase {
+
+        @Override
+        protected Presearcher createPresearcher() {
+            return new MultipassTermFilteredPresearcher(2, TermWeightor.DEFAULT, new FieldFilterPresearcherComponent("language"));
+        }
+    }
+
+    public static final Analyzer ANALYZER = new StandardAnalyzer();
+
+    @Test
+    public void testBatchFiltering() throws IOException, UpdateException {
+
+        monitor.update(new MonitorQuery("1", "test", ImmutableMap.of("language", "en")),
+                new MonitorQuery("2", "wahl", ImmutableMap.of("language", "de")),
+                new MonitorQuery("3", "wibble", ImmutableMap.of("language", "en")),
+                new MonitorQuery("4", "*:*", ImmutableMap.of("language", "de")),
+                new MonitorQuery("5", "*:*", ImmutableMap.of("language", "es")));
+
+        DocumentBatch enBatch = DocumentBatch.of(
+                InputDocument.builder("en1")
+                        .addField(TEXTFIELD, "this is a test", ANALYZER)
+                        .addField("language", "en", ANALYZER)
+                        .build(),
+                InputDocument.builder("en2")
+                        .addField(TEXTFIELD, "this is a wibble", ANALYZER)
+                        .addField("language", "en", ANALYZER)
+                        .build(),
+                InputDocument.builder("en3")
+                        .addField(TEXTFIELD, "wahl is a misspelling of whale", ANALYZER)
+                        .addField("language", "en", ANALYZER)
+                        .build()
+        );
+        assertThat(monitor.match(enBatch, SimpleMatcher.FACTORY))
+                .hasMatchCount("en1", 1)
+                .matchesQuery("1", "en1")
+                .hasMatchCount("en2", 1)
+                .matchesQuery("3", "en2")
+                .hasMatchCount("en3", 0)
+                .hasQueriesRunCount(2);
+    }
+
+    @Test
+    public void testBatchesWithDissimilarFieldValuesThrowExceptions() throws IOException {
+
+        DocumentBatch batch = DocumentBatch.of(
+                InputDocument.builder("1").addField(TEXTFIELD, "test", ANALYZER).addField("language", "en", ANALYZER).build(),
+                InputDocument.builder("2").addField(TEXTFIELD, "test", ANALYZER).addField("language", "de", ANALYZER).build()
+        );
+
+        try {
+            monitor.match(batch, SimpleMatcher.FACTORY);
+            fail("Expected an IllegalArgumentException for mixed-filter-field-value DocumentBatch");
+        }
+        catch (IllegalArgumentException e) {
+            Assertions.assertThat(e.getMessage()).contains("language:");
+        }
+
+    }
+
+    @Test
+    public void testFieldFiltering() throws IOException, UpdateException {
+
+        monitor.update(new MonitorQuery("1", "test", ImmutableMap.of("language", "en")),
+                       new MonitorQuery("2", "test", ImmutableMap.of("language", "de")),
+                       new MonitorQuery("3", "wibble", ImmutableMap.of("language", "en")),
+                       new MonitorQuery("4", "*:*", ImmutableMap.of("language", "de")));
+
+        InputDocument enDoc = InputDocument.builder("enDoc")
+                .addField(TEXTFIELD, "this is a test", ANALYZER)
+                .addField("language", "en", ANALYZER)
+                .build();
+
+        assertThat(monitor.match(enDoc, SimpleMatcher.FACTORY))
+                .matchesQuery("1", "enDoc")
+                .hasMatchCount("enDoc", 1)
+                .hasQueriesRunCount(1);
+
+        InputDocument deDoc = InputDocument.builder("deDoc")
+                .addField(TEXTFIELD, "das ist ein test", ANALYZER)
+                .addField("language", "de", ANALYZER)
+                .build();
+        assertThat(monitor.match(deDoc, SimpleMatcher.FACTORY))
+                .matchesQuery("2", "deDoc")
+                .matchesQuery("4", "deDoc")
+                .hasMatchCount("deDoc", 2)
+                .hasQueriesRunCount(2);
+
+        InputDocument bothDoc = InputDocument.builder("bothDoc")
+                .addField(TEXTFIELD, "this is ein test", ANALYZER)
+                .addField("language", "en", ANALYZER)
+                .addField("language", "de", ANALYZER)
+                .build();
+        assertThat(monitor.match(bothDoc, SimpleMatcher.FACTORY))
+                .matchesQuery("1", "bothDoc")
+                .matchesQuery("2", "bothDoc")
+                .matchesQuery("4", "bothDoc")
+                .hasMatchCount("bothDoc", 3)
+                .hasQueriesRunCount(3);
+
+    }
+
+    @Test
+    public void testFilteringOnMatchAllQueries() throws IOException, UpdateException {
+        monitor.update(new MonitorQuery("1", "*:*", ImmutableMap.of("language", "de")));
+
+        InputDocument doc = InputDocument.builder("enDoc")
+                .addField(TEXTFIELD, "this is a test", ANALYZER)
+                .addField("language", "en", ANALYZER)
+                .build();
+        assertThat(monitor.match(doc, SimpleMatcher.FACTORY))
+                .hasMatchCount("enDoc", 0)
+                .hasQueriesRunCount(0);
+    }
+
+    @Test
+    public void testDebugQueries() throws Exception {
+
+        monitor.update(new MonitorQuery("1", "test", ImmutableMap.of("language", "en")));
+
+        InputDocument doc = InputDocument.builder("enDoc")
+                .addField(TEXTFIELD, "this is a test", ANALYZER)
+                .addField("language", "en", ANALYZER)
+                .build();
+
+        PresearcherMatches<QueryMatch> matches = monitor.debug(doc, SimpleMatcher.FACTORY);
+        Assertions.assertThat(matches.match("1", "enDoc").presearcherMatches).isNotEmpty();
+        System.out.println(matches.match("1", "enDoc").presearcherMatches);
+
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -25,32 +25,16 @@
+  * <p/>
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ public abstract class FieldFilterPresearcherComponentTestBase extends PresearcherTestBase {
+-
+-    public static class TestTermFiltered extends FieldFilterPresearcherComponentTestBase {
+-
+-        @Override
+-        protected Presearcher createPresearcher() {
+-            return new TermFilteredPresearcher(TermWeightor.DEFAULT, new FieldFilterPresearcherComponent("language"));
+-        }
+-    }
+-
+-    public static class TestMultipass extends FieldFilterPresearcherComponentTestBase {
+-
+-        @Override
+-        protected Presearcher createPresearcher() {
+-            return new MultipassTermFilteredPresearcher(2, TermWeightor.DEFAULT, new FieldFilterPresearcherComponent("language"));
+-        }
+-    }
+ 
+     public static final Analyzer ANALYZER = new StandardAnalyzer();
+ 
+     @Test
+     public void testBatchFiltering() throws IOException, UpdateException {
+ 
+         monitor.update(new MonitorQuery("1", "test", ImmutableMap.of("language", "en")),
+                 new MonitorQuery("2", "wahl", ImmutableMap.of("language", "de")),
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[OTHER] method does not override or implement a method from a supertype
+[OTHER] method does not override or implement a method from a supertype
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

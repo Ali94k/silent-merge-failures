@@ -1,0 +1,520 @@
+UNIT google_truth__9289ed34ae
+repo: google_truth   merge: 9289ed34ae5c0561c9e33dbb7b7b7c6750e4a410   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/main/java/org/junit/contrib/truth/subjects/IterableSubject.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -47,20 +47,30 @@
+         return nextChain();
+       }
+     }
+     fail("contains", item);
+     throw new AssertionError();
+   }
+ 
+   /**
+-   * Attests that a Collection contains the provided object or fails.
++   * Attests that the subject no more objects, or fails.
+    */
+   public And<S> isEmpty() {
+     if (getSubject().iterator().hasNext()) {
++      fail("isEmpty");
++    }
++    return nextChain();
++  }
++
++  /**
++   * Attests that the subject contains one or more objects, or fails
++   */
++  public And<S> isNotEmpty() {
++    if (!getSubject().iterator().hasNext()) {
+       fail("isEmpty");
+     }
+     return nextChain();
+   }
+ 
+   public And<S> hasContentsInOrder(Object... expected) {
+     // TODO(kevinb): prettier error message
+     List<Object> target = new ArrayList<Object>();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -10,21 +10,18 @@
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package org.junit.contrib.truth.subjects;
+ 
+-import java.util.ArrayList;
+ import java.util.Arrays;
+-import java.util.HashMap;
+-import java.util.List;
+-import java.util.Map;
++import java.util.Iterator;
+ 
+ import org.junit.contrib.truth.FailureStrategy;
+ import org.junit.contrib.truth.util.GwtCompatible;
+ 
+ /**
+  * @author Kevin Bourrillion
+  */
+ @GwtCompatible
+@@ -56,33 +53,33 @@
+    */
+   public And<S> isEmpty() {
+     if (getSubject().iterator().hasNext()) {
+       fail("isEmpty");
+     }
+     return nextChain();
+   }
+ 
+-  public And<S> hasContentsInOrder(Object... expected) {
+-    // TODO(kevinb): prettier error message
+-    List<Object> target = new ArrayList<Object>();
+-    for (Object t : getSubject()) {
+-      target.add(t);
++  /**
++   * Asserts that the items are supplied in the order given by the iterable. For
++   * Collections and other things which contain items but may not have guaranteed
++   * iteration order, this method should be overridden.
++   */
++  public And<S> iteratesOverSequence(Object... expectedItems) {
++    Iterator<T> actualItems = getSubject().iterator();
++    for (Object expected : expectedItems) {
++      if (!actualItems.hasNext()) {
++        fail("iterates through", Arrays.asList(expectedItems));
++      } else {
++        Object actual = actualItems.next();
++        if (actual == expected || actual != null && actual.equals(expected)) {
++          continue;
++        } else {
++          fail("iterates through", Arrays.asList(expectedItems));
++        }
++      }
+     }
+-    check().that(target).isEqualTo(Arrays.asList(expected));
++    if (actualItems.hasNext()) {
++      fail("iterates through", Arrays.asList(expectedItems));
++    }
+     return nextChain();
+   }
+-
+-  public And<S> hasContentsAnyOrder(Object... expected) {
+-    check().that(createFakeMultiset(getSubject()))
+-        .isEqualTo(createFakeMultiset(Arrays.asList(expected)));
+-    return nextChain();
+-  }
+-
+-  private static Map<Object, Integer> createFakeMultiset(Iterable<?> iterable) {
+-    Map<Object, Integer> map = new HashMap<Object, Integer>();
+-    for (Object t : iterable) {
+-      Integer count = map.get(t);
+-      map.put(t, (count == null) ? 1 : count + 1);
+-    }
+-    return map;
+-  }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (C) 2011 Google, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.junit.contrib.truth.subjects;
+
+import java.util.Arrays;
+import java.util.Iterator;
+
+import org.junit.contrib.truth.FailureStrategy;
+import org.junit.contrib.truth.util.GwtCompatible;
+
+/**
+ * @author Kevin Bourrillion
+ */
+@GwtCompatible
+public class IterableSubject<S extends IterableSubject<S, T, C>, T, C extends Iterable<T>> extends Subject<S, C> {
+
+  @SuppressWarnings({ "unchecked", "rawtypes" })
+  public static <T, C extends Iterable<T>> IterableSubject<? extends IterableSubject<?, T, C>, T, C> create(
+      FailureStrategy failureStrategy, Iterable<T> list) {
+    return new IterableSubject(failureStrategy, list);
+  }
+
+  // TODO: Arguably this should even be package private
+  protected IterableSubject(FailureStrategy failureStrategy, C list) {
+    super(failureStrategy, list);
+  }
+
+  public And<S> contains(Object item) {
+    for (Object t : getSubject()) {
+      if (item == t || item != null && item.equals(t)) {
+        return nextChain();
+      }
+    }
+    fail("contains", item);
+    throw new AssertionError();
+  }
+
+  /**
+   * Attests that the subject no more objects, or fails.
+   */
+  public And<S> isEmpty() {
+    if (getSubject().iterator().hasNext()) {
+      fail("isEmpty");
+    }
+    return nextChain();
+  }
+
+  /**
+   * Attests that the subject contains one or more objects, or fails
+   */
+  public And<S> isNotEmpty() {
+    if (!getSubject().iterator().hasNext()) {
+      fail("isEmpty");
+    }
+    return nextChain();
+  }
+
+  /**
+   * Asserts that the items are supplied in the order given by the iterable. For
+   * Collections and other things which contain items but may not have guaranteed
+   * iteration order, this method should be overridden.
+   */
+  public And<S> iteratesOverSequence(Object... expectedItems) {
+    Iterator<T> actualItems = getSubject().iterator();
+    for (Object expected : expectedItems) {
+      if (!actualItems.hasNext()) {
+        fail("iterates through", Arrays.asList(expectedItems));
+      } else {
+        Object actual = actualItems.next();
+        if (actual == expected || actual != null && actual.equals(expected)) {
+          continue;
+        } else {
+          fail("iterates through", Arrays.asList(expectedItems));
+        }
+      }
+    }
+    if (actualItems.hasNext()) {
+      fail("iterates through", Arrays.asList(expectedItems));
+    }
+    return nextChain();
+  }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/org/junit/contrib/truth/IterableTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -15,17 +15,16 @@
+  * limitations under the License.
+  */
+ package org.junit.contrib.truth;
+ 
+ import static org.junit.Assert.fail;
+ import static org.junit.contrib.truth.Truth.ASSERT;
+ 
+ import java.util.Arrays;
+-import java.util.List;
+ 
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ import org.junit.runners.JUnit4;
+ 
+ /**
+  * Tests for Collection Subjects.
+  *
+@@ -61,17 +60,17 @@
+     } catch (AssertionError e) {
+       ASSERT.that(e.getMessage()).contains("Not true that");
+     }
+   }
+ 
+   @Test public void iterablehasContentsAnyOrder() {
+     ASSERT.that(iterable(1, 2, 3)).hasContentsAnyOrder(2, 3, 1);
+   }
+-  
++
+   @Test public void iterablehasContentsAnyOrder_Fail() {
+     try {
+       ASSERT.that(iterable(1, 2, 3)).hasContentsAnyOrder(2, 3, 4);
+       fail("Should have thrown.");
+     } catch (AssertionError e) {
+       ASSERT.that(e.getMessage()).contains("Not true that");
+     }
+   }
+@@ -84,16 +83,42 @@
+     try {
+       ASSERT.that(iterable(1, 2, 3)).hasContentsInOrder(2, 3, 1);
+       fail("Should have thrown.");
+     } catch (AssertionError e) {
+       ASSERT.that(e.getMessage()).contains("Not true that");
+     }
+   }
+ 
++  @Test public void iterableIsEmpty_Success() {
++    ASSERT.that(iterable()).isEmpty();
++  }
++
++  @Test public void iterableIsEmpty_Fail() {
++    try {
++      ASSERT.that(iterable("foo")).isEmpty();
++      fail("Should have thrown.");
++    } catch (AssertionError e) {
++      ASSERT.that(e.getMessage()).contains("Not true that");
++    }
++  }
++
++  @Test public void iterableIsNotEmpty_Success() {
++    ASSERT.that(iterable("foo")).isNotEmpty();
++  }
++
++  @Test public void iterableIsNotEmpty_Fail() {
++    try {
++      ASSERT.that(iterable()).isNotEmpty();
++      fail("Should have thrown.");
++    } catch (AssertionError e) {
++      ASSERT.that(e.getMessage()).contains("Not true that");
++    }
++  }
++
+   /**
+    * Helper that returns a general Collection rather than a List.
+    * This ensures that we test CollectionSubject (rather than ListSubject).
+    */
+   private static <T> Iterable<T> iterable(T... items) {
+     return Arrays.asList(items);
+   }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -15,17 +15,16 @@
+  * limitations under the License.
+  */
+ package org.junit.contrib.truth;
+ 
+ import static org.junit.Assert.fail;
+ import static org.junit.contrib.truth.Truth.ASSERT;
+ 
+ import java.util.Arrays;
+-import java.util.List;
+ 
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ import org.junit.runners.JUnit4;
+ 
+ /**
+  * Tests for Collection Subjects.
+  *
+@@ -58,36 +57,24 @@
+     try {
+       ASSERT.that(iterable(1, 2, 3)).contains(5);
+       fail("Should have thrown.");
+     } catch (AssertionError e) {
+       ASSERT.that(e.getMessage()).contains("Not true that");
+     }
+   }
+ 
+-  @Test public void iterablehasContentsAnyOrder() {
+-    ASSERT.that(iterable(1, 2, 3)).hasContentsAnyOrder(2, 3, 1);
+-  }
+-  
+-  @Test public void iterablehasContentsAnyOrder_Fail() {
+-    try {
+-      ASSERT.that(iterable(1, 2, 3)).hasContentsAnyOrder(2, 3, 4);
+-      fail("Should have thrown.");
+-    } catch (AssertionError e) {
+-      ASSERT.that(e.getMessage()).contains("Not true that");
+-    }
++
++  @Test public void iteratesOverSequence() {
++    ASSERT.that(iterable(1, 2, 3)).iteratesOverSequence(1, 2, 3);
+   }
+ 
+-  @Test public void iterablehasContentsInOrder() {
+-    ASSERT.that(iterable(1, 2, 3)).hasContentsInOrder(1, 2, 3);
+-  }
+-
+-  @Test public void iterablehasContentsInOrder_Fail() {
++  @Test public void iteratesOverSequence_Fail() {
+     try {
+-      ASSERT.that(iterable(1, 2, 3)).hasContentsInOrder(2, 3, 1);
++      ASSERT.that(iterable(1, 2, 3)).iteratesOverSequence(2, 3, 1);
+       fail("Should have thrown.");
+     } catch (AssertionError e) {
+       ASSERT.that(e.getMessage()).contains("Not true that");
+     }
+   }
+ 
+   /**
+    * Helper that returns a general Collection rather than a List.
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (c) 2011 David Saff
+ * Copyright (c) 2011 Christian Gruber
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.junit.contrib.truth;
+
+import static org.junit.Assert.fail;
+import static org.junit.contrib.truth.Truth.ASSERT;
+
+import java.util.Arrays;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+/**
+ * Tests for Collection Subjects.
+ *
+ * @author David Saff
+ * @author Christian Gruber (cgruber@israfil.net)
+ */
+@RunWith(JUnit4.class)
+public class IterableTest {
+
+
+
+  @Test public void iterableContainsWithNull() {
+    ASSERT.that(iterable(1, null, 3)).contains(null);
+  }
+
+  @Test public void iterableContainsWith2KindsOfChaining() {
+    Iterable<Integer> foo = iterable(1, 2, 3);
+    Iterable<Integer> bar = foo;
+    ASSERT.that(foo).is(bar).and().contains(1).and().contains(2);
+  }
+
+  @Test public void iterableContainsFailureWithChaining() {
+    try {
+      ASSERT.that(iterable(1, 2, 3)).contains(1).and().contains(5);
+      fail("Should have thrown.");
+    } catch (AssertionError e) {}
+  }
+
+  @Test public void iterableContainsFailure() {
+    try {
+      ASSERT.that(iterable(1, 2, 3)).contains(5);
+      fail("Should have thrown.");
+    } catch (AssertionError e) {
+      ASSERT.that(e.getMessage()).contains("Not true that");
+    }
+  }
+
+
+  @Test public void iteratesOverSequence() {
+    ASSERT.that(iterable(1, 2, 3)).iteratesOverSequence(1, 2, 3);
+  }
+
+  @Test public void iteratesOverSequence_Fail() {
+    try {
+      ASSERT.that(iterable(1, 2, 3)).iteratesOverSequence(2, 3, 1);
+      fail("Should have thrown.");
+    } catch (AssertionError e) {
+      ASSERT.that(e.getMessage()).contains("Not true that");
+    }
+  }
+
+  @Test public void iterableIsEmpty_Success() {
+    ASSERT.that(iterable()).isEmpty();
+  }
+
+  @Test public void iterableIsEmpty_Fail() {
+    try {
+      ASSERT.that(iterable("foo")).isEmpty();
+      fail("Should have thrown.");
+    } catch (AssertionError e) {
+      ASSERT.that(e.getMessage()).contains("Not true that");
+    }
+  }
+
+  @Test public void iterableIsNotEmpty_Success() {
+    ASSERT.that(iterable("foo")).isNotEmpty();
+  }
+
+  @Test public void iterableIsNotEmpty_Fail() {
+    try {
+      ASSERT.that(iterable()).isNotEmpty();
+      fail("Should have thrown.");
+    } catch (AssertionError e) {
+      ASSERT.that(e.getMessage()).contains("Not true that");
+    }
+  }
+
+  /**
+   * Helper that returns a general Collection rather than a List.
+   * This ensures that we test CollectionSubject (rather than ListSubject).
+   */
+  private static <T> Iterable<T> iterable(T... items) {
+    return Arrays.asList(items);
+  }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -57,17 +57,16 @@
+     try {
+       ASSERT.that(iterable(1, 2, 3)).contains(5);
+       fail("Should have thrown.");
+     } catch (AssertionError e) {
+       ASSERT.that(e.getMessage()).contains("Not true that");
+     }
+   }
+ 
+-
+   @Test public void iteratesOverSequence() {
+     ASSERT.that(iterable(1, 2, 3)).iteratesOverSequence(1, 2, 3);
+   }
+ 
+   @Test public void iteratesOverSequence_Fail() {
+     try {
+       ASSERT.that(iterable(1, 2, 3)).iteratesOverSequence(2, 3, 1);
+       fail("Should have thrown.");
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,590 @@
+UNIT jsprit_jsprit__5cf6758085
+repo: jsprit_jsprit   merge: 5cf6758085c3e777115f4d24cbf59b6800e1631f   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T3/cap1/trunc400  (diffs at -U3; merged bodies omitted; hard-fit to the 30k budget: files capped at 1 largest merged-vs-dev diffs, each diff section truncated to 400 lines)
+
+=== FILE 1/1: jsprit-core/src/test/java/jsprit/core/analysis/SolutionAnalyserTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -19,6 +19,7 @@
+ 
+ 
+ import jsprit.core.problem.Capacity;
++import jsprit.core.problem.Location;
+ import jsprit.core.problem.VehicleRoutingProblem;
+ import jsprit.core.problem.job.Delivery;
+ import jsprit.core.problem.job.Pickup;
+@@ -169,8 +170,8 @@
+     public void constructionShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         Assert.assertTrue(true);
+@@ -180,8 +181,8 @@
+     public void loadAtBeginningOfRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -192,8 +193,8 @@
+     public void loadAtBeginningOfRoute2ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         Iterator<VehicleRoute> iterator = solution.getRoutes().iterator();
+@@ -207,8 +208,8 @@
+     public void loadAtEnd_OfRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -219,8 +220,8 @@
+     public void loadAtEnd_OfRoute2ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         Iterator<VehicleRoute> iterator = solution.getRoutes().iterator();
+@@ -234,8 +235,8 @@
+     public void loadAfterActivity_ofStartActOfRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -246,8 +247,8 @@
+     public void loadAfterActivity_ofAct1ofRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -258,8 +259,8 @@
+     public void loadAfterActivity_ofAct2ofRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -270,8 +271,8 @@
+     public void loadAfterActivity_ofAct3ofRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -282,8 +283,8 @@
+     public void loadAfterActivity_ofAct4ofRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -294,8 +295,8 @@
+     public void loadAfterActivity_ofEndActOfRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -306,8 +307,8 @@
+     public void loadBeforeActivity_ofStartActOfRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -318,8 +319,8 @@
+     public void loadBeforeActivity_ofAct1ofRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -330,8 +331,8 @@
+     public void loadBeforeActivity_ofAct2ofRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -342,8 +343,8 @@
+     public void loadBeforeActivity_ofAct3ofRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -354,8 +355,8 @@
+     public void loadBeforeActivity_ofAct4ofRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -366,8 +367,8 @@
+     public void loadBeforeActivity_ofEndActOfRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -378,8 +379,8 @@
+     public void maxLoad_OfRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -390,8 +391,8 @@
+     public void pickupCount_OfRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -402,8 +403,8 @@
+     public void pickupCountAtBeginning_OfRoute1ShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -415,8 +416,8 @@
+         buildAnotherScenarioWithOnlyOneVehicleAndWithoutAnyConstraintsBefore();
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -428,8 +429,8 @@
+         buildAnotherScenarioWithOnlyOneVehicleAndWithoutAnyConstraintsBefore();
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -440,8 +441,8 @@
+     public void pickupCount_onSolutionShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         Assert.assertEquals(6, analyser.getNumberOfPickups(), 0.01);
+@@ -451,8 +452,8 @@
+     public void pickupCountAtBeginning_onSolutionShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+        // ... 1326 diff lines elided ...
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -2177,8 +2178,8 @@
+     public void skillViolationAtStart_shouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -2190,8 +2191,8 @@
+     public void skillViolationAtAct1_shouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -2203,8 +2204,8 @@
+     public void skillViolationAtAct2_shouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -2216,8 +2217,8 @@
+     public void skillViolationAtAct3_shouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -2229,8 +2230,8 @@
+     public void skillViolationAtAct4_shouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -2242,8 +2243,8 @@
+     public void skillViolationAtEnd_shouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         VehicleRoute route = solution.getRoutes().iterator().next();
+@@ -2257,8 +2258,8 @@
+     public void skillViolationOnRoute_shouldWorkWhenNotViolated(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+ 
+@@ -2273,8 +2274,8 @@
+     public void skillViolationOnSolution_shouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         Boolean violated = analyser.hasSkillConstraintViolation();
+@@ -2285,8 +2286,8 @@
+     public void backhaulViolationOnSolution_shouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         Boolean violated = analyser.hasBackhaulConstraintViolation();
+@@ -2298,8 +2299,8 @@
+         buildAnotherScenarioWithOnlyOneVehicleAndWithoutAnyConstraintsBefore();
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         Boolean violated = analyser.hasBackhaulConstraintViolation();
+@@ -2311,8 +2312,8 @@
+         buildAnotherScenarioWithOnlyOneVehicleAndWithoutAnyConstraintsBefore();
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to,0.,null,null);
+             }
+         });
+         Boolean violated = analyser.hasShipmentConstraintViolation();
+@@ -2324,8 +2325,8 @@
+         buildAnotherScenarioWithOnlyOneVehicleAndWithoutAnyConstraintsBefore();
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp, solution, new SolutionAnalyser.DistanceCalculator() {
+             @Override
+-            public double getDistance(String fromLocationId, String toLocationId) {
+-                return vrp.getTransportCosts().getTransportCost(fromLocationId, toLocationId, 0., null, null);
++            public double getDistance(Location from, Location to) {
++                return vrp.getTransportCosts().getTransportCost(from, to, 0., null, null);
+             }
+         });
+         Boolean violated = analyser.hasSkillConstraintViolation();
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -28,18 +28,22 @@
+ import jsprit.core.problem.solution.route.VehicleRoute;
+ import jsprit.core.problem.solution.route.activity.TimeWindow;
+ import jsprit.core.problem.solution.route.activity.TourActivity;
++import jsprit.core.problem.vehicle.Vehicle;
+ import jsprit.core.problem.vehicle.VehicleImpl;
+ import jsprit.core.problem.vehicle.VehicleType;
+ import jsprit.core.problem.vehicle.VehicleTypeImpl;
+ import jsprit.core.reporting.SolutionPrinter;
+ import jsprit.core.util.Coordinate;
++import jsprit.core.util.EuclideanDistanceCalculator;
+ import jsprit.core.util.ManhattanCosts;
+ import junit.framework.Assert;
++
+ import org.junit.Before;
+ import org.junit.Test;
+ 
+ import java.util.Arrays;
+ import java.util.Iterator;
++import java.util.List;
+ 
+ import static org.junit.Assert.*;
+ 
+@@ -108,6 +112,7 @@
+         solution = new VehicleRoutingProblemSolution(Arrays.asList(route1,route2),42);
+     }
+ 
++ 
+     public void buildAnotherScenarioWithOnlyOneVehicleAndWithoutAnyConstraintsBefore(){
+         VehicleType type = VehicleTypeImpl.Builder.newInstance("type").setFixedCost(100.).setCostPerDistance(2.).addCapacityDimension(0, 15).build();
+ 
+@@ -165,6 +170,130 @@
+         solution = new VehicleRoutingProblemSolution(Arrays.asList(route),300);
+     }
+ 
++    /**
++     * Test the last transport costs at an activity are correct.
++     */
++    @Test
++    public void lastTransportCostsOfRoute1ShouldWork(){
++        testTransportCosts(TransportCostsTestType.LAST_COST);
++    }
++    
++    /**
++     * Test the last transport distance at an activity are correct.
++     */
++    @Test
++    public void lastTransportDistanceOfRoute1ShouldWork(){
++        testTransportCosts(TransportCostsTestType.LAST_DISTANCE);
++    }
++    
++    
++    /**
++     * Test the last transport time at an activity are correct.
++     */
++    @Test
++    public void lastTransportTimeOfRoute1ShouldWork(){
++        testTransportCosts(TransportCostsTestType.LAST_TIME);
++    }
++
++    /**
++     * Test the last transport time at an activity are correct.
++     */
++    @Test
++    public void transportTimeAtActivityOfRoute1ShouldWork(){
++        testTransportCosts(TransportCostsTestType.TRANSPORT_TIME_AT_ACTIVITY);
++    }
++
++    private enum TransportCostsTestType{
++    	LAST_COST,
++    	LAST_TIME,
++    	LAST_DISTANCE,
++    	TRANSPORT_TIME_AT_ACTIVITY,
++    }
++
++    /**
++     * Run multiple different tests for transport costs
++     * @param type
++     */
++	private void testTransportCosts(TransportCostsTestType type) {
++		SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
++            @Override
++            public double getDistance(String fromLocationId, String toLocationId) {
++                return vrp.getTransportCosts().getTransportCost(fromLocationId,toLocationId,0.,null,null);
++            }
++        });
++        
++        // this should be the path taken by route 1 including depots
++        Coordinate [] route1Path = new Coordinate[]{
++        	Coordinate.newInstance(-5, 0),
++        	Coordinate.newInstance(-10, 1),
++        	Coordinate.newInstance(-15, 2),
++        	Coordinate.newInstance(-16, 5),
++        	Coordinate.newInstance(-10, 10),
++        	Coordinate.newInstance(-5, 0)
++        	
++        };
++        
++        VehicleRoute route1 = solution.getRoutes().iterator().next();
++        
++        // get route 1 activities
++        List<TourActivity> activities = route1.getActivities();
++        Assert.assertEquals(activities.size(), 4);
++        
++        // utility class to calculate manhattan distance
++        class ManhattanDistance{
++        	private double calc(Coordinate from , Coordinate to) {
++        		return Math.abs(from.getX() - to.getX())
++        				+ Math.abs(from.getY() - to.getY());
++        	}
++        }
++        ManhattanDistance md = new ManhattanDistance();
++        
++        // loop over all activities on route and do tests
++        double totalTime=0;
++        for(int i = 0 ; i < activities.size() ; i++){
++        	TourActivity activity = activities.get(i);
++        	Coordinate last = route1Path[i];
++        	Coordinate current = route1Path[i+1];
++
++         	// calculate last distance and time (Manhattan uses speed  = 1 so distance = time)
++        	double dist = md.calc(last, current);
++           	double time =dist;
++           	
++        	// test last distance
++        	if(type == TransportCostsTestType.LAST_DISTANCE){
++            	double savedDist = analyser.getLastTransportDistanceAtActivity(activity, route1);
++            	Assert.assertEquals(dist, savedDist, 1E-10);        		
++        	}
++        	
++        	// test last time
++        	if(type == TransportCostsTestType.LAST_TIME){
++            	double savedTime = analyser.getLastTransportTimeAtActivity(activity, route1);
++            	Assert.assertEquals(time, savedTime, 1E-10);        		
++        	}
++
++        	// test last cost
++        	if(type == TransportCostsTestType.LAST_COST){
++            	double perDistanceUnit=1;
++            	Vehicle vehicle = route1.getVehicle();
++                if(vehicle != null){
++                    if(vehicle.getType() != null){
++                       perDistanceUnit =  vehicle.getType().getVehicleCostParams().perDistanceUnit;
++                    }
++                }
++                double cost =dist * perDistanceUnit;
++                double savedCost = analyser.getLastTransportCostAtActivity(activity, route1);
++            	Assert.assertEquals(cost, savedCost, 1E-10);        		
++        	}
++            
++        	// test total transport time at activity
++        	if(type == TransportCostsTestType.TRANSPORT_TIME_AT_ACTIVITY){
++            	totalTime += time;
++            	double savedTransportTime = analyser.getTransportTimeAtActivity(activity, route1);
++            	Assert.assertEquals(totalTime, savedTransportTime, 1E-10);        		
++        	}
++        }
++	}
++    
+     @Test
+     public void constructionShouldWork(){
+         SolutionAnalyser analyser = new SolutionAnalyser(vrp,solution, new SolutionAnalyser.DistanceCalculator() {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

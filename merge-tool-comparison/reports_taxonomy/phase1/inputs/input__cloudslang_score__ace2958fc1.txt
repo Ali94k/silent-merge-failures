@@ -1,0 +1,1482 @@
+UNIT cloudslang_score__ace2958fc1
+repo: cloudslang_score   merge: ace2958fc13fcc692963f12381aee867568a3e0b   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T1  (merged files windowed ±40 around base-differing regions)
+
+=== FILE 1/3: runtime-management/runtime-management-impl/src/main/java/io/cloudslang/runtime/impl/python/PythonExecutionEngineConfiguration.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -13,17 +13,17 @@
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ 
+ package io.cloudslang.runtime.impl.python;
+ 
+ import io.cloudslang.dependency.impl.services.DependenciesManagementConfiguration;
+ import io.cloudslang.runtime.api.python.PythonRuntimeService;
+-import io.cloudslang.runtime.impl.python.external.ExternalPythonExecutionNotCachedEngine;
++import io.cloudslang.runtime.impl.python.external.ExternalPythonExecutionEngine;
+ import io.cloudslang.runtime.impl.python.external.ExternalPythonRuntimeServiceImpl;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.ComponentScan;
+ import org.springframework.context.annotation.Configuration;
+ import org.springframework.context.annotation.Import;
+ 
+ /**
+  * Created by Genadi Rabinovich, genadi@hpe.com on 05/05/2016.
+@@ -47,13 +47,13 @@
+         String noCacheEngine = PythonExecutionNotCachedEngine.class.getSimpleName();
+         String cacheEngine = PythonExecutionCachedEngine.class.getSimpleName();
+         return System.getProperty(PythonExecutionConfigurationConsts.PYTHON_EXECUTOR_ENGINE, cacheEngine).equals(noCacheEngine) ?
+                 new PythonExecutionNotCachedEngine() : new PythonExecutionCachedEngine();
+     }
+ 
+     @Bean(name = "externalPythonExecutionEngine")
+     PythonExecutionEngine externalPythonExecutionEngine() {
+-        return new ExternalPythonExecutionNotCachedEngine();
++        return new ExternalPythonExecutionEngine();
+     }
+ 
+ 
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -20,31 +20,34 @@
+ import io.cloudslang.runtime.api.python.PythonRuntimeService;
+ import io.cloudslang.runtime.impl.python.external.ExternalPythonExecutionNotCachedEngine;
+ import io.cloudslang.runtime.impl.python.external.ExternalPythonRuntimeServiceImpl;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.ComponentScan;
+ import org.springframework.context.annotation.Configuration;
+ import org.springframework.context.annotation.Import;
+ 
++import java.util.concurrent.Semaphore;
++
+ /**
+  * Created by Genadi Rabinovich, genadi@hpe.com on 05/05/2016.
+  */
+ @Configuration
+ @ComponentScan("io.cloudslang.runtime.impl.python")
+ @Import({DependenciesManagementConfiguration.class})
+ public class PythonExecutionEngineConfiguration {
+     @Bean(name = "jythonRuntimeService")
+     public PythonRuntimeService pythonRuntimeService() {
+         return new PythonRuntimeServiceImpl();
+     }
+ 
+     @Bean(name = "externalPythonRuntimeService")
+     public PythonRuntimeService externalPythonRuntimeService() {
+-        return new ExternalPythonRuntimeServiceImpl();
++        Integer pythonProcessPermits = Integer.getInteger("python.concurrent.execution.permits", 30);
++        return new ExternalPythonRuntimeServiceImpl(new Semaphore(pythonProcessPermits));
+     }
+ 
+     @Bean(name = "jythonExecutionEngine")
+     PythonExecutionEngine pythonExecutionEngine() {
+         String noCacheEngine = PythonExecutionNotCachedEngine.class.getSimpleName();
+         String cacheEngine = PythonExecutionCachedEngine.class.getSimpleName();
+         return System.getProperty(PythonExecutionConfigurationConsts.PYTHON_EXECUTOR_ENGINE, cacheEngine).equals(noCacheEngine) ?
+                 new PythonExecutionNotCachedEngine() : new PythonExecutionCachedEngine();
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+/*
+ * Copyright © 2014-2017 EntIT Software LLC, a Micro Focus company (L.P.)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.cloudslang.runtime.impl.python;
+
+import io.cloudslang.dependency.impl.services.DependenciesManagementConfiguration;
+import io.cloudslang.runtime.api.python.PythonRuntimeService;
+import io.cloudslang.runtime.impl.python.external.ExternalPythonExecutionEngine;
+import io.cloudslang.runtime.impl.python.external.ExternalPythonRuntimeServiceImpl;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+import java.util.concurrent.Semaphore;
+
+/**
+ * Created by Genadi Rabinovich, genadi@hpe.com on 05/05/2016.
+ */
+@Configuration
+@ComponentScan("io.cloudslang.runtime.impl.python")
+@Import({DependenciesManagementConfiguration.class})
+public class PythonExecutionEngineConfiguration {
+    @Bean(name = "jythonRuntimeService")
+    public PythonRuntimeService pythonRuntimeService() {
+        return new PythonRuntimeServiceImpl();
+    }
+
+    @Bean(name = "externalPythonRuntimeService")
+    public PythonRuntimeService externalPythonRuntimeService() {
+        Integer pythonProcessPermits = Integer.getInteger("python.concurrent.execution.permits", 30);
+        return new ExternalPythonRuntimeServiceImpl(new Semaphore(pythonProcessPermits));
+    }
+
+    @Bean(name = "jythonExecutionEngine")
+    PythonExecutionEngine pythonExecutionEngine() {
+        String noCacheEngine = PythonExecutionNotCachedEngine.class.getSimpleName();
+        String cacheEngine = PythonExecutionCachedEngine.class.getSimpleName();
+        return System.getProperty(PythonExecutionConfigurationConsts.PYTHON_EXECUTOR_ENGINE, cacheEngine).equals(noCacheEngine) ?
+                new PythonExecutionNotCachedEngine() : new PythonExecutionCachedEngine();
+    }
+
+    @Bean(name = "externalPythonExecutionEngine")
+    PythonExecutionEngine externalPythonExecutionEngine() {
+        return new ExternalPythonExecutionEngine();
+    }
+
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,62 +1,62 @@
+-/*
+- * Copyright © 2014-2017 EntIT Software LLC, a Micro Focus company (L.P.)
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *     http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package io.cloudslang.runtime.impl.python;
+-
+-import io.cloudslang.dependency.impl.services.DependenciesManagementConfiguration;
+-import io.cloudslang.runtime.api.python.PythonRuntimeService;
+-import io.cloudslang.runtime.impl.python.external.ExternalPythonExecutionEngine;
+-import io.cloudslang.runtime.impl.python.external.ExternalPythonRuntimeServiceImpl;
+-import org.springframework.context.annotation.Bean;
+-import org.springframework.context.annotation.ComponentScan;
+-import org.springframework.context.annotation.Configuration;
+-import org.springframework.context.annotation.Import;
+-
+-import java.util.concurrent.Semaphore;
+-
+-/**
+- * Created by Genadi Rabinovich, genadi@hpe.com on 05/05/2016.
+- */
+-@Configuration
+-@ComponentScan("io.cloudslang.runtime.impl.python")
+-@Import({DependenciesManagementConfiguration.class})
+-public class PythonExecutionEngineConfiguration {
+-    @Bean(name = "jythonRuntimeService")
+-    public PythonRuntimeService pythonRuntimeService() {
+-        return new PythonRuntimeServiceImpl();
+-    }
+-
+-    @Bean(name = "externalPythonRuntimeService")
+-    public PythonRuntimeService externalPythonRuntimeService() {
+-        Integer pythonProcessPermits = Integer.getInteger("python.concurrent.execution.permits", 30);
+-        return new ExternalPythonRuntimeServiceImpl(new Semaphore(pythonProcessPermits));
+-    }
+-
+-    @Bean(name = "jythonExecutionEngine")
+-    PythonExecutionEngine pythonExecutionEngine() {
+-        String noCacheEngine = PythonExecutionNotCachedEngine.class.getSimpleName();
+-        String cacheEngine = PythonExecutionCachedEngine.class.getSimpleName();
+-        return System.getProperty(PythonExecutionConfigurationConsts.PYTHON_EXECUTOR_ENGINE, cacheEngine).equals(noCacheEngine) ?
+-                new PythonExecutionNotCachedEngine() : new PythonExecutionCachedEngine();
+-    }
+-
+-    @Bean(name = "externalPythonExecutionEngine")
+-    PythonExecutionEngine externalPythonExecutionEngine() {
+-        return new ExternalPythonExecutionEngine();
+-    }
+-
+-
+-}
++/*
++ * Copyright © 2014-2017 EntIT Software LLC, a Micro Focus company (L.P.)
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package io.cloudslang.runtime.impl.python;
++
++import io.cloudslang.dependency.impl.services.DependenciesManagementConfiguration;
++import io.cloudslang.runtime.api.python.PythonRuntimeService;
++import io.cloudslang.runtime.impl.python.external.ExternalPythonExecutionEngine;
++import io.cloudslang.runtime.impl.python.external.ExternalPythonRuntimeServiceImpl;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.ComponentScan;
++import org.springframework.context.annotation.Configuration;
++import org.springframework.context.annotation.Import;
++
++import java.util.concurrent.Semaphore;
++
++/**
++ * Created by Genadi Rabinovich, genadi@hpe.com on 05/05/2016.
++ */
++@Configuration
++@ComponentScan("io.cloudslang.runtime.impl.python")
++@Import({DependenciesManagementConfiguration.class})
++public class PythonExecutionEngineConfiguration {
++    @Bean(name = "jythonRuntimeService")
++    public PythonRuntimeService pythonRuntimeService() {
++        return new PythonRuntimeServiceImpl();
++    }
++
++    @Bean(name = "externalPythonRuntimeService")
++    public PythonRuntimeService externalPythonRuntimeService() {
++        Integer pythonProcessPermits = Integer.getInteger("python.concurrent.execution.permits", 30);
++        return new ExternalPythonRuntimeServiceImpl(new Semaphore(pythonProcessPermits));
++    }
++
++    @Bean(name = "jythonExecutionEngine")
++    PythonExecutionEngine pythonExecutionEngine() {
++        String noCacheEngine = PythonExecutionNotCachedEngine.class.getSimpleName();
++        String cacheEngine = PythonExecutionCachedEngine.class.getSimpleName();
++        return System.getProperty(PythonExecutionConfigurationConsts.PYTHON_EXECUTOR_ENGINE, cacheEngine).equals(noCacheEngine) ?
++                new PythonExecutionNotCachedEngine() : new PythonExecutionCachedEngine();
++    }
++
++    @Bean(name = "externalPythonExecutionEngine")
++    PythonExecutionEngine externalPythonExecutionEngine() {
++        return new ExternalPythonExecutionEngine();
++    }
++
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: runtime-management/runtime-management-impl/src/main/java/io/cloudslang/runtime/impl/python/external/ExternalPythonRuntimeServiceImpl.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -21,20 +21,20 @@
+ 
+ import javax.annotation.Resource;
+ import java.io.Serializable;
+ import java.util.Map;
+ import java.util.Set;
+ 
+ public class ExternalPythonRuntimeServiceImpl implements PythonRuntimeService {
+     @Resource(name = "externalPythonExecutionEngine")
+-    private ExternalPythonExecutionNotCachedEngine externalPythonExecutionNotCachedEngine;
++    private ExternalPythonExecutionEngine externalPythonExecutionEngine;
+ 
+     @Override
+     public PythonExecutionResult exec(Set<String> dependencies, String script, Map<String, Serializable> vars) {
+-        return externalPythonExecutionNotCachedEngine.exec(dependencies, script, vars);
++        return externalPythonExecutionEngine.exec(dependencies, script, vars);
+     }
+ 
+     @Override
+     public PythonEvaluationResult eval(String prepareEnvironmentScript, String script, Map<String, Serializable> vars) {
+-        return externalPythonExecutionNotCachedEngine.eval(prepareEnvironmentScript, script, vars);
++        return externalPythonExecutionEngine.eval(prepareEnvironmentScript, script, vars);
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,28 +13,81 @@
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package io.cloudslang.runtime.impl.python.external;
+ 
+ import io.cloudslang.runtime.api.python.PythonEvaluationResult;
+ import io.cloudslang.runtime.api.python.PythonExecutionResult;
+ import io.cloudslang.runtime.api.python.PythonRuntimeService;
++import org.apache.log4j.Logger;
+ 
+ import javax.annotation.Resource;
+ import java.io.Serializable;
+ import java.util.Map;
+ import java.util.Set;
++import java.util.concurrent.Semaphore;
++import java.util.concurrent.TimeUnit;
+ 
+ public class ExternalPythonRuntimeServiceImpl implements PythonRuntimeService {
++    private static final Logger logger = Logger.getLogger(ExternalPythonRuntimeServiceImpl.class);
++
++    private final Semaphore executionControlSemaphore;
++
++    public ExternalPythonRuntimeServiceImpl(Semaphore executionControlSemaphore) {
++        this.executionControlSemaphore = executionControlSemaphore;
++    }
++
+     @Resource(name = "externalPythonExecutionEngine")
+     private ExternalPythonExecutionNotCachedEngine externalPythonExecutionNotCachedEngine;
+ 
+     @Override
+     public PythonExecutionResult exec(Set<String> dependencies, String script, Map<String, Serializable> vars) {
+-        return externalPythonExecutionNotCachedEngine.exec(dependencies, script, vars);
++        try {
++            if (executionControlSemaphore.tryAcquire(1L, TimeUnit.SECONDS)) {
++                try {
++                    return externalPythonExecutionNotCachedEngine.exec(dependencies, script, vars);
++                } finally {
++                    executionControlSemaphore.release();
++                }
++            } else {
++                logger.warn("Maximum number of python processes has been reached. Waiting for a python process to finish. " +
++                        "You can configure the number of concurrent python executions by setting " +
++                        "'python.concurrent.execution.permits' system property.");
++                executionControlSemaphore.acquire();
++                try {
++                    logger.info("Acquired a permit for a new python process. Continuing with execution...");
++                    return externalPythonExecutionNotCachedEngine.exec(dependencies, script, vars);
++                } finally {
++                    executionControlSemaphore.release();
++                }
++            }
++        } catch (InterruptedException ie) {
++            throw new ExternalPythonScriptException("Execution was interrupted while waiting for a python permit.");
++        }
+     }
+ 
+     @Override
+     public PythonEvaluationResult eval(String prepareEnvironmentScript, String script, Map<String, Serializable> vars) {
+-        return externalPythonExecutionNotCachedEngine.eval(prepareEnvironmentScript, script, vars);
++        try {
++            if (executionControlSemaphore.tryAcquire(1L, TimeUnit.SECONDS)) {
++                try {
++                    return externalPythonExecutionNotCachedEngine.eval(prepareEnvironmentScript, script, vars);
++                } finally {
++                    executionControlSemaphore.release();
++                }
++            } else {
++                logger.warn("Maximum number of python processes has been reached. Waiting for a python process to finish. " +
++                        "You can configure the number of concurrent python executions by setting " +
++                        "'python.concurrent.execution.permits' system property.");
++                executionControlSemaphore.acquire();
++                try {
++                    logger.info("Acquired a permit for a new python process. Continuing with execution...");
++                    return externalPythonExecutionNotCachedEngine.eval(prepareEnvironmentScript, script, vars);
++                } finally {
++                    executionControlSemaphore.release();
++                }
++            }
++        } catch (InterruptedException ie) {
++            throw new ExternalPythonScriptException("Execution was interrupted while waiting for a python permit.");
++        }
+     }
+ }
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+/*
+ * Copyright © 2014-2017 EntIT Software LLC, a Micro Focus company (L.P.)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.cloudslang.runtime.impl.python.external;
+
+import io.cloudslang.runtime.api.python.PythonEvaluationResult;
+import io.cloudslang.runtime.api.python.PythonExecutionResult;
+import io.cloudslang.runtime.api.python.PythonRuntimeService;
+import org.apache.log4j.Logger;
+
+import javax.annotation.Resource;
+import java.io.Serializable;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+
+public class ExternalPythonRuntimeServiceImpl implements PythonRuntimeService {
+    private static final Logger logger = Logger.getLogger(ExternalPythonRuntimeServiceImpl.class);
+
+    private final Semaphore executionControlSemaphore;
+
+    public ExternalPythonRuntimeServiceImpl(Semaphore executionControlSemaphore) {
+        this.executionControlSemaphore = executionControlSemaphore;
+    }
+
+    @Resource(name = "externalPythonExecutionEngine")
+    private ExternalPythonExecutionEngine externalPythonExecutionEngine;
+
+    @Override
+    public PythonExecutionResult exec(Set<String> dependencies, String script, Map<String, Serializable> vars) {
+        try {
+            if (executionControlSemaphore.tryAcquire(1L, TimeUnit.SECONDS)) {
+                try {
+                    return externalPythonExecutionEngine.exec(dependencies, script, vars);
+                } finally {
+                    executionControlSemaphore.release();
+                }
+            } else {
+                logger.warn("Maximum number of python processes has been reached. Waiting for a python process to finish. " +
+                        "You can configure the number of concurrent python executions by setting " +
+                        "'python.concurrent.execution.permits' system property.");
+                executionControlSemaphore.acquire();
+                try {
+                    logger.info("Acquired a permit for a new python process. Continuing with execution...");
+                    return externalPythonExecutionNotCachedEngine.exec(dependencies, script, vars);
+                } finally {
+                    executionControlSemaphore.release();
+                }
+            }
+        } catch (InterruptedException ie) {
+            throw new ExternalPythonScriptException("Execution was interrupted while waiting for a python permit.");
+        }
+    }
+
+    @Override
+    public PythonEvaluationResult eval(String prepareEnvironmentScript, String script, Map<String, Serializable> vars) {
+        try {
+            if (executionControlSemaphore.tryAcquire(1L, TimeUnit.SECONDS)) {
+                try {
+                    return externalPythonExecutionEngine.eval(prepareEnvironmentScript, script, vars);
+                } finally {
+                    executionControlSemaphore.release();
+                }
+            } else {
+                logger.warn("Maximum number of python processes has been reached. Waiting for a python process to finish. " +
+                        "You can configure the number of concurrent python executions by setting " +
+                        "'python.concurrent.execution.permits' system property.");
+                executionControlSemaphore.acquire();
+                try {
+                    logger.info("Acquired a permit for a new python process. Continuing with execution...");
+                    return externalPythonExecutionNotCachedEngine.eval(prepareEnvironmentScript, script, vars);
+                } finally {
+                    executionControlSemaphore.release();
+                }
+            }
+        } catch (InterruptedException ie) {
+            throw new ExternalPythonScriptException("Execution was interrupted while waiting for a python permit.");
+        }
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: runtime-management/runtime-management-impl/src/test/java/io/cloudslang/runtime/impl/python/PythonExecutorTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -19,27 +19,26 @@
+ import io.cloudslang.dependency.api.services.DependencyService;
+ import io.cloudslang.dependency.api.services.MavenConfig;
+ import io.cloudslang.dependency.impl.services.DependencyServiceImpl;
+ import io.cloudslang.dependency.impl.services.MavenConfigImpl;
+ import io.cloudslang.dependency.impl.services.utils.UnzipUtil;
+ import io.cloudslang.runtime.api.python.PythonEvaluationResult;
+ import io.cloudslang.runtime.api.python.PythonExecutionResult;
+ import io.cloudslang.runtime.api.python.PythonRuntimeService;
+-import io.cloudslang.runtime.impl.python.external.ExternalPythonExecutionNotCachedEngine;
++import io.cloudslang.runtime.impl.python.external.ExternalPythonExecutionEngine;
+ import io.cloudslang.runtime.impl.python.external.ExternalPythonRuntimeServiceImpl;
+ import io.cloudslang.score.events.EventBus;
+ import org.junit.Assert;
+ import org.junit.Assume;
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ import org.python.core.PyBoolean;
+ import org.python.core.PyString;
+ import org.python.google.common.collect.Sets;
+-import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
+ import org.springframework.test.context.ContextConfiguration;
+ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+ 
+ import javax.annotation.Resource;
+ import java.io.File;
+ import java.io.Serializable;
+@@ -335,17 +334,17 @@
+ 
+         @Bean(name = "jythonExecutionEngine")
+         PythonExecutionEngine pythonExecutionEngine() {
+             return new PythonExecutionCachedEngine();
+         }
+ 
+         @Bean(name = "externalPythonExecutionEngine")
+         PythonExecutionEngine externalPythonExecutionEngine() {
+-            return new ExternalPythonExecutionNotCachedEngine();
++            return new ExternalPythonExecutionEngine();
+         }
+         @Bean public DependencyService dependencyService() {return new DependencyServiceImpl() {
+             public Set<String> getDependencies(Set<String> resources) {
+                 return resources;
+             }
+         };}
+         @Bean public EventBus eventBus() { return mock(EventBus.class);}
+         @Bean public MavenConfig mavenConfig() {return new MavenConfigImpl();}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -45,16 +45,17 @@
+ import java.io.Serializable;
+ import java.text.MessageFormat;
+ import java.util.Collections;
+ import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.Semaphore;
+ 
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertFalse;
+ import static org.junit.Assert.assertNotNull;
+ import static org.junit.Assert.assertNull;
+ import static org.junit.Assert.assertTrue;
+ import static org.mockito.Mockito.mock;
+ 
+@@ -325,17 +326,17 @@
+     static class TestConfig {
+         @Bean(name = "jythonRuntimeService")
+         public PythonRuntimeService pythonRuntimeService() {
+             return new PythonRuntimeServiceImpl();
+         }
+ 
+         @Bean(name = "externalPythonRuntimeService")
+         public PythonRuntimeService externalPythonRuntimeService() {
+-            return new ExternalPythonRuntimeServiceImpl();
++            return new ExternalPythonRuntimeServiceImpl(new Semaphore(100));
+         }
+ 
+         @Bean(name = "jythonExecutionEngine")
+         PythonExecutionEngine pythonExecutionEngine() {
+             return new PythonExecutionCachedEngine();
+         }
+ 
+         @Bean(name = "externalPythonExecutionEngine")
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+/*
+ * Copyright © 2014-2017 EntIT Software LLC, a Micro Focus company (L.P.)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.cloudslang.runtime.impl.python;
+
+import io.cloudslang.dependency.api.services.DependencyService;
+import io.cloudslang.dependency.api.services.MavenConfig;
+import io.cloudslang.dependency.impl.services.DependencyServiceImpl;
+import io.cloudslang.dependency.impl.services.MavenConfigImpl;
+import io.cloudslang.dependency.impl.services.utils.UnzipUtil;
+import io.cloudslang.runtime.api.python.PythonEvaluationResult;
+import io.cloudslang.runtime.api.python.PythonExecutionResult;
+import io.cloudslang.runtime.api.python.PythonRuntimeService;
+import io.cloudslang.runtime.impl.python.external.ExternalPythonExecutionEngine;
+import io.cloudslang.runtime.impl.python.external.ExternalPythonRuntimeServiceImpl;
+import io.cloudslang.score.events.EventBus;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.python.core.PyBoolean;
+import org.python.core.PyString;
+import org.python.google.common.collect.Sets;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+import javax.annotation.Resource;
+import java.io.File;
+import java.io.Serializable;
+import java.text.MessageFormat;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+
+/**
+ * Created by Genadi Rabinovich, genadi@hpe.com on 05/05/2016.
+ */
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(classes = PythonExecutorTest.TestConfig.class)
+public class PythonExecutorTest {
+    private static boolean shouldRunMaven;
+    static {
+        ClassLoader classLoader = PythonExecutorTest.class.getClassLoader();
+
+        String settingsXmlPath = classLoader.getResource("settings.xml").getPath();
+        File rootHome = new File(settingsXmlPath).getParentFile();
+        File mavenHome = new File(rootHome, "maven");
+        UnzipUtil.unzipToFolder(mavenHome.getAbsolutePath(), classLoader.getResourceAsStream("maven.zip"));
+
+        System.setProperty(MavenConfig.MAVEN_HOME, mavenHome.getAbsolutePath());
+
+        System.setProperty(MavenConfig.MAVEN_REPO_LOCAL, new TestConfig().mavenConfig().getLocalMavenRepoPath());
+        System.setProperty("maven.home", classLoader.getResource("maven").getPath());
+
+        shouldRunMaven = System.getProperties().containsKey(MavenConfigImpl.MAVEN_REMOTE_URL) &&
+                System.getProperties().containsKey(MavenConfigImpl.MAVEN_PLUGINS_URL);
+
+
+        System.setProperty(MavenConfig.MAVEN_SETTINGS_PATH, settingsXmlPath);
+        System.setProperty(MavenConfig.MAVEN_M2_CONF_PATH, classLoader.getResource("m2.conf").getPath());
+
+        String provideralAlreadyConfigured = System.setProperty("python.executor.engine", PythonExecutionCachedEngine.class.getSimpleName());
+        assertNull("python.executor.engine was configured before this test!!!!!!!", provideralAlreadyConfigured);
+    }
+
+    private static String LINE_SEPARATOR = System.lineSeparator();
+        // ... 44 lines elided ...
+    public void testMultithreadedEval() throws InterruptedException {
+        // ... 10 lines elided ...
+                public void run() {
+        // ... 31 lines elided ...
+    public void testMultithreadedExecNoDependencies() throws InterruptedException {
+        // ... 8 lines elided ...
+                public void run() {
+        // ... 16 lines elided ...
+    public void testMultithreadedExecWithDependencies() throws InterruptedException {
+        // ... 27 lines elided ...
+                public void run() {
+        // ... 15 lines elided ...
+    public void testPythonExecutorNoAllocationNotClosed() {
+        // ... 7 lines elided ...
+    public void testPythonExecutorNoAllocationClosed() {
+        // ... 6 lines elided ...
+    public void testPythonExecutorAllocationSuccess() {
+        // ... 19 lines elided ...
+    public void testPythonExecutorAllocationFailure() {
+        // ... 7 lines elided ...
+
+    @Test
+    public void testExecPyClassIsExcluded() throws Exception {
+        PythonExecutor executor = getPythonExecutor();
+        PythonExecutionResult pythonExecutionResult = executor.exec(PY_CLASS_IS_EXCLUDED_SCRIPT, EMPTY_CALL_ARGUMENTS);
+        Assert.assertEquals(EXPECTED_CONTEXT_EXEC, pythonExecutionResult.getExecutionResult());
+    }
+
+    @Test
+    public void testEvalPyClassIsExcluded() throws Exception {
+        PythonExecutor executor = getPythonExecutor();
+        PythonEvaluationResult pythonEvaluationResult = executor.eval(PY_CLASS_IS_EXCLUDED_SCRIPT, "'hello'" , EMPTY_CALL_ARGUMENTS);
+        Assert.assertEquals(EXPECTED_CONTEXT_EVAL, pythonEvaluationResult.getResultContext());
+    }
+
+    private PythonExecutor getPythonExecutor() {
+        return new PythonExecutor(Sets.newHashSet("a.zip, b.zip"));
+    }
+
+    private String buildAddFunctionsScript(String ... functionDependencies) {
+        String functions = "";
+        for (String function : functionDependencies) {
+            functions = appendDelimiterBetweenFunctions(functions + function);
+        }
+        return functions;
+    }
+
+    private String appendDelimiterBetweenFunctions(String text) {
+        return text + LINE_SEPARATOR + LINE_SEPARATOR;
+    }
+
+    @Configuration
+    static class TestConfig {
+        @Bean(name = "jythonRuntimeService")
+        public PythonRuntimeService pythonRuntimeService() {
+            return new PythonRuntimeServiceImpl();
+        }
+
+        @Bean(name = "externalPythonRuntimeService")
+        public PythonRuntimeService externalPythonRuntimeService() {
+            return new ExternalPythonRuntimeServiceImpl(new Semaphore(100));
+        }
+
+        @Bean(name = "jythonExecutionEngine")
+        PythonExecutionEngine pythonExecutionEngine() {
+            return new PythonExecutionCachedEngine();
+        }
+
+        @Bean(name = "externalPythonExecutionEngine")
+        PythonExecutionEngine externalPythonExecutionEngine() {
+            return new ExternalPythonExecutionEngine();
+        }
+        @Bean public DependencyService dependencyService() {return new DependencyServiceImpl() {
+            public Set<String> getDependencies(Set<String> resources) {
+                return resources;
+            }
+        };}
+        @Bean public EventBus eventBus() { return mock(EventBus.class);}
+        @Bean public MavenConfig mavenConfig() {return new MavenConfigImpl();}
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,353 +1,353 @@
+-/*
+- * Copyright © 2014-2017 EntIT Software LLC, a Micro Focus company (L.P.)
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- *     http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-
+-package io.cloudslang.runtime.impl.python;
+-
+-import io.cloudslang.dependency.api.services.DependencyService;
+-import io.cloudslang.dependency.api.services.MavenConfig;
+-import io.cloudslang.dependency.impl.services.DependencyServiceImpl;
+-import io.cloudslang.dependency.impl.services.MavenConfigImpl;
+-import io.cloudslang.dependency.impl.services.utils.UnzipUtil;
+-import io.cloudslang.runtime.api.python.PythonEvaluationResult;
+-import io.cloudslang.runtime.api.python.PythonExecutionResult;
+-import io.cloudslang.runtime.api.python.PythonRuntimeService;
+-import io.cloudslang.runtime.impl.python.external.ExternalPythonExecutionEngine;
+-import io.cloudslang.runtime.impl.python.external.ExternalPythonRuntimeServiceImpl;
+-import io.cloudslang.score.events.EventBus;
+-import org.junit.Assert;
+-import org.junit.Assume;
+-import org.junit.Test;
+-import org.junit.runner.RunWith;
+-import org.python.core.PyBoolean;
+-import org.python.core.PyString;
+-import org.python.google.common.collect.Sets;
+-import org.springframework.context.annotation.Bean;
+-import org.springframework.context.annotation.Configuration;
+-import org.springframework.test.context.ContextConfiguration;
+-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+-
+-import javax.annotation.Resource;
+-import java.io.File;
+-import java.io.Serializable;
+-import java.text.MessageFormat;
+-import java.util.Collections;
+-import java.util.HashMap;
+-import java.util.HashSet;
+-import java.util.Map;
+-import java.util.Set;
+-import java.util.concurrent.CountDownLatch;
+-import java.util.concurrent.Semaphore;
+-
+-import static org.junit.Assert.assertEquals;
+-import static org.junit.Assert.assertFalse;
+-import static org.junit.Assert.assertNotNull;
+-import static org.junit.Assert.assertNull;
+-import static org.junit.Assert.assertTrue;
+-import static org.mockito.Mockito.mock;
+-
+-/**
+- * Created by Genadi Rabinovich, genadi@hpe.com on 05/05/2016.
+- */
+-@RunWith(SpringJUnit4ClassRunner.class)
+-@ContextConfiguration(classes = PythonExecutorTest.TestConfig.class)
+-public class PythonExecutorTest {
+-    private static boolean shouldRunMaven;
+-    static {
+-        ClassLoader classLoader = PythonExecutorTest.class.getClassLoader();
+-
+-        String settingsXmlPath = classLoader.getResource("settings.xml").getPath();
+-        File rootHome = new File(settingsXmlPath).getParentFile();
+-        File mavenHome = new File(rootHome, "maven");
+-        UnzipUtil.unzipToFolder(mavenHome.getAbsolutePath(), classLoader.getResourceAsStream("maven.zip"));
+-
+-        System.setProperty(MavenConfig.MAVEN_HOME, mavenHome.getAbsolutePath());
+-
+-        System.setProperty(MavenConfig.MAVEN_REPO_LOCAL, new TestConfig().mavenConfig().getLocalMavenRepoPath());
+-        System.setProperty("maven.home", classLoader.getResource("maven").getPath());
+-
+-        shouldRunMaven = System.getProperties().containsKey(MavenConfigImpl.MAVEN_REMOTE_URL) &&
+-                System.getProperties().containsKey(MavenConfigImpl.MAVEN_PLUGINS_URL);
+-
+-
+-        System.setProperty(MavenConfig.MAVEN_SETTINGS_PATH, settingsXmlPath);
+-        System.setProperty(MavenConfig.MAVEN_M2_CONF_PATH, classLoader.getResource("m2.conf").getPath());
+-
+-        String provideralAlreadyConfigured = System.setProperty("python.executor.engine", PythonExecutionCachedEngine.class.getSimpleName());
+-        assertNull("python.executor.engine was configured before this test!!!!!!!", provideralAlreadyConfigured);
+-    }
+-
+-    private static String LINE_SEPARATOR = System.lineSeparator();
+-    private static final String SYSTEM_PROPERTIES_MAP = "__sys_prop__";
+-
+-    private static final String GET_SP_FUNCTION_DEFINITION =
+-            "import time" + LINE_SEPARATOR +
+-                    "def check_env(sysPropName, expectedSysPropValue, variable, expectedVariableValue):" + LINE_SEPARATOR +
+-                    "  time.sleep(3)" + LINE_SEPARATOR +
+-                    "  property_value = __sys_prop__.get(sysPropName)" + LINE_SEPARATOR +
+-                    "  print 'sysProperty: found ' + property_value + ', expected ' + expectedSysPropValue" + LINE_SEPARATOR +
+-                    "  global_variable_value = globals().get(variable)" + LINE_SEPARATOR +
+-                    "  print 'global variable: found ' + str(global_variable_value) + ', expected ' + expectedVariableValue" + LINE_SEPARATOR +
+-                    "  EXPECTED=expectedVariableValue" + LINE_SEPARATOR +
+-                    "  ACTUAL=property_value" + LINE_SEPARATOR +
+-                    "  return expectedSysPropValue + ':' + property_value + ',' + expectedVariableValue + ':' + global_variable_value";
+-
+-    private static final String VAR1 = "VAR1";
+-    private static final String VAR2 = "VAR2";
+-    private static final String EXECUTION_SCRIPT =
+-            "import sys" + LINE_SEPARATOR +
+-                    "import time" + LINE_SEPARATOR +
+-                    "time.sleep(3)" + LINE_SEPARATOR +
+-                    VAR1 + "={0}" + LINE_SEPARATOR +
+-                    VAR2 + "={1}" + LINE_SEPARATOR +
+-                    "print ''VAR1='' + str(" + VAR1 + ")" + LINE_SEPARATOR +
+-                    "print ''VAR2='' + str(" + VAR2 + ")" + LINE_SEPARATOR;
+-    private static final String PY_CLASS_IS_EXCLUDED_SCRIPT =
+-            "from Queue import Queue" + LINE_SEPARATOR +
+-                    "x = 'abc'" + LINE_SEPARATOR;
+-    private static final Map<String, Serializable> EMPTY_CALL_ARGUMENTS = Collections.emptyMap();
+-    private static final Map<String, Serializable> EXPECTED_CONTEXT_EXEC;
+-    private static final Map<String, Serializable> EXPECTED_CONTEXT_EVAL;
+-
+-    static {
+-        EXPECTED_CONTEXT_EXEC = new HashMap<>();
+-        EXPECTED_CONTEXT_EXEC.put("x", "abc");
+-        EXPECTED_CONTEXT_EVAL = new HashMap<>(3);
+-        EXPECTED_CONTEXT_EVAL.put("x", new PyString("abc"));
+-        EXPECTED_CONTEXT_EVAL.put("true", new PyBoolean(true));
+-        EXPECTED_CONTEXT_EVAL.put("false", new PyBoolean(false));
+-    }
+-
+-    @Resource(name = "jythonRuntimeService")
+-    private PythonRuntimeService pythonRuntimeService;
+-
+-    @Test
+-    public void testMultithreadedEval() throws InterruptedException {
+-        Assume.assumeTrue(shouldRunMaven);
+-        int executionsNum = 5;
+-        final String varName = "ABC";
+-        final String varValue = "YYY";
+-
+-        final CountDownLatch latch = new CountDownLatch(executionsNum);
+-
+-        for(int i = 0; i < executionsNum; i++) {
+-            final int executioId = i;
+-            new Thread() {
+-                public void run() {
+-                    try {
+-                        Map<String, String> sysProps = new HashMap<>();
+-                        String value = varValue + executioId;
+-                        sysProps.put(varName, value);
+-                        String doubleName = varName + varName;
+-                        String doubleValue = value + value;
+-
+-                        Map<String, Serializable> vars = new HashMap<>();
+-                        vars.put(doubleName, doubleValue);
+-                        vars.put(SYSTEM_PROPERTIES_MAP, (Serializable) sysProps);
+-                        String prepareEnvironmentScript = buildAddFunctionsScript(GET_SP_FUNCTION_DEFINITION);
+-                        String script = "check_env('" + varName + "', '" + value + "', '" + doubleName + "', '" + doubleValue + "')";
+-                        PythonEvaluationResult result = pythonRuntimeService.eval(prepareEnvironmentScript, script, vars);
+-                        String [] pyResults = ((String) result.getEvalResult()).split(",");
+-                        assertNotNull(pyResults.length == 2);
+-                        String [] sysValues = pyResults[0].split(":");
+-                        assertNotNull(sysValues.length == 2);
+-                        assertEquals(sysValues[0], sysValues[1]);
+-                        String [] globalValues = pyResults[1].split(":");
+-                        assertNotNull(globalValues.length == 2);
+-                        assertEquals(globalValues[0], globalValues[1]);
+-                    } finally {
+-                        latch.countDown();
+-                    }
+-                }
+-            }.start();
+-        }
+-        latch.await();
+-    }
+-
+-    @Test
+-    public void testMultithreadedExecNoDependencies() throws InterruptedException {
+-        Assume.assumeTrue(shouldRunMaven);
+-        int executionsNum = 5;
+-
+-        final CountDownLatch latch = new CountDownLatch(executionsNum);
+-
+-        for(int i = 0; i < executionsNum; i++) {
+-            final String executioId = String.valueOf(i);
+-            new Thread() {
+-                public void run() {
+-                    try {
+-                        String script = MessageFormat.format(EXECUTION_SCRIPT, executioId, executioId);
+-                        PythonExecutionResult result = pythonRuntimeService.exec(Collections.<String>emptySet(), script, EMPTY_CALL_ARGUMENTS);
+-                        assertNotNull(result);
+-                        assertEquals(executioId, result.getExecutionResult().get(VAR1).toString());
+-                        assertEquals(executioId, result.getExecutionResult().get(VAR2).toString());
+-                    } finally {
+-                        latch.countDown();
+-                    }
+-                }
+-            }.start();
+-        }
+-        latch.await();
+-    }
+-
+-    @Test
+-    public void testMultithreadedExecWithDependencies() throws InterruptedException {
+-        Assume.assumeTrue(shouldRunMaven);
+-        int executionsNum = 5;
+-
+-        final CountDownLatch latch = new CountDownLatch(executionsNum);
+-
+-        final String [] dependencies = {
+-                new File(getClass().getClassLoader().getResource(".m2/repository/python/math2/mult/1.0/mult-1.0.zip").getFile()).getAbsolutePath(),
+-                new File(getClass().getClassLoader().getResource(".m2/repository/python/math2/sum/2.1/sum-2.1.zip").getFile()).getAbsolutePath(),
+-                new File(getClass().getClassLoader().getResource(".m2/repository/python/math3/mult/1.2/mult-1.2.zip").getFile()).getAbsolutePath(),
+-                new File(getClass().getClassLoader().getResource(".m2/repository/python/math3/sum/4.1/sum-4.1.zip").getFile()).getAbsolutePath()
+-        };
+-
+-        for(int i = 0; i < executionsNum; i++) {
+-            final String executioId = String.valueOf(i);
+-            final String varName = "VAR";
+-            final String script = "import sys\nimport time\nimport math_fake.utils.print_text as print_text\ntime.sleep(3)\n" + varName + " = print_text.foo('" + executioId + "')\nprint " + varName + "\n";
+-            final String dependency = dependencies[i % 4];
+-
+-            int count = dependency.contains("math2") ? 2 : 3;
+-            String sign = dependency.contains("sum-") ? "+" : "*";
+-
+-            final StringBuilder expectedResult = new StringBuilder(executioId);
+-            while (--count > 0) {
+-                expectedResult.append(sign).append(executioId);
+-            }
+-
+-            new Thread() {
+-                public void run() {
+-                    try {
+-                        PythonExecutionResult result = pythonRuntimeService.exec(new HashSet<>(Collections.singletonList(dependency)), script, EMPTY_CALL_ARGUMENTS);
+-                        assertNotNull(result);
+-                        assertNotNull(result.getExecutionResult().get(varName));
+-                        assertEquals(expectedResult.toString(), result.getExecutionResult().get(varName).toString());
+-                    } finally {
+-                        latch.countDown();
+-                    }
+-                }
+-            }.start();
+-        }
+-        latch.await();
+-    }
+-
+-    @Test
+-    public void testPythonExecutorNoAllocationNotClosed() {
+-        PythonExecutor executor = getPythonExecutor();
+-        executor.exec("print 'x'", new HashMap<String, Serializable>());
+-        executor.close();
+-        assertTrue(executor.isClosed());
+-    }
+-
+-    @Test(expected = RuntimeException.class)
+-    public void testPythonExecutorNoAllocationClosed() {
+-        PythonExecutor executor = getPythonExecutor();
+-        executor.close();
+-        executor.exec("print 'x'", new HashMap<String, Serializable>());
+-    }
+-
+-    @Test
+-    public void testPythonExecutorAllocationSuccess() {
+-        PythonExecutor executor = getPythonExecutor();
+-        executor.exec("print 'x'", new HashMap<String, Serializable>());
+-        executor.allocate();
+-        executor.exec("print 'x'", new HashMap<String, Serializable>());
+-        executor.allocate();
+-        executor.exec("print 'x'", new HashMap<String, Serializable>());
+-        executor.close();
+-        executor.exec("print 'x'", new HashMap<String, Serializable>());
+-        assertFalse(executor.isClosed());
+-        executor.exec("print 'x'", new HashMap<String, Serializable>());
+-        executor.release();
+-        executor.exec("print 'x'", new HashMap<String, Serializable>());
+-        assertFalse(executor.isClosed());
+-        executor.exec("print 'x'", new HashMap<String, Serializable>());
+-        executor.release();
+-        assertTrue(executor.isClosed());
+-    }
+-
+-    @Test(expected = RuntimeException.class)
+-    public void testPythonExecutorAllocationFailure() {
+-        PythonExecutor executor = getPythonExecutor();
+-        executor.allocate();
+-        executor.close();
+-        executor.release();
+-        assertTrue(executor.isClosed());
+-        executor.exec("print 'x'", new HashMap<String, Serializable>());
+-    }
+-
+-    @Test
+-    public void testExecPyClassIsExcluded() throws Exception {
+-        PythonExecutor executor = getPythonExecutor();
+-        PythonExecutionResult pythonExecutionResult = executor.exec(PY_CLASS_IS_EXCLUDED_SCRIPT, EMPTY_CALL_ARGUMENTS);
+-        Assert.assertEquals(EXPECTED_CONTEXT_EXEC, pythonExecutionResult.getExecutionResult());
+-    }
+-
+-    @Test
+-    public void testEvalPyClassIsExcluded() throws Exception {
+-        PythonExecutor executor = getPythonExecutor();
+-        PythonEvaluationResult pythonEvaluationResult = executor.eval(PY_CLASS_IS_EXCLUDED_SCRIPT, "'hello'" , EMPTY_CALL_ARGUMENTS);
+-        Assert.assertEquals(EXPECTED_CONTEXT_EVAL, pythonEvaluationResult.getResultContext());
+-    }
+-
+-    private PythonExecutor getPythonExecutor() {
+-        return new PythonExecutor(Sets.newHashSet("a.zip, b.zip"));
+-    }
+-
+-    private String buildAddFunctionsScript(String ... functionDependencies) {
+-        String functions = "";
+-        for (String function : functionDependencies) {
+-            functions = appendDelimiterBetweenFunctions(functions + function);
+-        }
+-        return functions;
+-    }
+-
+-    private String appendDelimiterBetweenFunctions(String text) {
+-        return text + LINE_SEPARATOR + LINE_SEPARATOR;
+-    }
+-
+-    @Configuration
+-    static class TestConfig {
+-        @Bean(name = "jythonRuntimeService")
+-        public PythonRuntimeService pythonRuntimeService() {
+-            return new PythonRuntimeServiceImpl();
+-        }
+-
+-        @Bean(name = "externalPythonRuntimeService")
+-        public PythonRuntimeService externalPythonRuntimeService() {
+-            return new ExternalPythonRuntimeServiceImpl(new Semaphore(100));
+-        }
+-
+-        @Bean(name = "jythonExecutionEngine")
+-        PythonExecutionEngine pythonExecutionEngine() {
+-            return new PythonExecutionCachedEngine();
+-        }
+-
+-        @Bean(name = "externalPythonExecutionEngine")
+-        PythonExecutionEngine externalPythonExecutionEngine() {
+-            return new ExternalPythonExecutionEngine();
+-        }
+-        @Bean public DependencyService dependencyService() {return new DependencyServiceImpl() {
+-            public Set<String> getDependencies(Set<String> resources) {
+-                return resources;
+-            }
+-        };}
+-        @Bean public EventBus eventBus() { return mock(EventBus.class);}
+-        @Bean public MavenConfig mavenConfig() {return new MavenConfigImpl();}
+-    }
+-}
++/*
++ * Copyright © 2014-2017 EntIT Software LLC, a Micro Focus company (L.P.)
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package io.cloudslang.runtime.impl.python;
++
++import io.cloudslang.dependency.api.services.DependencyService;
++import io.cloudslang.dependency.api.services.MavenConfig;
++import io.cloudslang.dependency.impl.services.DependencyServiceImpl;
++import io.cloudslang.dependency.impl.services.MavenConfigImpl;
++import io.cloudslang.dependency.impl.services.utils.UnzipUtil;
++import io.cloudslang.runtime.api.python.PythonEvaluationResult;
++import io.cloudslang.runtime.api.python.PythonExecutionResult;
++import io.cloudslang.runtime.api.python.PythonRuntimeService;
++import io.cloudslang.runtime.impl.python.external.ExternalPythonExecutionEngine;
++import io.cloudslang.runtime.impl.python.external.ExternalPythonRuntimeServiceImpl;
++import io.cloudslang.score.events.EventBus;
++import org.junit.Assert;
++import org.junit.Assume;
++import org.junit.Test;
++import org.junit.runner.RunWith;
++import org.python.core.PyBoolean;
++import org.python.core.PyString;
++import org.python.google.common.collect.Sets;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
++import org.springframework.test.context.ContextConfiguration;
++import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
++
++import javax.annotation.Resource;
++import java.io.File;
++import java.io.Serializable;
++import java.text.MessageFormat;
++import java.util.Collections;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.Map;
++import java.util.Set;
++import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.Semaphore;
++
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertNotNull;
++import static org.junit.Assert.assertNull;
++import static org.junit.Assert.assertTrue;
++import static org.mockito.Mockito.mock;
++
++/**
++ * Created by Genadi Rabinovich, genadi@hpe.com on 05/05/2016.
++ */
++@RunWith(SpringJUnit4ClassRunner.class)
++@ContextConfiguration(classes = PythonExecutorTest.TestConfig.class)
++public class PythonExecutorTest {
++    private static boolean shouldRunMaven;
++    static {
++        ClassLoader classLoader = PythonExecutorTest.class.getClassLoader();
++
++        String settingsXmlPath = classLoader.getResource("settings.xml").getPath();
++        File rootHome = new File(settingsXmlPath).getParentFile();
++        File mavenHome = new File(rootHome, "maven");
++        UnzipUtil.unzipToFolder(mavenHome.getAbsolutePath(), classLoader.getResourceAsStream("maven.zip"));
++
++        System.setProperty(MavenConfig.MAVEN_HOME, mavenHome.getAbsolutePath());
++
++        System.setProperty(MavenConfig.MAVEN_REPO_LOCAL, new TestConfig().mavenConfig().getLocalMavenRepoPath());
++        System.setProperty("maven.home", classLoader.getResource("maven").getPath());
++
++        shouldRunMaven = System.getProperties().containsKey(MavenConfigImpl.MAVEN_REMOTE_URL) &&
++                System.getProperties().containsKey(MavenConfigImpl.MAVEN_PLUGINS_URL);
++
++
++        System.setProperty(MavenConfig.MAVEN_SETTINGS_PATH, settingsXmlPath);
++        System.setProperty(MavenConfig.MAVEN_M2_CONF_PATH, classLoader.getResource("m2.conf").getPath());
++
++        String provideralAlreadyConfigured = System.setProperty("python.executor.engine", PythonExecutionCachedEngine.class.getSimpleName());
++        assertNull("python.executor.engine was configured before this test!!!!!!!", provideralAlreadyConfigured);
++    }
++
++    private static String LINE_SEPARATOR = System.lineSeparator();
++    private static final String SYSTEM_PROPERTIES_MAP = "__sys_prop__";
++
++    private static final String GET_SP_FUNCTION_DEFINITION =
++            "import time" + LINE_SEPARATOR +
++                    "def check_env(sysPropName, expectedSysPropValue, variable, expectedVariableValue):" + LINE_SEPARATOR +
++                    "  time.sleep(3)" + LINE_SEPARATOR +
++                    "  property_value = __sys_prop__.get(sysPropName)" + LINE_SEPARATOR +
++                    "  print 'sysProperty: found ' + property_value + ', expected ' + expectedSysPropValue" + LINE_SEPARATOR +
++                    "  global_variable_value = globals().get(variable)" + LINE_SEPARATOR +
++                    "  print 'global variable: found ' + str(global_variable_value) + ', expected ' + expectedVariableValue" + LINE_SEPARATOR +
++                    "  EXPECTED=expectedVariableValue" + LINE_SEPARATOR +
++                    "  ACTUAL=property_value" + LINE_SEPARATOR +
++                    "  return expectedSysPropValue + ':' + property_value + ',' + expectedVariableValue + ':' + global_variable_value";
++
++    private static final String VAR1 = "VAR1";
++    private static final String VAR2 = "VAR2";
++    private static final String EXECUTION_SCRIPT =
++            "import sys" + LINE_SEPARATOR +
++                    "import time" + LINE_SEPARATOR +
++                    "time.sleep(3)" + LINE_SEPARATOR +
++                    VAR1 + "={0}" + LINE_SEPARATOR +
++                    VAR2 + "={1}" + LINE_SEPARATOR +
++                    "print ''VAR1='' + str(" + VAR1 + ")" + LINE_SEPARATOR +
++                    "print ''VAR2='' + str(" + VAR2 + ")" + LINE_SEPARATOR;
++    private static final String PY_CLASS_IS_EXCLUDED_SCRIPT =
++            "from Queue import Queue" + LINE_SEPARATOR +
++                    "x = 'abc'" + LINE_SEPARATOR;
++    private static final Map<String, Serializable> EMPTY_CALL_ARGUMENTS = Collections.emptyMap();
++    private static final Map<String, Serializable> EXPECTED_CONTEXT_EXEC;
++    private static final Map<String, Serializable> EXPECTED_CONTEXT_EVAL;
++
++    static {
++        EXPECTED_CONTEXT_EXEC = new HashMap<>();
++        EXPECTED_CONTEXT_EXEC.put("x", "abc");
++        EXPECTED_CONTEXT_EVAL = new HashMap<>(3);
++        EXPECTED_CONTEXT_EVAL.put("x", new PyString("abc"));
++        EXPECTED_CONTEXT_EVAL.put("true", new PyBoolean(true));
++        EXPECTED_CONTEXT_EVAL.put("false", new PyBoolean(false));
++    }
++
++    @Resource(name = "jythonRuntimeService")
++    private PythonRuntimeService pythonRuntimeService;
++
++    @Test
++    public void testMultithreadedEval() throws InterruptedException {
++        Assume.assumeTrue(shouldRunMaven);
++        int executionsNum = 5;
++        final String varName = "ABC";
++        final String varValue = "YYY";
++
++        final CountDownLatch latch = new CountDownLatch(executionsNum);
++
++        for(int i = 0; i < executionsNum; i++) {
++            final int executioId = i;
++            new Thread() {
++                public void run() {
++                    try {
++                        Map<String, String> sysProps = new HashMap<>();
++                        String value = varValue + executioId;
++                        sysProps.put(varName, value);
++                        String doubleName = varName + varName;
++                        String doubleValue = value + value;
++
++                        Map<String, Serializable> vars = new HashMap<>();
++                        vars.put(doubleName, doubleValue);
++                        vars.put(SYSTEM_PROPERTIES_MAP, (Serializable) sysProps);
++                        String prepareEnvironmentScript = buildAddFunctionsScript(GET_SP_FUNCTION_DEFINITION);
++                        String script = "check_env('" + varName + "', '" + value + "', '" + doubleName + "', '" + doubleValue + "')";
++                        PythonEvaluationResult result = pythonRuntimeService.eval(prepareEnvironmentScript, script, vars);
++                        String [] pyResults = ((String) result.getEvalResult()).split(",");
++                        assertNotNull(pyResults.length == 2);
++                        String [] sysValues = pyResults[0].split(":");
++                        assertNotNull(sysValues.length == 2);
++                        assertEquals(sysValues[0], sysValues[1]);
++                        String [] globalValues = pyResults[1].split(":");
++                        assertNotNull(globalValues.length == 2);
++                        assertEquals(globalValues[0], globalValues[1]);
++                    } finally {
++                        latch.countDown();
++                    }
++                }
++            }.start();
++        }
++        latch.await();
++    }
++
++    @Test
++    public void testMultithreadedExecNoDependencies() throws InterruptedException {
++        Assume.assumeTrue(shouldRunMaven);
++        int executionsNum = 5;
++
++        final CountDownLatch latch = new CountDownLatch(executionsNum);
++
++        for(int i = 0; i < executionsNum; i++) {
++            final String executioId = String.valueOf(i);
++            new Thread() {
++                public void run() {
++                    try {
++                        String script = MessageFormat.format(EXECUTION_SCRIPT, executioId, executioId);
++                        PythonExecutionResult result = pythonRuntimeService.exec(Collections.<String>emptySet(), script, EMPTY_CALL_ARGUMENTS);
++                        assertNotNull(result);
++                        assertEquals(executioId, result.getExecutionResult().get(VAR1).toString());
++                        assertEquals(executioId, result.getExecutionResult().get(VAR2).toString());
++                    } finally {
++                        latch.countDown();
++                    }
++                }
++            }.start();
++        }
++        latch.await();
++    }
++
++    @Test
++    public void testMultithreadedExecWithDependencies() throws InterruptedException {
++        Assume.assumeTrue(shouldRunMaven);
++        int executionsNum = 5;
++
++        final CountDownLatch latch = new CountDownLatch(executionsNum);
++
++        final String [] dependencies = {
++                new File(getClass().getClassLoader().getResource(".m2/repository/python/math2/mult/1.0/mult-1.0.zip").getFile()).getAbsolutePath(),
++                new File(getClass().getClassLoader().getResource(".m2/repository/python/math2/sum/2.1/sum-2.1.zip").getFile()).getAbsolutePath(),
++                new File(getClass().getClassLoader().getResource(".m2/repository/python/math3/mult/1.2/mult-1.2.zip").getFile()).getAbsolutePath(),
++                new File(getClass().getClassLoader().getResource(".m2/repository/python/math3/sum/4.1/sum-4.1.zip").getFile()).getAbsolutePath()
++        };
++
++        for(int i = 0; i < executionsNum; i++) {
++            final String executioId = String.valueOf(i);
++            final String varName = "VAR";
++            final String script = "import sys\nimport time\nimport math_fake.utils.print_text as print_text\ntime.sleep(3)\n" + varName + " = print_text.foo('" + executioId + "')\nprint " + varName + "\n";
++            final String dependency = dependencies[i % 4];
++
++            int count = dependency.contains("math2") ? 2 : 3;
++            String sign = dependency.contains("sum-") ? "+" : "*";
++
++            final StringBuilder expectedResult = new StringBuilder(executioId);
++            while (--count > 0) {
++                expectedResult.append(sign).append(executioId);
++            }
++
++            new Thread() {
++                public void run() {
++                    try {
++                        PythonExecutionResult result = pythonRuntimeService.exec(new HashSet<>(Collections.singletonList(dependency)), script, EMPTY_CALL_ARGUMENTS);
++                        assertNotNull(result);
++                        assertNotNull(result.getExecutionResult().get(varName));
++                        assertEquals(expectedResult.toString(), result.getExecutionResult().get(varName).toString());
++                    } finally {
++                        latch.countDown();
++                    }
++                }
++            }.start();
++        }
++        latch.await();
++    }
++
++    @Test
++    public void testPythonExecutorNoAllocationNotClosed() {
++        PythonExecutor executor = getPythonExecutor();
++        executor.exec("print 'x'", new HashMap<String, Serializable>());
++        executor.close();
++        assertTrue(executor.isClosed());
++    }
++
++    @Test(expected = RuntimeException.class)
++    public void testPythonExecutorNoAllocationClosed() {
++        PythonExecutor executor = getPythonExecutor();
++        executor.close();
++        executor.exec("print 'x'", new HashMap<String, Serializable>());
++    }
++
++    @Test
++    public void testPythonExecutorAllocationSuccess() {
++        PythonExecutor executor = getPythonExecutor();
++        executor.exec("print 'x'", new HashMap<String, Serializable>());
++        executor.allocate();
++        executor.exec("print 'x'", new HashMap<String, Serializable>());
++        executor.allocate();
++        executor.exec("print 'x'", new HashMap<String, Serializable>());
++        executor.close();
++        executor.exec("print 'x'", new HashMap<String, Serializable>());
++        assertFalse(executor.isClosed());
++        executor.exec("print 'x'", new HashMap<String, Serializable>());
++        executor.release();
++        executor.exec("print 'x'", new HashMap<String, Serializable>());
++        assertFalse(executor.isClosed());
++        executor.exec("print 'x'", new HashMap<String, Serializable>());
++        executor.release();
++        assertTrue(executor.isClosed());
++    }
++
++    @Test(expected = RuntimeException.class)
++    public void testPythonExecutorAllocationFailure() {
++        PythonExecutor executor = getPythonExecutor();
++        executor.allocate();
++        executor.close();
++        executor.release();
++        assertTrue(executor.isClosed());
++        executor.exec("print 'x'", new HashMap<String, Serializable>());
++    }
++
++    @Test
++    public void testExecPyClassIsExcluded() throws Exception {
++        PythonExecutor executor = getPythonExecutor();
++        PythonExecutionResult pythonExecutionResult = executor.exec(PY_CLASS_IS_EXCLUDED_SCRIPT, EMPTY_CALL_ARGUMENTS);
++        Assert.assertEquals(EXPECTED_CONTEXT_EXEC, pythonExecutionResult.getExecutionResult());
++    }
++
++    @Test
++    public void testEvalPyClassIsExcluded() throws Exception {
++        PythonExecutor executor = getPythonExecutor();
++        PythonEvaluationResult pythonEvaluationResult = executor.eval(PY_CLASS_IS_EXCLUDED_SCRIPT, "'hello'" , EMPTY_CALL_ARGUMENTS);
++        Assert.assertEquals(EXPECTED_CONTEXT_EVAL, pythonEvaluationResult.getResultContext());
++    }
++
++    private PythonExecutor getPythonExecutor() {
++        return new PythonExecutor(Sets.newHashSet("a.zip, b.zip"));
++    }
++
++    private String buildAddFunctionsScript(String ... functionDependencies) {
++        String functions = "";
++        for (String function : functionDependencies) {
++            functions = appendDelimiterBetweenFunctions(functions + function);
++        }
++        return functions;
++    }
++
++    private String appendDelimiterBetweenFunctions(String text) {
++        return text + LINE_SEPARATOR + LINE_SEPARATOR;
++    }
++
++    @Configuration
++    static class TestConfig {
++        @Bean(name = "jythonRuntimeService")
++        public PythonRuntimeService pythonRuntimeService() {
++            return new PythonRuntimeServiceImpl();
++        }
++
++        @Bean(name = "externalPythonRuntimeService")
++        public PythonRuntimeService externalPythonRuntimeService() {
++            return new ExternalPythonRuntimeServiceImpl(new Semaphore(100));
++        }
++
++        @Bean(name = "jythonExecutionEngine")
++        PythonExecutionEngine pythonExecutionEngine() {
++            return new PythonExecutionCachedEngine();
++        }
++
++        @Bean(name = "externalPythonExecutionEngine")
++        PythonExecutionEngine externalPythonExecutionEngine() {
++            return new ExternalPythonExecutionEngine();
++        }
++        @Bean public DependencyService dependencyService() {return new DependencyServiceImpl() {
++            public Set<String> getDependencies(Set<String> resources) {
++                return resources;
++            }
++        };}
++        @Bean public EventBus eventBus() { return mock(EventBus.class);}
++        @Bean public MavenConfig mavenConfig() {return new MavenConfigImpl();}
++    }
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

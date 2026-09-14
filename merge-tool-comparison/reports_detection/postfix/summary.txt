@@ -1,0 +1,84 @@
+# Detection-validation pilot (detectors at driver commit 5ed92a2; NOTE: an uncommitted working tree still reports the last commit)
+# spec: outputs/p1-detection-validation-plan.md §4–§5
+
+## positives (mergiraf=Tests_failed) — R2 (detection rate)
+  merges materialized      : 180  (232 files)
+  files MERGE_DIVERGED     : 25  {'conflict': 25}
+  merges all-files-diverged: 16 (leave the sample — granularity finding)
+  merges scored            : 164
+  blocked                  : 11/164 = 0.067 [0.038, 0.116]
+    via detector FLAG      : 10
+    via fail-closed only   : 1
+
+## controls (mergiraf=Tests_passed) — R1 (block rate on good merges)
+  merges materialized      : 195  (239 files)
+  files MERGE_DIVERGED     : 3  {'conflict': 3}
+  merges all-files-diverged: 2 (leave the sample — granularity finding)
+  merges scored            : 193
+  blocked                  : 3/193 = 0.016 [0.005, 0.045]
+    via detector FLAG      : 3
+    via fail-closed only   : 0
+
+## Per-detector breakdown (clean-merged files only)
+  detector                      FLAG  UNANALYZ  CLEAN  mean_rt_s  median_rt_s
+  JoernDataFlowInterference        0         0    443       20.2         19.8
+  JoernUnresolvedReference         7         0    436       19.4         18.9
+  JoernInfiniteLoop                0         0    443       19.7         19.2
+  JoernInvalidLoopBounds           0         0    443        6.7          6.6
+  RM2RenameConflict               10         1    432        2.7          2.5
+
+## G0 calibration
+  median per-merge runtime : 70s (abort threshold 1200s)
+  UNANALYZABLE file frac   : 1/443 = 0.00 (abort threshold 0.3)
+
+## FLAGged files — adjudicate every one, written rationale (plan §4.6): 13
+  [pos] ahome-it_lienzo-core__bf4b253816__src_main_java_com_ait_lienzo_client_core_shape_wires_WiresShape.java
+      JoernUnresolvedReference L248: Unresolved identifier 'innerLayoutContainer' in method 'onShapeResizeEnd': referenced in the merged file but resolvable 
+      RM2RenameConflict L248: Stale reference to renamed variable/field: 'innerLayoutContainer' (renamed to 'm_innerLayoutContainer') still referenced
+  [pos] atam4j_atam4j__71fcecb071__acceptance-tests_src_test_java_me_atam_atam4jsampleapp_testsupport_AcceptanceTest.java
+      RM2RenameConflict L27: Stale caller of renamed identifier: 'getTestRunResultFromServer' (renamed to 'getCriticalTestRunResultFromServer') still
+      RM2RenameConflict L46: Stale caller of renamed identifier: 'getTestRunResultFromServer' (renamed to 'getCriticalTestRunResultFromServer') still
+      RM2RenameConflict L51: Stale caller of renamed identifier: 'getTestRunResultFromServer' (renamed to 'getCriticalTestRunResultFromServer') still
+      RM2RenameConflict L59: Stale caller of renamed identifier: 'getTestRunResultFromServer' (renamed to 'getCriticalTestRunResultFromServer') still
+  [pos] comatoes_ftl-profile-editor__e87fe65818__src_main_java_net_blerf_ftl_parser_SavedGameParser.java
+      JoernUnresolvedReference L147: Unresolved identifier 'gameState' in method 'readShip': referenced in the merged file but resolvable in neither parent —
+      RM2RenameConflict L105: Stale caller of renamed identifier: 'setReservePowerCapacity' (renamed to 'setSectorNumber') still referenced at this li
+      RM2RenameConflict L468: Stale caller of renamed identifier: 'setReservePowerCapacity' (renamed to 'setSectorNumber') still referenced at this li
+  [pos] datastax_java-driver__e1535e89ad__driver-core_src_main_java_com_datastax_driver_core_HostConnectionPool.java
+      JoernUnresolvedReference L134: Unresolved identifier 'isShutdown' in method 'borrowConnection': referenced in the merged file but resolvable in neither
+  [pos] erudika_para__a9e67cc8b3__para-server_src_main_java_com_erudika_para_aop_IndexAndCacheAspect.java
+      JoernUnresolvedReference L109: Unresolved identifier 'm' in method 'invoke': referenced in the merged file but resolvable in neither parent — likely a 
+      RM2RenameConflict L109: Stale reference to renamed variable/field: 'm' (renamed to 'method') still referenced at this line but no longer declare
+  [pos] jacquesberger_jsonparsingexample__ac521954c2__src_main_java_org_jberger_jsonparsingexample_json_JSON.java
+      JoernUnresolvedReference L34: Unresolved identifier 'bookTitleList' in method 'saveToFiles': referenced in the merged file but resolvable in neither p
+      JoernUnresolvedReference L43: Unresolved identifier 'outputList' in method 'initializeBookList': referenced in the merged file but resolvable in neith
+  [pos] jcabi_jcabi-github__27cc460e3c__src_test_java_com_jcabi_github_RtGistITCase.java
+      RM2RenameConflict L82: Stale caller of renamed identifier: 'gist' (renamed to 'github') still referenced at this line.
+  [pos] jcabi_jcabi-github__e18a8ffd16__src_test_java_com_jcabi_github_RtHooksITCase.java
+      RM2RenameConflict L60: Stale caller of renamed identifier: 'repo' (renamed to 'repos') still referenced at this line.
+      RM2RenameConflict L99: Stale caller of renamed identifier: 'repo' (renamed to 'repos') still referenced at this line.
+      RM2RenameConflict L122: Stale caller of renamed identifier: 'repo' (renamed to 'repos') still referenced at this line.
+      RM2RenameConflict L154: Stale caller of renamed identifier: 'repo' (renamed to 'repos') still referenced at this line.
+  [pos] jdupl_lancoder__407742ea19__src_main_java_org_lancoder_master_api_web_ApiServer.java
+      JoernUnresolvedReference L49: Unresolved identifier 'ctxApi' in method 'run': referenced in the merged file but resolvable in neither parent — likely 
+  [pos] softinstigate_restheart__98dda32101__graphql_src_main_java_org_restheart_graphql_GraphQLService.java
+      JoernUnresolvedReference L138: Unresolved identifier 'request' in method 'handle': referenced in the merged file but resolvable in neither parent — lik
+      JoernUnresolvedReference L143: Unresolved identifier 'response' in method 'handle': referenced in the merged file but resolvable in neither parent — li
+      RM2RenameConflict L138: Stale reference to renamed variable/field: 'request' (renamed to 'req') still referenced at this line but no longer decl
+      RM2RenameConflict L141: Stale reference to renamed variable/field: 'request' (renamed to 'req') still referenced at this line but no longer decl
+      RM2RenameConflict L143: Stale reference to renamed variable/field: 'response' (renamed to 'res') still referenced at this line but no longer dec
+  [ctl] cloudfoundry_cf-java-client__0d588aa1e7__cloudfoundry-client-reactor_src_main_java_org_cloudfoundry_reactor_util_Operator.java
+      RM2RenameConflict L101: Stale reference to renamed variable/field: 'request' (renamed to 'response') still referenced at this line but no longer
+  [ctl] cloudfoundry_cf-java-client__f994a25985__cloudfoundry-client-reactor_src_main_java_org_cloudfoundry_reactor_util_Operator.java
+      RM2RenameConflict L105: Stale reference to renamed variable/field: 'request' (renamed to 'response') still referenced at this line but no longer
+  [ctl] mtedone_podam__1075ffea79__src_main_java_uk_co_jemos_podam_api_PodamFactoryImpl.java
+      RM2RenameConflict L2459: Stale reference to renamed variable/field: 'mapType' (renamed to 'map') still referenced at this line but no longer decl
+      RM2RenameConflict L2463: Stale reference to renamed variable/field: 'mapType' (renamed to 'map') still referenced at this line but no longer decl
+      RM2RenameConflict L2474: Stale reference to renamed variable/field: 'mapType' (renamed to 'map') still referenced at this line but no longer decl
+      RM2RenameConflict L2746: Stale reference to renamed variable/field: 'mapType' (renamed to 'map') still referenced at this line but no longer decl
+      RM2RenameConflict L2755: Stale reference to renamed variable/field: 'mapType' (renamed to 'map') still referenced at this line but no longer decl
+      RM2RenameConflict L2756: Stale reference to renamed variable/field: 'mapType' (renamed to 'map') still referenced at this line but no longer decl
+      RM2RenameConflict L2759: Stale reference to renamed variable/field: 'mapType' (renamed to 'map') still referenced at this line but no longer decl
+      RM2RenameConflict L2760: Stale reference to renamed variable/field: 'mapType' (renamed to 'map') still referenced at this line but no longer decl
+      RM2RenameConflict L2764: Stale reference to renamed variable/field: 'mapType' (renamed to 'map') still referenced at this line but no longer decl
+

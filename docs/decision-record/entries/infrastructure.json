@@ -1,0 +1,2286 @@
+{
+  "entries": [
+    {
+      "slug": "docker-only-merge-tools-namespace",
+      "title": "All evaluated merge tools run from pinned merge-tools/<name> Docker images, never host PATH",
+      "date_from": "2026-04-21",
+      "date_to": "2026-05-18",
+      "decision": "A CLAUDE.md standing rule requires every evaluated/integrated merge tool (Mergiraf, JDime, Spork, Mastery, Weave, RefactoringMiner) to be invoked through a Docker image in the `merge-tools/<name>` namespace, in both subprojects \u2014 the driver's backends and the comparison framework's adapters alike. Images carry an explicit version tag and never `:latest` (e.g. `merge-tools/mergiraf:0.17.0`, `merge-tools/refactoring-miner:2.4.0`, `merge-tools/spork:0.5.0` dual-tagged with the legacy `merge-tools/spork` so the empirical adapter is unaffected). One Dockerfile/image serves both subprojects per tool, and images are built locally and reproducible from the Dockerfile alone rather than pushed to a registry.",
+      "rationale_recorded": true,
+      "rationale": "The rule itself is recorded in CLAUDE.md without an argued justification; the supporting conventions are argued only as consistency and reproducibility \u2014 the image tag \"matches `merge-tools/<tool>:<version>` convention from existing Dockerized tools\", one Dockerfile/image avoids divergence between the framework and the driver, and keeping the image local is acceptable because \"it is reproducible from the Dockerfile alone\".",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-30",
+        "preA:pre-mergiraf-integration-recon-10",
+        "preB:pre-mergiraf-integration-recon-06",
+        "preA:pre-rm2-integration-recon-06",
+        "preA:pre-rm2-integration-recon-17",
+        "preA:pre-mergiraf-integration-21",
+        "preB:pre-spork-driver-integration-04"
+      ],
+      "evidence": [
+        {
+          "text": "CLAUDE.md: new standing rule. All evaluated/integrated merge tools",
+          "line": 395,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "**Docker-only invocation rule (project-wide).** Both M6-lite (`MergirafBackend`) and M1 (the comparison-framework adapter) invoke Mergiraf via `docker run merge-tools/mergiraf:0.17.0 ...` \u2014 never via host PATH binaries.",
+          "line": 16,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "CLAUDE.md",
+        "cafa71c",
+        "merge-tools/mergiraf:0.17.0",
+        "merge-tools/refactoring-miner:2.4.0",
+        "merge-tools/spork:0.5.0",
+        "merge-tool-comparison/docker/"
+      ],
+      "actors": "ali",
+      "actors_note": "The standing rule itself is attributed to Ali (user decision, 2026-05-12, commit cafa71c); the derived tag/namespace/registry conventions are recorded without attribution, so sources disagree between 'ali' and 'unclear'. Attributed to Ali because the load-bearing rule is his.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "git-and-dev-convenience-carve-out",
+      "title": "git is the only tool exempt from Docker-only; host installs are ad-hoc dev convenience",
+      "date_from": "2026-04-21",
+      "date_to": "2026-05-12",
+      "decision": "`git` is the sole exception to the Docker-only invocation rule. A host install of a merge tool (specifically the `brew install mergiraf` done during M0) is permitted only as developer convenience for ad-hoc CLI queries (`mergiraf --help`, manual sanity checks) and is never a runtime dependency; the MergirafBackend must not invoke a host-PATH binary.",
+      "rationale_recorded": true,
+      "rationale": "Recorded as a scoping of the standing rule: the host binary exists only for ad-hoc queries and manual sanity checks during development, so it must not become a runtime dependency, while framework invocation stays Docker-only for reproducibility. The same carve-out appears in the commit-era CLAUDE.md rule (cafa71c), which is what confirms it survived the plan.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-03",
+        "preA:pre-mergiraf-integration-recon-11"
+      ],
+      "evidence": [
+        {
+          "text": "framework invocation is Docker-only; `brew install mergiraf` is optional dev convenience for ad-hoc CLI use (e.g., `mergiraf --help` queries during development), not a runtime dependency",
+          "line": 77,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "`git` itself is the only exception.",
+          "line": 16,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "CLAUDE.md",
+        "semantic_merge_driver/core/backends/mergiraf_backend.py"
+      ],
+      "actors": "ali",
+      "actors_note": "One source attributes the carve-out to Ali's 2026-05-12 standing-rule decision; the other records it unattributed. Attributed to Ali on the strength of the first.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "docker-rule-scoped-to-evaluated-tools",
+      "title": "Docker-only rule covers evaluated merge tools, not framework tooling, Joern, or one-off renders",
+      "date_from": "2026-05-14",
+      "date_to": "2026-07-16",
+      "decision": "The Docker-only standing rule is read as applying to tools under evaluation, not to everything the project runs. Consequences: the comparator's Tier-3 AST normalization runs tree-sitter-java in-process in Python with no container, pinned instead via `tree-sitter>=0.21,<1.0` / `tree-sitter-java>=0.21,<1.0` in pyproject.toml; a one-off mermaid diagram render uses the upstream `minlag/mermaid-cli` image directly, outside the `merge-tools/` namespace; and the tune runner's PATH-only Joern check is ruled in scope-compliant because Joern is not one of the rule's enumerated merge tools.",
+      "rationale_recorded": true,
+      "rationale": "The rule exists to version-pin and hermetically isolate the tools being measured; the comparator's preprocessing layer is framework infrastructure, not a tool under evaluation (normalize_content was already not Dockerized). google-java-format was Dockerized because of its JAR+JVM distribution and stdin\u2192stdout CLI shape, properties a PyPI wheel library (<10 ms per call) does not share \u2014 so the hosting and pinning mechanism should follow the distribution form of the artifact (JAR+JVM \u2192 Docker; PyPI wheel \u2192 pyproject pin). The mermaid render is scratch output, not a pipeline dependency; Joern is simply not one of the enumerated tools.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-65",
+        "preA:pre-comparator-3b-ast-normalize-07",
+        "preA:pre-comparator-3b-ast-normalize-08",
+        "a:20b53f98-26",
+        "b:acf7e1d0-14",
+        "a:acf7e1d0-sub-sub-agent-aaed4d-03"
+      ],
+      "evidence": [
+        {
+          "text": "The standing rule applies to **evaluated merge tools** (Mergiraf, JDime, Spork, Mastery, RefactoringMiner) \u2014 things being measured by the framework.",
+          "line": 147,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "The line-74 comment \"Joern check is harmless: PATH-only\" refers to Joern, which is not one of the rule's enumerated merge tools (Mergiraf/JDime/Spork/Mastery/Weave/RefactoringMiner), so it is out of scope of the Docker-only rule.",
+          "line": 32,
+          "file": "2026-07-16_acf7e1d0_sub-agent-aaed4d.txt"
+        }
+      ],
+      "artifacts": [
+        "CLAUDE.md",
+        "6cfcdfc",
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "merge-tool-comparison/pyproject.toml",
+        "merge-tool-comparison/tools/detector_tune_run.py"
+      ],
+      "actors": "claude",
+      "actors_note": "The transcript-era scoping arguments are Claude's; the plan-era statements of the same carve-out are recorded unattributed, so sources split between 'claude' and 'unclear'.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "mergiraf-m0-native-plan",
+      "title": "M0 plan: pin Mergiraf 0.4.0, install natively via cargo, invoke through a temp git repo",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-11",
+      "decision": "The M0 reconnaissance plan specified: pin Mergiraf 0.4.0 (the version upstream's run.sh pins), install it as a native binary via `cargo install --locked mergiraf --version 0.4.0` from a setup script / Makefile target with no Dockerfile and `docker_image: null` in tools.yaml, invoke it through Mergiraf's documented Git merge-driver convention (temp git repo + driver config + `git merge`) rather than the direct CLI, accepting ~100 ms of git setup per scenario for n=50\u20136000, and accept the resulting asymmetry against the Dockerised JDime/Spork/Mastery as a documented con. An earlier tool-evaluation note had argued for native-binary invocation on the same lines.",
+      "rationale_recorded": true,
+      "rationale": "Pinning 0.4.0 keeps the upstream published-numbers citation valid and gives a known-good Mergiraf to stabilise the rest of the MVP; native install mirrors upstream, which runs Mergiraf from `cargo install` with no Docker layer, and avoids the Rosetta/QEMU slowdown that hits Rust images on Apple Silicon (ISSUES #17) \u2014 with reproducibility preserved by pinning the version. The temp-repo overhead was judged acceptable at the planned scales, to be revisited only if profiling showed it dominating.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "mergiraf-docker-0-17-0",
+      "sources": [
+        "preB:pre-commits-33",
+        "preA:pre-mergiraf-integration-recon-04",
+        "preA:pre-mergiraf-integration-recon-06",
+        "preA:pre-mergiraf-integration-recon-14",
+        "preA:pre-tool-evaluation-findings-06"
+      ],
+      "evidence": [
+        {
+          "text": "we want the published-numbers cite to be valid, and we want a known-good Mergiraf to stabilise the rest of the MVP",
+          "line": 189,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        },
+        {
+          "text": "**No Dockerfile required** \u2014 install via `cargo install` in a setup script or `Makefile` target. Asymmetry vs other tools is intentional. Document it.",
+          "line": 175,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/mergiraf-integration-recon.md",
+        "merge-tool-comparison/config/tools.yaml",
+        "merge-tool-comparison/ISSUES.md #17"
+      ],
+      "actors": "unclear",
+      "actors_note": "Sources disagree: the pin is attributed to Ali in one commit-era source, the native-install recommendation to Claude in one, and the remaining recon statements are unattributed. The record does not settle who owned the M0 plan as a whole.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "mergiraf-docker-0-17-0",
+      "title": "Override M0: pin Mergiraf 0.17.0, install via Docker, invoke the standalone three-file CLI",
+      "date_from": "2026-05-12",
+      "date_to": null,
+      "decision": "Ali overrode M0 on 2026-05-12: Mergiraf is pinned at 0.17.0 (image `merge-tools/mergiraf:0.17.0`), installed and invoked through a multi-stage Docker image (`rust:1-bookworm` builder \u2192 `debian:bookworm-slim` runtime, ARG-driven MERGIRAF_VERSION, `ENTRYPOINT [\"mergiraf\", \"merge\"]`) built by `make docker-build`, and invoked as a standalone three-file CLI \u2014 `docker run --rm -v <workdir>:/workspace merge-tools/mergiraf:0.17.0 /workspace/base /workspace/ours /workspace/theirs -p <path>`, capturing stdout and counting `<<<<<<<` markers. The M0 temp-git-repo plumbing sketch is kept only below an OBSOLETE marker for traceability, and write-ups citing upstream numbers must carry the version-skew caveat.",
+      "rationale_recorded": true,
+      "rationale": "Framework consistency was chosen over mirroring upstream: one image per tool preserves the reproducibility story, at the cost of a ~5\u201315 min multi-stage cargo build under QEMU per Dockerfile change (accepted because the image caches between builds). The version bump to 0.17.0 was additionally justified by the dev machine having no Rust toolchain while Homebrew bottles 0.17.0 in seconds. Both stages stay on bookworm because `rust:1-slim` defaults to trixie/GLIBC 2.39 and broke against bookworm's GLIBC 2.36 on the first attempt. The consequence \u2014 upstream's numbers were produced against 0.4.0 \u2014 is recorded as a threat to validity.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "mergiraf-m0-native-plan"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-31",
+        "preA:pre-mergiraf-integration-01",
+        "preA:pre-mergiraf-integration-02",
+        "preA:pre-mergiraf-integration-recon-05",
+        "preA:pre-mergiraf-integration-recon-07",
+        "preB:pre-commits-39",
+        "preB:pre-mergiraf-integration-recon-11"
+      ],
+      "evidence": [
+        {
+          "text": "User chose Docker for framework consistency (2026-05-12) \u2014 multi-stage cargo build inside `rust:1-slim` under QEMU takes ~5-15min on M-series. One-time cost per Dockerfile change; image caches between builds.",
+          "line": 256,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "User chose framework-consistency over upstream-mirror \u2014 Mergiraf gets a `docker/mergiraf/Dockerfile` like JDime/Spork/Mastery, not a native cargo install.",
+          "line": 14,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "cafa71c",
+        "merge-tool-comparison/docker/mergiraf/Dockerfile",
+        "merge-tool-comparison/Makefile",
+        "merge-tools/mergiraf:0.17.0",
+        "docs/plans/mergiraf-integration-recon.md"
+      ],
+      "actors": "ali",
+      "actors_note": "Five sources attribute the override to Ali (user decision 2026-05-12); two commit/recon sources record it unattributed.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "weave-dockerized-override",
+      "title": "Weave ships as a Dockerized backend, overriding the plan's native-Rust invocation",
+      "date_from": "2026-04-22",
+      "date_to": "2026-04-25",
+      "decision": "Weave is invoked via Docker as `merge-tools/weave:0.3.2`, built from a new `merge-tool-comparison/docker/weave/Dockerfile` (multi-stage clone + `cargo install --locked --path crates/weave-driver` at tag v0.3.2), not as a native binary. The plan's \u00a71 facts table, Phase W1 and Appendix B `run_native` sketch are overridden, and SporkBackend and WeaveBackend become explicitly selectable entries in driver.py's BACKENDS dict.",
+      "rationale_recorded": true,
+      "rationale": "The CLAUDE.md standing rule requires merge tools to be invoked via Docker only, in the `merge-tools/<name>` namespace, and Ali directed integrating Weave \"as other ones (mergiraf)\"; the earlier \"native, no Docker\" W1 decision is explicitly described as stale.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "Plan \u00a71 / Phase W1 / Appendix B native `run_native` invocation of weave-driver (preA:pre-weave-integration-02)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-20",
+        "preA:pre-weave-integration-01"
+      ],
+      "evidence": [
+        {
+          "text": "That is **overridden** by the CLAUDE.md standing rule",
+          "line": 26,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        },
+        {
+          "text": "Weave is newly Dockerized as `merge-tools/weave:0.3.2`, overriding the stale \"native, no Docker\" W1 decision",
+          "line": 109,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/docker/weave/Dockerfile",
+        "merge-tools/weave:0.3.2",
+        "semantic_merge_driver/core/backends/weave_backend.py",
+        "semantic_merge_driver/core/driver.py"
+      ],
+      "actors": "ali",
+      "actors_note": "One source attributes the override to Ali's directive; the other records the Dockerization unattributed.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "weave-hard-pin-0-3-2",
+      "title": "Hard-pin Weave v0.3.2 and drop the adapter rather than fix forward on v0.4",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "Weave is hard-pinned at v0.3.2 \u2014 version locked in the brew/cargo install and recorded in the adapter's comment header \u2014 and stays pinned even though upstream latest is v0.3.3, until a fresh reconnaissance validates a bump. If a breaking v0.4.x ships, the policy is to drop the adapter, not adapt to it.",
+      "rationale_recorded": true,
+      "rationale": "Weave is 2.5 months old with a one-person-dominated commit graph, so immaturity breaking the CLI contract mid-project is rated a high-likelihood risk; hard pinning plus a drop-don't-fix-forward rollback policy means a broken v0.4 delays nothing \u2014 at worst the Weave row goes stale.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-weave-integration-05",
+        "preB:pre-weave-integration-05"
+      ],
+      "evidence": [
+        {
+          "text": "Hard pinning + a \"drop, don't fix forward\" rollback policy means a broken v0.4 delays nothing",
+          "line": 270,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        },
+        {
+          "text": "**Pin hard.** Weave is 2.5 months old with a one-person-dominated commit graph.",
+          "line": 90,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tools/weave:0.3.2",
+        "merge-tool-comparison/src/tools/weave.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "weave-clean-cwd-per-invocation",
+      "title": "Force a clean CWD per Weave invocation so a stray .weave.toml cannot poison batch evaluation",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "Phase W0 checks whether Weave reads `.weave.toml` from the current working directory; if so, the adapter runs every invocation with a clean CWD (the temp dir).",
+      "rationale_recorded": true,
+      "rationale": "A surprise `.weave.toml` config picked up from the CWD during batch evaluation would poison results.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): implemented \u2014 src/tools/weave.py:39-53 runs every invocation inside a fresh tempfile.TemporaryDirectory() workspace, so a stray .weave.toml in any inherited CWD cannot poison batch evaluation.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-weave-integration-16"
+      ],
+      "evidence": [
+        {
+          "text": "W0 checks for this; adapter uses a clean CWD (e.g. the temp dir) for each invocation.",
+          "line": 242,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/tools/weave.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "rm2-java-wrapper-in-docker",
+      "title": "Invoke RefactoringMiner through a DirPairMain Java wrapper in Docker, built from the released ZIP",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-05",
+      "decision": "RefactoringMiner is integrated via Path D: a custom `DirPairMain.java` wrapper compiled inside a Docker image, calling `GitHistoryRefactoringMiner.detectAtDirectories`, rather than the CLI-with-throwaway-git approach; the Dockerfile pulls `RefactoringMiner-<version>.zip` from GitHub releases rather than building from source; and the existing `pyrefactoringminer` Python binding is rejected, deferred indefinitely.",
+      "rationale_recorded": true,
+      "rationale": "RM 2.4.0's CLI is commit-oriented with no directory-pair entry point, so the Java API is the only way to run detection on raw directory pairs; the wrapper also saves ~1 s per call against the CLI throwaway-git approach. Pulling the released ZIP is simpler than building from source and matches the existing \"trust upstream artifact\" pattern, and wrapper-via-Docker was chosen for tech-stack consistency with JDime/Spork/Mastery.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-12",
+        "preA:pre-rm2-integration-recon-03",
+        "preA:pre-rm2-integration-recon-04",
+        "preA:pre-rm2-integration-recon-14"
+      ],
+      "evidence": [
+        {
+          "text": "no directory-pair entry point. The Java API (`GitHistoryRefactoringMiner.detectAtDirectories`) is the only way to invoke detection on raw directory pairs",
+          "line": 19,
+          "file": "2026-05-05_pre-rm2-integration-recon.txt"
+        },
+        {
+          "text": "None used \u2014 wrapper-via-Docker chosen for tech-stack consistency with JDime/Spork/Mastery. Python binding deferred indefinitely.",
+          "line": 144,
+          "file": "2026-05-05_pre-rm2-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/docker/refactoring_miner/DirPairMain.java",
+        "merge-tool-comparison/docker/refactoring_miner/Dockerfile",
+        "docs/plans/rm2-integration-recon.md",
+        "1f76a00",
+        "5e687ce",
+        "713b337"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "java-17-jdk-base-images",
+      "title": "Build the RefactoringMiner image on eclipse-temurin:17-jdk for Joern compatibility",
+      "date_from": "2026-05-05",
+      "date_to": "2026-05-06",
+      "decision": "The RefactoringMiner wrapper image uses `eclipse-temurin:17-jdk` as its base \u2014 not the JDK 11 minimum that RM 2.4.0's bytecode would allow, nor the JDK 21 base RM 3.0.13 requires.",
+      "rationale_recorded": true,
+      "rationale": "RM 2.4.0 ships Java 11 bytecode (class file v55), which JDK 17 reads fine, and JDK 17 matches Joern's 17+ requirement; compiling the wrapper against 3.0.13's lib on JDK 17 fails with `class file has wrong version 65.0, should be 61.0`, so the version pin forces the base image. The 17-jdk base is confirmed to have landed by the rollback commit recorded in rm2-rollback-to-2-4-0 (5e687ce, 21-jdk \u2192 17-jdk) and by the transcript-era use of a pinned `eclipse-temurin:17-jdk` for compile checks.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-recon-05",
+        "preA:pre-rm2-vs-rm3-differences-03"
+      ],
+      "evidence": [
+        {
+          "text": "**`eclipse-temurin:17-jdk`** | RM 2.4.0 ships Java 11 bytecode (class file v55) \u2014 JDK 17 reads it fine and matches Joern's 17+ requirement.",
+          "line": 21,
+          "file": "2026-05-05_pre-rm2-integration-recon.txt"
+        },
+        {
+          "text": "JDK 11+ \u2014 JDK 17 used here for Joern compatibility",
+          "line": 36,
+          "file": "2026-05-06_pre-rm2-vs-rm3-differences.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/docker/refactoring_miner/Dockerfile"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "shared-java-runtime-open",
+      "title": "Whether Joern and the JVM merge tools can share one Java 17 runtime in the driver is unresolved",
+      "date_from": "2026-04-22",
+      "date_to": "2026-04-25",
+      "decision": "The intent is a single shared Java 17 LTS runtime inside `semantic_merge_driver` \u2014 Joern needs 17+, Spork/Spoon works on 11+, so 17 LTS is the stated safe overlap \u2014 but confirming that Joern and RM 2.0 can actually share one Java 17+ runtime (rather than having incompatible JVM requirements) was left as an open question, deferred to a future RM 2.0 integration plan and to Phase S0.",
+      "rationale_recorded": true,
+      "rationale": "RM adds a JVM dependency to the driver runtime; the marginal cost is small given Joern already needs a JVM \u2014 but only if they can share the runtime, which is why the question is flagged rather than assumed.",
+      "status": "open",
+      "status_note": "Never resolved in the record. It would be settled by the driver's runtime setup in semantic_merge_driver (which JVM(s) are actually installed/invoked) or by the S0 / RM 2.0 integration recon output.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preB:pre-tool-evaluation-findings-22",
+        "preA:pre-spork-driver-integration-18"
+      ],
+      "evidence": [
+        {
+          "text": "**Shared JVM runtime** \u2014 can Joern and RM 2.0 share a Java 17+ runtime in `semantic_merge_driver`, or do they have incompatible JVM requirements?",
+          "line": 334,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        },
+        {
+          "text": "Joern needs Java 17+; Spork/Spoon works on 11+. Shared 17 LTS is the safe choice.",
+          "line": 202,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/"
+      ],
+      "actors": "unclear",
+      "actors_note": "One source attributes the open question to Claude; the other records the shared-17-LTS choice unattributed, so the record does not settle ownership.",
+      "corroboration": "single-pass",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "rm2-pin-3-0-13",
+      "title": "First RefactoringMiner pin: 3.0.13 on eclipse-temurin:21-jdk with dual-mode Path D tagging",
+      "date_from": "2026-05-05",
+      "date_to": null,
+      "decision": "RefactoringMiner is pinned at 3.0.13 (the last Java-only release) on `eclipse-temurin:21-jdk` behind the thin DirPairMain.java Docker wrapper; R1 runs dual-mode tagging (Path D) and R4a uses file-level detection at runtime.",
+      "rationale_recorded": true,
+      "rationale": "The F-harness on n=10 measured 75.0% file-level recall against project-level, which sits in the 50\u201380% bracket that selects Path D.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "rm2-rollback-to-2-4-0",
+      "sources": [
+        "preA:pre-commits-21"
+      ],
+      "evidence": [
+        {
+          "text": "Pins RefactoringMiner 3.0.13 (last Java-only release) on eclipse-temurin:21-jdk",
+          "line": 242,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "713b337",
+        "merge-tool-comparison/tools/rm2_fharness.py",
+        "merge-tool-comparison/docker/refactoring_miner/"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "rm2-rollback-to-2-4-0",
+      "title": "Roll the RefactoringMiner pin back to 2.4.0, dropping the JDK base to 17 with zero Java edits",
+      "date_from": "2026-05-06",
+      "date_to": null,
+      "decision": "The RM pin rolls back from 3.0.13 to 2.4.0 (last 2.x release) and RM 3.x is declared out of thesis scope; Path D selection is unchanged. The rollback is implemented entirely as (1) Dockerfile `RM_VERSION` plus base-image edits (`eclipse-temurin:21-jdk` \u2192 `17-jdk`) and (2) an image-tag substitution in `rm2_fharness.py`, leaving `DirPairMain.java` untouched \u2014 the pattern future version swaps follow. Two recon-doc errors are corrected as a side effect: \"RM 2.4.0 compiles to Java 17\" becomes \"ships Java 11 bytecode (v55)\", and \"RM 2.4.0's CLI lacks `-bd`\" becomes both versions having identical CLI flag sets with no directory-pair flag.",
+      "rationale_recorded": true,
+      "rationale": "2.4.0 matches the plan's \"2.4+ recommended\" guidance, and 3.0.x is incremental Java-only maintenance over 2.x \u2014 new APIs but no thesis-relevant capability \u2014 while 3.1.x adds multi-language detection. RM 2.4.0's Java 11 bytecode means 17-jdk suffices. All four wrapper imports exist with identical signatures in both versions, and `detectAtDirectories(Path,Path,Handler)` plus the `toJSON()` schema are unchanged, so the same source compiles against either lib. The corrected recon statements would otherwise have affected R1's interpretation of the version pin.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "rm2-pin-3-0-13"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-23",
+        "preA:pre-commits-24",
+        "preA:pre-rm2-vs-rm3-differences-05"
+      ],
+      "evidence": [
+        {
+          "text": "is out of thesis scope \u2014 3.0.x is incremental Java-only maintenance over",
+          "line": 256,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "source compiles **without modification** against either version's lib",
+          "line": 116,
+          "file": "2026-05-06_pre-rm2-vs-rm3-differences.txt"
+        }
+      ],
+      "artifacts": [
+        "5e687ce",
+        "docs/plans/rm2-vs-rm3-differences.md",
+        "merge-tool-comparison/docker/refactoring_miner/Dockerfile",
+        "merge-tool-comparison/tools/rm2_fharness.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "accept-and-document-merge-latency",
+      "title": "Accept per-merge latency as the price of semantic detection, document it, defer the mitigations",
+      "date_from": "2026-04-16",
+      "date_to": "2026-05-14",
+      "decision": "The pipeline knowingly absorbs its per-merge latency rather than optimising it: Joern CPG generation on every merge, ~1.2\u20131.6 s per RM2 Docker invocation (~3\u20134 s per merge warm), rising to ~5.3 s/merge on Apple Silicon once R4a makes two `docker run` calls under Rosetta/QEMU `--platform linux/amd64`, and ~7.5\u20138 s/merge in default auto mode once R3 adds a third RM2 call. The costs are written into STATUS.md \"Known costs\" and a README latency note, with bypasses documented (`SEMANTIC_MERGE_BACKEND=mergiraf|git`, an env flag for R4a, YAML disable for R3), and three mitigations deferred: the R4b language short-circuit, parallelising the two `_detect_pair` calls, and a long-running persistent-JVM RM2 daemon.",
+      "rationale_recorded": true,
+      "rationale": "\"While CPG generation introduces latency, this cost is justified because the entire purpose of the project is to catch semantic conflicts that all other layers miss.\" Container spin-up plus the Rosetta tax dominates while RM2 detection itself is sub-second, and the cost sits within the budget acknowledged when the container strategy was pinned \u2014 so it is flagged as known UX cost in the commit messages rather than engineered away, with the persistent-JVM container reserved as the post-MVP optimisation \"if UX feedback complains\". Accepting auto mode's cost before W5/S2 land is justified by having the dispatch infrastructure in place so those phases are pure additions, plus early classifier-correctness signal from production-style usage.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-05",
+        "preA:pre-rm2-integration-recon-13",
+        "preA:pre-commits-44",
+        "preA:pre-commits-47",
+        "preA:pre-commits-59"
+      ],
+      "evidence": [
+        {
+          "text": "While CPG generation introduces latency, this cost is justified because the entire purpose of the project is to catch semantic conflicts that all other layers miss.",
+          "line": 206,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "This sits within the budget acknowledged when D2 was pinned. Worth flagging in the M6-lite / R4b commit messages as known UX cost.",
+          "line": 127,
+          "file": "2026-05-05_pre-rm2-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "b37479c",
+        "8fcc44e",
+        "c099187",
+        "STATUS.md",
+        "README.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "shared-cpg-refactor-proposal",
+      "title": "Lift the per-strategy triple parse into a shared-CPG component as the one data-demanded refactor",
+      "date_from": "2026-06-11",
+      "date_to": null,
+      "decision": "Proposed: hoist the per-strategy base/ours/theirs triple-parse pattern into shared infrastructure \u2014 one parse per version, all queries against it \u2014 replacing ~15 parses per file, identified as the only structural refactor the Stage-C data demands.",
+      "rationale_recorded": true,
+      "rationale": "Every surviving detector re-implements the same base/ours/theirs capture and re-parses the same three files (five CPG builds per version per file); the refactor is both an architecture cleanup and the ~5\u00d7 latency win that matters for interactive `git merge` as opposed to CI, and it would make the zero-yield detectors nearly free to keep.",
+      "status": "superseded",
+      "status_note": "S12 (2026-07-26): declined the same day it was proposed \u2014 the adopted skip decision (scope-architecture: shared-cpg-fallback-not-needed, D-023) ruled the rework unnecessary after the pilot came in far under the abort threshold; no shared-CPG component exists and the per-strategy parse pattern remains. Cross-theme superseder, so superseded_by stays null; see cross_theme_resolutions.json extra_edges.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-25"
+      ],
+      "evidence": [
+        {
+          "text": "The natural refactor (and the plan's \u00a78 note) is to lift this into shared infrastructure: one parse per version, all queries against it. That's both an architecture cleanup and the ~5\u00d7 latency win",
+          "line": 484,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "tier3-normalize-off-and-cached",
+      "title": "Keep Tier-3 AST normalize off by default in tests and cache it on the post-gjf hash",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "conftest.py sets `MERGE_COMPARATOR_AST_NORMALIZE=off` by default alongside the existing `MERGE_COMPARATOR_FORMATTER=off`, so unit tests must opt into Tier 3; and the comparator gains `_ast_cache: dict[str, str | None]` mirroring `_format_cache`, keyed on the sha256 of the gjf-normalized (Tier-2 output) text rather than the raw input.",
+      "rationale_recorded": true,
+      "rationale": "Defaulting off keeps the test suite Docker-free and parser-fast, mirroring M3.5's formatter-off default. Keying the cache on post-gjf text lets already-cached gjf results be reused and the AST result cached on top, saving redundant tree-sitter parses across the n=50 run, since Tier 3 always runs on Tier 2's output.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): implemented exactly \u2014 tests/conftest.py:8-9 sets both MERGE_COMPARATOR_FORMATTER=off and MERGE_COMPARATOR_AST_NORMALIZE=off, and comparator.py carries _ast_cache (:35) 'keyed by sha256 of the gjf-normalized content' (:32), mirroring _format_cache as specified.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3b-ast-normalize-05",
+        "preA:pre-comparator-3b-ast-normalize-06"
+      ],
+      "evidence": [
+        {
+          "text": "also default `MERGE_COMPARATOR_AST_NORMALIZE=off` so the test suite stays Docker-free and parser-fast (mirrors M3.5's `MERGE_COMPARATOR_FORMATTER=off` default)",
+          "line": 107,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "keyed by sha256 of the *gjf-normalized* input (not the raw input)",
+          "line": 135,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tests/conftest.py",
+        "merge-tool-comparison/src/evaluation/comparator.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "bound-external-tool-cost",
+      "title": "Bound external tool invocations: configurable timeouts everywhere, a cold-start budget for the driver",
+      "date_from": "2026-04-16",
+      "date_to": "2026-04-25",
+      "decision": "Two planned bounds on external tool cost: every external tool invocation (Mergiraf, RefactoringMiner, RefMerge, Joern) must have a configurable timeout, configured in `config/strategies.yaml`; and Phase S0 measures one `docker run` cold start against `java -jar` on a toy fixture, switching the driver to a native JAR if Docker adds more than ~500 ms per invocation \u2014 with Spork staying empirical-only and S2/S3/S4 skipped if both are too slow.",
+      "rationale_recorded": true,
+      "rationale": "No reason is recorded for the timeout rule. The cold-start threshold is argued from the driver running in a developer's critical path, so container startup cost matters in a way it does not in batch evaluation.",
+      "status": "abandoned",
+      "status_note": "S12 (2026-07-26): neither bound was implemented as specified \u2014 config/strategies.yaml is an enablement list with no timeout keys (timeouts exist but are hardcoded per call site), the S0 cold-start measurement has no artifact (docs/plans/spork-driver-integration-recon.md does not exist), and the native-JAR option was mooted by the Docker-only standing rule. Dropped without a ruling.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-11",
+        "preA:pre-spork-driver-integration-12"
+      ],
+      "evidence": [
+        {
+          "text": "**Timeout management**: All external tool invocations must have configurable timeouts",
+          "line": 878,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "The driver runs in a developer's critical path, so container startup cost matters in a way it doesn't in batch eval.",
+          "line": 104,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "config/strategies.yaml",
+        "docs/plans/spork-driver-integration-recon.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "low"
+    },
+    {
+      "slug": "cache-and-resume-container-work",
+      "title": "Cache expensive container work per unit, make it resumable, and batch to amortize startup",
+      "date_from": "2026-05-18",
+      "date_to": "2026-06-24",
+      "decision": "Expensive containerised work is cached per scenario with a `--force` re-extract flag, following the existing schesch_loader scenario-caching pattern: the RM2 tagger mirrors R4a's `_detect_pair` Docker semantics at one container invocation per pair (base\u2192ours, base\u2192theirs \u2014 ~100 calls, one-time, cached) rather than importing the driver's classifier or batching many pairs per container; project-level tagging caches per scenario so an interrupted run resumes; the javac compile-check tool batches each chunk of files into a single `eclipse-temurin:17-jdk` container and is resumable per chunk; and new harnesses (whole_driver_eval.py) are built to mirror detect_validate.py's resumable cache, preflight and G0 guard. Batching one container over many pairs is recorded as future work.",
+      "rationale_recorded": true,
+      "rationale": "RM2 Docker invocations cost ~2.5 s each on the Apple-Silicon/QEMU host, so results must be cached and only recomputed on demand; categorization needs only the two pairings, and batching only matters at full-Schesch scale (6045\u00d7), so per-scenario calls are fine for n=50 with caching and `--force`. Chunk-batching the compile checks exists specifically to amortize QEMU container startup.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:20b53f98-04",
+        "a:20b53f98-10",
+        "b:7b3b2669-06",
+        "a:92a3e464-08",
+        "a:fb0fa5c5-02"
+      ],
+      "evidence": [
+        {
+          "text": "- Cache expensive RM2 output per scenario; support --force re-extract, mirroring",
+          "line": 75,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "**Batching** one container over many pairs is a real optimization but only matters at full-Schesch (6045\u00d7); for n=50 cached + `--force`, per-scenario calls are fine. Flag batching as future-work.",
+          "line": 140,
+          "file": "2026-05-18_20b53f98.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/rm2_tag.py",
+        "merge-tool-comparison/tools/taxonomy_compile_checks.py",
+        "tools/whole_driver_eval.py",
+        "merge-tool-comparison/src/data/schesch_loader.py"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split: the caching/resumability requirement is stated in Ali's briefs (20b53f98-04, 7b3b2669-06) while the invocation design and batching judgment are Claude's. Recorded as joint rather than taking a majority.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "seed-caches-across-runs",
+      "title": "Seed each run's cache from the previous run's, invalidating only what changed",
+      "date_from": "2026-06-25",
+      "date_to": "2026-07-16",
+      "decision": "Runs reuse prior caches instead of recomputing: the tune runner gains a `--seed-cache` path so the definitive run reuses tune_d2's 243 cached merge reproductions plus the preliminary pass's 117 scored rows for the four untouched lanes, re-executing only the widened lanes; the D2 lane is added to the existing `detector_tune_run.py` LANES (rather than a new harness) and its cache seeded from tune_d1; seed import is filtered to `::__merge__::` keys only; and stale entries are cleared surgically \u2014 the 50 `driver-auto` smoke entries predating route capture were deleted while `driver-git` and the bare configs were kept as a resume head start.",
+      "rationale_recorded": true,
+      "rationale": "Merge reproductions are cached lane-independently under `::__merge__::` keys, so an earlier lane's cache can seed a later one; preflight already covers Joern/Docker/images, so seeding avoids re-doing merge work and untouched-lane Joern time. Cache entries that predate a data-capture change (route recording) must be recomputed, which is why only those are cleared.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-16",
+        "a:acf7e1d0-06",
+        "a:82dd479f-sub-sub-agent-a46641-06",
+        "a:fb0fa5c5-05"
+      ],
+      "evidence": [
+        {
+          "text": "merge reproductions are cached lane-independently (`::__merge__::` keys), so tune_d1's cache can seed the D2 run",
+          "line": 50,
+          "file": "2026-07-16_acf7e1d0.txt"
+        },
+        {
+          "text": "tune_d2's cache holds all 243 merge reproductions to seed from. Extending the runner:",
+          "line": 121,
+          "file": "2026-07-16_82dd479f.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/detector_tune_run.py",
+        "reports_whole_driver/raw_results.json"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "long-runs-as-background-jobs",
+      "title": "Treat meaningful runs as unattended background jobs, not interactive sessions",
+      "date_from": "2026-05-20",
+      "date_to": "2026-06-25",
+      "decision": "The 5\u201310 minute interactive budget for corpus expansion is abandoned: real runs are background jobs. Operationally that means launching detached with output redirected to a log file on the host (`reports_whole_driver/full_run.log`) so the user can tail it independently rather than the output streaming only into the assistant's SSH session; stopping double-backgrounded `nohup` + run_in_background launches in favour of properly harness-tracked background tasks; attaching `caffeinate -i -w <pid>` to a local overnight run so macOS will not idle-sleep for exactly the job's duration (lid open, Claude Code session and Docker Desktop running); and monitoring remote runs via SSH `tail -f`, EC2 Instance Connect from a browser or phone, and on-request reports, with CloudWatch Logs ruled out.",
+      "rationale_recorded": true,
+      "rationale": "Cloning dominates wall-clock and the Rosetta/QEMU amd64 emulation tax makes each tool run ~10 s, so \"your earlier 5\u201310 min budget can't coexist with meaningfully more data on this hardware\". A double-backgrounded process is not harness-tracked, so no real completion signal arrives for a ~2 h run, and the resumable cache makes a restart nearly free. Sleep does not lose work (the run resumes from the commit-keyed cache) but stretches the ETA to awake-time only. CloudWatch is skipped because it needs a CloudWatch agent plus an IAM role the EC2-only IAM user cannot create \u2014 not worth the extra IAM step for a one-off ~10 h run.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "5\u201310 minute interactive budget for corpus expansion"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "b:e1df1610-03",
+        "a:bfc672b4-27",
+        "b:fb0fa5c5-15",
+        "b:fb0fa5c5-28",
+        "a:fb0fa5c5-16"
+      ],
+      "evidence": [
+        {
+          "text": "real expansion is a **background job**, not interactive.",
+          "line": 685,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "I attached `caffeinate -i -w 24406` to the scoring process \u2014 the Mac won't idle-sleep while it runs, and the hold releases itself the moment the run exits.",
+          "line": 541,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "STATUS.md",
+        "reports_whole_driver/full_run.log",
+        "reports_detection/full/raw_results.json"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "completion-signals-and-monitors",
+      "title": "Watch runs by process exit and anomalies only, and use the wait to build downstream tooling",
+      "date_from": "2026-06-11",
+      "date_to": "2026-07-16",
+      "decision": "Background runs are watched by a harness-tracked waiter that fires on the process's terminal states (completion, timeout, crash) rather than by blind polling or by grepping a log for a completion string \u2014 the provision wait-loop that grepped for \"provision done\" against the actual \"provision complete.\" was killed and replaced with a process-exit monitor. Mid-run monitors are filtered to what warrants attention (control-side flags, UNANALYZABLE verdicts, G0 aborts), with positive-side flags accumulating silently in the cache for end-of-run adjudication from summary.txt; an early-alarm watcher that trips on the first flag lets tuning start before shards complete, and progress is read from shard caches because `tail` pipes buffer until completion. Waiting time is spent writing the deterministic downstream scripts so they are ready the moment results land.",
+      "rationale_recorded": true,
+      "rationale": "A grep-based loop matching the wrong string would never fire. Positive-side flags are the detector doing its job \u2014 expected events that only interrupt \u2014 so only anomalies warrant eyes mid-run. A harness-tracked waiter notifies on terminal states rather than requiring blind polling, and the early alarm exists so tuning can start before full completion. Writing `taxonomy_g1_eval.py` and `taxonomy_spotcheck_ui.py` during batch processing means results can be evaluated immediately on landing.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "log-string grep wait-loop for provision.sh"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:8740dbd3-26",
+        "a:9e4b6896-34",
+        "b:82dd479f-14",
+        "a:bfc672b4-31",
+        "b:788e483b-02"
+      ],
+      "evidence": [
+        {
+          "text": "I'll re-arm it filtered to what actually needs eyes mid-run: control-side flags (R1 damage), UNANALYZABLE verdicts, and G0 aborts.",
+          "line": 451,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "Provisioning monitor rearmed (waits on process exit, not a log string).",
+          "line": 259,
+          "file": "2026-07-03_8740dbd3.txt"
+        }
+      ],
+      "artifacts": [
+        "deploy/aws/provision.sh",
+        "summary.txt",
+        "taxonomy_g1_eval.py",
+        "taxonomy_spotcheck_ui.py",
+        "run.log"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "emulation-tax-accounted",
+      "title": "Account for the Apple Silicon emulation tax by measurement, and never promise a native speedup",
+      "date_from": "2026-05-25",
+      "date_to": "2026-07-04",
+      "decision": "The Rosetta/QEMU tax is treated as a measured quantity, not an assumption. Concretely: local Docker workloads are serialized (the comparator run is held until RM2 tagging finishes) because both at once contend on the single amd64-emulated daemon; the estimate that native x86_64 on AWS would cut the ~20 h run to ~8\u201312 h is withdrawn, since per-file time on the instance is ~85 s (77\u201393 s) against the local ~80 s; AWS ETAs are budgeted from dataset size at ~60\u201390 s/file as Joern-bound with an explicit instruction not to promise speedups; and R0's \"~3\u00d7 file-level Docker cost\" expectation for project-level tagging is corrected as Rosetta tax rather than RM2 work, the full n=50 run taking 3.8 minutes natively.",
+      "rationale_recorded": true,
+      "rationale": "Measured per-file timings on the instance matched the local ones, showing Docker emulation is a small fraction of each merge while Joern \u2014 already native on the Mac \u2014 dominates: \"I was wrong about the speedup.\" Where the work genuinely is containerised and emulated, contention on the single emulated daemon is real, which is why those workloads are serialized rather than run in parallel.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "estimate that native x86_64 would land the run at ~8\u201312 h",
+        "R0 expectation of ~3\u00d7 file-level Docker cost for project-level tagging"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-13",
+        "a:fb0fa5c5-17",
+        "a:8740dbd3-21",
+        "a:7b3b2669-12"
+      ],
+      "evidence": [
+        {
+          "text": "Honest implication: **the full run is still ~20 h on AWS, not the 8\u201312 h I optimistically estimated.** I was wrong about the speedup.",
+          "line": 887,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "is NOT faster than Apple Silicon \u2014 do not promise speedups).",
+          "line": 168,
+          "file": "2026-07-03_8740dbd3.txt"
+        }
+      ],
+      "artifacts": [
+        "deploy/aws/CLI-DEPLOY.md"
+      ],
+      "actors": "claude",
+      "actors_note": "Three sources attribute the reasoning to Claude; one (the ETA rule) appears in Ali's kickoff prompt, which restates Claude's earlier finding.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "blobless-clone-under-timeout",
+      "title": "Clone blobless with a per-clone timeout, and harden the reuse path instead of predicting cost",
+      "date_from": "2026-05-26",
+      "date_to": "2026-07-08",
+      "decision": "`tools/select_materialize.py` clones with `--filter=blob:none --no-checkout` under a per-clone timeout (120 s default, `CLONE_TIMEOUT`), skipping and logging stragglers, with the candidate list expanded ~20% so failures still yield 60 repos; the stalled Spork job resumed from 21 to 60 on the new code. Predicting clone cost from repo-size metadata is rejected, and the earlier attribution of the slowdown to `lintool/clueweb` is withdrawn (the GitHub API shows it at 2 MB). Reusing blobless clones later required two further fixes: injecting `safe.directory=*` into git subprocess environments rather than changing global git config, and guarding per-file extraction so a transient promisor blob-fetch failure skips and counts that merge for retry on resume instead of raising an uncaught ValueError \u2014 with the \"dubious ownership\" diagnosis of those crashes withdrawn.",
+      "rationale_recorded": true,
+      "rationale": "Only 4 files from 4 commits are read, so fetching every blob and checking out the whole tree is wasted work; and since clone time depends on history depth, blob count, network and throttling \u2014 the local Reaper `size` being a stale 2017 source metric that cannot predict renamed/404 repos that hang with no size at all \u2014 \"a **timeout (bound)** is the reliable fix, and **blobless clone** is the real speedup\". The ownership diagnosis was retracted because ownership checked out as the current user and `git show` (which does trigger lazy fetch) succeeded where GitPython's `data_stream` did not; an uncaught ValueError from a transient failure was killing the whole run.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "sequential full git clone with no timeout in select_materialize.py"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-22",
+        "a:e1df1610-23",
+        "a:e1df1610-24",
+        "a:92a3e464-09",
+        "a:92a3e464-10",
+        "a:92a3e464-11"
+      ],
+      "evidence": [
+        {
+          "text": "yes, add timeout but expand list for 20% so if a lot of fails we still get 60 repos also switch to blobless/no-checkout cloning",
+          "line": 1090,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "which is why a **timeout (bound)** is the reliable fix, and **blobless clone** is the real speedup",
+          "line": 1086,
+          "file": "2026-05-20_e1df1610.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/select_materialize.py",
+        "8504d74"
+      ],
+      "actors": "joint",
+      "actors_note": "The switch to blobless cloning under a timeout was Ali's directive; the rejected size predictor, the withdrawn attributions and the robustness fixes are Claude's.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "least-privilege-and-spend-gate",
+      "title": "Operate AWS under least privilege with an explicit go-ahead gate and a $20 budget backstop",
+      "date_from": "2026-05-20",
+      "date_to": "2026-07-04",
+      "decision": "Resource-consuming or paid actions require Ali's explicit authorization: repository cloning (network + GBs) is not kicked off without his go-ahead, and nothing that costs money or is irreversible \u2014 launching or terminating instances \u2014 happens without showing the exact command and the hourly cost first, with the estimate stated as hours \u00d7 $0.42 at launch time (\"~5 h \u00d7 $0.42/h \u2248 $2, cap $3\" was held at the gate until Ali replied \"launch\"). AWS access runs through a scoped `claude-p2` IAM user with EC2-only (plus optional S3) permissions, MFA on root and root unused; `aws configure` is run by Ali, keys are never pasted into the conversation and Claude never reads `~/.aws/credentials`. A monthly $20 AWS Budgets cost budget is created as a backstop.",
+      "rationale_recorded": true,
+      "rationale": "EC2-only permissions bound the blast radius \u2014 they cannot touch billing, IAM or other services \u2014 and keeping the secret in `~/.aws` means it never enters the conversation transcript. Launching paid infrastructure is the user's to authorize. The budget alarm is \"the #1 first-timer safeguard against a forgotten-running-instance bill\", but it is explicitly a lagging safety net: AWS cost data lags ~a day, so it fires after the threshold is crossed and terminating the instance is the real control.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-34",
+        "a:fb0fa5c5-14",
+        "a:fb0fa5c5-15",
+        "b:fb0fa5c5-24",
+        "a:8740dbd3-22"
+      ],
+      "evidence": [
+        {
+          "text": "**I confirm before anything that costs money or is irreversible** (launching/terminating instances) \u2014 I'll show you the exact command and the hourly cost first, every time.",
+          "line": 583,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "**It's a safety net, not real-time.** AWS cost data lags ~a day, so a budget alert fires *after* you've crossed the threshold",
+          "line": 966,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "deploy/aws/CLI-DEPLOY.md"
+      ],
+      "actors": "claude",
+      "actors_note": "Four sources record Claude proposing and adopting the guardrails; one (the hours \u00d7 $0.42 rule) appears as a standing rule in Ali's kickoff prompt.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "aws-ec2-for-long-runs",
+      "title": "Run long unattended evaluations on a one-shot x86_64 EC2 instance instead of the laptop",
+      "date_from": "2026-06-25",
+      "date_to": null,
+      "decision": "Long unattended runs move to a one-shot AWS EC2 instance rather than a university/lab server or chunked local execution, and the planned local overnight P2 run is cancelled in favour of it. The instance must be Intel x86_64 (`c7i`/`c6i`/`m7i`), never Graviton/arm64; on Ali's go-ahead the assistant creates the key pair and security group and launches a `c7i.2xlarge` (8 vCPU/16 GB, Ubuntu 24.04 x86_64, 80 GB gp3, eu-central-1) via the AWS CLI, and must run a small smoke test on the box before any full run.",
+      "rationale_recorded": true,
+      "rationale": "The binding constraint is Ali's: \"i can not run 20h hours too. as i need to be stationary for that long and it will exhaust my laptop\" \u2014 chunked local execution still loads the machine, and with AWS the laptop need not be tied up at all. Graviton is ruled out because all five Docker images are linux/amd64, so arm64 would re-introduce emulation unless the images were rebuilt multi-arch; c7i.2xlarge is recommended for Joern RAM headroom; and CLI launch is smoother than the console and lets the setup be verified end-to-end.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "user-launches-assistant-drives",
+        "Local overnight P2 run launched from the Mac"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "b:fb0fa5c5-17",
+        "a:fb0fa5c5-10",
+        "a:fb0fa5c5-13",
+        "b:fb0fa5c5-26"
+      ],
+      "evidence": [
+        {
+          "text": "problem is that, i can not run 20h hours too. as i need to be stationary for that long and it will exhaust my laptop",
+          "line": 455,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "**Native arch** \u2014 use a `c7i`/`c6i`/`m7i` (Intel, x86_64) instance, **not Graviton/arm64**. Graviton would re-introduce emulation for the amd64 images unless you rebuild them multi-arch.",
+          "line": 427,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "deploy/aws/",
+        "deploy/aws/RUNBOOK.md",
+        "i-0424514e6763b3c52",
+        "sg-052531d61c0cfb520",
+        "p2key"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split between ali (choosing AWS, authorizing the c7i.2xlarge launch), claude (instance architecture) and joint (cancelling the local run). Recorded as joint: Claude put the options and costs, Ali chose and authorized.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "user-launches-assistant-drives",
+      "title": "First AWS arrangement: user launches the instance, assistant drives it over SSH",
+      "date_from": "2026-06-25",
+      "date_to": null,
+      "decision": "Initial division of labour: Ali creates the AWS account, launches the instance in the console and hands over the public DNS plus the `.pem` path; the assistant then bundles, transfers, provisions, smokes, runs and monitors over SSH from Ali's Mac.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "aws-ec2-for-long-runs",
+      "sources": [
+        "b:fb0fa5c5-25"
+      ],
+      "evidence": [
+        {
+          "text": "Locked in: **you launch, I drive.**",
+          "line": 588,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "joint",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "ship-images-via-docker-save",
+      "title": "Ship locally-built amd64 images to the instance with docker save/load rather than rebuilding",
+      "date_from": "2026-06-25",
+      "date_to": null,
+      "decision": "The five amd64 tool images are packaged as tarballs with `docker save` and `docker load`ed on the EC2 instance instead of being rebuilt there.",
+      "rationale_recorded": true,
+      "rationale": "The images are already built locally, and rebuilding Spork/Weave from source on a fresh box is the painful part; save/load makes the instance an exact mirror of the local setup.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "aws-first-compute-rule",
+      "sources": [
+        "a:fb0fa5c5-11"
+      ],
+      "evidence": [
+        {
+          "text": "So you `docker save` them to tarballs and `docker load` on the instance \u2014 **no rebuilding Spork/Weave from source on a fresh box** (that's the painful part).",
+          "line": 484,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "deploy/aws/bundle.sh",
+        "deploy/aws/provision.sh"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "sequential-unsharded-harness",
+      "title": "Run the P2 harness sequentially on AWS with no sharding code change",
+      "date_from": "2026-06-25",
+      "date_to": null,
+      "decision": "No `--shard`/parallelism change is made to `whole_driver_eval.py`: the AWS run is the unchanged sequential harness, unattended \u2014 and Ali re-affirmed that choice after learning that parallel sharding would be both faster (~5 h vs ~20 h) and cheaper (~$2\u20133 vs ~$8\u20139). It was launched detached under `nohup` logging to `full_run.log`.",
+      "rationale_recorded": true,
+      "rationale": "The binding constraint was \"off my laptop, no babysitting\" rather than speed, and keeping the harness unchanged carries zero risk to the validated code. No reason is recorded for the re-affirmation after the timing/cost comparison.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:fb0fa5c5-12",
+        "a:fb0fa5c5-18"
+      ],
+      "evidence": [
+        {
+          "text": "The harness runs **sequentially, unchanged** \u2014 zero risk to the validated code.",
+          "line": 541,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "Sequential it is \u2014 launching the full run now, **detached under `nohup` and logging to `full_run.log`** so you get the live `tail -f` you wanted.",
+          "line": 930,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "tools/whole_driver_eval.py",
+        "deploy/aws/RUNBOOK.md",
+        "reports_whole_driver/full_run.log"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "collect-results-before-teardown",
+      "title": "Collect, commit and push results before teardown; then verify the account is empty",
+      "date_from": "2026-06-26",
+      "date_to": "2026-07-03",
+      "decision": "The end-of-cycle sequence is fixed: scp results down to the local repo, write FINDINGS and update docs, commit and push to GitHub (including the 42 MB cache), and only then terminate the instance \u2014 never the reverse. Mid-run, completed populations' caches, the materialization log and the effective controls list are pulled down incrementally as insurance, and an in-progress snapshot of `raw_results.json` and `full_run.log` is kept locally in a clearly-named backup folder (not in git). Teardown itself is mandatory before ending the cycle: terminate the instance, delete the security group and key pair, then verify no instances or EBS volumes remain and reclaim the local bundle; the instance is never left running unattended after a run completes.",
+      "rationale_recorded": true,
+      "rationale": "The instance's EBS volume is `DeleteOnTermination=true`, so anything not copied back before teardown is gone \u2014 and terminating (not stopping) is what ends billing. Each cache entry is ~90 s of compute, making the live cache the irreplaceable artifact, so an incremental local copy means an instance loss costs at most the uncomputed remainder. Pushing to GitHub first backs the results up before the cloud copy is destroyed, leaving them in three places.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:fb0fa5c5-20",
+        "a:fb0fa5c5-21",
+        "b:fb0fa5c5-33",
+        "b:fb0fa5c5-34",
+        "a:8740dbd3-07",
+        "a:2e726dc0-09"
+      ],
+      "evidence": [
+        {
+          "text": "the teardown **deletes the instance and its disk** (the EBS volume is `DeleteOnTermination=true`) \u2014 so anything not copied back first is gone.",
+          "line": 1152,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "each entry is ~90 s of compute, so it's the irreplaceable part. I'll put it in a clearly-named backup folder so it doesn't clobber your local working files.",
+          "line": 1169,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_whole_driver/",
+        "merge-tool-comparison/reports_whole_driver/aws_interim/",
+        "deploy/aws/CLI-DEPLOY.md",
+        "32df839"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split between claude (the sequence and the interim pull), ali (push-before-teardown, teardown execution, the standing teardown rule) and joint (the interim snapshot). Recorded as joint: Claude proposed the ordering, Ali directed and ratified it.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "record-cycles-in-cli-deploy",
+      "title": "Commit the AWS kit and record each cycle's real commands, costs and lessons in CLI-DEPLOY.md",
+      "date_from": "2026-06-25",
+      "date_to": "2026-07-17",
+      "decision": "`deploy/aws/` (bundle.sh, provision.sh, RUNBOOK.md) is committed, and `deploy/aws/CLI-DEPLOY.md` records the CLI commands actually run, all resource IDs, a copy-paste teardown block and the native-\u2248-no-speedup timing finding, with `deploy/.gitignore` excluding the regenerable 611 MB dist/. Subsequent cycles add their real costs and failure modes to the same record: the ~$10-vs-~$2 overrun caused by the instance idling overnight after the SSH watcher died of broken pipe (with three fixes \u2014 ServerAliveInterval, fallback wakeup, a `pgrep -f` self-match trap), and the later ~$12\u201318 cycle whose descriptive derivation-split run (~10 instance-hours, ~$4) was kept despite exceeding the plan's ~$5\u201310 estimate.",
+      "rationale_recorded": true,
+      "rationale": "The kit was untracked and would be lost on a tree clean; the RUNBOOK documented the console path while the CLI path was actually used; and resource IDs, teardown commands and the timing lesson existed only in the conversation. The overrun is disclosed with \"the failure mode and three concrete fixes ... recorded in the CLI-DEPLOY cycle record so it doesn't repeat\", and the later overrun is recorded as structural rather than waste \u2014 7-lane \u00d7 2-arm, Joern-bound, ~2.4\u00d7 the Stage-C-shaped cycle the estimate was calibrated on \u2014 with the only real spend lever being a plan-specified deliverable.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:fb0fa5c5-19",
+        "a:8740dbd3-17",
+        "a:2e726dc0-04"
+      ],
+      "evidence": [
+        {
+          "text": "Add **`deploy/aws/CLI-DEPLOY.md`** \u2014 the *actual* CLI commands we ran, the resource IDs, the **teardown block**, and the timing finding.",
+          "line": 989,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "**Cost overran: ~$10 vs the ~$2 estimate.**",
+          "line": 420,
+          "file": "2026-07-03_8740dbd3.txt"
+        }
+      ],
+      "artifacts": [
+        "12b450d",
+        "deploy/aws/CLI-DEPLOY.md",
+        "deploy/aws/RUNBOOK.md",
+        "deploy/aws/bundle.sh",
+        "deploy/aws/provision.sh"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split between joint (committing the kit, at Ali's prompting) and claude (the two cost disclosures). Recorded as joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "probe-and-checksum-before-running",
+      "title": "Probe images and checksum transfers before running anything that depends on them",
+      "date_from": "2026-05-25",
+      "date_to": "2026-07-22",
+      "decision": "Nothing expensive runs on unverified inputs. Before launching a tagging or multi-tool run, the required Docker images are checked present, and on a fresh x86 instance every tool image (mergiraf, refactoring-miner, joern, and the shipped ones) is validated with a live probe. Files are shipped with `cat file | ssh host 'cat > path'` and md5/sha256-verified on both sides before any dependent run \u2014 bare scp is not used \u2014 and results are collected back the same way, with counts and checksums verified and the change confirmed strictly additive before overwriting local `data/scenarios/`. The round-2 attempt whose scp silently failed was killed, its poisoned output directory wiped, and the run restarted from a fresh migration with the code checksum-verified on the box.",
+      "rationale_recorded": true,
+      "rationale": "\"Probe, don't assume\": a missing image would silently tag everything `NONE`, and any image built on Apple Silicon without `--platform linux/amd64` dies silently with exec format error on x86 (the gjf incident). A bare scp in the session sandbox can silently degrade to a mangled local cp \u2014 which is exactly what happened: ~130 files were recomputed with round-1 code under a round-2 label, invalid data that would have quietly reproduced round-1's numbers. The image check also \"protects a ~13-min run from silent all-crash rows\".",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-14",
+        "a:8740dbd3-06",
+        "a:8740dbd3-05",
+        "a:fb0fa5c5-40",
+        "a:7b3b2669-05",
+        "a:7b3b2669-07",
+        "a:68c24033-06",
+        "a:fb0fa5c5-32",
+        "a:fb0fa5c5-34"
+      ],
+      "evidence": [
+        {
+          "text": "Probe, don't assume: any image built on Apple Silicon without",
+          "line": 181,
+          "file": "2026-07-03_8740dbd3.txt"
+        },
+        {
+          "text": "the first round-2 attempt's file transfer silently failed, so ~130 files were being recomputed with round-1 code under a round-2 label \u2014 invalid data that would have quietly reproduced round-1's numbers",
+          "line": 2178,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "deploy/aws/CLI-DEPLOY.md",
+        "bundle_sd8.sh",
+        "provision_sd8.sh",
+        "merge-tool-comparison/data/scenarios/"
+      ],
+      "actors": "claude",
+      "actors_note": "The lessons and practices are Claude's; three sources are the same rules restated in Ali's kickoff prompts, so attribution splits between claude and ali.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "run-26-tagging-locally",
+      "title": "Run the #26 project-level tagging locally because shipping 2.1 GB of clones is not worth it",
+      "date_from": "2026-07-03",
+      "date_to": null,
+      "decision": "The #26 project-level RM2 tagging run was specified to run locally, with RefactoringMiner invoked only via its Docker image (never host binaries) and results cached for resumability.",
+      "rationale_recorded": true,
+      "rationale": "Shipping 2.1 GB of repo clones to AWS is not worth it.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "move-compute-to-aws",
+      "sources": [
+        "a:fb0fa5c5-45"
+      ],
+      "evidence": [
+        {
+          "text": "Run locally (shipping 2.1 GB of",
+          "line": 2328,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "tools/rm2_tag.py",
+        "ISSUES.md #26"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "move-compute-to-aws",
+      "title": "Move each compute run to AWS and shrink the bundle so the move is cheap",
+      "date_from": "2026-07-02",
+      "date_to": "2026-07-03",
+      "decision": "Compute runs are moved onto AWS rather than kept local: the six-tool canonical promotion is produced on the instance alongside the post-flip driver-auto re-run in a single cycle, and the #26 project-level tagging run is executed on AWS against its brief's local-execution instruction (Ali interrupted local environment checks with \"execute it in aws\"), following the deployment runbook in eu-central-1 under profile claude-p2 with provision/probe/teardown. The bundle is trimmed to make this cheap: only the 15 repos the 50 scenarios actually reference are shipped (604 MB, not the full ~2.1 GB `data/repos/`), Phase-2b scenarios are materialized into a new gitignored `data/scenarios_phase2b/` and shipped as their own tarball because `data/` is not in repo.tar.gz \u2014 AppleDouble-clean (`COPYFILE_DISABLE=1`, or delete `._*` after extraction) \u2014 and a `DRIVER_COMMIT` environment override is added to detect_validate.py so runs on git-archive deployments with no `.git` still attribute cached verdicts to the right commit sha.",
+      "rationale_recorded": true,
+      "rationale": "Producing the canonical table on AWS \"puts it in the same scoring environment as the P2 canonical numbers\" per the environment-sensitivity finding, and P4's compute is trivial (~20\u201340 min) so the cycle is nearly free. Shipping only the referenced repos removes the 2.1 GB objection that had kept the tagging run local. macOS tar ships AppleDouble `._*` files that break JSON loaders, and `data/` cannot ride along inside repo.tar.gz.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "run-26-tagging-locally"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:7b3b2669-03",
+        "b:7b3b2669-04",
+        "a:7b3b2669-04",
+        "a:fb0fa5c5-31",
+        "a:8740dbd3-04",
+        "b:fb0fa5c5-61"
+      ],
+      "evidence": [
+        {
+          "text": "there's a principled bonus: producing the new canonical table **on AWS puts it in the same scoring environment as the P2 canonical numbers** (the env-sensitivity finding from the review)",
+          "line": 1784,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "AWS notes: only the 15 repos the 50 scenarios need were shipped (604 MB, not 2.1 GB)",
+          "line": 114,
+          "file": "2026-07-03_7b3b2669.txt"
+        }
+      ],
+      "artifacts": [
+        "deploy/aws/bundle.sh",
+        "data/scenarios_phase2b/",
+        "tools/detect_validate.py",
+        "5ed92a2",
+        "reports/results.csv"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split between ali (directing the AWS moves and the tarball rule) and claude (the parity argument, the trimmed bundle, the DRIVER_COMMIT override). Recorded as joint.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "phase-2b-prompt-aws-lessons",
+      "title": "Rewrite the Phase-2b prompt to run evaluation on AWS and carry the four paid-for lessons",
+      "date_from": "2026-07-03",
+      "date_to": null,
+      "decision": "The Phase-2b session prompt is to be rewritten so recon stays local (web/reading work) while the evaluation compute runs on AWS per deploy/aws/CLI-DEPLOY.md, with mandatory teardown and user go-ahead for spend; and its AWS stage is to encode four lessons explicitly \u2014 the AppleDouble tar junk fix (`COPYFILE_DISABLE=1` / delete `._*`), `cat | ssh` transfer plus checksum verification instead of bare scp, the silent arm64 image death and the live-probe requirement, and the `DRIVER_COMMIT` override for git-archive deployments.",
+      "rationale_recorded": true,
+      "rationale": "Keep the laptop free for the compute stage; and write the lessons in \"so the fresh session doesn't rediscover them at $0.42/hour\".",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): enacted \u2014 the Phase-2b session ran recon-local and evaluation on AWS per the runbook, and deploy/aws/CLI-DEPLOY.md carries the lessons (COPYFILE_DISABLE at :139, checksum-before-run at :150) plus the 'Fourth cycle record (Phase-2b detection oracle, 2026-07-04/05)' at :153 documenting cat|ssh + checksum transfers with zero AppleDouble junk.",
+      "supersedes": [
+        "Phase-2b prompt with evaluation run locally"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "b:fb0fa5c5-67",
+        "a:fb0fa5c5-46"
+      ],
+      "evidence": [
+        {
+          "text": "Recon runs locally; the evaluation compute runs on AWS (keep the laptop free).",
+          "line": 2411,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "the four paid-for lessons (AppleDouble tar junk, scp\u2192cp degradation + checksum verification, silent arm64 image death, DRIVER_COMMIT for git-archive deployments) written into the prompt so the fresh session doesn't rediscover them at $0.42/hour.",
+          "line": 2495,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "deploy/aws/CLI-DEPLOY.md"
+      ],
+      "actors": "joint",
+      "actors_note": "One source records Ali directing the change (\"change Prompt 2 to run it in aws\"), the other Claude specifying the content.",
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "aws-first-compute-rule",
+      "title": "Standing rule: always prefer AWS over local for compute runs, with a \u226420-unit local exception",
+      "date_from": "2026-07-15",
+      "date_to": "2026-07-16",
+      "decision": "CLAUDE.md gains the standing rule \"Always prefer AWS over local for compute runs\", with the operational sub-rules the five cycles established: the CLI-DEPLOY.md pattern, a c7i.2xlarge native x86_64 instance, images built on-instance, the environment validated by reproducing a canonical table before scoring, and verified teardown. Unit tests, fixtures and pilots of \u2264 ~20 units stay local. The detector plan's S-D5 default runtime becomes an AWS cycle, and later kickoffs restate the rule verbatim \u2014 one AWS cycle for the eval battery, local acceptable only for the pre-flight smoke subset.",
+      "rationale_recorded": true,
+      "rationale": "\"native x86_64 kills both the Rosetta/QEMU wall-clock tax and the entire *arm64-image-dies-silently* class of scoring bugs that bit P2 v1, and it keeps your Mac free while you write.\" The \u226420-unit exception is scoped explicitly so \"G0-style pilots and GD2 fixture batteries don't trigger pointless deploys\".",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "ship-images-via-docker-save",
+        "detector plan's earlier \"local overnight\" default for S-D5"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-28",
+        "b:2e726dc0-04",
+        "a:6a84a6b3-04"
+      ],
+      "evidence": [
+        {
+          "text": "always prefer aws over local",
+          "line": 1739,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "I scoped the exception explicitly: unit tests, fixtures, and small pilots (\u2264 ~20 units) stay local",
+          "line": 1745,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "CLAUDE.md",
+        "outputs/detector-cycle-plan.md",
+        "deploy/aws/CLI-DEPLOY.md"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "tuning-loops-stay-local",
+      "title": "Tune-control runs are a documented local exception to the AWS-first rule",
+      "date_from": "2026-07-15",
+      "date_to": "2026-07-16",
+      "decision": "GD2's full-suite runs over the 100 tune-controls inside a build session's iterate-and-fix loop are a documented local exception to the AWS-first standing rule, with the D3 Joern pass's ~1\u20132 h emulated cost acknowledged in advance. The definitive GD2(iii) tune gate accordingly ran on the laptop, with AWS reserved for S-D5's frozen evaluation battery; offered fallbacks if local load became a problem were throttling to 2 shards (~4 h) or killing and finishing overnight serial, and the shards were left running absent a word from Ali.",
+      "rationale_recorded": true,
+      "rationale": "\"Deploying to EC2 per tuning iteration is absurd, but the CLAUDE.md rule as written says local is only for \u226420 units. Needs an explicit documented exception, or every build session starts by violating a standing rule.\" GD2 is the one place tuning is allowed, so each flag triggers an in-session fix and re-score \u2014 on EC2 each iteration would be a redeploy, buying exactly the deploy/build/validate overhead the exception exists to avoid \u2014 and that loop already happened once in-session. The usual AWS motivation barely applies here: Joern runs natively, merge reproductions are fully cached, and only short RM2 containers are emulated. Caches make a restart lossless at file granularity.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-29",
+        "a:82dd479f-14",
+        "b:82dd479f-06"
+      ],
+      "evidence": [
+        {
+          "text": "tune-control runs are a documented local exception (bounded iterative tuning loops; per-iteration EC2 deploys are absurd)",
+          "line": 1806,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "on EC2 each iteration would be a redeploy",
+          "line": 213,
+          "file": "2026-07-16_82dd479f.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md \u00a75 GD2(iii)",
+        "deploy/aws/CLI-DEPLOY.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "static-round-robin-shards",
+      "title": "Shard long runs into static round-robin shards, re-partitioning stragglers mid-run",
+      "date_from": "2026-07-16",
+      "date_to": "2026-07-18",
+      "decision": "The definitive 100-control FULL 7-lane tune run is split into four parallel static shards (61/61/61/60 files) rather than run serially, accepting local load ~20 for roughly 2 h wall time. When static sharding produced a straggler on AWS, the heavy eval-control shards 0/4 and 1/4 were re-partitioned mid-run into modular half-shards (0/8+4/8, 1/8+5/8) with their existing cache files copied into each half, letting the orchestrator exit while the tail (spgroup + scoring) was driven manually.",
+      "rationale_recorded": true,
+      "rationale": "The plan's 1\u20132 h estimate was wrong for the FULL 7-lane composition (~10 Joern JVM spawns per file \u2192 ~6.5 h serial measured), so 4-way sharding brings wall time back to ~2 h. On AWS, static sharding balanced merge counts but not work \u2014 shard 0 drew 338 of 832 files and projected 12\u201317 more hours on one worker while 6 of 8 vCPUs idled; the modular identity makes coverage provably identical (no merge lost or duplicated), cache keys do not mention the shard so nothing recomputes, and `--score` globs all cache files.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [
+        "plan \u00a75 GD2(iii) estimate that the Joern-bearing D3 tune pass takes ~1\u20132h"
+      ],
+      "superseded_by": "work-queue-replaces-shards",
+      "sources": [
+        "a:82dd479f-15",
+        "a:2e726dc0-08"
+      ],
+      "evidence": [
+        {
+          "text": "I sharded it 4-way to get ~2h wall, which is why your laptop is loud right now \u2014 load is sitting around 20.",
+          "line": 217,
+          "file": "2026-07-16_82dd479f.txt"
+        },
+        {
+          "text": "So shards 2 and 3 finished, and shard 0 alone projected **12\u201317 more hours** while 6 of 8 vCPUs sat idle.",
+          "line": 356,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/detector_tune_run.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "work-queue-replaces-shards",
+      "title": "Replace static shards with a 4-worker work queue \u2014 deferred out of the frozen run, adopted in S-D7",
+      "date_from": "2026-07-17",
+      "date_to": "2026-07-22",
+      "decision": "A dynamic work queue replaces static sharding, but not mid-run: the improvement was declined for the running battery and logged in runs.md as an S-D7/S-D8 candidate, then implemented in S-D7 as 4 work-queue workers over 180 positive + 195 control merges (largest merges first) with a recovery sweep and on-instance scoring.",
+      "rationale_recorded": true,
+      "rationale": "A work queue would flatten the straggler tails, \"but that's a harness change I won't make mid-run under the freeze discipline\". Adopted next cycle because static shards had produced the S-D5 imbalance; the queue balanced claims 94/96/93/92 across the four workers with no straggler shard.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "static-round-robin-shards"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-07",
+        "a:06ec13eb-04"
+      ],
+      "evidence": [
+        {
+          "text": "but that's a harness change I won't make mid-run under the freeze discipline; it goes in the runs.md notes as an S-D7/S-D8 improvement",
+          "line": 316,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "claims balanced 94/96/93/92 across the 4 workers (the work-queue fixed the S-D5 static-shard imbalance problem \u2014 no straggler shard this time).",
+          "line": 142,
+          "file": "2026-07-22_06ec13eb.txt"
+        }
+      ],
+      "artifacts": [
+        "runs.md",
+        "run_sd7.sh"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "concurrent-cycles-under-isolation",
+      "title": "Run independent cycles concurrently in separate regions, sharing no AWS resource or commit",
+      "date_from": "2026-07-22",
+      "date_to": null,
+      "decision": "S-D7 and S-D8 may run concurrently in separate sessions on separate instances, staggered so the second starts while the first grinds on AWS; instead of serializing behind the 8-vCPU regional cap, S-D8 launches in eu-north-1 with its own quota (with a retry loop for the fresh-region PendingVerification delay) and uses its own imported key (`p2key-sd8`) and security group, sharing no resource with S-D7. Coordination rules: do not create or delete a shared key pair or the other session's security group, tear down only your own instance id and SG; treat VcpuLimitExceeded as proof the account cap is 8 vCPUs and fall back to serial; and `git pull` before starting and again before any ISSUES.md/manifest.json close-out edits, committing early and never rebasing away the other session's commits. S-D7 correspondingly left S-D8's resources and files untouched.",
+      "rationale_recorded": true,
+      "rationale": "The two cycles are independent measurements \u2014 separate populations, artifact dirs and instances, neither touching detector code and no result feeding the other \u2014 and \"the plan's serial default is a WIP-discipline choice, and \u00a77 itself allows parallelizing independent steps under calendar pressure\". A second region has an independent 8-vCPU quota and nothing in the cycle is region-dependent (images build on-instance, the bundle transfers the same way), so cost is identical and ~10+ hours of waiting are saved; separate keys and SGs are strictly cleaner than the key-reuse pattern the kickoff anticipated. Both sessions will want to edit ISSUES.md and manifest.json at the end, and two sessions committing concurrently in one working tree produce git conflicts.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "kickoff parallel-run note instruction to wait for S-D7's teardown and run serially on VcpuLimitExceeded",
+        "kickoff instruction to reuse the existing ~/.ssh/p2key.pem for this cycle's instance"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-24",
+        "a:2e726dc0-25",
+        "a:68c24033-12",
+        "a:68c24033-13",
+        "a:06ec13eb-15"
+      ],
+      "evidence": [
+        {
+          "text": "The plan's serial default is a WIP-discipline choice, and \u00a77 itself allows parallelizing independent steps under calendar pressure.",
+          "line": 824,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "But a second region has its own independent 8-vCPU quota, and nothing in the cycle is region-dependent (images build on-instance, bundle transfers the same way).",
+          "line": 109,
+          "file": "2026-07-22_68c24033.txt"
+        }
+      ],
+      "artifacts": [
+        "df58669",
+        "i-0006f73fee2019c40",
+        "sg-02be4b932de464e8f",
+        "p2key-sd8",
+        "50d2754",
+        "4982d18"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split between joint (Ali asking to run in parallel, Claude arguing it safe) and claude (the isolation and coordination rules). Recorded as joint: options were put and Ali chose.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "split-image-provisioning-by-pinning",
+      "title": "Build pinned images on-instance but ship the unpinned ones, and set no _JAVA_OPTIONS",
+      "date_from": "2026-07-22",
+      "date_to": null,
+      "decision": "Image provisioning is split by reproducibility rather than by rule text: every pinned image (mergiraf 0.17.0, refactoring-miner 2.4.0, spork 0.5.0 with the legacy dual-tag, weave 0.3.2, google-java-format 1.22.0) is built on-instance per the standing rule, while the two unpinned comparator images (jdime:latest, mastery:latest) are shipped as `docker save` tarballs of the exact local amd64 images. Every image is probed live on-instance and exact reproduction of the canonical six-tool table is required before scoring. The split is recorded in the run notes as a one-sentence reasoned deviation-within-intent, not an amendment. The battery deliberately sets no `_JAVA_OPTIONS`.",
+      "rationale_recorded": true,
+      "rationale": "\"the standing rule's intent is killing the silent-arm64 class, not mandating rebuilds for their own sake\": jdime and mastery Dockerfiles clone upstream HEAD unpinned (ISSUES #10 retro-pinning TODO), so an on-instance rebuild could drift from the images that produced the committed canonical table and falsely fail the very gate meant to validate the environment; P2/P4 set the docker-save precedent, and the canonical-table reproduction is what makes the shipping path safe. `_JAVA_OPTIONS` is left unset to keep latency comparable with the P2/P3 whole-driver baselines.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "ship-images-via-docker-save"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-31",
+        "a:68c24033-05",
+        "a:68c24033-14"
+      ],
+      "evidence": [
+        {
+          "text": "their Dockerfiles clone upstream HEAD unpinned (ISSUES #10 retro-pinning TODO), so an on-instance rebuild could drift from the images that produced the committed canonical table and falsely fail the gate",
+          "line": 84,
+          "file": "2026-07-22_68c24033.txt"
+        },
+        {
+          "text": "**Ship via `docker save`** the unpinned comparator images the canonical table depends on",
+          "line": 971,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [
+        "ISSUES #10",
+        "CLAUDE.md standing rule note",
+        "bundle_sd8.sh",
+        "provision_sd8.sh",
+        "run_sd8.sh"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split between joint, ali and claude for the same split decision: Claude proposed the reproducibility-based split, Ali adopted it in the S-D8 kickoff. Recorded as joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "reject-parallel-worktree-agent",
+      "title": "Do not run P3 and P4 as parallel sessions or worktree agents",
+      "date_from": "2026-07-02",
+      "date_to": null,
+      "decision": "P3 and P4 are not run as literal parallel sessions or worktree agents. (The position was later narrowed rather than reversed: independent measurement cycles were allowed to run concurrently \u2014 see concurrent-cycles-under-isolation.)",
+      "rationale_recorded": true,
+      "rationale": "For a half-day P3 the merge-the-docs tax probably eats the saving, since both workstreams edit STATUS.md and ISSUES.md.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:fb0fa5c5-46"
+      ],
+      "evidence": [
+        {
+          "text": "but for a half-day P3 the merge-the-docs tax probably eats the saving",
+          "line": 1549,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "STATUS.md",
+        "ISSUES.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "tune-runner-audit-fixes",
+      "title": "Adopt the audit fixes to the tune runner: cache-key namespace, exit codes, stale cache, one registry",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Three of five Angle-B audit findings are fixed in the tune runner and detect_validate: the detector cache-key namespace collision with the frozen Stage-C instrument (flag state becomes part of the key), argparse-level exit-code semantics for unknown lanes so rc 2 (bad invocation) stays distinct from rc 1 (gate FAIL), and stale-cache invalidation under uncommitted in-session tuning. The parallel `LANES` and `_SMOKES` dicts are collapsed into a single registry whose rows are `(strategy class, smoke builder)`, so a lane cannot be half-registered, and downstream sessions must use the new row shape. The image-gated test probe helper is rewritten to reuse the production `_run_rm2_pair` via the lane's composed RM2 runner instead of re-inlining a docker invocation.",
+      "rationale_recorded": true,
+      "rationale": "The stale-cache case is \"exactly this session's documented workflow\" (in-session, uncommitted lane fixes between tune reruns); the key collision would silently serve flag-ON rows to a flag-OFF arm; the exit-code collision would let automation record a spurious GD2 FAIL for a typo'd lane name. The parallel dicts created a three-way string coupling (`--lane` value, `strategy.name`, `_SMOKES` key) whose failure mode is an opaque KeyError after Docker has already started, so a single registry co-locates the class and its smoke fixture. No reason is recorded for routing the test probe through the production runner.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "multi-lane-rewrite-regressions"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-06",
+        "a:acf7e1d0-10",
+        "a:acf7e1d0-11"
+      ],
+      "evidence": [
+        {
+          "text": "two adopted harness fixes (cache-key namespace collision with the frozen Stage-C instrument; argparse exit-code semantics), one adopted robustness fix (stale cache under uncommitted in-session tuning \u2014 exactly this session's documented workflow)",
+          "line": 173,
+          "file": "2026-07-16_82dd479f.txt"
+        },
+        {
+          "text": "the tune-runner `LANES` registry rows are now `(strategy class, smoke builder)`",
+          "line": 503,
+          "file": "2026-07-16_acf7e1d0.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/detector_tune_run.py",
+        "merge-tool-comparison/tools/detect_validate.py",
+        "semantic_merge_driver/tests/test_signature_stale_call.py",
+        "6523ab0"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "multi-lane-rewrite-regressions",
+      "title": "Two regressions the multi-lane rewrite introduced: ABORT exit code and a latent lane-key coupling",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "The multi-lane tune-runner rewrite deleted `choices=sorted(LANES)` from `--lane`, validating lane names in code and exiting via `sys.exit(\"ABORT: unknown lane(s) \u2026\")` with code 1 \u2014 the same code a genuine GD2 gate FAIL returns \u2014 instead of argparse's exit code 2 plus usage text. A separate audit reported the resulting three-way string coupling (`--lane` value / `LANES` key / `_SMOKES` key / strategy `.name`) as a low-severity latent finding needing no guard or fix.",
+      "rationale_recorded": true,
+      "rationale": "No reason is recorded for replacing argparse validation. The coupling was left unfixed because all three identifiers currently agree so there is no live bug; the only exposure is a future lane keyed differently from its class's `.name`, which would raise an uncaught KeyError instead of the intended ABORT message.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [
+        "argparse-level --lane validation via choices=sorted(LANES)"
+      ],
+      "superseded_by": "tune-runner-audit-fixes",
+      "sources": [
+        "a:82dd479f-sub-sub-agent-a46641-05",
+        "b:acf7e1d0-sub-sub-agent-af9ecb-01"
+      ],
+      "evidence": [
+        {
+          "text": "The deleted `choices=sorted(LANES)` on --lane enforced lane validation at argparse level with exit code 2",
+          "line": 25,
+          "file": "2026-07-16_82dd479f_sub-agent-a46641.txt"
+        },
+        {
+          "text": "Currently all three agree, so no live bug.",
+          "line": 40,
+          "file": "2026-07-16_acf7e1d0_sub-agent-af9ecb.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/detector_tune_run.py:100",
+        "merge-tool-comparison/tools/detector_tune_run.py:148"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "per-scenario-cache-persistence",
+      "title": "Persist the tune-runner cache once per scenario, accepting weaker crash durability",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "The rewritten multi-lane tune runner drops the `save()` after every detector record and persists the cache once per scenario via a `dirty` flag; the old per-result durability is not restored, and this is documented as a deliberate non-fix.",
+      "rationale_recorded": true,
+      "rationale": "Recorded in the code comment as a deliberate coarsening on the grounds that \"a crash re-runs \u22641 file's lanes\". The accepted cost is explicit: a crash or Ctrl-C mid-scenario loses all of that scenario's completed lane results (up to seven, several of them ~30 s Joern runs) rather than at most one \u2014 \"a weakening of the old per-result durability invariant\".",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "old runner's save() immediately after each newly computed detector record"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-a46641-03",
+        "a:82dd479f-07"
+      ],
+      "evidence": [
+        {
+          "text": "The rewrite persists once per scenario via the `dirty` flag",
+          "line": 31,
+          "file": "2026-07-16_82dd479f_sub-agent-a46641.txt"
+        },
+        {
+          "text": "deliberate coarsening, but it is a weakening of the old per-result durability invariant.",
+          "line": 154,
+          "file": "2026-07-16_82dd479f.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/detector_tune_run.py:167"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "move-save-out-of-loop",
+      "title": "Move save() out of the per-lane loop (or append JSONL) to stop quadratic cache rewrites",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Recommended: relocate `save()` from inside the per-lane loop in detector_tune_run.py to after the lane loop, or switch the raw_results store to JSONL append, so a FULL run does ~7\u00d7 fewer full-cache dumps instead of ~1,700 rewrites of a multi-MB cache, with resume semantics staying per-scenario (a mid-scenario crash re-runs at most 6 lane results).",
+      "rationale_recorded": true,
+      "rationale": "The current pattern is quadratic in results \u2014 a full `json.dumps` of a cache holding complete merged-file texts after every detector record \u2014 but materiality is LOW: 1\u20132 minutes against hours of Joern/Docker subprocess time. \"Worth doing only because the fix is one line moved\", and it would grow to tens of minutes on a 500+ file S-D5/S-D6 corpus.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): landed \u2014 detector_tune_run.py:188 calls save() 'once per scenario: a crash re-runs \u22641 file's lanes', and ISSUES.md #31 lists 'per-scenario save batching' among the harness adoptions. The same-day parallel audit that read the runner as already per-scenario is what the adopted per-scenario-cache-persistence entry records; the code settles both readings the same way.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-a87c1f-03"
+      ],
+      "evidence": [
+        {
+          "text": "Cheaper with identical resume semantics per scenario: move `save()` after the lane loop (7x fewer dumps; a mid-scenario crash re-runs at most 6 lane results), or switch to JSONL append.",
+          "line": 31,
+          "file": "2026-07-16_82dd479f_sub-agent-a87c1f.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/detector_tune_run.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "frozen-workload-models-per-phase",
+      "title": "Freeze workload models by phase: Opus 4.8 batch for both labeling passes, Fable 5 for consolidation",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-10",
+      "decision": "Workload models are frozen per phase: `claude-opus-4-8` via the Batch API for the Phase-1 and Phase-3 bulk labeling passes (same model both passes; Sonnet 5 rejected for Phase 3), and `claude-fable-5` interactive for the single Phase-2 consolidation call with `fallbacks=[{\"model\":\"claude-opus-4-8\"}]`, betas `[\"server-side-fallback-2026-06-01\"]`, no thinking param and `output_config {\"effort\":\"xhigh\"}` \u2014 with the full request params, the model that actually served the response and the response id recorded in manifest.json. Haiku 4.5 is not used. A mid-stream workload-model change is a protocol amendment, not a convenience choice. Temperature/top_p/top_k are not used as a determinism lever.",
+      "rationale_recorded": true,
+      "rationale": "Opus 4.8 is the capability-per-dollar tier for bounded per-unit extraction and Batch halves the cost of overnight work; keeping one model across both labeling passes \"removes a confound from your pass-1-vs-pass-2 stability check\", and a mid-stream change breaks pass-to-pass comparability. Fable 5 is reserved for \"the single hardest reasoning step and it's tiny in volume\", and can only carry the fallbacks parameter because that parameter is rejected on the Batch API. Haiku is skipped because \"a small model produces plausible-wrong mechanisms, the failure mode your protocol most needs to avoid\". On these models `temperature`/`top_p`/`top_k` are removed from the API (sending them is a 400), so run-variance is measured by the label-stability metric instead.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "earlier advice to document temperature 0 as a determinism lever"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-11",
+        "a:4c7b0828-12",
+        "b:4c7b0828-14",
+        "a:cfe6365a-06",
+        "a:6296f4f6-02"
+      ],
+      "evidence": [
+        {
+          "text": "one model across both labeling passes removes a confound from your pass-1-vs-pass-2 stability check.",
+          "line": 675,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "- Workload models FROZEN: claude-opus-4-8 via the Batch API for Phases 1+3",
+          "line": 41,
+          "file": "2026-07-08_cfe6365a.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/taxonomy-protocol.md \u00a79",
+        "workspace/api_smoke_test.py",
+        "manifest.json"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split between claude (recommending the allocation and withdrawing the temperature advice) and ali (freezing it and pinning the Phase-2 call). Recorded as joint: Claude put the options, Ali froze the choice.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "batch-api-from-committed-harness",
+      "title": "Run bulk labeling through the Batch API from a committed harness, with structured outputs",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-09",
+      "decision": "Bulk labeling runs through committed Python harnesses calling the Anthropic Batch API on a separate pay-as-you-go account (~$100 credits), not by having a Claude Code session iterate over the 500 units interactively. Both batch phases use structured-output mode against committed JSON schemas. The runner polls every 60 s under a 2-hour budget and is resumable across restarts; when a batch ran slow, the poller was re-attached to the same batch via batches.json with a longer (env-configurable, 5.5 h) budget rather than the batch being cancelled and resubmitted. Budget arithmetic (~$50\u201360 of the $90\u2013110 envelope) assumes only partial prompt-cache hits and reserves headroom for one full sanctioned rerun.",
+      "rationale_recorded": true,
+      "rationale": "The interactive alternative loses the 50% batch discount, hits subscription rate limits, requires an open session for hours, suffers context-window pressure, and has \"weaker provenance (the citable claim \"labels produced by prompt X on model Y\" is cleaner when it's a committed script with a pinned model ID than \"a chat session did it\")\". Structured outputs remove JSON-validity risk from the G0 gate. Phase-1 precedent showed batches can finalize slowly, so the runner must tolerate long waits and be restartable; a resubmit \"forfeits ~2h of compute already in flight\" while re-attaching costs nothing and avoids double-billing. Opus 4.8's minimum cacheable prefix is 4096 tokens so the Phase-1 static prefix may not cache \u2014 assuming partial hits leaves room for one rerun.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-16",
+        "a:cfe6365a-15",
+        "a:cfe6365a-18",
+        "a:506d875b-08",
+        "a:788e483b-03"
+      ],
+      "evidence": [
+        {
+          "text": "You *could* skip the API and have a Claude Code session itself loop over the 500 units interactively. But that's strictly worse for this job",
+          "line": 796,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "I can also cancel and resubmit, but I'd advise against it \u2014 the batch is progressing without errors and a resubmit forfeits ~2h of compute already in flight.",
+          "line": 158,
+          "file": "2026-07-09_788e483b.txt"
+        }
+      ],
+      "artifacts": [
+        "workspace/api_smoke_test.py",
+        "tools/taxonomy_phase1.py",
+        "detector_specs_batch.py",
+        "merge-tool-comparison/prompts_taxonomy/phase1_output.schema.json",
+        "merge-tool-comparison/prompts_taxonomy/phase3_output.schema.json",
+        "reports_taxonomy/phase1/batches.json"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "api-key-and-venv-plumbing",
+      "title": "Keep the API key in ~/.zshenv and span the two venvs with stdlib-only shared code",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-10",
+      "decision": "`ANTHROPIC_API_KEY` is exported from `~/.zshenv` rather than `~/.zshrc`, kept out of the repo and out of chat; API work runs against the anthropic SDK in the repo-root `.venv`, explicitly not the merge-tool-comparison venv. The shared harness module `tools/taxonomy_common.py` is written stdlib-only so it imports under either venv, and the stratum-B Mergiraf pass reuses the comparator's existing `MergirafTool` (comparator venv + Docker) instead of re-implementing the invocation.",
+      "rationale_recorded": true,
+      "rationale": "\"zsh reads `.zshenv` for *every* shell including non-interactive ones (like the ones I spawn), whereas `.zshrc` is only read by interactive shells. That's exactly why I couldn't see it even after sourcing\" \u2014 and the key must not be pasted into chat because it would be stored in the session transcript. Two venvs split the dependencies (`merge-tool-comparison/.venv` has GitPython, repo-root `.venv` has anthropic), so shared code must run under either; reusing MergirafTool means strata A and B share the identical `merge-tools/mergiraf:0.17.0` invocation.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "earlier instruction to add the export to ~/.zshrc"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-17",
+        "a:92a3e464-06",
+        "a:92a3e464-07",
+        "a:6296f4f6-22"
+      ],
+      "evidence": [
+        {
+          "text": "I'd suggest `~/.zshenv` rather than `~/.zshrc` \u2014 zsh reads `.zshenv` for *every* shell including non-interactive ones",
+          "line": 851,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "Two venvs split the deps: `merge-tool-comparison/.venv` has GitPython (Docker/materialization tools), repo-root `.venv` has anthropic (API tools).",
+          "line": 94,
+          "file": "2026-07-08_92a3e464.txt"
+        }
+      ],
+      "artifacts": [
+        "~/.zshenv",
+        "tools/taxonomy_common.py",
+        "tools/taxonomy_mergiraf.py"
+      ],
+      "actors": "claude",
+      "actors_note": "Three sources record Claude's decisions; the repo-root-venv instruction comes from Ali's brief.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "pre-g0-assembly-hardening",
+      "title": "Harden request assembly and the manifest before G0 as ordinary pre-gate edits",
+      "date_from": "2026-07-09",
+      "date_to": null,
+      "decision": "Four pre-G0 fixes to the taxonomy harness: the frozen fixed-12-file T3 becomes a floor plus a fit search that reduces the file cap 12\u21921 and then truncates individual oversized diffs until the unit fits the 30k budget, with `build_unit_inputs` taking file_cap/diff_line_cap overrides and the effective aggressiveness recorded per unit as a covariate (e.g. T3/cap5, T3/cap1/trunc400); both API `count_fn` implementations tolerate oversized-request errors so an over-large T0 render falls through the ladder; `{UNIT_INPUTS}` is injected with a single-occurrence replace targeting the first (real) slot because the frozen USER template contains the token twice; and the `utcnow` deprecation plus the empty `protocol.frozen_commit` (git log ran with cwd inside merge-tool-comparison/ while the protocol lives at repo-root outputs/) are fixed and the split/manifest regenerated.",
+      "rationale_recorded": true,
+      "rationale": "18 scored units exceeded the 30k hard cap even at T3 \u2014 many-file units (javaparser 59 files \u2192 53k) and few-file-huge-diff units (projectkorra 2 files \u2192 115k) \u2014 which fails a G0 criterion, and \u00a75 explicitly sanctions revisiting assembly before Phase 1 as an ordinary pre-G0 edit. The 193-file monster unit could make T0 huge, so the ladder must degrade rather than error. A naive `.replace` would inject the assembled content twice, confirmed by the doubled character count. The manifest is a committed artifact so clean code is worth it, and the seed makes the regenerated split byte-identical, keeping it an ordinary pre-G0 edit.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "frozen T3 with a fixed 12-file cap"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:92a3e464-14",
+        "a:92a3e464-15",
+        "a:92a3e464-17",
+        "a:92a3e464-24"
+      ],
+      "evidence": [
+        {
+          "text": "\u00a75 explicitly sanctions a pre-G0 assembly revisit as an ordinary edit, so T3 became a *floor* with a fit search (reduce file cap 12\u21921, then truncate per-diff line counts), guaranteeing \u226430k.",
+          "line": 383,
+          "file": "2026-07-08_92a3e464.txt"
+        },
+        {
+          "text": "harden both API `count_fn`s against oversized-request errors (the 193-file monster unit could make T0 huge), so the ladder falls through gracefully",
+          "line": 144,
+          "file": "2026-07-08_92a3e464.txt"
+        }
+      ],
+      "artifacts": [
+        "tools/taxonomy_common.py",
+        "tools/taxonomy_assemble.py",
+        "tools/taxonomy_split.py",
+        "reports_taxonomy/manifest.json",
+        "302879e"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "verify-instrument-byte-identically",
+      "title": "Verify the request instrument before submitting and compare artifacts on their bytes",
+      "date_from": "2026-07-09",
+      "date_to": "2026-07-11",
+      "decision": "Before G0 the harness dry-constructs a Batch `Request` with the exact frozen parameters without submitting, to confirm the SDK passes `output_config` (effort + json_schema), adaptive thinking and system `cache_control` through rather than dropping them; `custom_id()` is validated for API-validity, uniqueness and invertibility across the whole census (max 64 chars) before rerunning G0, and results are mapped back to merge_ids by inverting the submit-time custom_id map rather than string-splitting the id. The production Phase-1 tool is built by adapting the G0 pilot so request construction is byte-identical to the passed pilot, reusing the exact `assemble_best` path with a resumable multi-batch cache. The assembly integrity guard compares the just-written file's bytes against the committed Phase-1 file's bytes rather than in-memory text against `read_text()`.",
+      "rationale_recorded": true,
+      "rationale": "Dry-construction exists to de-risk the G0 batch by confirming the SDK does not silently drop the frozen parameters. Reusing the pilot's code path byte-identically avoids re-validating assembly, and was verified by the truncation ladder reproducing exactly (T0:118/T1:2/T2:29/T3\u00d715). The guard was fixed because the 13 flagged units contained CRLF line endings and `read_text()` universal-newline-translates CRLF\u2192LF, so the comparison falsely flagged files that were byte-identical on disk \u2014 after which \"assembly is perfectly reproducible (0 byte-level mismatches across all 165)\". No reason is recorded for preferring map inversion over string parsing.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "13 derivation units' Phase-3 assembly differs from committed Phase-1 inputs"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:92a3e464-16",
+        "a:92a3e464-21",
+        "a:92a3e464-22",
+        "a:788e483b-01",
+        "a:9e4b6896-03"
+      ],
+      "evidence": [
+        {
+          "text": "let me de-risk the G0 batch by dry-constructing a Batch `Request` with the exact frozen params (no submission) \u2014 to confirm the SDK passes `output_config`/`thinking` through rather than dropping them.",
+          "line": 250,
+          "file": "2026-07-08_92a3e464.txt"
+        },
+        {
+          "text": "The guard compared in-memory CRLF text against newline-normalized `read_text()`. Fix: compare the just-written file's bytes to the committed Phase-1 file's bytes.",
+          "line": 149,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [
+        "tools/taxonomy_g0_pilot.py",
+        "tools/taxonomy_common.py",
+        "reports_taxonomy/phase1/raw_results.json",
+        "1b66a13"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "diagnose-wrapper-noise-first",
+      "title": "Trace apparent failures to the wrapper before blaming the run",
+      "date_from": "2026-07-03",
+      "date_to": "2026-07-24",
+      "decision": "A recurring practice of attributing apparent failures to the tooling around the work rather than the work: a background task's exit code 1 was diagnosed as `tee` failing to open its logfile (with zsh reporting the pipeline status as tee's) and the poller re-launched without `tee`; the Fable-5 xhigh call, run in the background because it can take minutes, was reported \"failed\" for the same BSD `tee` operand reason while the Python process completed with stop_reason=end_turn; an apparent G1 run hiccup was traced to a status check tailing the wrong log path (run from `~` instead of the repo dir); Keynote's failure to open the built .pptx was attributed to cold-start flakiness once every variant including the full 8-slide deck opened; and count_tokens jitter / truncation-ladder drift was ruled out as the cause of the guard's 13 mismatches because levels were stable across runs.",
+      "rationale_recorded": true,
+      "rationale": "In each case the evidence located the fault outside the run: the Python poller ran its full budget cleanly and persisted all state; the `tee` nonzero exit came from the pipe's tail, not the run; \"My earlier status check just tailed the wrong path (ran from `~` instead of the repo dir) \u2014 the run itself never hiccupped\"; every deck variant opened; and \"Levels are deterministic (stable across runs) \u2014 so it's not `count_tokens` jitter; the **content** differs at the same level.\"",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "background Phase-1 batch task 'failed with exit code 1'",
+        "that the G1/scoring run had hiccupped",
+        "that Keynote's failure to open the deck indicated a problem with the generated .pptx"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:788e483b-12",
+        "a:6296f4f6-21",
+        "a:8740dbd3-27",
+        "a:16127d04-21",
+        "a:9e4b6896-04"
+      ],
+      "evidence": [
+        {
+          "text": "The exit code 1 is spurious \u2014 it's from the `tee` at the very start failing to open its logfile",
+          "line": 141,
+          "file": "2026-07-09_788e483b.txt"
+        },
+        {
+          "text": "Levels are deterministic (stable across runs) \u2014 so it's not `count_tokens` jitter; the **content** differs at the same level.",
+          "line": 145,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "v2-model-split-sonnet-opus",
+      "title": "Proposed v2 model split: Sonnet 5 for extraction, Opus 5 for consolidation and prose, no Haiku",
+      "date_from": "2026-07-25",
+      "date_to": null,
+      "decision": "Proposed for the v2 decision-record build, reusing the taxonomy program's validated split: Sonnet 5 for the high-volume, tightly-specified per-session extraction (\u00d72 passes) and Opus 5 for consolidation, supersession logic, provenance discipline and final writing, with Fable 5 an acceptable alternative for consolidation specifically and both phases on Opus 5 (second pass skipped) if cost is not binding. Haiku 4.5 is ruled out for any phase.",
+      "rationale_recorded": true,
+      "rationale": "The v1 misses were coverage failures, not reasoning failures, so a tight schema plus a read-gate suffices for extraction; the subtle judgment lives in consolidation on a small input, and the failure mode that matters most is a confidently-worded rationale nobody said. Haiku is excluded because \"Faithfulness is the whole product.\"",
+      "status": "superseded",
+      "status_note": "S12 (2026-07-26): the executed v2 instrument chose differently \u2014 PROTOCOL.md \u00a78 Amendment 1 pinned claude-opus-5 for extraction (both passes, effort high) and consolidation also ran claude-opus-5 (consolidate_batch.py:36), with the two-pass option kept rather than skipped. Superseded by a recorded decision that is an instrument amendment, not an entry; superseded_by stays null.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:c4c4d030-10",
+        "a:c4c4d030-11"
+      ],
+      "evidence": [
+        {
+          "text": "| **Consolidation + writing** | **Opus 5** | Supersession logic",
+          "line": 93,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "**Haiku 4.5**: no. Faithfulness is the whole product.",
+          "line": 99,
+          "file": "2026-07-25_c4c4d030.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "v2-orchestration-budget-open",
+      "title": "v2 orchestration route and the two-pass token budget are left open for Ali",
+      "date_from": "2026-07-25",
+      "date_to": null,
+      "decision": "Two questions are put and deliberately left unresolved: whether v2 runs as multi-session paste-and-go (ten pasted prompts, proven context safety) or as one session fanning extraction out to subagents that write JSON to disk and return one-line summaries (parallel map phase, one prompt, requires explicit opt-in to multi-agent); and whether the ~800k\u20131M input-token cost of two passes over 15k lines plus subagents (~14\u201316 extraction sessions) is acceptable, against the stated cheaper alternative of one Opus 5 pass with a hard coverage gate and no stability diff. Either way S0 runs first and separately.",
+      "rationale_recorded": true,
+      "rationale": "The subagent route preserves the artifacts-only handoff discipline because subagents write to disk rather than reporting back through context, but it requires Ali's explicit opt-in to multi-agent; the multi-session route is slower but is the workflow that has actually worked eight times. The two-pass stability diff is a real cost, so the cheaper single-pass option is offered explicitly \u2014 \"gets you most of the way at half the cost\" \u2014 rather than the expensive design being assumed.",
+      "status": "open",
+      "status_note": "Both are explicitly Ali's to settle before kickoff: the orchestration route needs an opt-in to subagents, and the token budget needs confirming. The v2 kickoff prompts would record the answers.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:c4c4d030-20",
+        "a:c4c4d030-21",
+        "b:c4c4d030-15"
+      ],
+      "evidence": [
+        {
+          "text": "one Opus 5 pass with a hard coverage gate and no stability diff \u2014 gets you most of the way at half the cost.",
+          "line": 168,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "I'd take the subagent route if you're comfortable opting into it, and the multi-session route if you want the same paste-and-go rhythm you've been running all cycle",
+          "line": 211,
+          "file": "2026-07-25_c4c4d030.txt"
+        }
+      ],
+      "artifacts": [
+        "#30"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "serve-artifacts-over-localhost",
+      "title": "Verify HTML deliverables over a localhost static server, and link to them by http not file",
+      "date_from": "2026-06-20",
+      "date_to": "2026-07-24",
+      "decision": "Static HTML deliverables are verified in the preview browser through a static server: a new static-server launch configuration is added for the `full` directory alongside the existing one, serving on localhost:8742. Presentation links to the gate UIs use `http://localhost:8744/8745/8746` URLs matching the repo's existing `.claude/launch.json` server entries instead of `file://` paths, with a pre-talk server command and a zero-setup double-click fallback documented in the slide's speaker notes.",
+      "rationale_recorded": true,
+      "rationale": "The deliverable is a static HTML file, so a static server is needed to preview it. Keynote silently drops `file://` hyperlinks on import, leaving plain text, while it preserves `http://` links (confirmed in the export); ports and directories were matched to launch.json so the links work once the server is up.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "earlier decision to use file:// hyperlinks on slide 4"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:0e14484d-14",
+        "a:16127d04-06",
+        "a:8740dbd3-19"
+      ],
+      "evidence": [
+        {
+          "text": "The deliverable is a static HTML file, so I need a static server. Let me check for an existing launch config and set one up to serve the file.",
+          "line": 43,
+          "file": "2026-06-20_0e14484d.txt"
+        },
+        {
+          "text": "Keynote silently drops `file://` hyperlinks on import, leaving plain text. Fixed by switching to `http://` links, which Keynote preserves",
+          "line": 92,
+          "file": "2026-07-24_16127d04.txt"
+        }
+      ],
+      "artifacts": [
+        "launch.json",
+        ".claude/launch.json",
+        "merge-tool-comparison/reports_taxonomy/phase3/adjudication/adjudication_ui.html"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "complete-p2-docker-configs",
+      "title": "Either run the two remaining Docker P2 configs or document the 3-of-5 partial",
+      "date_from": "2026-06-24",
+      "date_to": null,
+      "decision": "Proposed: complete the P2 whole-driver cost model by running the `driver-git` and `driver-auto` Docker configs, or else explicitly document the 3-of-5 partial run; `driver-auto` remains worth running after the routing flip.",
+      "rationale_recorded": true,
+      "rationale": "The \"net \u2212104 weighted cost vs bare Mergiraf\" line is the strongest single defensible artifact and deserves a complete table; and post-flip `driver-auto` is not redundant with `driver-mergiraf` because NONE-cluster files still route to git.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): completed \u2014 reports_whole_driver/FINDINGS.md:40-44 shows all five configs including driver-git 'computed (subprocess core/driver.py)' and driver-auto computed at both 843e5f5 (pre-flip) and 9e25b4e (post-flip); no 3-of-5 partial remains.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:ce56e78d-03"
+      ],
+      "evidence": [
+        {
+          "text": "Run `driver-git` + `driver-auto` (the Docker configs) to complete the cost-model table \u2014 *or* explicitly document the 3/5 partial.",
+          "line": 37,
+          "file": "2026-06-24_ce56e78d.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/whole_driver_eval.py",
+        "reports_whole_driver/raw_results.json"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    }
+  ],
+  "not_promoted": [
+    {
+      "uid": "preA:pre-commits-35",
+      "reason": "Too minor to carry: a sys.path prepend in core/driver.py so `python core/driver.py` works under script invocation \u2014 a packaging detail with no bearing on the infrastructure record."
+    },
+    {
+      "uid": "a:2e726dc0-32",
+      "reason": "Restates the cache-seeding practice (see seed-caches-across-runs) as a suggestion addressed to another session, with no ruling attached."
+    },
+    {
+      "uid": "a:92a3e464-05",
+      "reason": "Too minor to carry: loading the claude-api skill before writing SDK code is a within-session tool-use step, not a project decision."
+    }
+  ],
+  "cross_theme": [
+    {
+      "slug": "weave-dockerized-override",
+      "other_theme": null,
+      "other_uid": "preA:pre-weave-integration-02",
+      "relation": "supersedes",
+      "note": "The plan's native (non-Docker) weave.py adapter with `docker_image: null` is placed in another theme but is exactly what this entry overrides; it is recorded in `supersedes` as a plain description because this theme cannot own it."
+    },
+    {
+      "slug": "probe-and-checksum-before-running",
+      "other_theme": null,
+      "other_uid": "a:fb0fa5c5-32",
+      "relation": "depends-on",
+      "note": "The withdrawn local-gjf-timeout explanation and the silent arm64 gjf image death are the incident that produced the probe-don't-assume rule; that correction is owned by another theme (validity/threats). Cited here but not counted."
+    },
+    {
+      "slug": "probe-and-checksum-before-running",
+      "other_theme": null,
+      "other_uid": "a:fb0fa5c5-34",
+      "relation": "depends-on",
+      "note": "The 'validate a scoring environment by reproducing committed canonical numbers' rule sits in another theme but is the environment half of this entry's practice and is referenced by aws-first-compute-rule and split-image-provisioning-by-pinning."
+    },
+    {
+      "slug": "mergiraf-docker-0-17-0",
+      "other_theme": null,
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The consequence of pinning 0.17.0 while citing upstream's 0.4.0 numbers is a documented threat to validity; that write-up decision presumably lives in a validity/reporting theme and should be linked to this entry."
+    },
+    {
+      "slug": "move-compute-to-aws",
+      "other_theme": null,
+      "other_uid": "a:7b3b2669-02",
+      "relation": "depends-on",
+      "note": "The project-level tagging mode implemented as an opt-in flag on rm2_tag.py (reusing rm2_fharness machinery) is owned by another theme; it is the workload this AWS move executed."
+    },
+    {
+      "slug": "v2-orchestration-budget-open",
+      "other_theme": null,
+      "other_uid": "b:c4c4d030-15",
+      "relation": "depends-on",
+      "note": "The 'handoff between sessions is committed artifacts only' rule is owned by another theme but is the constraint that makes the subagent orchestration route acceptable; cited, not counted."
+    }
+  ],
+  "notes": "Density: 183 promoted primary sources across 55 entries (~3.3 per source-entry), below the 5\u20139 signal. Three reasons, all deliberate. (1) The slice is really three programs \u2014 pre-transcript tool containerization (Docker-only rule, Mergiraf/Weave/RM2 pins and images), AWS execution operations (June\u2013July), and the LLM-API harness \u2014 with almost no overlap, so cross-program merges would flatten rather than consolidate. (2) The theme is unusually rich in reversal arcs, which the protocol requires to stay as separate linked entries: mergiraf 0.4.0-native\u21920.17.0-Docker, RM 3.0.13\u21922.4.0, Weave native\u2192Docker, docker-save\u2192build-on-instance\u2192split, static shards\u2192work queue, user-launches\u2192CLI-launch, #26 local\u2192AWS, multi-lane regressions\u2192audit fixes. Eight of the one-source entries exist only to preserve those arcs. (3) 143-style proposed/open discipline kept several small plan- or proposal-sourced entries separate rather than folding them into adopted neighbours.\n\nPlan-status handling: I downgraded no extraction status except where the gate required checking. Entries kept 'adopted' on plan-sourced material only where a pre-commits- or transcript-era source in the slice confirms it, and the rationale names the confirmation: git/dev-convenience carve-out (cafa71c), RM2 wrapper in Docker (713b337 / transcript use of merge-tools/refactoring-miner:2.4.0), Java-17 base (5e687ce, and a transcript-era pinned eclipse-temurin:17-jdk), Weave Docker image and pin (S-D8's on-instance pinned-image list, 2026-07-22). Plan-only material with no such confirmation stayed 'proposed': weave-clean-cwd-per-invocation, tier3-normalize-off-and-cached, bound-external-tool-cost; and shared-java-runtime-open stayed 'open'.\n\nMerges I was least sure of, for the audit: (a) accept-and-document-merge-latency folds a Joern/CPG accepted-cost with three RM2/Docker known-costs entries \u2014 they share the shape and the deferred-mitigation list but not the same tool; (b) diagnose-wrapper-noise-first groups five withdrawn failure diagnoses across five sessions on a pattern rather than a single decision; (c) per-scenario-cache-persistence and move-save-out-of-loop are two sub-agent audits of detector_tune_run.py the same day that disagree about whether the coarsening is already implemented \u2014 I kept them separate and flagged the conflict in the proposed entry's status_note rather than picking a reading; (d) probe-and-checksum-before-running merges image probing and transfer checksumming into one 'probe, don't assume' entry (they were argued as one lesson in CLI-DEPLOY, but a reader looking only for transfer mechanics may need the pointer). One earlier merge was undone as dishonest: a combined 'invocation-environment neutrality' entry pairing Weave's clean-CWD with the no-_JAVA_OPTIONS rule; the latter now sits with split-image-provisioning-by-pinning, where its comparability rationale belongs.\n\nCoverage: every primary uid appears exactly once \u2014 183 in entry sources plus 3 in not_promoted = 186. Eight also-placed uids were read; four are cited (preA:pre-weave-integration-02 is referenced only in prose/supersedes, a:fb0fa5c5-32, a:fb0fa5c5-34, a:8740dbd3-19, b:c4c4d030-15 are cited in sources) and none is counted.",
+  "theme": "infrastructure",
+  "slice_primary_total": 186
+}

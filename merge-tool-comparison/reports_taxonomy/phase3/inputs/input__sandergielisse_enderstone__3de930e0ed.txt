@@ -1,0 +1,508 @@
+UNIT sandergielisse_enderstone__3de930e0ed
+repo: sandergielisse_enderstone   merge: 3de930e0ed1019548ee5c9d4234dc0ff3e080a4b   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/org/enderstone/server/entity/EnderPlayer.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -284,17 +284,17 @@
+ 
+ 		this.getNetworkManager().sendPacket(new PacketOutPlayerListHeaderFooter(this.clientSettings.tabListHeader, this.clientSettings.tabListFooter));
+ 
+ 		PacketOutPlayerListItem packet = new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(this.uuid, this.getPlayerName(), getProfileProperties(), GameMode.SURVIVAL.getId(), 1, false, "") });
+ 		for (EnderPlayer player : Main.getInstance().onlinePlayers) {
+ 			player.getNetworkManager().sendPacket(packet);
+ 			this.getNetworkManager().sendPacket(new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(player.uuid, player.getPlayerName(), player.getProfileProperties(), GameMode.SURVIVAL.getId(), 1, false, "") }));
+ 		}
+-		Main.getInstance().broadcastMessage(new AdvancedMessage(this.getPlayerName() + " joined the game!").setColor(ChatColor.YELLOW).build());
++		Main.getInstance().broadcastMessage(new AdvancedMessage().getBase().setText(this.getPlayerName() + " joined the game!").setColor(ChatColor.YELLOW).build());
+ 	}
+ 
+ 	@Override
+ 	public void updateDataWatcher() {
+ 		int meaning = 0;
+ 
+ 		if (this.getFireTicks() > 0)
+ 			meaning = (byte) (meaning | 0x01);
+@@ -413,17 +413,17 @@
+ 			for (EnderPlayer ep : Main.getInstance().onlinePlayers) {
+ 				for (String name : ep.visiblePlayers) {
+ 					if (name.equals(this.getPlayerName()) && !this.getPlayerName().equals(ep.getPlayerName())) {
+ 						ep.getNetworkManager().sendPacket(new PacketOutEntityDestroy(new Integer[] { this.getEntityId() }));
+ 					}
+ 				}
+ 			}
+ 		}
+-		Main.getInstance().broadcastMessage(new AdvancedMessage(playerName + " left the game!").setColor(ChatColor.YELLOW).build());
++		Main.getInstance().broadcastMessage(new AdvancedMessage().getBase().setText(playerName + " left the game!").setColor(ChatColor.YELLOW).build());
+ 	}
+ 
+ 	@Override
+ 	public boolean isOnline() {
+ 		return this.isOnline;
+ 	}
+ 
+ 	@Override
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -279,20 +279,20 @@
+ 		this.inventoryHandler.tryPickup(new ItemStack(BlockId.RAW_RABBIT, (byte) 10));
+ 		
+ 		this.inventoryHandler.getPlayerInventory().setRawItem(5, new ItemStack(BlockId.DIAMOND_HELMET, (byte) 1));
+ 		
+ 		this.updateDataWatcher();
+ 
+ 		this.getNetworkManager().sendPacket(new PacketOutPlayerListHeaderFooter(this.clientSettings.tabListHeader, this.clientSettings.tabListFooter));
+ 
+-		PacketOutPlayerListItem packet = new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(this.uuid, this.getPlayerName(), getProfileProperties(), GameMode.SURVIVAL.getId(), 1, false, "") });
++		PacketOutPlayerListItem packet = new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(this.uuid, this.getPlayerName(), getProfileProperties(), this.clientSettings.gameMode.getId(), 1, false, "") });
+ 		for (EnderPlayer player : Main.getInstance().onlinePlayers) {
+ 			player.getNetworkManager().sendPacket(packet);
+-			this.getNetworkManager().sendPacket(new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(player.uuid, player.getPlayerName(), player.getProfileProperties(), GameMode.SURVIVAL.getId(), 1, false, "") }));
++			this.getNetworkManager().sendPacket(new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(player.uuid, player.getPlayerName(), player.getProfileProperties(), player.clientSettings.gameMode.getId(), 1, false, "") }));
+ 		}
+ 		Main.getInstance().broadcastMessage(new AdvancedMessage(this.getPlayerName() + " joined the game!").setColor(ChatColor.YELLOW).build());
+ 	}
+ 
+ 	@Override
+ 	public void updateDataWatcher() {
+ 		int meaning = 0;
+ 
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package org.enderstone.server.entity;
+        // ... 1 lines elided ...
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import org.enderstone.server.EnderLogger;
+import org.enderstone.server.Main;
+import org.enderstone.server.api.ChatPosition;
+import org.enderstone.server.api.GameMode;
+import org.enderstone.server.api.Location;
+import org.enderstone.server.api.Particle;
+import org.enderstone.server.api.Vector;
+import org.enderstone.server.api.entity.Player;
+import org.enderstone.server.api.messages.AdvancedMessage;
+import org.enderstone.server.api.messages.ChatColor;
+import org.enderstone.server.api.messages.Message;
+import org.enderstone.server.api.messages.SimpleMessage;
+import org.enderstone.server.commands.Command;
+import org.enderstone.server.commands.CommandSender;
+import org.enderstone.server.inventory.Inventory;
+import org.enderstone.server.inventory.InventoryHandler;
+import org.enderstone.server.inventory.InventoryListener;
+import org.enderstone.server.inventory.ItemStack;
+import org.enderstone.server.inventory.PlayerInventory;
+import org.enderstone.server.packet.NetworkManager;
+import org.enderstone.server.packet.Packet;
+import org.enderstone.server.packet.play.PacketInTabComplete;
+import org.enderstone.server.packet.play.PacketOutBlockChange;
+import org.enderstone.server.packet.play.PacketOutChangeGameState;
+import org.enderstone.server.packet.play.PacketOutChatMessage;
+import org.enderstone.server.packet.play.PacketOutChunkData;
+import org.enderstone.server.packet.play.PacketOutEntityDestroy;
+import org.enderstone.server.packet.play.PacketOutEntityEquipment;
+import org.enderstone.server.packet.play.PacketOutEntityHeadLook;
+import org.enderstone.server.packet.play.PacketOutEntityLook;
+import org.enderstone.server.packet.play.PacketOutEntityMetadata;
+import org.enderstone.server.packet.play.PacketOutEntityRelativeMove;
+import org.enderstone.server.packet.play.PacketOutEntityStatus;
+import org.enderstone.server.packet.play.PacketOutEntityStatus.Status;
+import org.enderstone.server.packet.play.PacketOutEntityTeleport;
+import org.enderstone.server.packet.play.PacketOutPlayParticle;
+import org.enderstone.server.packet.play.PacketOutPlayerAbilities;
+import org.enderstone.server.packet.play.PacketOutPlayerListHeaderFooter;
+import org.enderstone.server.packet.play.PacketOutPlayerListItem;
+import org.enderstone.server.packet.play.PacketOutPlayerListItem.Action;
+import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionAddPlayer;
+import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionRemovePlayer;
+import org.enderstone.server.packet.play.PacketOutPlayerPositionLook;
+import org.enderstone.server.packet.play.PacketOutRespawn;
+import org.enderstone.server.packet.play.PacketOutSetExperience;
+import org.enderstone.server.packet.play.PacketOutSoundEffect;
+import org.enderstone.server.packet.play.PacketOutSpawnPlayer;
+import org.enderstone.server.packet.play.PacketOutStatistics;
+import org.enderstone.server.packet.play.PacketOutTabComplete;
+import org.enderstone.server.packet.play.PacketOutUpdateHealth;
+import org.enderstone.server.permissions.Operator;
+import org.enderstone.server.regions.BlockId;
+import org.enderstone.server.regions.EnderChunk;
+import org.enderstone.server.regions.EnderWorld;
+import org.enderstone.server.regions.EnderWorld.ChunkInformer;
+import org.enderstone.server.regions.RegionSet;
+        // ... 1 lines elided ...
+public class EnderPlayer extends EnderEntity implements CommandSender, Player {
+        // ... 8 lines elided ...
+			public void onSlotChange(Inventory inv, int slot, ItemStack oldStack, ItemStack newStack) {
+        // ... 14 lines elided ...
+			public void onPropertyChange(Inventory inv, short property, short oldValue, short newValue) {
+        // ... 3 lines elided ...
+			public void closeInventory(Inventory inv) {
+        // ... 41 lines elided ...
+		public void sendChunk(EnderChunk chunk) {
+        // ... 4 lines elided ...
+		public void removeChunk(EnderChunk chunk) {
+        // ... 4 lines elided ...
+		public void done() {			
+        // ... 13 lines elided ...
+		public int maxChunks() {
+        // ... 15 lines elided ...
+	public int hashCode() {
+        // ... 10 lines elided ...
+	public boolean equals(Object obj) {
+        // ... 27 lines elided ...
+	public NetworkManager getNetworkManager() {
+        // ... 3 lines elided ...
+	public String getPlayerName() {
+        // ... 3 lines elided ...
+	public ProfileProperty getTextureProperty() {
+        // ... 3 lines elided ...
+	public void switchWorld(EnderWorld toWorld) {
+		this.getNetworkManager().sendPacket(new PacketOutRespawn(0, (byte) 0, (byte) GameMode.SURVIVAL.getId(), "default"));
+		EnderWorld currentWorld = this.getWorld();
+		boolean succes = currentWorld.players.remove(this);
+		assert succes;
+		toWorld.players.add(this);
+		this.getLocation().cloneFrom(toWorld.getSpawn());
+		this.loadedChunks.clear();
+		toWorld.doChunkUpdatesForPlayer(this, this.chunkInformer, 3);
+		networkManager.player.getInventoryHandler().updateInventory();
+		this.getNetworkManager().sendPacket(new PacketOutPlayerPositionLook(toWorld.getSpawn().getX(), toWorld.getSpawn().getY(), toWorld.getSpawn().getZ(), 0F, 0F, (byte) 1));
+		this.updateClientSettings();
+		EnderLogger.info("Switched player " + this.getPlayerName() + " from world " + currentWorld.worldName + " to " + toWorld.worldName + ".");
+	}
+
+	public ProfileProperty[] getProfileProperties() {
+		ProfileProperty[] list = new ProfileProperty[1];
+		list[0] = getTextureProperty();
+		return list;
+	}
+
+	@Override
+	public void onSpawn() {
+		EnderLogger.info(this.getPlayerName() + " logged in from " + networkManager.ctx.channel().remoteAddress().toString() + " with uuid " + uuid);		
+		this.inventoryHandler.tryPickup(new ItemStack(BlockId.DIAMOND_PICKAXE.getId(), (byte) 1, (short) 0));
+		this.inventoryHandler.tryPickup(new ItemStack(BlockId.DIAMOND_SPADE.getId(), (byte) 1, (short) 0));
+		this.inventoryHandler.tryPickup(new ItemStack(BlockId.DIRT.getId(), (byte) 64, (short) 0));
+		this.inventoryHandler.tryPickup(new ItemStack(BlockId.WORKBENCH.getId(), (byte) 1, (short) 0));
+		this.inventoryHandler.tryPickup(new ItemStack(BlockId.CHEST.getId(), (byte) 1, (short) 0));
+		
+		this.inventoryHandler.tryPickup(new ItemStack(BlockId.COOKED_BEEF, (byte) 10));
+		this.inventoryHandler.tryPickup(new ItemStack(BlockId.COOKED_CHICKEN, (byte) 10));
+		this.inventoryHandler.tryPickup(new ItemStack(BlockId.RAW_CHICKEN, (byte) 10));
+		this.inventoryHandler.tryPickup(new ItemStack(BlockId.RAW_RABBIT, (byte) 10));
+		
+		this.inventoryHandler.getPlayerInventory().setRawItem(5, new ItemStack(BlockId.DIAMOND_HELMET, (byte) 1));
+		
+		this.updateDataWatcher();
+
+		this.getNetworkManager().sendPacket(new PacketOutPlayerListHeaderFooter(this.clientSettings.tabListHeader, this.clientSettings.tabListFooter));
+
+		PacketOutPlayerListItem packet = new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(this.uuid, this.getPlayerName(), getProfileProperties(), this.clientSettings.gameMode.getId(), 1, false, "") });
+		for (EnderPlayer player : Main.getInstance().onlinePlayers) {
+			player.getNetworkManager().sendPacket(packet);
+			this.getNetworkManager().sendPacket(new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(player.uuid, player.getPlayerName(), player.getProfileProperties(), player.clientSettings.gameMode.getId(), 1, false, "") }));
+		}
+		Main.getInstance().broadcastMessage(new AdvancedMessage().getBase().setText(this.getPlayerName() + " joined the game!").setColor(ChatColor.YELLOW).build());
+	}
+
+	@Override
+	public void updateDataWatcher() {
+		int meaning = 0;
+
+		if (this.getFireTicks() > 0)
+			meaning = (byte) (meaning | 0x01);
+		if (this.clientSettings.isSneaking)
+			meaning = (byte) (meaning | 0x02);
+		if (this.clientSettings.isSprinting)
+			meaning = (byte) (meaning | 0x08);
+		if (this.clientSettings.isEatingTicks > 0)
+			meaning = (byte) (meaning | 0x10);
+		if (this.clientSettings.isInvisible)
+			meaning = (byte) (meaning | 0x20);
+
+		this.getDataWatcher().watch(0, (byte) meaning);
+		this.getDataWatcher().watch(1, (short) 0);
+		this.getDataWatcher().watch(6, getHealth());
+		this.getDataWatcher().watch(8, (byte) 0);
+	}
+
+	@Override
+	public Packet[] getSpawnPackets() {
+		List<Packet> toSend = new ArrayList<>();
+		PlayerInventory handler = this.getInventoryHandler().getPlayerInventory();
+		toSend.add(new PacketOutSpawnPlayer(this.getEntityId(), this.uuid, (int) (this.getLocation().getX() * 32.0D), (int) (this.getLocation().getY() * 32.0D), (int) (this.getLocation().getZ() * 32.0D), (byte) 0, (byte) 0, (short) 0, this.getDataWatcher()));
+		if(this.getInventoryHandler().getItemInHand() != null){
+			toSend.add(new PacketOutEntityEquipment(this.getEntityId(), (short) 0, this.getInventoryHandler().getItemInHand())); //helmet
+		}
+		if(handler.getArmor().get(0) != null){
+			toSend.add(new PacketOutEntityEquipment(this.getEntityId(), (short) 4, handler.getArmor().get(0))); //helmet
+		}
+		if(handler.getArmor().get(1) != null){
+			toSend.add(new PacketOutEntityEquipment(this.getEntityId(), (short) 3, handler.getArmor().get(0))); //chestplate
+		}
+		if(handler.getArmor().get(2) != null){
+			toSend.add(new PacketOutEntityEquipment(this.getEntityId(), (short) 2, handler.getArmor().get(0))); //leggins
+		}
+        // ... 6 lines elided ...
+	public void broadcastEquipment(EquipmentUpdateType type){
+        // ... 32 lines elided ...
+	public void onPlayerChat(final String message) {
+        // ... 8 lines elided ...
+				args = new String[0];
+
+			Main.getInstance().sendToMainThread(new Runnable() {
+
+				@Override
+				public void run() {
+
+					Main.getInstance().commands.executeCommand(null, split[0], EnderPlayer.this, args);
+				}
+			});
+		} else {
+			Main.getInstance().sendToMainThread(new Runnable() {
+
+				@Override
+				public void run() {
+					Main.getInstance().broadcastMessage(new SimpleMessage("<" + getPlayerName() + "> " + message));
+				}
+			});
+		}
+	}
+
+	public void onDisconnect() {
+		this.isOnline = false;
+		if (Main.getInstance().getWorld(this).players.contains(this)) {
+			Main.getInstance().getWorld(this).players.remove(this);
+		}
+
+		for (EnderPlayer p : Main.getInstance().onlinePlayers) {
+			p.getNetworkManager().sendPacket(new PacketOutPlayerListItem(new Action[] { new ActionRemovePlayer(this.uuid) }));
+		}
+		if (Main.getInstance().onlinePlayers.contains(this)) {
+			Main.getInstance().onlinePlayers.remove(this);
+			for (EnderPlayer ep : Main.getInstance().onlinePlayers) {
+				for (String name : ep.visiblePlayers) {
+					if (name.equals(this.getPlayerName()) && !this.getPlayerName().equals(ep.getPlayerName())) {
+						ep.getNetworkManager().sendPacket(new PacketOutEntityDestroy(new Integer[] { this.getEntityId() }));
+					}
+				}
+			}
+		}
+		Main.getInstance().broadcastMessage(new AdvancedMessage().getBase().setText(playerName + " left the game!").setColor(ChatColor.YELLOW).build());
+	}
+
+	@Override
+	public boolean isOnline() {
+		return this.isOnline;
+	}
+
+	@Override
+	public void updatePlayers(Set<EnderPlayer> onlinePlayers) {
+		Set<Integer> toDespawn = new HashSet<>();
+		for (EnderPlayer pl : onlinePlayers) {
+			if (!pl.getPlayerName().equals(this.getPlayerName()) && !this.visiblePlayers.contains(pl.getPlayerName()) && pl.getLocation().isInRange(50, this.getLocation(), true) && (!pl.isDead())) {
+				this.visiblePlayers.add(pl.getPlayerName());
+				this.networkManager.sendPacket(pl.getSpawnPackets());
+			}
+			if (!pl.getPlayerName().equals(this.getPlayerName()) && this.visiblePlayers.contains(pl.getPlayerName()) && !pl.getLocation().isInRange(50, this.getLocation(), true)) {
+				this.visiblePlayers.remove(pl.getPlayerName());
+				toDespawn.add(pl.getEntityId());
+			}
+		}
+		
+		Iterator<String> it = this.visiblePlayers.iterator();
+		while(it.hasNext()){
+			String name = it.next();
+			if(Main.getInstance().getPlayer(name) == null){
+				it.remove();
+			}
+		}
+		if (!toDespawn.isEmpty()) {
+			this.networkManager.sendPacket(new PacketOutEntityDestroy(toDespawn.toArray(new Integer[0])));
+		}
+	}
+
+	private int latestCheck = 0;
+	private final List<EnderEntity> toRemove = new ArrayList<>();
+
+	public void checkCollision() {
+		if (latestCheck++ % 3 == 0) {
+			// check if item entities nearby
+			for (EnderEntity e : Main.getInstance().getWorld(this).entities) {
+        // ... 18 lines elided ...
+	public void broadcastLocation(Location newLocation) {
+        // ... 36 lines elided ...
+	public void broadcastRotation(float pitch, float yaw) {
+        // ... 23 lines elided ...
+	public void debug(String message, PlayerDebugger level) {
+        // ... 7 lines elided ...
+	public boolean sendMessage(Message message) {
+        // ... 4 lines elided ...
+	public boolean sendRawMessage(Message message) {
+        // ... 17 lines elided ...
+	public void updateClientSettings() { // this will also be called when a player switches world
+        // ... 6 lines elided ...
+	public String getName() {
+        // ... 4 lines elided ...
+	public void teleport(EnderEntity entity) {
+        // ... 4 lines elided ...
+	public void teleport(Location newLocation) {
+        // ... 17 lines elided ...
+	public void serverTick() {
+        // ... 52 lines elided ...
+	public void onPlayerChatComplete(final PacketInTabComplete packet) {
+        // ... 4 lines elided ...
+			public void run() {
+        // ... 22 lines elided ...
+	public boolean canSee(EnderPlayer player) {
+        // ... 4 lines elided ...
+	public boolean damage(float damage) {
+        // ... 9 lines elided ...
+	protected void onHealthUpdate(float health, float oldHealth) {
+        // ... 24 lines elided ...
+	private void broadcastEmptyArmour() {
+        // ... 22 lines elided ...
+	protected String getDamageSound() {
+        // ... 4 lines elided ...
+	protected String getDeadSound() {
+        // ... 4 lines elided ...
+	protected float getBaseHealth() {
+        // ... 4 lines elided ...
+	protected float getBaseMaxHealth() {
+        // ... 4 lines elided ...
+	public boolean hasPermission(String permission) {
+        // ... 8 lines elided ...
+	public void setOnGround(boolean onGround) {
+        // ... 18 lines elided ...
+	public void sendBlockUpdate(Location loc, short blockId, byte dataValue) {
+        // ... 4 lines elided ...
+	public void onRightClick(EnderPlayer attacker) {
+        // ... 4 lines elided ...
+	public void onLeftClick(EnderPlayer attacker) {
+        // ... 5 lines elided ...
+	public void setFood(short foodLevel) {
+        // ... 7 lines elided ...
+	public EnderWorld getWorld() {
+        // ... 4 lines elided ...
+	public boolean isValid() {
+        // ... 4 lines elided ...
+	public void kick(String reason) {
+        // ... 6 lines elided ...
+	public InventoryHandler getInventoryHandler() {
+        // ... 3 lines elided ...
+	public void updateAbilities() {
+        // ... 15 lines elided ...
+	public enum PlayerDebugger {
+        // ... 3 lines elided ...
+	public RegionSet getLoadedChunks() {
+        // ... 4 lines elided ...
+	public void sendMessage(Message message, ChatPosition position) {
+        // ... 4 lines elided ...
+	public int getFoodLevel() {
+        // ... 4 lines elided ...
+	public void setFoodLevel(int foodLevel) {
+        // ... 4 lines elided ...
+	public boolean getAllowFlight() {
+        // ... 4 lines elided ...
+	public void setAllowFlight(boolean allowFlight) {
+        // ... 5 lines elided ...
+	public boolean isFlying() {
+        // ... 4 lines elided ...
+	public void setFlying(boolean flying) {
+        // ... 5 lines elided ...
+	public float getFlySpeed() {
+        // ... 4 lines elided ...
+	public void setFlySpeed(float speed) {
+        // ... 5 lines elided ...
+	public float getWalkSpeed() {
+        // ... 4 lines elided ...
+	public void setWalkSpeed(float speed) {
+        // ... 5 lines elided ...
+	public int getExperience() {
+        // ... 4 lines elided ...
+	public int getExperienceLevel() {
+        // ... 4 lines elided ...
+	public void setExperience(int experience) {
+        // ... 5 lines elided ...
+	public void setExperienceLevel(int experienceLevel) {
+        // ... 5 lines elided ...
+	public boolean canSprint() {
+        // ... 4 lines elided ...
+	public boolean isOnGround() {
+        // ... 4 lines elided ...
+	public boolean isSneaking() {
+        // ... 4 lines elided ...
+	public void setSneaking(boolean sneaking) {
+        // ... 6 lines elided ...
+	public void playSound(String soundName, int volume, int pitch) {
+        // ... 4 lines elided ...
+	public void playParticle(Particle particle, Location location, float xOffset, float yOffset, float zOffset, float data, int amount) {
+        // ... 4 lines elided ...
+	public void sendBlockUpdate(Location loc, BlockId blockId, byte dataValue) {
+        // ... 4 lines elided ...
+	public String getDisplayName() {
+        // ... 7 lines elided ...
+	public void setDisplayName(String displayName) {
+        // ... 4 lines elided ...
+	public void closeInventory() {
+        // ... 4 lines elided ...
+	public GameMode getGameMode() {
+        // ... 3 lines elided ...
+	public void setGameMode(GameMode mode) {
+        // ... 7 lines elided ...
+	public InventoryHandler getInventory() {
+        // ... 4 lines elided ...
+	public ItemStack getItemInHand() {
+        // ... 4 lines elided ...
+	public void awardAchievment(String name) {
+        // ... 4 lines elided ...
+	public void updateStatistic(String name, int value) {
+        // ... 4 lines elided ...
+	public void forceChat(String rawMessage) {
+        // ... 4 lines elided ...
+	public boolean isInAir() {
+        // ... 4 lines elided ...
+	public void setTabListHeader(Message header) {
+        // ... 5 lines elided ...
+	public void setTabListFooter(Message footer) {
+        // ... 5 lines elided ...
+	public void setTabListHeaderAndFooter(Message header, Message footer) {
+        // ... 6 lines elided ...
+	public Message getTabListHeader() {
+        // ... 4 lines elided ...
+	public Message getTabListFooter() {
+        // ... 4 lines elided ...
+	public boolean isSprinting() {
+        // ... 4 lines elided ...
+	public boolean isOnFire() {
+        // ... 4 lines elided ...
+	public boolean isEating() {
+        // ... 4 lines elided ...
+	protected String getRandomSound() {
+        // ... 3 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

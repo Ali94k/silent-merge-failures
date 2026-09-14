@@ -1,0 +1,1232 @@
+UNIT monitorjbl_excel-streaming-reader__5c0538482f
+repo: monitorjbl_excel-streaming-reader   merge: 5c0538482f5c9cb27c95f63f2457dc9f15ac4089   stratum: B
+files shown: 6 of 7 intersecting Java files
+dropped (textual-conflict, not silent — excluded): src/main/java/com/monitorjbl/xlsx/impl/StreamingCell.java
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/6: src/main/java/com/monitorjbl/xlsx/StreamingReader.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -104,16 +104,17 @@
+ 
+   public static class Builder {
+     private int rowCacheSize = 10;
+     private int bufferSize = 1024;
+     private int sheetIndex = 0;
+     private int sstCacheSize = -1;
+     private String sheetName;
+     private String password;
++    private boolean loadComments = false;
+ 
+     public int getRowCacheSize() {
+       return rowCacheSize;
+     }
+ 
+     public int getBufferSize() {
+       return bufferSize;
+     }
+@@ -142,16 +143,23 @@
+     }
+ 
+     /**
+      * @return The size of the shared string table cache. If less than 0, no
+      * cache will be used and the entire table will be loaded into memory.
+      */
+     public int getSstCacheSize() {
+       return sstCacheSize;
++    }
++
++    /**
++     * @return if the reader should parse and read the cell comments in the file.
++     */
++    public boolean shouldLoadCellComments() {
++      return loadComments;
+     }
+ 
+     /**
+      * The number of rows to keep in memory at any given point.
+      * <p>
+      * Defaults to 10
+      * </p>
+      *
+@@ -239,16 +247,29 @@
+      * enabling this option at all will have some noticeable performance degredation as you are
+      * trading memory for disk space.
+      *
+      * @param sstCacheSize size of SST cache
+      * @return reference to current {@code Builder}
+      */
+     public Builder sstCacheSize(int sstCacheSize) {
+       this.sstCacheSize = sstCacheSize;
++      return this;
++    }
++
++    /**
++     * By default comments will not be loaded as they does not support streaming. They pose memory
++     * risk if the opened file use comments excessively.
++     * <p>If enabled comments contents will be available for all currently accessible cells in the
++     * stream sheet</p>
++     *
++     * @return reference to current {@code Builder}
++     */
++    public Builder readComments() {
++      this.loadComments = true;
+       return this;
+     }
+ 
+     /**
+      * Reads a given {@code InputStream} and returns a new
+      * instance of {@code Workbook}. Due to Apache POI
+      * limitations, a temporary file must be written in order
+      * to create a streaming iterator. This process will use
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -22,26 +22,26 @@
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ import org.w3c.dom.Node;
+ import org.w3c.dom.NodeList;
+ 
+ import javax.xml.stream.XMLEventReader;
+ import javax.xml.stream.XMLStreamException;
+ import java.io.File;
+-import java.io.FileOutputStream;
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.nio.file.Files;
+ import java.security.GeneralSecurityException;
+ import java.util.Iterator;
+ import java.util.Objects;
+ 
+ import static com.monitorjbl.xlsx.XmlUtils.document;
+ import static com.monitorjbl.xlsx.XmlUtils.searchForNodeList;
++import static com.monitorjbl.xlsx.impl.TempFileUtil.writeInputStreamToFile;
+ 
+ /**
+  * Streaming Excel workbook implementation. Most advanced features of POI are not supported.
+  * Use this only if your application can handle iterating through an entire workbook, row by
+  * row.
+  */
+ public class StreamingReader implements Iterable<Row>, AutoCloseable {
+   private static final Logger log = LoggerFactory.getLogger(StreamingReader.class);
+@@ -68,38 +68,26 @@
+   }
+ 
+   /**
+    * Closes the streaming resource, attempting to clean up any temporary files created.
+    *
+    * @throws com.monitorjbl.xlsx.exceptions.CloseException if there is an issue closing the stream
+    */
+   @Override
+-  public void close() {
++  public void close() throws IOException {
+     try {
+       workbook.close();
+     } finally {
+       if(tmp != null) {
+-        log.debug("Deleting tmp file [" + tmp.getAbsolutePath() + "]");
++        if (log.isDebugEnabled()) {
++          log.debug("Deleting tmp file [" + tmp.getAbsolutePath() + "]");
++        }
+         tmp.delete();
+       }
+-    }
+-  }
+-
+-  static File writeInputStreamToFile(InputStream is, int bufferSize) throws IOException {
+-    File f = Files.createTempFile("tmp-", ".xlsx").toFile();
+-    try(FileOutputStream fos = new FileOutputStream(f)) {
+-      int read;
+-      byte[] bytes = new byte[bufferSize];
+-      while((read = is.read(bytes)) != -1) {
+-        fos.write(bytes, 0, read);
+-      }
+-      is.close();
+-      fos.close();
+-      return f;
+     }
+   }
+ 
+   public static Builder builder() {
+     return new Builder();
+   }
+ 
+   public static class Builder {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/6: src/main/java/com/monitorjbl/xlsx/impl/StreamingRow.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -9,21 +9,29 @@
+ 
+ import java.util.Iterator;
+ import java.util.Map;
+ import java.util.TreeMap;
+ 
+ public class StreamingRow implements Row {
+   private int rowIndex;
+   private boolean isHidden;
++  private final float rowHeight;
++  private final CellStyle rowStyle;
+   private TreeMap<Integer, Cell> cellMap = new TreeMap<>();
+ 
+   public StreamingRow(int rowIndex, boolean isHidden) {
++    this(rowIndex, 0, isHidden, null);
++  }
++
++  public StreamingRow(int rowIndex, float rowHeight, boolean isHidden, CellStyle rowStyle) {
+     this.rowIndex = rowIndex;
++    this.rowHeight = rowHeight;
+     this.isHidden = isHidden;
++    this.rowStyle = rowStyle;
+   }
+ 
+   public Map<Integer, Cell> getCellMap() {
+     return cellMap;
+   }
+ 
+   public void setCellMap(TreeMap<Integer, Cell> cellMap) {
+     this.cellMap = cellMap;
+@@ -121,16 +129,49 @@
+     if(policy == MissingCellPolicy.CREATE_NULL_AS_BLANK) {
+       if(cell == null) { return new StreamingCell(cellnum, rowIndex, false); }
+     } else if(policy == MissingCellPolicy.RETURN_BLANK_AS_NULL) {
+       if(cell == null || cell.getCellTypeEnum() == CellType.BLANK) { return null; }
+     }
+     return cell;
+   }
+ 
++  /**
++   * {@inheritDoc}
++   */
++  @Override
++  public short getHeight() {
++    // the same conversion from XSSFRow
++    return (short) (getHeightInPoints() * 20);
++  }
++
++  /**
++   * {@inheritDoc}
++   */
++  @Override
++  public float getHeightInPoints() {
++    return rowHeight;
++  }
++
++  /**
++   * {@inheritDoc}
++   */
++  @Override
++  public boolean isFormatted() {
++    return rowStyle != null;
++  }
++
++  /**
++   * {@inheritDoc}
++   */
++  @Override
++  public CellStyle getRowStyle() {
++    return rowStyle;
++  }
++
+   /* Not supported */
+ 
+   /**
+    * Not supported
+    */
+   @Override
+   public Cell createCell(int column) {
+     throw new NotSupportedException();
+@@ -191,48 +232,16 @@
+   public void setHeightInPoints(float height) {
+     throw new NotSupportedException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+-  public short getHeight() {
+-    throw new NotSupportedException();
+-  }
+-
+-  /**
+-   * Not supported
+-   */
+-  @Override
+-  public float getHeightInPoints() {
+-    throw new NotSupportedException();
+-  }
+-
+-  /**
+-   * Not supported
+-   */
+-  @Override
+-  public boolean isFormatted() {
+-    throw new NotSupportedException();
+-  }
+-
+-  /**
+-   * Not supported
+-   */
+-  @Override
+-  public CellStyle getRowStyle() {
+-    throw new NotSupportedException();
+-  }
+-
+-  /**
+-   * Not supported
+-   */
+-  @Override
+   public void setRowStyle(CellStyle style) {
+     throw new NotSupportedException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -135,24 +135,16 @@
+   public Cell createCell(int column) {
+     throw new NotSupportedException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+-  public Cell createCell(int column, int type) {
+-    throw new NotSupportedException();
+-  }
+-
+-  /**
+-   * Not supported
+-   */
+-  @Override
+   public Cell createCell(int i, CellType cellType) {
+     throw new NotSupportedException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+@@ -243,9 +235,25 @@
+   /**
+    * Not supported
+    */
+   @Override
+   public int getOutlineLevel() {
+     throw new NotSupportedException();
+   }
+ 
++  /**
++   * Not supported
++   */
++  @Override
++  public void shiftCellsRight(int firstShiftColumnIndex, int lastShiftColumnIndex, int step) {
++    throw new NotSupportedException();
++  }
++
++  /**
++   * Not supported
++   */
++  @Override
++  public void shiftCellsLeft(int firstShiftColumnIndex, int lastShiftColumnIndex, int step) {
++    throw new NotSupportedException();
++  }
++
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -176,16 +176,24 @@
+   public Cell createCell(int column) {
+     throw new NotSupportedException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
++  public Cell createCell(int column, int type) {
++    throw new NotSupportedException();
++  }
++
++  /**
++   * Not supported
++   */
++  @Override
+   public Cell createCell(int i, CellType cellType) {
+     throw new NotSupportedException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+@@ -216,24 +224,16 @@
+   public void setZeroHeight(boolean zHeight) {
+     throw new NotSupportedException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+-  public void setHeightInPoints(float height) {
+-    throw new NotSupportedException();
+-  }
+-
+-  /**
+-   * Not supported
+-   */
+-  @Override
+   public void setRowStyle(CellStyle style) {
+     throw new NotSupportedException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/6: src/main/java/com/monitorjbl/xlsx/impl/StreamingSheet.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -14,34 +14,51 @@
+ import org.apache.poi.ss.usermodel.Hyperlink;
+ import org.apache.poi.ss.usermodel.PrintSetup;
+ import org.apache.poi.ss.usermodel.Row;
+ import org.apache.poi.ss.usermodel.Sheet;
+ import org.apache.poi.ss.usermodel.SheetConditionalFormatting;
+ import org.apache.poi.ss.usermodel.Workbook;
+ import org.apache.poi.ss.util.CellAddress;
+ import org.apache.poi.ss.util.CellRangeAddress;
++import org.apache.poi.xssf.model.CommentsTable;
++import org.apache.poi.xssf.usermodel.XSSFComment;
++import org.openxmlformats.schemas.spreadsheetml.x2006.main.CTComment;
+ 
+ import java.util.Collection;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Map;
+ 
++import com.monitorjbl.xlsx.exceptions.NotSupportedException;
++
+ public class StreamingSheet implements Sheet {
+ 
++  private static final Supplier NOT_SUPPORTED_SUPPLIER = new Supplier() {
++    @Override
++    public Object getContent() {
++      throw new NotSupportedException();
++    }
++  };
++
++  private Supplier commentsTableSupplier = NOT_SUPPORTED_SUPPLIER;
+   private final String name;
+   private final StreamingSheetReader reader;
+ 
+   public StreamingSheet(String name, StreamingSheetReader reader) {
+     this.name = name;
+     this.reader = reader;
+   }
+ 
+   StreamingSheetReader getReader() {
+     return reader;
++  }
++
++  public void setCommentsTableSupplier(Supplier commentsTableSupplier) {
++    this.commentsTableSupplier = commentsTableSupplier;
+   }
+ 
+   /* Supported */
+ 
+   /**
+    * {@inheritDoc}
+    */
+   @Override
+@@ -71,16 +88,33 @@
+    * @param columnIndex - the column to set (0-based)
+    * @return hidden - <code>false</code> if the column is visible
+    */
+   @Override
+   public boolean isColumnHidden(int columnIndex) {
+     return reader.isColumnHidden(columnIndex);
+   }
+ 
++  /**
++   * {@inheritDoc}
++   */
++  @Override
++  public Comment getCellComment(CellAddress address) {
++    int row = address.getRow();
++    int column = address.getColumn();
++    CellAddress ref = new CellAddress(row, column);
++    CommentsTable commentsTable = (CommentsTable) this.commentsTableSupplier.getContent();
++    CTComment ctComment = commentsTable.getCTComment(ref);
++    if (ctComment == null) {
++      return null;
++    } else {
++      return new XSSFComment(commentsTable, ctComment, null);
++    }
++  }
++
+   /* Unsupported */
+ 
+   /**
+    * Not supported
+    */
+   @Override
+   public Row createRow(int rownum) {
+     throw new UnsupportedOperationException();
+@@ -807,24 +841,16 @@
+   public void autoSizeColumn(int column, boolean useMergedCells) {
+     throw new UnsupportedOperationException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+-  public Comment getCellComment(CellAddress cellAddress) {
+-    throw new UnsupportedOperationException();
+-  }
+-
+-  /**
+-   * Not supported
+-   */
+-  @Override
+   public Map<CellAddress, ? extends Comment> getCellComments() {
+     throw new UnsupportedOperationException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -591,16 +591,24 @@
+   public void shiftRows(int startRow, int endRow, int n, boolean copyRowHeight, boolean resetOriginalRowHeight) {
+     throw new UnsupportedOperationException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
++  public void shiftColumns(int startColumn, int endColumn, final int n) {
++    throw new UnsupportedOperationException();
++  }
++
++  /**
++   * Not supported
++   */
++  @Override
+   public void createFreezePane(int colSplit, int rowSplit, int leftmostColumn, int topRow) {
+     throw new UnsupportedOperationException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/6: src/main/java/com/monitorjbl/xlsx/impl/StreamingSheetReader.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,13 +1,14 @@
+ package com.monitorjbl.xlsx.impl;
+ 
+ import com.monitorjbl.xlsx.exceptions.CloseException;
+ import com.monitorjbl.xlsx.exceptions.ParseException;
+ import org.apache.poi.ss.usermodel.BuiltinFormats;
++import org.apache.poi.ss.usermodel.CellStyle;
+ import org.apache.poi.ss.usermodel.DataFormatter;
+ import org.apache.poi.ss.usermodel.Row;
+ import org.apache.poi.ss.util.CellReference;
+ import org.apache.poi.xssf.model.SharedStringsTable;
+ import org.apache.poi.xssf.model.StylesTable;
+ import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+ import org.apache.poi.xssf.usermodel.XSSFRichTextString;
+ import org.slf4j.Logger;
+@@ -46,27 +47,32 @@
+   private int lastRowNum;
+   private int currentRowNum;
+   private int firstColNum = 0;
+   private int currentColNum;
+   private int rowCacheSize;
+   private List<Row> rowCache = new ArrayList<>();
+   private Iterator<Row> rowCacheIterator;
+ 
++  private Supplier commentsTableSupplier;
+   private String lastContents;
+   private StreamingRow currentRow;
+   private StreamingCell currentCell;
+   private boolean use1904Dates;
+ 
+   public StreamingSheetReader(SharedStringsTable sst, StylesTable stylesTable, XMLEventReader parser, final boolean use1904Dates, int rowCacheSize) {
+     this.sst = sst;
+     this.stylesTable = stylesTable;
+     this.parser = parser;
+     this.use1904Dates = use1904Dates;
+     this.rowCacheSize = rowCacheSize;
++  }
++
++  public void setCommentsTableSupplier(Supplier commentsTableSupplier) {
++    this.commentsTableSupplier = commentsTableSupplier;
+   }
+ 
+   /**
+    * Read through a number of rows equal to the rowCacheSize field or until there is no more data to read
+    *
+    * @return true if data was read
+    */
+   private boolean getRow() {
+@@ -118,19 +124,29 @@
+ 
+       if("row".equals(tagLocalName)) {
+         Attribute rowNumAttr = startElement.getAttributeByName(new QName("r"));
+         int rowIndex = currentRowNum;
+         if(rowNumAttr != null) {
+           rowIndex = Integer.parseInt(rowNumAttr.getValue()) - 1;
+           currentRowNum = rowIndex;
+         }
++        Attribute rowStyleNum = startElement.getAttributeByName(new QName("s"));
++        CellStyle rowStyle = null;
++        if (rowStyleNum != null && stylesTable.getNumCellStyles() > 0) {
++          rowStyle = stylesTable.getStyleAt(Integer.parseInt(rowStyleNum.getValue()));
++        }
++        Attribute rowHeightAttr = startElement.getAttributeByName(new QName("ht"));
++        float rowHeight = 0;
++        if(rowHeightAttr != null) {
++          rowHeight = Float.parseFloat(rowHeightAttr.getValue());
++        }
+         Attribute isHiddenAttr = startElement.getAttributeByName(new QName("hidden"));
+         boolean isHidden = isHiddenAttr != null && ("1".equals(isHiddenAttr.getValue()) || "true".equals(isHiddenAttr.getValue()));
+-        currentRow = new StreamingRow(rowIndex, isHidden);
++        currentRow = new StreamingRow(rowIndex, rowHeight, isHidden, rowStyle);
+         currentColNum = firstColNum;
+       } else if("col".equals(tagLocalName)) {
+         Attribute isHiddenAttr = startElement.getAttributeByName(new QName("hidden"));
+         boolean isHidden = isHiddenAttr != null && ("1".equals(isHiddenAttr.getValue()) || "true".equals(isHiddenAttr.getValue()));
+         if(isHidden) {
+           Attribute minAttr = startElement.getAttributeByName(new QName("min"));
+           Attribute maxAttr = startElement.getAttributeByName(new QName("max"));
+           int min = Integer.parseInt(minAttr.getValue()) - 1;
+@@ -142,16 +158,17 @@
+         Attribute ref = startElement.getAttributeByName(new QName("r"));
+ 
+         if(ref != null) {
+           String[] coord = splitCellRef(ref.getValue());
+           currentCell = new StreamingCell(CellReference.convertColStringToIndex(coord[0]), Integer.parseInt(coord[1]) - 1, use1904Dates);
+         } else {
+           currentCell = new StreamingCell(currentColNum, currentRowNum, use1904Dates);
+         }
++        currentCell.setCommentsTableSupplier(commentsTableSupplier);
+         setFormatString(startElement, currentCell);
+ 
+         Attribute type = startElement.getAttributeByName(new QName("t"));
+         if(type != null) {
+           currentCell.setType(type.getValue());
+         } else {
+           currentCell.setType("n");
+         }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -18,21 +18,16 @@
+ import javax.xml.stream.XMLEventReader;
+ import javax.xml.stream.XMLStreamConstants;
+ import javax.xml.stream.XMLStreamException;
+ import javax.xml.stream.events.Attribute;
+ import javax.xml.stream.events.Characters;
+ import javax.xml.stream.events.EndElement;
+ import javax.xml.stream.events.StartElement;
+ import javax.xml.stream.events.XMLEvent;
+-import java.io.File;
+-import java.io.FileOutputStream;
+-import java.io.IOException;
+-import java.io.InputStream;
+-import java.nio.file.Files;
+ import java.util.ArrayList;
+ import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Set;
+ 
+ public class StreamingSheetReader implements Iterable<Row> {
+   private static final Logger log = LoggerFactory.getLogger(StreamingSheetReader.class);
+@@ -185,17 +180,17 @@
+             if(!Character.isAlphabetic(ref.charAt(i))) {
+               firstColNum = CellReference.convertColStringToIndex(ref.substring(0, i));
+               break;
+             }
+           }
+         }
+       } else if("f".equals(tagLocalName)) {
+         if (currentCell != null) {
+-          currentCell.setType("str");
++          currentCell.setFormulaType(true);
+         }
+       }
+ 
+       // Clear contents cache
+       lastContents = "";
+     } else if(event.getEventType() == XMLStreamConstants.END_ELEMENT
+         && isSpreadsheetTag(event.asEndElement().getName())) {
+       EndElement endElement = event.asEndElement();
+@@ -314,16 +309,17 @@
+     switch(type) {
+       case "s":           //string stored in shared table
+         if (!lastContents.isEmpty()) {
+             int idx = Integer.parseInt(lastContents);
+             return new StringSupplier(new XSSFRichTextString(sst.getEntryAt(idx)).toString());
+         }
+         return new StringSupplier(lastContents);
+       case "inlineStr":   //inline string (not in sst)
++      case "str":
+         return new StringSupplier(new XSSFRichTextString(lastContents).toString());
+       case "e":           //error type
+         return new StringSupplier("ERROR:  " + lastContents);
+       case "n":           //numeric type
+         if(currentCell.getNumericFormat() != null && lastContents.length() > 0) {
+           // the formatRawCellContents operation incurs a significant overhead on large sheets,
+           // and we want to defer the execution of this method until the value is actually needed.
+           // it is not needed in all cases..
+@@ -344,20 +340,16 @@
+               }
+ 
+               return cachedContent;
+             }
+           };
+         } else {
+           return new StringSupplier(lastContents);
+         }
+-      case "str":         //formula type
+-        if (currentCell.supportsSupplierOverride()) {
+-          return getFormatterForType(currentCell.getRawCachedFormulaResultType());
+-        }
+       default:
+         return new StringSupplier(lastContents);
+     }
+   }
+ 
+   /**
+    * Returns the contents of the cell, with no formatting applied
+    *
+@@ -393,30 +385,16 @@
+   public void close() {
+     try {
+       parser.close();
+     } catch(XMLStreamException e) {
+       throw new CloseException(e);
+     }
+   }
+ 
+-  static File writeInputStreamToFile(InputStream is, int bufferSize) throws IOException {
+-    File f = Files.createTempFile("tmp-", ".xlsx").toFile();
+-    try(FileOutputStream fos = new FileOutputStream(f)) {
+-      int read;
+-      byte[] bytes = new byte[bufferSize];
+-      while((read = is.read(bytes)) != -1) {
+-        fos.write(bytes, 0, read);
+-      }
+-      is.close();
+-      fos.close();
+-      return f;
+-    }
+-  }
+-
+   class StreamingRowIterator implements Iterator<Row> {
+     public StreamingRowIterator() {
+       if(rowCacheIterator == null) {
+         hasNext();
+       }
+     }
+ 
+     @Override
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/6: src/main/java/com/monitorjbl/xlsx/impl/StreamingWorkbook.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -8,16 +8,17 @@
+ import org.apache.poi.ss.usermodel.DataFormat;
+ import org.apache.poi.ss.usermodel.Font;
+ import org.apache.poi.ss.usermodel.Name;
+ import org.apache.poi.ss.usermodel.PictureData;
+ import org.apache.poi.ss.usermodel.Row.MissingCellPolicy;
+ import org.apache.poi.ss.usermodel.Sheet;
+ import org.apache.poi.ss.usermodel.SheetVisibility;
+ import org.apache.poi.ss.usermodel.Workbook;
++import org.apache.poi.xssf.model.StylesTable;
+ 
+ import java.io.IOException;
+ import java.io.OutputStream;
+ import java.util.Iterator;
+ import java.util.List;
+ 
+ public class StreamingWorkbook implements Workbook, AutoCloseable {
+   private final StreamingWorkbookReader reader;
+@@ -247,17 +248,21 @@
+     throw new UnsupportedOperationException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+   public Font getFontAt(short idx) {
+-    throw new UnsupportedOperationException();
++    StylesTable styles = reader.getStyles();
++    if (styles != null) {
++      return styles.getFontAt(idx);
++    }
++    return null;
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+   public CellStyle createCellStyle() {
+     throw new UnsupportedOperationException();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -124,17 +124,17 @@
+   public boolean isSheetVeryHidden(int sheetIx) {
+     return "veryHidden".equals(reader.getSheetProperties().get(sheetIx).get("state"));
+   }
+ 
+   /**
+    * {@inheritDoc}
+    */
+   @Override
+-  public void close() {
++  public void close() throws IOException {
+     reader.close();
+   }
+ 
+   /* Not supported */
+ 
+   /**
+    * Not supported
+    */
+@@ -246,24 +246,36 @@
+   public short getNumberOfFonts() {
+     throw new UnsupportedOperationException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
++  public int getNumberOfFontsAsInt() { throw new UnsupportedOperationException(); }
++
++  /**
++   * Not supported
++   */
++  @Override
+   public Font getFontAt(short idx) {
+     throw new UnsupportedOperationException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
++  public Font getFontAt(int i) { throw new UnsupportedOperationException(); }
++
++  /**
++   * Not supported
++   */
++  @Override
+   public CellStyle createCellStyle() {
+     throw new UnsupportedOperationException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+@@ -478,24 +490,16 @@
+   public void setSheetHidden(int sheetIx, boolean hidden) {
+     throw new UnsupportedOperationException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+-  public void setSheetHidden(int sheetIx, int hidden) {
+-    throw new UnsupportedOperationException();
+-  }
+-
+-  /**
+-   * Not supported
+-   */
+-  @Override
+   public SheetVisibility getSheetVisibility(int i) {
+     throw new UnsupportedOperationException();
+   }
+ 
+   /**
+    * Not supported
+    */
+   @Override
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/6: src/main/java/com/monitorjbl/xlsx/impl/StreamingWorkbookReader.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -2,25 +2,28 @@
+ 
+ import com.monitorjbl.xlsx.StreamingReader.Builder;
+ import com.monitorjbl.xlsx.exceptions.OpenException;
+ import com.monitorjbl.xlsx.exceptions.ReadException;
+ import com.monitorjbl.xlsx.sst.BufferedStringsTable;
+ import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+ import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
+ import org.apache.poi.openxml4j.opc.OPCPackage;
++import org.apache.poi.openxml4j.opc.PackagePart;
+ import org.apache.poi.poifs.crypt.Decryptor;
+ import org.apache.poi.poifs.crypt.EncryptionInfo;
+ import org.apache.poi.poifs.filesystem.POIFSFileSystem;
+ import org.apache.poi.ss.usermodel.Sheet;
+ import org.apache.poi.util.StaxHelper;
+ import org.apache.poi.xssf.eventusermodel.XSSFReader;
+ import org.apache.poi.xssf.eventusermodel.XSSFReader.SheetIterator;
++import org.apache.poi.xssf.model.CommentsTable;
+ import org.apache.poi.xssf.model.SharedStringsTable;
+ import org.apache.poi.xssf.model.StylesTable;
++import org.apache.poi.xssf.usermodel.XSSFRelation;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ import org.w3c.dom.Node;
+ import org.w3c.dom.NodeList;
+ 
+ import javax.xml.stream.XMLEventReader;
+ import javax.xml.stream.XMLStreamException;
+ import java.io.File;
+@@ -39,24 +42,32 @@
+ 
+ import static com.monitorjbl.xlsx.XmlUtils.document;
+ import static com.monitorjbl.xlsx.XmlUtils.searchForNodeList;
+ import static java.util.Arrays.asList;
+ 
+ public class StreamingWorkbookReader implements Iterable<Sheet>, AutoCloseable {
+   private static final Logger log = LoggerFactory.getLogger(StreamingWorkbookReader.class);
+ 
++  private static final Supplier COMMENTS_NOT_ENABLED = new Supplier() {
++    @Override
++    public Object getContent() {
++      throw new UnsupportedOperationException("Comments parsing is not enabled. Use StreamingReader.Builder.readComments().open(File);");
++    }
++  };
++
+   private final List<StreamingSheet> sheets;
+   private final List<Map<String, String>> sheetProperties = new ArrayList<>();
+   private final Builder builder;
+   private File tmp;
+   private File sstCache;
+   private OPCPackage pkg;
+   private SharedStringsTable sst;
+   private boolean use1904Dates = false;
++  private StylesTable styles;
+ 
+   /**
+    * This constructor exists only so the StreamingReader can instantiate
+    * a StreamingWorkbook using its own reader implementation. Do not use
+    * going forward.
+    *
+    * @param sst      The SST data for this workbook
+    * @param sstCache The backing cache file for the SST data
+@@ -115,54 +126,70 @@
+       if(builder.getSstCacheSize() > 0) {
+         sstCache = Files.createTempFile("", "").toFile();
+         log.debug("Created sst cache file [" + sstCache.getAbsolutePath() + "]");
+         sst = BufferedStringsTable.getSharedStringsTable(sstCache, builder.getSstCacheSize(), pkg);
+       } else {
+         sst = reader.getSharedStringsTable();
+       }
+ 
+-      StylesTable styles = reader.getStylesTable();
++      styles = reader.getStylesTable();
+       NodeList workbookPr = searchForNodeList(document(reader.getWorkbookData()), "/workbook/workbookPr");
+       if(workbookPr.getLength() == 1) {
+         final Node date1904 = workbookPr.item(0).getAttributes().getNamedItem("date1904");
+         if(date1904 != null) {
+           use1904Dates = ("1".equals(date1904.getTextContent()));
+         }
+       }
+ 
+-      loadSheets(reader, sst, styles, builder.getRowCacheSize());
++      loadSheets(reader, sst, styles, pkg, builder.getRowCacheSize());
+     } catch(IOException e) {
+       throw new OpenException("Failed to open file", e);
+     } catch(OpenXML4JException | XMLStreamException e) {
+       throw new ReadException("Unable to read workbook", e);
+     } catch(GeneralSecurityException e) {
+       throw new ReadException("Unable to read workbook - Decryption failed", e);
+     }
+   }
+ 
+-  void loadSheets(XSSFReader reader, SharedStringsTable sst, StylesTable stylesTable, int rowCacheSize) throws IOException, InvalidFormatException,
++  private Supplier getCommentsTable(OPCPackage opcPackage, URI uri) throws IOException {
++    if (!builder.shouldLoadCellComments()) {
++      return COMMENTS_NOT_ENABLED;
++    }
++    return new CommentsTableSupplier(opcPackage, uri);
++  }
++
++  protected StylesTable getStyles() {
++    return styles;
++  }
++
++  void loadSheets(XSSFReader reader, SharedStringsTable sst, StylesTable stylesTable, OPCPackage opcPackage, int rowCacheSize) throws IOException, InvalidFormatException,
+       XMLStreamException {
+     lookupSheetNames(reader);
+ 
+     //Some workbooks have multiple references to the same sheet. Need to filter
+     //them out before creating the XMLEventReader by keeping track of their URIs.
+     //The sheets are listed in order, so we must keep track of insertion order.
+     SheetIterator iter = (SheetIterator) reader.getSheetsData();
+     Map<URI, InputStream> sheetStreams = new LinkedHashMap<>();
+     while(iter.hasNext()) {
+       InputStream is = iter.next();
+       sheetStreams.put(iter.getSheetPart().getPartName().getURI(), is);
+     }
+ 
+     //Iterate over the loaded streams
+     int i = 0;
+     for(URI uri : sheetStreams.keySet()) {
++      Supplier cts = getCommentsTable(opcPackage, uri);
+       XMLEventReader parser = StaxHelper.newXMLInputFactory().createXMLEventReader(sheetStreams.get(uri));
+-      sheets.add(new StreamingSheet(sheetProperties.get(i++).get("name"), new StreamingSheetReader(sst, stylesTable, parser, use1904Dates, rowCacheSize)));
++      StreamingSheetReader streamingSheetReader = new StreamingSheetReader(sst, stylesTable, parser, use1904Dates, rowCacheSize);
++      streamingSheetReader.setCommentsTableSupplier(cts);
++      StreamingSheet streamingSheet = new StreamingSheet(sheetProperties.get(i++).get("name"), streamingSheetReader);
++      streamingSheet.setCommentsTableSupplier(cts);
++      sheets.add(streamingSheet);
+     }
+   }
+ 
+   void lookupSheetNames(XSSFReader reader) throws IOException, InvalidFormatException {
+     sheetProperties.clear();
+     NodeList nl = searchForNodeList(document(reader.getWorkbookData()), "/workbook/sheets/sheet");
+     for(int i = 0; i < nl.getLength(); i++) {
+       Map<String, String> props = new HashMap<>();
+@@ -238,9 +265,57 @@
+       return iterator.next();
+     }
+ 
+     @Override
+     public void remove() {
+       throw new RuntimeException("NotSupported");
+     }
+   }
++
++  static class CommentsTableSupplier implements Supplier {
++    private final OPCPackage opcPackage;
++    private final URI sheetUri;
++    private CommentsTable commentsTable;
++
++    CommentsTableSupplier(OPCPackage opcPackage, URI sheetUri) {
++      this.opcPackage = opcPackage;
++      this.sheetUri = sheetUri;
++    }
++
++    @Override
++    public CommentsTable getContent() {
++      if (commentsTable == null) {
++        try {
++          commentsTable = resolveCommentsTable();
++        } catch (IOException e) {
++          throw new ReadException(e);
++        }
++      }
++      return commentsTable;
++    }
++
++    private CommentsTable resolveCommentsTable() throws IOException {
++      // selects comments file based on the described relation in the sheet relations file
++      // comments select cannot be done by index as files index vary depending if the given sheet has any comments or not
++      ArrayList<PackagePart> relations = opcPackage.getPartsByContentType("application/vnd.openxmlformats-package.relationships+xml");
++      String sheetName = sheetUri.getPath().substring(sheetUri.getPath().lastIndexOf('/'));
++      for (PackagePart part : relations) {
++        if (part.getPartName().getURI().toString().contains(sheetName)) {
++          NodeList commentsRelationNode = searchForNodeList(document(part.getInputStream()), "//Relationship[@Type='" + XSSFRelation.SHEET_COMMENTS.getRelation() + "']");
++          if (commentsRelationNode.getLength() > 0) {
++            String commentsPath = commentsRelationNode.item(0).getAttributes().getNamedItem("Target").getNodeValue();
++            commentsPath = commentsPath.substring(commentsPath.lastIndexOf('/'));
++            ArrayList<PackagePart> commentParts = opcPackage.getPartsByContentType(XSSFRelation.SHEET_COMMENTS.getContentType());
++            for (PackagePart commentPart : commentParts) {
++              if (commentPart.getPartName().getURI().toString().contains(commentsPath)) {
++                return new CommentsTable(commentPart);
++              }
++            }
++          }
++        }
++      }
++      // no comments file for the current sheet, no commnets in the sheet
++      // empty comments table that will return null for all requested comments
++      return new CommentsTable();
++    }
++  }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -19,31 +19,31 @@
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ import org.w3c.dom.Node;
+ import org.w3c.dom.NodeList;
+ 
+ import javax.xml.stream.XMLEventReader;
+ import javax.xml.stream.XMLStreamException;
+ import java.io.File;
+-import java.io.FileOutputStream;
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.net.URI;
+ import java.nio.file.Files;
+ import java.security.GeneralSecurityException;
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.Iterator;
+ import java.util.LinkedHashMap;
+ import java.util.List;
+ import java.util.Map;
+ 
+ import static com.monitorjbl.xlsx.XmlUtils.document;
+ import static com.monitorjbl.xlsx.XmlUtils.searchForNodeList;
++import static com.monitorjbl.xlsx.impl.TempFileUtil.writeInputStreamToFile;
+ import static java.util.Arrays.asList;
+ 
+ public class StreamingWorkbookReader implements Iterable<Sheet>, AutoCloseable {
+   private static final Logger log = LoggerFactory.getLogger(StreamingWorkbookReader.class);
+ 
+   private final List<StreamingSheet> sheets;
+   private final List<Map<String, String>> sheetProperties = new ArrayList<>();
+   private final Builder builder;
+@@ -88,17 +88,19 @@
+       f = writeInputStreamToFile(is, builder.getBufferSize());
+       log.debug("Created temp file [" + f.getAbsolutePath() + "]");
+ 
+       init(f);
+       tmp = f;
+     } catch(IOException e) {
+       throw new ReadException("Unable to read input stream", e);
+     } catch(RuntimeException e) {
+-      f.delete();
++      if(f != null) {
++        f.delete();
++      }
+       throw e;
+     }
+   }
+ 
+   public void init(File f) {
+     try {
+       if(builder.getPassword() != null) {
+         // Based on: https://poi.apache.org/encryption.html
+@@ -183,46 +185,36 @@
+   }
+ 
+   @Override
+   public Iterator<Sheet> iterator() {
+     return new StreamingSheetIterator(sheets.iterator());
+   }
+ 
+   @Override
+-  public void close() {
++  public void close() throws IOException {
+     try {
+       for(StreamingSheet sheet : sheets) {
+         sheet.getReader().close();
+       }
+       pkg.revert();
+     } finally {
+       if(tmp != null) {
+-        log.debug("Deleting tmp file [" + tmp.getAbsolutePath() + "]");
++        if(log.isDebugEnabled()) {
++          log.debug("Deleting tmp file [" + tmp.getAbsolutePath() + "]");
++        }
+         tmp.delete();
+       }
+       if(sst instanceof BufferedStringsTable) {
+-        log.debug("Deleting sst cache file [" + this.sstCache.getAbsolutePath() + "]");
++        if(log.isDebugEnabled()) {
++          log.debug("Deleting sst cache file [" + this.sstCache.getAbsolutePath() + "]");
++        }
+         ((BufferedStringsTable) sst).close();
+         sstCache.delete();
+       }
+-    }
+-  }
+-
+-  static File writeInputStreamToFile(InputStream is, int bufferSize) throws IOException {
+-    File f = Files.createTempFile("tmp-", ".xlsx").toFile();
+-    try(FileOutputStream fos = new FileOutputStream(f)) {
+-      int read;
+-      byte[] bytes = new byte[bufferSize];
+-      while((read = is.read(bytes)) != -1) {
+-        fos.write(bytes, 0, read);
+-      }
+-      is.close();
+-      fos.close();
+-      return f;
+     }
+   }
+ 
+   static class StreamingSheetIterator implements Iterator<Sheet> {
+     private final Iterator<StreamingSheet> iterator;
+ 
+     public StreamingSheetIterator(Iterator<StreamingSheet> iterator) {
+       this.iterator = iterator;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

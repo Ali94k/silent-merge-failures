@@ -1,0 +1,677 @@
+UNIT jnr_jnr-unixsocket__467698b6bd
+repo: jnr_jnr-unixsocket   merge: 467698b6bdcff23f0ce0914b6644fb24e88bb8ab   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/main/java/jnr/unixsocket/Native.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -13,29 +13,34 @@
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ 
+ package jnr.unixsocket;
+ 
++import java.io.IOException;
++import java.nio.ByteBuffer;
++import java.nio.ByteOrder;
++
+ import jnr.constants.platform.ProtocolFamily;
+ import jnr.constants.platform.Sock;
+ import jnr.constants.platform.SocketLevel;
+ import jnr.constants.platform.SocketOption;
+-import jnr.ffi.*;
++import jnr.ffi.LastError;
++import jnr.ffi.Library;
++import jnr.ffi.Platform;
++import jnr.ffi.Runtime;
+ import jnr.ffi.annotations.In;
+ import jnr.ffi.annotations.Out;
+ import jnr.ffi.annotations.Transient;
+ import jnr.ffi.byref.IntByReference;
+-
+-import java.io.IOException;
+-import java.nio.ByteBuffer;
+-import java.nio.ByteOrder;
++import jnr.posix.DefaultNativeTimeval;
++import jnr.posix.Timeval;
+ 
+ class Native {
+     static final String[] libnames = Platform.getNativePlatform().getOS() == Platform.OS.SOLARIS
+                         ? new String[] { "socket", "nsl", "c" }
+                         : new String[] { "c" };
+     public static interface LibC {
+         static final LibC INSTANCE = Library.loadLibrary(LibC.class, libnames);
+         public static final int F_GETFL = com.kenai.constantine.platform.Fcntl.F_GETFL.value();
+@@ -47,17 +52,19 @@
+         int bind(int fd, @In @Out @Transient SockAddrUnix addr, int len);
+         int accept(int fd, @Out SockAddrUnix addr, @In @Out IntByReference len);
+         int connect(int s, @In @Transient SockAddrUnix name, int namelen);
+         int getsockname(int fd, @Out SockAddrUnix addr, @In @Out IntByReference len);
+         int getpeername(int fd, @Out SockAddrUnix addr, @In @Out IntByReference len);
+         int socketpair(int domain, int type, int protocol, @Out int[] sv);
+         int fcntl(int fd, int cmd, int data);
+         int getsockopt(int s, int level, int optname, @Out ByteBuffer optval, @In @Out IntByReference optlen);
++        int getsockopt(int s, int level, int optname, @Out Timeval optval, @In @Out IntByReference optlen);
+         int setsockopt(int s, int level, int optname, @In ByteBuffer optval, int optlen);
++        int setsockopt(int s, int level, int optname, @In Timeval optval, int optlen);
+         String strerror(int error);
+     }
+ 
+     static final LibC libsocket() {
+         return LibC.INSTANCE;
+     }
+ 
+     static final LibC libc() {
+@@ -109,14 +116,45 @@
+             flags &= ~LibC.O_NONBLOCK;
+         } else {
+             flags |= LibC.O_NONBLOCK;
+         }
+         libc().fcntl(fd, LibC.F_SETFL, flags);
+     }
+ 
+     public static int setsockopt(int s, SocketLevel level, SocketOption optname, boolean optval) {
+-        ByteBuffer buf = ByteBuffer.allocate(4);
+-        buf.order(ByteOrder.BIG_ENDIAN);
+-        buf.putInt(optval ? 1 : 0).flip();
+-        return libsocket().setsockopt(s, level.intValue(), optname.intValue(), buf, buf.remaining());
++        return setsockopt(s, level, optname, optval ? 1 : 0);
+     }
++
++    public static int setsockopt(int s, SocketLevel level, SocketOption optname, int optval) {
++        if (optname == SocketOption.SO_RCVTIMEO) {
++            DefaultNativeTimeval t = new DefaultNativeTimeval(Runtime.getSystemRuntime());
++            t.setTime(new long [] {optval / 1000, (optval % 1000) * 1000});
++            return libsocket().setsockopt(s, level.intValue(), optname.intValue(), t, DefaultNativeTimeval.size(t));
++        } else {
++            ByteBuffer buf = ByteBuffer.allocate(4);
++            buf.order(ByteOrder.BIG_ENDIAN);
++            buf.putInt(optval).flip();
++            return libsocket().setsockopt(s, level.intValue(), optname.intValue(), buf, buf.remaining());
++        }
++    }
++
++    public static int getsockopt (int s, SocketLevel level, int optname) {
++        IntByReference ref;
++        if (optname == SocketOption.SO_RCVTIMEO.intValue()) {
++            DefaultNativeTimeval t = new DefaultNativeTimeval(Runtime.getSystemRuntime());
++            ref = new IntByReference(DefaultNativeTimeval.size(t));
++            Native.libsocket().getsockopt(s, level.intValue(), optname, t, ref);
++            return (t.tv_sec.intValue() * 1000) + (t.tv_usec.intValue() / 1000);
++        } else {
++            ByteBuffer buf = ByteBuffer.allocate(4);
++            buf.order(ByteOrder.BIG_ENDIAN);
++            ref = new IntByReference(4);
++            Native.libsocket().getsockopt(s, level.intValue(), optname, buf, ref);
++            return buf.getInt();
++        }
++    }
++
++    public static boolean getboolsockopt (int s, SocketLevel level, int optname) {
++        return getsockopt(s, level, optname) != 0;
++    }
++
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -114,9 +114,17 @@
+     }
+ 
+     public static int setsockopt(int s, SocketLevel level, SocketOption optname, boolean optval) {
+         ByteBuffer buf = ByteBuffer.allocate(4);
+         buf.order(ByteOrder.BIG_ENDIAN);
+         buf.putInt(optval ? 1 : 0).flip();
+         return libsocket().setsockopt(s, level.intValue(), optname.intValue(), buf, buf.remaining());
+     }
++
++    public static int getsockopt(int s, SocketLevel level, SocketOption optname, Struct data) {
++        Pointer struct_ptr = Struct.getMemory(data);
++        IntByReference ref = new IntByReference(Struct.size(data));
++        ByteBuffer buf = ByteBuffer.wrap((byte[])struct_ptr.array());
++
++        return Native.libsocket().getsockopt(s, level.intValue(), optname.intValue(), buf, ref);
++    }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (C) 2009 Wayne Meissner
+ *
+ * This file is part of the JNR project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package jnr.unixsocket;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+import jnr.constants.platform.ProtocolFamily;
+import jnr.constants.platform.Sock;
+import jnr.constants.platform.SocketLevel;
+import jnr.constants.platform.SocketOption;
+import jnr.ffi.LastError;
+import jnr.ffi.Library;
+import jnr.ffi.Platform;
+import jnr.ffi.Runtime;
+import jnr.ffi.annotations.In;
+import jnr.ffi.annotations.Out;
+import jnr.ffi.annotations.Transient;
+import jnr.ffi.byref.IntByReference;
+import jnr.posix.DefaultNativeTimeval;
+import jnr.posix.Timeval;
+
+class Native {
+    static final String[] libnames = Platform.getNativePlatform().getOS() == Platform.OS.SOLARIS
+                        ? new String[] { "socket", "nsl", "c" }
+                        : new String[] { "c" };
+    public static interface LibC {
+        static final LibC INSTANCE = Library.loadLibrary(LibC.class, libnames);
+        public static final int F_GETFL = com.kenai.constantine.platform.Fcntl.F_GETFL.value();
+        public static final int F_SETFL = com.kenai.constantine.platform.Fcntl.F_SETFL.value();
+        public static final int O_NONBLOCK = com.kenai.constantine.platform.OpenFlags.O_NONBLOCK.value();
+
+        int socket(int domain, int type, int protocol);
+        int listen(int fd, int backlog);
+        int bind(int fd, @In @Out @Transient SockAddrUnix addr, int len);
+        int accept(int fd, @Out SockAddrUnix addr, @In @Out IntByReference len);
+        int connect(int s, @In @Transient SockAddrUnix name, int namelen);
+        int getsockname(int fd, @Out SockAddrUnix addr, @In @Out IntByReference len);
+        int getpeername(int fd, @Out SockAddrUnix addr, @In @Out IntByReference len);
+        int socketpair(int domain, int type, int protocol, @Out int[] sv);
+        int fcntl(int fd, int cmd, int data);
+        int getsockopt(int s, int level, int optname, @Out ByteBuffer optval, @In @Out IntByReference optlen);
+        int getsockopt(int s, int level, int optname, @Out Timeval optval, @In @Out IntByReference optlen);
+        int setsockopt(int s, int level, int optname, @In ByteBuffer optval, int optlen);
+        int setsockopt(int s, int level, int optname, @In Timeval optval, int optlen);
+        String strerror(int error);
+    }
+
+    static final LibC libsocket() {
+        return LibC.INSTANCE;
+    }
+
+    static final LibC libc() {
+        return LibC.INSTANCE;
+    }
+
+    static int socket(ProtocolFamily domain, Sock type, int protocol) throws IOException {
+        int fd = libsocket().socket(domain.intValue(), type.intValue(), protocol);
+        if (fd < 0) {
+            throw new IOException(getLastErrorString());
+        }
+        return fd;
+    }
+
+    static int socketpair(ProtocolFamily domain, Sock type, int protocol, int[] sv) throws IOException {
+        if (libsocket().socketpair(domain.intValue(), type.intValue(), protocol, sv) < 0) {
+            throw new IOException("socketpair(2) failed " + Native.getLastErrorString());
+        }
+        return 0;
+    }
+
+    static int listen(int fd, int backlog) {
+        return libsocket().listen(fd, backlog);
+    }
+
+    static int bind(int fd, SockAddrUnix addr, int len) {
+        return libsocket().bind(fd, addr, len);
+    }
+
+    static int accept(int fd, SockAddrUnix addr, IntByReference len) {
+        return libsocket().accept(fd, addr, len);
+    }
+
+    static int connect(int fd, SockAddrUnix addr, int len) {
+        return libsocket().connect(fd, addr, len);
+    }
+
+    static String getLastErrorString() {
+        return strerror(LastError.getLastError(jnr.ffi.Runtime.getSystemRuntime()));
+    }
+
+    static String strerror(int error) {
+        return libc().strerror(error);
+    }
+
+    public static void setBlocking(int fd, boolean block) {
+        int flags = libc().fcntl(fd, LibC.F_GETFL, 0);
+        if (block) {
+            flags &= ~LibC.O_NONBLOCK;
+        } else {
+            flags |= LibC.O_NONBLOCK;
+        }
+        libc().fcntl(fd, LibC.F_SETFL, flags);
+    }
+
+    public static int setsockopt(int s, SocketLevel level, SocketOption optname, boolean optval) {
+        return setsockopt(s, level, optname, optval ? 1 : 0);
+    }
+
+    public static int setsockopt(int s, SocketLevel level, SocketOption optname, int optval) {
+        if (optname == SocketOption.SO_RCVTIMEO) {
+            DefaultNativeTimeval t = new DefaultNativeTimeval(Runtime.getSystemRuntime());
+            t.setTime(new long [] {optval / 1000, (optval % 1000) * 1000});
+            return libsocket().setsockopt(s, level.intValue(), optname.intValue(), t, DefaultNativeTimeval.size(t));
+        } else {
+            ByteBuffer buf = ByteBuffer.allocate(4);
+            buf.order(ByteOrder.BIG_ENDIAN);
+            buf.putInt(optval).flip();
+            return libsocket().setsockopt(s, level.intValue(), optname.intValue(), buf, buf.remaining());
+        }
+    }
+
+    public static int getsockopt (int s, SocketLevel level, int optname) {
+        IntByReference ref;
+        if (optname == SocketOption.SO_RCVTIMEO.intValue()) {
+            DefaultNativeTimeval t = new DefaultNativeTimeval(Runtime.getSystemRuntime());
+            ref = new IntByReference(DefaultNativeTimeval.size(t));
+            Native.libsocket().getsockopt(s, level.intValue(), optname, t, ref);
+            return (t.tv_sec.intValue() * 1000) + (t.tv_usec.intValue() / 1000);
+        } else {
+            ByteBuffer buf = ByteBuffer.allocate(4);
+            buf.order(ByteOrder.BIG_ENDIAN);
+            ref = new IntByReference(4);
+            Native.libsocket().getsockopt(s, level.intValue(), optname, buf, ref);
+            return buf.getInt();
+        }
+    }
+
+    public static boolean getboolsockopt (int s, SocketLevel level, int optname) {
+        return getsockopt(s, level, optname) != 0;
+    }
+
+    public static int getsockopt(int s, SocketLevel level, SocketOption optname, Struct data) {
+        Pointer struct_ptr = Struct.getMemory(data);
+        IntByReference ref = new IntByReference(Struct.size(data));
+        ByteBuffer buf = ByteBuffer.wrap((byte[])struct_ptr.array());
+
+        return Native.libsocket().getsockopt(s, level.intValue(), optname.intValue(), buf, ref);
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -24,17 +24,19 @@
+ 
+ import jnr.constants.platform.ProtocolFamily;
+ import jnr.constants.platform.Sock;
+ import jnr.constants.platform.SocketLevel;
+ import jnr.constants.platform.SocketOption;
+ import jnr.ffi.LastError;
+ import jnr.ffi.Library;
+ import jnr.ffi.Platform;
++import jnr.ffi.Pointer;
+ import jnr.ffi.Runtime;
++import jnr.ffi.Struct;
+ import jnr.ffi.annotations.In;
+ import jnr.ffi.annotations.Out;
+ import jnr.ffi.annotations.Transient;
+ import jnr.ffi.byref.IntByReference;
+ import jnr.posix.DefaultNativeTimeval;
+ import jnr.posix.Timeval;
+ 
+ class Native {
+@@ -148,20 +150,20 @@
+             ByteBuffer buf = ByteBuffer.allocate(4);
+             buf.order(ByteOrder.BIG_ENDIAN);
+             ref = new IntByReference(4);
+             Native.libsocket().getsockopt(s, level.intValue(), optname, buf, ref);
+             return buf.getInt();
+         }
+     }
+ 
+-    public static boolean getboolsockopt (int s, SocketLevel level, int optname) {
+-        return getsockopt(s, level, optname) != 0;
+-    }
+-
+     public static int getsockopt(int s, SocketLevel level, SocketOption optname, Struct data) {
+         Pointer struct_ptr = Struct.getMemory(data);
+         IntByReference ref = new IntByReference(Struct.size(data));
+         ByteBuffer buf = ByteBuffer.wrap((byte[])struct_ptr.array());
+ 
+         return Native.libsocket().getsockopt(s, level.intValue(), optname.intValue(), buf, ref);
+     }
++
++    public static boolean getboolsockopt (int s, SocketLevel level, int optname) {
++        return getsockopt(s, level, optname) != 0;
++    }
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/main/java/jnr/unixsocket/UnixSocketChannel.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -16,16 +16,18 @@
+  * limitations under the License.
+  */
+ 
+ package jnr.unixsocket;
+ 
+ import jnr.constants.platform.Errno;
+ import jnr.constants.platform.ProtocolFamily;
+ import jnr.constants.platform.Sock;
++import jnr.constants.platform.SocketLevel;
++import jnr.constants.platform.SocketOption;
+ import jnr.enxio.channels.NativeSocketChannel;
+ import jnr.ffi.*;
+ import jnr.ffi.byref.IntByReference;
+ 
+ import java.io.IOException;
+ import java.nio.channels.SelectionKey;
+ 
+ /**
+@@ -165,9 +167,26 @@
+         IntByReference len = new IntByReference(remote.getStruct().getMaximumLength());
+ 
+         if (Native.libc().getsockname(sockfd, remote.getStruct(), len) < 0) {
+             throw new Error(Native.getLastErrorString());
+         }
+ 
+         return remote;
+     }
++
++    public boolean getKeepAlive() {
++        int ret = Native.getsockopt(getFD(), SocketLevel.SOL_SOCKET, SocketOption.SO_KEEPALIVE.intValue());
++        return (ret == 1) ? true : false;
++    }
++
++    public void setKeepAlive(boolean on) {
++        Native.setsockopt(getFD(), SocketLevel.SOL_SOCKET, SocketOption.SO_KEEPALIVE, on);
++    }
++
++    public int getSoTimeout() {
++        return Native.getsockopt(getFD(), SocketLevel.SOL_SOCKET, SocketOption.SO_RCVTIMEO.intValue());
++    }
++
++    public void setSoTimeout(int timeout) {
++        Native.setsockopt(getFD(), SocketLevel.SOL_SOCKET, SocketOption.SO_RCVTIMEO, timeout);
++    }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -144,16 +144,35 @@
+     public final UnixSocketAddress getLocalSocketAddress() {
+         if (state != State.CONNECTED) {
+             return null;
+         }
+ 
+         return localAddress != null ? localAddress : (localAddress = getsockname(getFD()));
+     }
+ 
++    /**
++     * Retrieves the credentials for this UNIX socket. If this socket channel
++     * is not in a connected state, this method will return null.
++     * 
++     * @see man unix 7; SCM_CREDENTIALS
++     *
++     * @throws UnsupportedOperationException if the underlying socket library
++     *         doesn't support the SO_PEERCRED option
++     *
++     * @return the credentials of the remote; null if not connected
++     */
++    public final Credentials getCredentials() {
++        if (state != State.CONNECTED) {
++            return null;
++        }
++
++        return Credentials.getCredentials(getFD());
++    }
++
+     static UnixSocketAddress getpeername(int sockfd) {
+         UnixSocketAddress remote = new UnixSocketAddress();
+         IntByReference len = new IntByReference(remote.getStruct().getMaximumLength());
+ 
+         if (Native.libc().getpeername(sockfd, remote.getStruct(), len) < 0) {
+             throw new Error(Native.getLastErrorString());
+         }
+ 
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (C) 2009 Wayne Meissner
+ *
+ * This file is part of the JNR project.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package jnr.unixsocket;
+
+import jnr.constants.platform.Errno;
+import jnr.constants.platform.ProtocolFamily;
+import jnr.constants.platform.Sock;
+import jnr.constants.platform.SocketLevel;
+import jnr.constants.platform.SocketOption;
+import jnr.enxio.channels.NativeSocketChannel;
+import jnr.ffi.*;
+import jnr.ffi.byref.IntByReference;
+
+import java.io.IOException;
+import java.nio.channels.SelectionKey;
+
+/**
+ * A {@link java.nio.channels.Channel} implementation that uses a native unix socket
+ */
+public class UnixSocketChannel extends NativeSocketChannel {
+    static enum State {
+        UNINITIALIZED,
+        CONNECTED,
+        IDLE,
+        CONNECTING,
+    }
+    private volatile State state;
+    private UnixSocketAddress remoteAddress = null;
+    private UnixSocketAddress localAddress = null;
+    private final Object stateLock = new Object();
+
+    public static final UnixSocketChannel open() throws IOException {
+        return new UnixSocketChannel();
+    }
+
+    public static final UnixSocketChannel open(UnixSocketAddress remote) throws IOException {
+        UnixSocketChannel channel = new UnixSocketChannel();
+        channel.connect(remote);
+        return channel;
+    }
+
+    public static final UnixSocketChannel[] pair() throws IOException {
+        int[] sockets = { -1, -1 };
+        Native.socketpair(ProtocolFamily.PF_UNIX, Sock.SOCK_STREAM, 0, sockets);
+        return new UnixSocketChannel[] {
+            new UnixSocketChannel(sockets[0], SelectionKey.OP_READ | SelectionKey.OP_WRITE),
+            new UnixSocketChannel(sockets[1], SelectionKey.OP_READ | SelectionKey.OP_WRITE)
+        };
+    }
+
+    private UnixSocketChannel() throws IOException {
+        super(Native.socket(ProtocolFamily.PF_UNIX, Sock.SOCK_STREAM, 0),
+                SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+        state = State.IDLE;
+    }
+
+    UnixSocketChannel(int fd, int ops) {
+        super(fd, ops);
+        state = State.CONNECTED;
+    }
+
+    UnixSocketChannel(int fd, UnixSocketAddress remote) {
+        super(fd, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+        state = State.CONNECTED;
+        remoteAddress = remote;
+    }
+
+    private final boolean doConnect(SockAddrUnix remote) throws IOException {
+        if (Native.connect(getFD(), remote, remote.length()) != 0) {
+            Errno error = Errno.valueOf(LastError.getLastError(jnr.ffi.Runtime.getSystemRuntime()));
+
+            switch (error) {
+                case EAGAIN:
+                case EWOULDBLOCK:
+                    return false;
+
+                default:
+                    throw new IOException(error.toString());
+            }
+        }
+        return true;
+    }
+
+    public boolean connect(UnixSocketAddress remote) throws IOException {
+        remoteAddress = remote;
+        if (!doConnect(remoteAddress.getStruct())) {
+
+            state = State.CONNECTING;
+            return false;
+        
+        } else {
+
+            state = State.CONNECTED;
+            return true;
+        }
+    }
+
+    public boolean isConnected() {
+        return state == State.CONNECTED;
+    }
+
+    public boolean isConnectionPending() {
+        return state == State.CONNECTING;
+    }
+
+    public boolean finishConnect() throws IOException {
+        switch (state) {
+            case CONNECTED:
+                return true;
+
+            case CONNECTING:
+                if (!doConnect(remoteAddress.getStruct())) {
+                    return false;
+                }
+                state = State.CONNECTED;
+                return true;
+
+            default:
+                throw new IllegalStateException("socket is not waiting for connect to complete");
+        }
+    }
+
+    public final UnixSocketAddress getRemoteSocketAddress() {
+        if (state != State.CONNECTED) {
+            return null;
+        }
+        return remoteAddress != null ? remoteAddress : (remoteAddress = getpeername(getFD()));
+    }
+
+    public final UnixSocketAddress getLocalSocketAddress() {
+        if (state != State.CONNECTED) {
+            return null;
+        }
+
+        return localAddress != null ? localAddress : (localAddress = getsockname(getFD()));
+    }
+
+    /**
+     * Retrieves the credentials for this UNIX socket. If this socket channel
+     * is not in a connected state, this method will return null.
+     * 
+     * @see man unix 7; SCM_CREDENTIALS
+     *
+     * @throws UnsupportedOperationException if the underlying socket library
+     *         doesn't support the SO_PEERCRED option
+     *
+     * @return the credentials of the remote; null if not connected
+     */
+    public final Credentials getCredentials() {
+        if (state != State.CONNECTED) {
+            return null;
+        }
+
+        return Credentials.getCredentials(getFD());
+    }
+
+    static UnixSocketAddress getpeername(int sockfd) {
+        UnixSocketAddress remote = new UnixSocketAddress();
+        IntByReference len = new IntByReference(remote.getStruct().getMaximumLength());
+
+        if (Native.libc().getpeername(sockfd, remote.getStruct(), len) < 0) {
+            throw new Error(Native.getLastErrorString());
+        }
+
+        return remote;
+    }
+
+    static UnixSocketAddress getsockname(int sockfd) {
+        UnixSocketAddress remote = new UnixSocketAddress();
+        IntByReference len = new IntByReference(remote.getStruct().getMaximumLength());
+
+        if (Native.libc().getsockname(sockfd, remote.getStruct(), len) < 0) {
+            throw new Error(Native.getLastErrorString());
+        }
+
+        return remote;
+    }
+
+    public boolean getKeepAlive() {
+        int ret = Native.getsockopt(getFD(), SocketLevel.SOL_SOCKET, SocketOption.SO_KEEPALIVE.intValue());
+        return (ret == 1) ? true : false;
+    }
+
+    public void setKeepAlive(boolean on) {
+        Native.setsockopt(getFD(), SocketLevel.SOL_SOCKET, SocketOption.SO_KEEPALIVE, on);
+    }
+
+    public int getSoTimeout() {
+        return Native.getsockopt(getFD(), SocketLevel.SOL_SOCKET, SocketOption.SO_RCVTIMEO.intValue());
+    }
+
+    public void setSoTimeout(int timeout) {
+        Native.setsockopt(getFD(), SocketLevel.SOL_SOCKET, SocketOption.SO_RCVTIMEO, timeout);
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

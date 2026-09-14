@@ -1,0 +1,1046 @@
+UNIT ninjaframework_ninja__31737c1a10
+repo: ninjaframework_ninja   merge: 31737c1a105967cc5fa2570accad072b6d7b6565   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/2: ninja-servlet/src/main/java/ninja/servlet/ContextImpl.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -24,16 +24,17 @@
+ import java.util.Arrays;
+ import java.util.Collections;
+ import java.util.Enumeration;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Map.Entry;
+ 
++import javax.servlet.ServletContext;
+ import javax.servlet.http.HttpServletRequest;
+ import javax.servlet.http.HttpServletResponse;
+ 
+ import ninja.Context;
+ import ninja.Cookie;
+ import ninja.Result;
+ import ninja.Route;
+ import ninja.bodyparser.BodyParserEngine;
+@@ -53,16 +54,18 @@
+ import com.google.inject.Inject;
+ import java.net.InetAddress;
+ import java.net.UnknownHostException;
+ import ninja.ContentTypes;
+ import org.apache.commons.lang3.StringUtils;
+ 
+ public class ContextImpl implements Context.Impl {
+ 
++    private ServletContext servletContext;
++
+     private HttpServletRequest httpServletRequest;
+ 
+     private HttpServletResponse httpServletResponse;
+ 
+     private Route route;
+ 
+     private AsyncStrategy asyncStrategy;
+     private final Object asyncLock = new Object();
+@@ -91,18 +94,20 @@
+ 
+         this.bodyParserEngineManager = bodyParserEngineManager;
+         this.flashScope = flashCookie;
+         this.session = sessionCookie;
+         this.resultHandler = resultHandler;
+         this.validation = validation;
+     }
+ 
+-    public void init(HttpServletRequest httpServletRequest,
++    public void init(ServletContext servletContext,
++            HttpServletRequest httpServletRequest,
+             HttpServletResponse httpServletResponse) {
++        this.servletContext = servletContext;
+         this.httpServletRequest = httpServletRequest;
+         this.httpServletResponse = httpServletResponse;
+ 
+         enforceCorrectEncodingOfRequest();
+ 
+         // init flash scope:
+         flashScope.init(this);
+ 
+@@ -612,16 +617,25 @@
+     }
+ 
+     @Override
+     public String getContextPath() {
+         return contextPath;
+     }
+ 
+     /**
++     * Convenience method to access ServletContext of this context.
++     *
++     * @return ServletContext of this Context
++     */
++    public ServletContext getServletContext() {
++        return servletContext;
++    }
++
++    /**
+      * Convenience method to access HttpServletRequest of this context.
+      *
+      * @return HttpServletRequest of this Context
+      */
+     public HttpServletRequest getHttpServletRequest() {
+         return httpServletRequest;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -65,37 +65,42 @@
+     private Route route;
+ 
+     private AsyncStrategy asyncStrategy;
+     private final Object asyncLock = new Object();
+ 
+     private final BodyParserEngineManager bodyParserEngineManager;
+ 
+     private final FlashScope flashScope;
++    
++    private final NinjaProperties ninjaProperties;
+ 
+     private final Session session;
+     private final ResultHandler resultHandler;
+     private final Validation validation;
+ 
+     // In Async mode, these values will be set to null, so save them
+     private String requestPath;
+     private String contextPath;
+ 
+     @Inject
+     Logger logger;
+ 
+     @Inject
+-    public ContextImpl(BodyParserEngineManager bodyParserEngineManager,
++    public ContextImpl(
++            BodyParserEngineManager bodyParserEngineManager,
+             FlashScope flashCookie,
++            NinjaProperties ninjaProperties,
++            ResultHandler resultHandler,
+             Session sessionCookie,
+-            ResultHandler resultHandler,
+             Validation validation) {
+ 
+         this.bodyParserEngineManager = bodyParserEngineManager;
+         this.flashScope = flashCookie;
++        this.ninjaProperties = ninjaProperties;
+         this.session = sessionCookie;
+         this.resultHandler = resultHandler;
+         this.validation = validation;
+     }
+ 
+     public void init(HttpServletRequest httpServletRequest,
+             HttpServletResponse httpServletResponse) {
+         this.httpServletRequest = httpServletRequest;
+@@ -324,16 +329,34 @@
+ 
+     @Override
+     public String getHostname() {
+         return httpServletRequest.getHeader("host");
+     }
+ 
+     @Override
+     public String getRemoteAddr() {
++        
++        boolean isUsageOfXForwardedHeaderEnabled 
++                = ninjaProperties.getBooleanWithDefault(
++                        Context.NINJA_PROPERTIES_X_FORWARDED_FOR, false);
++        
++        String remoteAddr;
++        
++        if (!isUsageOfXForwardedHeaderEnabled) {
++            remoteAddr = httpServletRequest.getRemoteAddr();
++        } else {
++            remoteAddr = calculateRemoteAddrAndTakeIntoAccountXForwardHeader();
++        }
++        
++        return remoteAddr;
++    }
++    
++    private String calculateRemoteAddrAndTakeIntoAccountXForwardHeader() {
++        
+         String remoteAddr = getHeader(X_FORWARD_HEADER);
+ 
+         if (remoteAddr != null) {
+             if (remoteAddr.contains(",")) {
+                 // sometimes the header is of form client ip,proxy 1 ip,proxy 2 ip,...,proxy n ip,
+                 // we just want the client
+                 remoteAddr = StringUtils.split(remoteAddr, ',')[0].trim();
+             }
+@@ -341,16 +364,17 @@
+                 // If ip4/6 address string handed over, simply does pattern validation.
+                 InetAddress.getByName(remoteAddr);
+             } catch (UnknownHostException e) {
+                 remoteAddr = httpServletRequest.getRemoteAddr();
+             }
+         } else {
+             remoteAddr = httpServletRequest.getRemoteAddr();
+         }
++        
+         return remoteAddr;
+     }
+ 
+     @Override
+     public boolean isAsync() {
+         return asyncStrategy != null;
+     }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: ninja-servlet/src/test/java/ninja/servlet/ContextImplTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -15,26 +15,27 @@
+  */
+ 
+ package ninja.servlet;
+ 
+ import static org.hamcrest.CoreMatchers.equalTo;
+ import static org.hamcrest.CoreMatchers.nullValue;
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertFalse;
++import static org.junit.Assert.assertNotNull;
+ import static org.junit.Assert.assertNull;
+ import static org.junit.Assert.assertThat;
+ import static org.junit.Assert.assertTrue;
+ import static org.mockito.Matchers.anyString;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+ 
+ import java.util.Map;
+ 
+-
++import javax.servlet.ServletContext;
+ import javax.servlet.http.HttpServletRequest;
+ import javax.servlet.http.HttpServletResponse;
+ 
+ import ninja.*;
+ import ninja.bodyparser.BodyParserEngine;
+ import ninja.bodyparser.BodyParserEngineManager;
+ import ninja.session.FlashScope;
+ import ninja.session.Session;
+@@ -60,16 +61,19 @@
+ 
+     @Mock
+     private FlashScope flashCookie;
+ 
+     @Mock
+     private BodyParserEngineManager bodyParserEngineManager;
+ 
+     @Mock
++    private ServletContext servletContext;
++
++    @Mock
+     private HttpServletRequest httpServletRequest;
+ 
+     @Mock
+     private HttpServletResponse httpServletResponse;
+ 
+     @Mock
+     private Route route;
+ 
+@@ -98,52 +102,52 @@
+ 
+     @Test
+     public void testGetRequestUri() {
+ 
+         //say the httpServletRequest to return a certain value:
+         when(httpServletRequest.getRequestURI()).thenReturn("/index");
+ 
+         //init the context from a (mocked) servlet
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //make sure this is correct
+         assertEquals("/index", context.getRequestUri());
+     }
+ 
+     @Test
+     public void testGetHostname() {
+ 
+         //say the httpServletRequest to return a certain value:
+         when(httpServletRequest.getHeader("host")).thenReturn("test.com");
+ 
+         //init the context from a (mocked) servlet
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //make sure this is correct
+         assertEquals("test.com", context.getHostname());
+     }
+ 
+     @Test
+     public void testGetRemoteAddr() {
+ 
+         //say the httpServletRequest to return a certain value:
+         when(httpServletRequest.getRemoteAddr()).thenReturn("mockedRemoteAddr");
+ 
+         //init the context from a (mocked) servlet
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //make sure this is correct
+         assertEquals("mockedRemoteAddr", context.getRemoteAddr());
+     }
+ 
+     @Test
+     public void testAddCookieViaResult() {
+         Cookie cookie = Cookie.builder("cookie", "yum").setDomain("domain").build();
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+         //context.addCookie(cookie);
+ 
+         //generate an arbitrary result:
+         Result result = Results.html();
+         result.addCookie(cookie);
+ 
+         //finalize the headers => the cookies must be copied over to the servletcookies
+         context.finalizeHeaders(result);
+@@ -163,17 +167,17 @@
+     @Test
+     public void getCookieTest() {
+         javax.servlet.http.Cookie servletCookie1 = new javax.servlet.http.Cookie("contextCookie1", "theValue1");
+         javax.servlet.http.Cookie servletCookie2 = new javax.servlet.http.Cookie("contextCookie2", "theValue2");
+         javax.servlet.http.Cookie [] servletCookies = {servletCookie1, servletCookie2};
+ 
+         when(httpServletRequest.getCookies()).thenReturn(servletCookies);
+ 
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         // negative test:
+         ninja.Cookie doesNotExist = context.getCookie("doesNotExist");
+         assertNull(doesNotExist);
+ 
+         // test  against cookie that is really there
+         ninja.Cookie cookie1 = context.getCookie("contextCookie1");
+ 
+@@ -191,17 +195,17 @@
+     @Test
+     public void hasCookieTest() {
+         javax.servlet.http.Cookie servletCookie1 = new javax.servlet.http.Cookie("contextCookie1", "theValue1");
+         javax.servlet.http.Cookie servletCookie2 = new javax.servlet.http.Cookie("contextCookie2", "theValue2");
+         javax.servlet.http.Cookie [] servletCookies = {servletCookie1, servletCookie2};
+ 
+         when(httpServletRequest.getCookies()).thenReturn(servletCookies);
+ 
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         // negative test:
+         assertFalse(context.hasCookie("doesNotExist"));
+ 
+         // test  against cookie that is really there
+         assertTrue(context.hasCookie("contextCookie1"));
+ 
+         // test 2 against cookie that is really there
+@@ -213,17 +217,17 @@
+ 
+         javax.servlet.http.Cookie servletCookie1 = new javax.servlet.http.Cookie("contextCookie1", "theValue");
+         javax.servlet.http.Cookie servletCookie2 = new javax.servlet.http.Cookie("contextCookie2", "theValue");
+         javax.servlet.http.Cookie [] servletCookiesEmpty = {};
+         javax.servlet.http.Cookie [] servletCookies = {servletCookie1, servletCookie2};
+ 
+         when(httpServletRequest.getCookies()).thenReturn(servletCookiesEmpty);
+ 
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //test when there are no cookies.
+         assertEquals(0, context.getCookies().size());
+ 
+         // now return some cookies:
+         when(httpServletRequest.getCookies()).thenReturn(servletCookies);
+ 
+ 
+@@ -231,17 +235,17 @@
+ 
+ 
+     }
+ 
+ 
+     @Test
+     public void testGetPathParameter() {
+     	//init the context
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //mock a parametermap:
+         Map<String, String> parameterMap = Maps.newHashMap();
+         parameterMap.put("parameter", "parameter");
+ 
+         //and return the parameter map when any parameter is called...
+         when(route.getPathParametersEncoded(Matchers.anyString())).thenReturn(parameterMap);
+ 
+@@ -252,17 +256,17 @@
+ 
+         assertEquals("parameter", context.getPathParameter("parameter"));
+ 
+     }
+ 
+     @Test
+     public void testGetPathParameterDecodingWorks() {
+         //init the context
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //mock a parametermap:
+         Map<String, String> parameterMap = Maps.newHashMap();
+         parameterMap.put("parameter", "blue%2Fred%3Fand+green%E2%82%AC%2f");
+ 
+         //and return the parameter map when any parameter is called...
+         when(route.getPathParametersEncoded(Matchers.anyString())).thenReturn(parameterMap);
+ 
+@@ -272,17 +276,17 @@
+         assertEquals("blue/red?and+green€/", context.getPathParameter("parameter"));
+ 
+     }
+ 
+ 
+     @Test
+     public void testGetPathParameterAsInteger() {
+     	//init the context
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //mock a parametermap:
+         Map<String, String> parameterMap = Maps.newHashMap();
+         parameterMap.put("parameter", "parameter");
+ 
+         //and return the parameter map when any parameter is called...
+         when(route.getPathParametersEncoded(Matchers.anyString())).thenReturn(parameterMap);
+ 
+@@ -298,17 +302,17 @@
+         assertEquals(new Integer(1), context.getPathParameterAsInteger("parameter"));
+ 
+     }
+ 
+     @Test
+     public void testGetParameter() {
+ 
+     	//init the context
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //and return the parameter map when any parameter is called...
+         when(httpServletRequest.getParameter("key")).thenReturn("value");
+ 
+         //this will not work and return null
+         assertEquals(null, context.getParameter("key_not_there"));
+ 
+         //this will return the default value:
+@@ -318,17 +322,17 @@
+         assertEquals("value", context.getParameter("key"));
+ 
+     }
+ 
+     @Test
+     public void testGetParameterAsInteger() {
+ 
+     	//init the context
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //and return the parameter map when any parameter is called...
+         when(httpServletRequest.getParameter("key")).thenReturn("1");
+ 
+         //this will not work and return null
+         assertEquals(null, context.getParameterAsInteger("key_not_there"));
+ 
+         //this will return the default value:
+@@ -337,17 +341,17 @@
+         //this will work as the value is there...
+         assertEquals(new Integer(1), context.getParameterAsInteger("key"));
+ 
+     }
+ 
+     @Test
+     public void testGetParameterAs() {
+         //init the context
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //and return the parameter map when any parameter is called...
+         when(httpServletRequest.getParameter("key1")).thenReturn("100");
+         when(httpServletRequest.getParameter("key2")).thenReturn("true");
+         when(httpServletRequest.getParameter("key3")).thenReturn("10.1");
+         when(httpServletRequest.getParameter("key4")).thenReturn("x");
+ 
+         //this will not work and return null
+@@ -359,33 +363,33 @@
+         assertEquals(new Float(10.1), context.getParameterAs("key3", Float.class));
+         assertEquals(new Character('x'), context.getParameterAs("key4", Character.class));
+     }
+ 
+     @Test
+     public void testContentTypeGetsConvertedProperlyUponFinalize() {
+ 
+         //init the context
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //this must be Content-Type: application/json; encoding=utf-8
+         Result result = Results.json();
+ 
+         context.finalizeHeaders(result);
+ 
+         verify(httpServletResponse).setCharacterEncoding(result.getCharset());
+         verify(httpServletResponse).setContentType(result.getContentType());
+     }
+ 
+ 
+     @Test
+     public void testContentTypeWithNullEncodingGetsConvertedProperlyUponFinalize() {
+ 
+         //init the context
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //this must be Content-Type: application/json; encoding=utf-8
+         Result result = Results.json();
+         //force a characterset that is not there. Stupid but tests that its working.
+         result.charset(null);
+ 
+         context.finalizeHeaders(result);
+ 
+@@ -399,17 +403,17 @@
+ 
+         // we got a context
+         when(httpServletRequest.getContextPath()).thenReturn("/my/funky/prefix");
+ 
+         // we got a request uri
+         when(httpServletRequest.getRequestURI()).thenReturn("/my/funky/prefix/myapp/is/here");
+ 
+ 
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+ 
+         assertEquals("/myapp/is/here", context.getRequestPath());
+ 
+     }
+ 
+     @Test
+     public void testGetRequestPathWorksAsExpectedWithOutContext() {
+@@ -417,155 +421,155 @@
+         // we got not context.
+         // according to spec it will return an empty string
+         when(httpServletRequest.getContextPath()).thenReturn("");
+         when(httpServletRequest.getRequestURI()).thenReturn("/index");
+         // we got a request uri
+         when(httpServletRequest.getRequestURI()).thenReturn("/myapp/is/here");
+ 
+ 
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+ 
+         assertEquals("/myapp/is/here", context.getRequestPath());
+ 
+     }
+ 
+     @Test
+     public void testGetRequestContentType() {
+         String contentType = "text/html";
+         when(httpServletRequest.getContentType()).thenReturn(contentType);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertEquals(contentType, context.getRequestContentType());
+ 
+         contentType = null;
+         when(httpServletRequest.getContentType()).thenReturn(contentType);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertNull(context.getRequestContentType());
+ 
+         contentType = "text/html; charset=UTF-8";
+         when(httpServletRequest.getContentType()).thenReturn(contentType);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertEquals(contentType, context.getRequestContentType());
+     }
+ 
+     @Test
+     public void testGetAcceptContentType() {
+         when(httpServletRequest.getHeader("accept")).thenReturn(null);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+         assertEquals(Result.TEXT_HTML, context.getAcceptContentType());
+ 
+         when(httpServletRequest.getHeader("accept")).thenReturn("");
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+         assertEquals(Result.TEXT_HTML, context.getAcceptContentType());
+ 
+         when(httpServletRequest.getHeader("accept")).thenReturn("totally_unknown");
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+         assertEquals(Result.TEXT_HTML, context.getAcceptContentType());
+ 
+         when(httpServletRequest.getHeader("accept")).thenReturn("application/json");
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+         assertEquals(Result.APPLICATON_JSON, context.getAcceptContentType());
+ 
+         when(httpServletRequest.getHeader("accept")).thenReturn("text/html, application/json");
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+         assertEquals(Result.TEXT_HTML, context.getAcceptContentType());
+ 
+         when(httpServletRequest.getHeader("accept")).thenReturn("application/xhtml, application/json");
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+         assertEquals(Result.TEXT_HTML, context.getAcceptContentType());
+ 
+         when(httpServletRequest.getHeader("accept")).thenReturn("text/plain");
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+         assertEquals(Result.TEXT_PLAIN, context.getAcceptContentType());
+ 
+         when(httpServletRequest.getHeader("accept")).thenReturn("text/plain, application/json");
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+         assertEquals(Result.APPLICATON_JSON, context.getAcceptContentType());
+     }
+ 
+     @Test
+     public void testGetAcceptEncoding() {
+         String encoding = "compress, gzip";
+         when(httpServletRequest.getHeader("accept-encoding")).thenReturn(encoding);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertEquals(encoding, context.getAcceptEncoding());
+ 
+         encoding = null;
+         when(httpServletRequest.getHeader("accept-encoding")).thenReturn(encoding);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertNull(context.getAcceptEncoding());
+ 
+         encoding = "gzip;q=1.0, identity; q=0.5, *;q=0";
+         when(httpServletRequest.getHeader("accept-encoding")).thenReturn(encoding);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertEquals(encoding, context.getAcceptEncoding());
+     }
+ 
+     @Test
+     public void testGetAcceptLanguage() {
+         String language = "de";
+         when(httpServletRequest.getHeader("accept-language")).thenReturn(language);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertEquals(language, context.getAcceptLanguage());
+ 
+         language = null;
+         when(httpServletRequest.getHeader("accept-language")).thenReturn(language);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertNull(context.getAcceptLanguage());
+ 
+         language = "da, en-gb;q=0.8, en;q=0.7";
+         when(httpServletRequest.getHeader("accept-language")).thenReturn(language);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertEquals(language, context.getAcceptLanguage());
+     }
+ 
+     @Test
+     public void testGetAcceptCharset() {
+         String charset = "UTF-8";
+         when(httpServletRequest.getHeader("accept-charset")).thenReturn(charset);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertEquals(charset, context.getAcceptCharset());
+ 
+         charset = null;
+         when(httpServletRequest.getHeader("accept-charset")).thenReturn(charset);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertNull(context.getAcceptCharset());
+ 
+         charset = "iso-8859-5, unicode-1-1;q=0.8";
+         when(httpServletRequest.getHeader("accept-charset")).thenReturn(charset);
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         assertEquals(charset, context.getAcceptCharset());
+     }
+ 
+     /**
+      * This is the default mode.
+      *
+      * We get a Content-Type: application/json and want to parse the incoming json.
+      */
+     @Test
+     public void testParseBodyJsonWorks() {
+ 
+ 
+         when(httpServletRequest.getContentType()).thenReturn("application/json; charset=utf-8");
+ 
+         //init the context from a (mocked) servlet
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         when(bodyParserEngineManager.getBodyParserEngineForContentType("application/json")).thenReturn(bodyParserEngine);
+         when(bodyParserEngine.invoke(context, Dummy.class)).thenReturn(new Dummy());
+ 
+         Object o = context.parseBody(Dummy.class);
+ 
+         verify(bodyParserEngineManager).getBodyParserEngineForContentType("application/json");
+         assertTrue(o instanceof Dummy);
+@@ -574,17 +578,17 @@
+     }
+     @Test
+     public void testParseBodyPostWorks() {
+ 
+ 
+         when(httpServletRequest.getContentType()).thenReturn(ContentTypes.APPLICATION_POST_FORM);
+ 
+         //init the context from a (mocked) servlet
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         when(bodyParserEngineManager.getBodyParserEngineForContentType(ContentTypes.APPLICATION_POST_FORM)).thenReturn(bodyParserEngine);
+         Dummy dummy = new Dummy();
+         dummy.name = "post";
+         dummy.count = 245L;
+         when(bodyParserEngine.invoke(context, Dummy.class)).thenReturn(dummy);
+ 
+         Dummy o = context.parseBody(Dummy.class);
+@@ -598,47 +602,47 @@
+     /**
+      * Test for isJson
+      */
+     @Test
+     public void testIsJsonWorks() {
+         when(httpServletRequest.getContentType()).thenReturn(ContentTypes.APPLICATION_JSON);
+ 
+         //init the context from a (mocked) servlet
+-        context.init(httpServletRequest, httpServletResponse);
+-        
++        context.init(servletContext, httpServletRequest, httpServletResponse);
++
+         assertTrue(context.isRequestJson());
+     }
+-    
++
+     /**
+      * Test is isXml
+      */
+     @Test
+     public void testIsXmlWorks() {
+         when(httpServletRequest.getContentType()).thenReturn(ContentTypes.APPLICATION_XML);
+ 
+         //init the context from a (mocked) servlet
+-        context.init(httpServletRequest, httpServletResponse);
+-        
++        context.init(servletContext, httpServletRequest, httpServletResponse);
++
+         assertTrue(context.isRequestXml());
+     }
+-    
++
+     /**
+      * This is the default mode.
+      *
+      * We get a Content-Type: application/json and want to parse the incoming json.
+      */
+     @Test
+     public void testParseBodyXmlWorks() {
+ 
+ 
+         when(httpServletRequest.getContentType()).thenReturn("application/xml");
+ 
+         //init the context from a (mocked) servlet
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         when(bodyParserEngineManager.getBodyParserEngineForContentType("application/xml")).thenReturn(bodyParserEngine);
+         when(bodyParserEngine.invoke(context, Dummy.class)).thenReturn(new Dummy());
+ 
+         Object o = context.parseBody(Dummy.class);
+ 
+         verify(bodyParserEngineManager).getBodyParserEngineForContentType("application/xml");
+         assertTrue(o instanceof Dummy);
+@@ -650,17 +654,17 @@
+      * The request does not have the Content-Type set => we get a null response.
+      */
+     @Test
+     public void testParseBodyWithUnkownContentTypeWorks() {
+ 
+         when(httpServletRequest.getContentType()).thenReturn(null);
+ 
+         //init the context from a (mocked) servlet
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+ 
+         Object o = context.parseBody(Dummy.class);
+ 
+ 
+         assertNull(o);
+ 
+     }
+@@ -670,17 +674,17 @@
+      * This must also return null safely.
+      */
+     @Test
+     public void testParseBodyWithUnknownRequestContentTypeWorks() {
+ 
+         when(httpServletRequest.getContentType()).thenReturn("application/UNKNOWN");
+ 
+         //init the context from a (mocked) servlet
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         Object o = context.parseBody(Dummy.class);
+ 
+         assertNull(o);
+ 
+     }
+ 
+ 
+@@ -690,47 +694,64 @@
+        public Long count;
+     }
+ 
+     /**
+      * Make sure the correct character encoding is set after init.
+      */
+     @Test
+     public void testInitEnforcingOfCorrectEncoding() throws Exception {
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         //this proofs that the encoding has been set:
+         verify(httpServletRequest).setCharacterEncoding(NinjaConstant.UTF_8);
+     }
+ 
+     /**
+      * Make sure the correct character encoding is set before the
+      * reader is returned.
+      */
+     @Test
+     public void testGetReaderEnforcingOfCorrectEncoding() throws Exception {
+ 
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         context.getReader();
+       //this proofs that the encoding has been set:
+         verify(httpServletRequest).setCharacterEncoding(anyString());
+ 
+ 
+     }
+ 
+     /**
+      * Make sure the correct character encoding is set before the
+      * inputStream is returned.
+      */
+     @Test
+     public void testGetInputStreamEnforcingOfCorrectEncoding() throws Exception {
+ 
+-        context.init(httpServletRequest, httpServletResponse);
++        context.init(servletContext, httpServletRequest, httpServletResponse);
+ 
+         context.getInputStream();
+         //this proofs that the encoding has been set:
+         verify(httpServletRequest).setCharacterEncoding(anyString());
+ 
+ 
+     }
+ 
++    /**
++     * We get an conetnt type that does not match any registered parsers.
++     * This must also return null safely.
++     */
++    @Test
++    public void testGetServletContext() {
++
++        //init the context from a (mocked) servlet
++        context.init(servletContext, httpServletRequest, httpServletResponse);
++
++        Object o = context.getServletContext();
++
++        assertNotNull(o);
++        assertEquals(servletContext, o);
++
++    }
++
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -46,16 +46,17 @@
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ import org.mockito.ArgumentCaptor;
+ import org.mockito.Matchers;
+ import org.mockito.Mock;
+ import org.mockito.runners.MockitoJUnitRunner;
+ 
+ import com.google.common.collect.Maps;
++import ninja.utils.NinjaProperties;
+ 
+ @RunWith(MockitoJUnitRunner.class)
+ public class ContextImplTest {
+ 
+     @Mock
+     private Session sessionCookie;
+ 
+     @Mock
+@@ -76,29 +77,37 @@
+     @Mock
+     private ResultHandler resultHandler;
+ 
+     @Mock
+     private Validation validation;
+ 
+     @Mock
+     private BodyParserEngine bodyParserEngine;
++    
++    @Mock
++    private NinjaProperties ninjaProperties;
+ 
+     private ContextImpl context;
+ 
+     @Before
+     public void setUp() {
+         //default setup for httpServlet request.
+         //According to servlet spec the following will be returned:
+         when(httpServletRequest.getContextPath()).thenReturn("");
+         when(httpServletRequest.getRequestURI()).thenReturn("/");
+ 
+ 
+-        context = new ContextImpl(bodyParserEngineManager, flashCookie, sessionCookie,
+-                resultHandler, validation);
++        context = new ContextImpl(
++                bodyParserEngineManager, 
++                flashCookie, 
++                ninjaProperties,
++                resultHandler, 
++                sessionCookie,
++                validation);
+     }
+ 
+     @Test
+     public void testGetRequestUri() {
+ 
+         //say the httpServletRequest to return a certain value:
+         when(httpServletRequest.getRequestURI()).thenReturn("/index");
+ 
+@@ -118,20 +127,72 @@
+         //init the context from a (mocked) servlet
+         context.init(httpServletRequest, httpServletResponse);
+ 
+         //make sure this is correct
+         assertEquals("test.com", context.getHostname());
+     }
+ 
+     @Test
+-    public void testGetRemoteAddr() {
++    public void testGetRemoteAddrReturnsDefaultRemoteAddr() {
+ 
+         //say the httpServletRequest to return a certain value:
+         when(httpServletRequest.getRemoteAddr()).thenReturn("mockedRemoteAddr");
++        when(httpServletRequest.getHeader(Context.X_FORWARD_HEADER)).thenReturn("x-forwarded-for-mockedRemoteAddr");
++
++        //init the context from a (mocked) servlet
++        context.init(httpServletRequest, httpServletResponse);
++
++        //make sure this is correct
++        assertEquals("mockedRemoteAddr", context.getRemoteAddr());
++    }
++    
++    @Test
++    public void testGetRemoteAddrParsesXForwardedForIfSetInApplicationConf() {
++
++        //say the httpServletRequest to return a certain value:
++        when(httpServletRequest.getRemoteAddr()).thenReturn("mockedRemoteAddr");
++        when(httpServletRequest.getHeader(Context.X_FORWARD_HEADER)).thenReturn("192.168.1.44");
++
++        when(ninjaProperties.getBooleanWithDefault(Context.NINJA_PROPERTIES_X_FORWARDED_FOR, false))
++                .thenReturn(Boolean.TRUE);
++
++        //init the context from a (mocked) servlet
++        context.init(httpServletRequest, httpServletResponse);
++
++        //make sure this is correct
++        assertEquals("192.168.1.44", context.getRemoteAddr());
++    }
++    
++    @Test
++    public void testGetRemoteAddrParsesXForwardedForIfMoreThanOneHostPresent() {
++
++        //say the httpServletRequest to return a certain value:
++        when(httpServletRequest.getRemoteAddr()).thenReturn("mockedRemoteAddr");
++        when(httpServletRequest.getHeader(Context.X_FORWARD_HEADER)).thenReturn("192.168.1.1, 192.168.1.2, 192.168.1.3");
++
++        when(ninjaProperties.getBooleanWithDefault(Context.NINJA_PROPERTIES_X_FORWARDED_FOR, false))
++                .thenReturn(Boolean.TRUE);
++
++        //init the context from a (mocked) servlet
++        context.init(httpServletRequest, httpServletResponse);
++
++        //make sure this is correct
++        assertEquals("192.168.1.1", context.getRemoteAddr());
++    }
++    
++    @Test
++    public void testGetRemoteAddrUsesFallbackIfXForwardedForIsNotValidInetAddr() {
++
++        //say the httpServletRequest to return a certain value:
++        when(httpServletRequest.getRemoteAddr()).thenReturn("mockedRemoteAddr");
++        when(httpServletRequest.getHeader(Context.X_FORWARD_HEADER)).thenReturn("I_AM_NOT_A_VALID_ADDRESS");
++
++        when(ninjaProperties.getBooleanWithDefault(Context.NINJA_PROPERTIES_X_FORWARDED_FOR, false))
++                .thenReturn(Boolean.TRUE);
+ 
+         //init the context from a (mocked) servlet
+         context.init(httpServletRequest, httpServletResponse);
+ 
+         //make sure this is correct
+         assertEquals("mockedRemoteAddr", context.getRemoteAddr());
+     }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

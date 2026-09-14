@@ -1,0 +1,1294 @@
+UNIT qcadoo_mes__c6cb8180e5
+repo: qcadoo_mes   merge: c6cb8180e580165fb264a0c9291103ccf555b442   stratum: B
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: mes-core/mes-core-data/src/main/java/com/qcadoo/mes/core/data/internal/DataDefinitionServiceImpl.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -56,23 +56,23 @@
+         checkNotNull(dataDefinition, "data definition for %s cannot be found", entityName);
+ 
+         return dataDefinition;
+     }
+ 
+     private DataDefinition createProductDefinition() {
+         DataDefinition dataDefinition = new DataDefinition("products.product");
+ 
+-        DataFieldDefinition fieldNumber = createFieldDefinition("number", fieldTypeFactory.stringType());
+-        fieldNumber.setValidators(fieldValidationFactory.required());
+-        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType());
+-        fieldName.setValidators(fieldValidationFactory.required());
++        DataFieldDefinition fieldNumber = createFieldDefinition("number", fieldTypeFactory.stringType()).withValidator(
++                fieldValidationFactory.required());
++        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType()).withValidator(
++                fieldValidationFactory.required());
+         DataFieldDefinition fieldTypeOfMaterial = createFieldDefinition("typeOfMaterial",
+-                fieldTypeFactory.enumType("product", "intermediate", "component"));
+-        fieldTypeOfMaterial.setValidators(fieldValidationFactory.required());
++                fieldTypeFactory.enumType("product", "intermediate", "component")).withValidator(
++                fieldValidationFactory.required());
+         DataFieldDefinition fieldEan = createFieldDefinition("ean", fieldTypeFactory.stringType());
+         DataFieldDefinition fieldCategory = createFieldDefinition("category", fieldTypeFactory.dictionaryType("categories"));
+         DataFieldDefinition fieldUnit = createFieldDefinition("unit", fieldTypeFactory.stringType());
+ 
+         dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.Product");
+         dataDefinition.addField(fieldNumber);
+         dataDefinition.addField(fieldName);
+         dataDefinition.addField(fieldTypeOfMaterial);
+@@ -81,28 +81,27 @@
+         dataDefinition.addField(fieldUnit);
+ 
+         return dataDefinition;
+     }
+ 
+     private DataDefinition createSubstituteDefinition() {
+         DataDefinition dataDefinition = new DataDefinition("products.substitute");
+ 
+-        DataFieldDefinition fieldNumber = createFieldDefinition("number", fieldTypeFactory.stringType());
+-        fieldNumber.setValidators(fieldValidationFactory.required());
+-        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType());
+-        fieldName.setValidators(fieldValidationFactory.required());
++        DataFieldDefinition fieldNumber = createFieldDefinition("number", fieldTypeFactory.stringType()).withValidator(
++                fieldValidationFactory.required());
++        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType()).withValidator(
++                fieldValidationFactory.required());
+         DataFieldDefinition fieldEffectiveDateFrom = createFieldDefinition("effectiveDateFrom", fieldTypeFactory.dateTimeType());
+         DataFieldDefinition fieldEffectiveDateTo = createFieldDefinition("effectiveDateTo", fieldTypeFactory.dateTimeType());
+         DataFieldDefinition fieldProduct = createFieldDefinition("product",
+-                fieldTypeFactory.eagerBelongsToType("products.product", "name"));
+-        fieldProduct.setValidators(fieldValidationFactory.required());
+-
+-        DataFieldDefinition fieldPriority = createFieldDefinition("priority", fieldTypeFactory.priorityType(fieldProduct));
+-        fieldPriority.setReadOnly(true);
++                fieldTypeFactory.eagerBelongsToType("products.product", "name")).withValidator(fieldValidationFactory.required());
++
++        DataFieldDefinition fieldPriority = createFieldDefinition("priority", fieldTypeFactory.priorityType(fieldProduct))
++                .readOnly();
+ 
+         dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.Substitute");
+         dataDefinition.addField(fieldNumber);
+         dataDefinition.addField(fieldName);
+         dataDefinition.addField(fieldEffectiveDateFrom);
+         dataDefinition.addField(fieldEffectiveDateTo);
+         dataDefinition.addField(fieldProduct);
+ 
+@@ -113,47 +112,44 @@
+ 
+         return dataDefinition;
+     }
+ 
+     private DataDefinition createSubstituteComponentDefinition() {
+         DataDefinition dataDefinition = new DataDefinition("products.substituteComponent");
+ 
+         DataFieldDefinition fieldProduct = createFieldDefinition("product",
+-                fieldTypeFactory.eagerBelongsToType("products.product", "name"));
+-        fieldProduct.setValidators(fieldValidationFactory.required());
++                fieldTypeFactory.eagerBelongsToType("products.product", "name")).withValidator(fieldValidationFactory.required());
+         DataFieldDefinition fieldSubstitute = createFieldDefinition("substitute",
+-                fieldTypeFactory.eagerBelongsToType("products.substitute", "name"));
+-        fieldSubstitute.setValidators(fieldValidationFactory.required());
+-        DataFieldDefinition fieldQuantity = createFieldDefinition("quantity", fieldTypeFactory.decimalType());
+-        fieldQuantity.setValidators(fieldValidationFactory.required());
++                fieldTypeFactory.eagerBelongsToType("products.substitute", "name")).withValidator(
++                fieldValidationFactory.required());
++        DataFieldDefinition fieldQuantity = createFieldDefinition("quantity", fieldTypeFactory.decimalType()).withValidator(
++                fieldValidationFactory.required());
+ 
+         dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.SubstituteComponent");
+         dataDefinition.addField(fieldProduct);
+         dataDefinition.addField(fieldSubstitute);
+         dataDefinition.addField(fieldQuantity);
+ 
+         return dataDefinition;
+     }
+ 
+     private DataDefinition createUserDefinition() {
+         DataDefinition dataDefinition = new DataDefinition("users.user");
+ 
+-        DataFieldDefinition fieldUserName = createFieldDefinition("userName", fieldTypeFactory.stringType());
+-        fieldUserName.setValidators(fieldValidationFactory.required(), fieldValidationFactory.unique());
++        DataFieldDefinition fieldUserName = createFieldDefinition("userName", fieldTypeFactory.stringType()).withValidator(
++                fieldValidationFactory.required()).withValidator(fieldValidationFactory.unique());
+         DataFieldDefinition fieldUserGroup = createFieldDefinition("userGroup",
+-                fieldTypeFactory.eagerBelongsToType("users.group", "name"));
+-
+-        fieldUserGroup.setValidators(fieldValidationFactory.required());
++                fieldTypeFactory.eagerBelongsToType("users.group", "name")).withValidator(fieldValidationFactory.required());
+         DataFieldDefinition fieldEmail = createFieldDefinition("email", fieldTypeFactory.stringType());
+         DataFieldDefinition fieldFirstName = createFieldDefinition("firstName", fieldTypeFactory.stringType());
+         DataFieldDefinition fieldLastName = createFieldDefinition("lastName", fieldTypeFactory.stringType());
+         DataFieldDefinition fieldDescription = createFieldDefinition("description", fieldTypeFactory.textType());
+-        DataFieldDefinition fieldPassword = createFieldDefinition("password", fieldTypeFactory.passwordType());
+-        fieldPassword.setValidators(fieldValidationFactory.requiredOnCreation());
++        DataFieldDefinition fieldPassword = createFieldDefinition("password", fieldTypeFactory.passwordType()).withValidator(
++                fieldValidationFactory.requiredOnCreate());
+ 
+         dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.Users");
+ 
+         dataDefinition.addField(fieldUserName);
+         dataDefinition.addField(fieldUserGroup);
+         dataDefinition.addField(fieldEmail);
+         dataDefinition.addField(fieldFirstName);
+         dataDefinition.addField(fieldLastName);
+@@ -161,60 +157,57 @@
+         dataDefinition.addField(fieldPassword);
+ 
+         return dataDefinition;
+     }
+ 
+     private DataDefinition createUserGroupDefinition() {
+         DataDefinition dataDefinition = new DataDefinition("users.group");
+ 
+-        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.stringType());
+-        fieldName.setValidators(fieldValidationFactory.required(), fieldValidationFactory.unique());
++        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.stringType()).withValidator(
++                fieldValidationFactory.required()).withValidator(fieldValidationFactory.unique());
+         DataFieldDefinition fieldDescription = createFieldDefinition("description", fieldTypeFactory.textType());
+         // TODO KRNA zamienic na relacje
+         DataFieldDefinition fieldRole = createFieldDefinition("role", fieldTypeFactory.enumType("read", "write", "delete"));
+ 
+         dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.UserGroup");
+         dataDefinition.addField(fieldName);
+         dataDefinition.addField(fieldDescription);
+         dataDefinition.addField(fieldRole);
+ 
+         return dataDefinition;
+     }
+ 
+     private DataDefinition createOrderDefinition() {
+         DataDefinition dataDefinition = new DataDefinition("orders.order");
+ 
+-        DataFieldDefinition fieldNumber = createFieldDefinition("number", fieldTypeFactory.stringType());
+-        fieldNumber.setValidators(fieldValidationFactory.required(), fieldValidationFactory.unique());
+-        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType());
+-        fieldName.setValidators(fieldValidationFactory.required());
+-        DataFieldDefinition fieldDateFrom = createFieldDefinition("dateFrom", fieldTypeFactory.dateType());
+-        fieldDateFrom.setValidators(fieldValidationFactory.required());
+-        DataFieldDefinition fieldDateTo = createFieldDefinition("dateTo", fieldTypeFactory.dateType());
+-        fieldDateTo.setValidators(fieldValidationFactory.required());
++        DataFieldDefinition fieldNumber = createFieldDefinition("number", fieldTypeFactory.stringType()).withValidator(
++                fieldValidationFactory.required()).withValidator(fieldValidationFactory.unique());
++        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType()).withValidator(
++                fieldValidationFactory.required());
++        DataFieldDefinition fieldDateFrom = createFieldDefinition("dateFrom", fieldTypeFactory.dateType()).withValidator(
++                fieldValidationFactory.required());
++        DataFieldDefinition fieldDateTo = createFieldDefinition("dateTo", fieldTypeFactory.dateType()).withValidator(
++                fieldValidationFactory.required());
+         DataFieldDefinition fieldState = createFieldDefinition("state", fieldTypeFactory.enumType("pending", "done"));
+-        fieldName.setValidators(fieldValidationFactory.required());
+         DataFieldDefinition fieldMachine = createFieldDefinition("machine", fieldTypeFactory.enumType("Maszyna 1", "Maszyna 2"));
+         DataFieldDefinition fieldProduct = createFieldDefinition("product",
+                 fieldTypeFactory.eagerBelongsToType("products.product", "name"));
+-        DataFieldDefinition fieldDefaultInstruction = createFieldDefinition("defaultInstruction", fieldTypeFactory.textType());
+-        fieldDefaultInstruction.setEditable(false);
++        DataFieldDefinition fieldDefaultInstruction = createFieldDefinition("defaultInstruction", fieldTypeFactory.textType())
++                .readOnlyOnUpdate();
+         DataFieldDefinition fieldInstruction = createFieldDefinition("instruction",
+                 fieldTypeFactory.enumType("Instrukcja 1", "Instrukcja 2"));
+         DataFieldDefinition fieldPlannedQuantity = createFieldDefinition("plannedQuantity", fieldTypeFactory.decimalType());
+         DataFieldDefinition fieldDoneQuantity = createFieldDefinition("doneQuantity", fieldTypeFactory.decimalType());
+-        DataFieldDefinition fieldEffectiveDateFrom = createFieldDefinition("effectiveDateFrom", fieldTypeFactory.dateType());
+-        fieldEffectiveDateFrom.setEditable(false);
+-        DataFieldDefinition fieldEffectiveDateTo = createFieldDefinition("effectiveDateTo", fieldTypeFactory.dateType());
+-        fieldEffectiveDateFrom.setEditable(false);
+-        DataFieldDefinition fieldStartWorker = createFieldDefinition("startWorker", fieldTypeFactory.textType());
+-        fieldStartWorker.setEditable(false);
+-        DataFieldDefinition fieldEndWorker = createFieldDefinition("endWorker", fieldTypeFactory.textType());
+-        fieldEndWorker.setEditable(false);
++        DataFieldDefinition fieldEffectiveDateFrom = createFieldDefinition("effectiveDateFrom", fieldTypeFactory.dateType())
++                .readOnly();
++        DataFieldDefinition fieldEffectiveDateTo = createFieldDefinition("effectiveDateTo", fieldTypeFactory.dateType())
++                .readOnly();
++        DataFieldDefinition fieldStartWorker = createFieldDefinition("startWorker", fieldTypeFactory.textType()).readOnly();
++        DataFieldDefinition fieldEndWorker = createFieldDefinition("endWorker", fieldTypeFactory.textType()).readOnly();
+ 
+         dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.ProductOrder");
+         dataDefinition.addField(fieldNumber);
+         dataDefinition.addField(fieldName);
+         dataDefinition.addField(fieldDateFrom);
+         dataDefinition.addField(fieldDateTo);
+         dataDefinition.addField(fieldState);
+         dataDefinition.addField(fieldMachine);
+@@ -235,43 +228,41 @@
+         return dataDefinition;
+     }
+ 
+     private DataDefinition createDictionaryDefinition() {
+         DataDefinition dataDefinition = new DataDefinition("core.dictionary");
+         dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.Dictionary");
+         dataDefinition.setDeletable(false);
+ 
+-        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType());
+-        fieldName.setValidators(fieldValidationFactory.required());
++        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType()).withValidator(
++                fieldValidationFactory.required());
+ 
+         dataDefinition.addField(fieldName);
+         return dataDefinition;
+     }
+ 
+     private DataDefinition createDictionaryItemDefinition() {
+         DataDefinition dataDefinition = new DataDefinition("core.dictionaryItem");
+         dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.DictionaryItem");
+ 
+-        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.stringType());
+-        fieldName.setValidators(fieldValidationFactory.required());
++        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.stringType()).withValidator(
++                fieldValidationFactory.required());
+         DataFieldDefinition fieldDescription = createFieldDefinition("description", fieldTypeFactory.textType());
+         DataFieldDefinition fieldDictionary = createFieldDefinition("dictionary",
+                 fieldTypeFactory.eagerBelongsToType("core.dictionary", "name"));
+ 
+         dataDefinition.addField(fieldName);
+         dataDefinition.addField(fieldDescription);
+         dataDefinition.addField(fieldDictionary);
+         return dataDefinition;
+     }
+ 
+     private DataFieldDefinition createFieldDefinition(final String name, final FieldType type) {
+-        DataFieldDefinition fieldDefinition = new DataFieldDefinition(name);
+-        fieldDefinition.setType(type);
+-        return fieldDefinition;
++        return new DataFieldDefinition(name).withType(type);
+     }
+ 
+     @Override
+     public void delete(final String entityName) {
+         throw new UnsupportedOperationException("implement me");
+     }
+ 
+     @Override
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -164,20 +164,20 @@
+     }
+ 
+     private DataDefinition createUserGroupDefinition() {
+         DataDefinition dataDefinition = new DataDefinition("users.group");
+ 
+         DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.stringType());
+         fieldName.setValidators(fieldValidationFactory.required(), fieldValidationFactory.unique());
+         DataFieldDefinition fieldDescription = createFieldDefinition("description", fieldTypeFactory.textType());
+-        // TODO KRNA zamienic na relacje
+-        DataFieldDefinition fieldRole = createFieldDefinition("role", fieldTypeFactory.enumType("read", "write", "delete"));
+-
+-        dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.UserGroup");
++        DataFieldDefinition fieldRole = createFieldDefinition("role", fieldTypeFactory.stringType());
++        fieldRole.setValidators(fieldValidationFactory.required());
++
++        dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.Groups");
+         dataDefinition.addField(fieldName);
+         dataDefinition.addField(fieldDescription);
+         dataDefinition.addField(fieldRole);
+ 
+         return dataDefinition;
+     }
+ 
+     private DataDefinition createOrderDefinition() {
+--- MERGED RESULT (mergiraf; full) ---
+package com.qcadoo.mes.core.data.internal;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.qcadoo.mes.core.data.api.DataDefinitionService;
+import com.qcadoo.mes.core.data.definition.DataDefinition;
+import com.qcadoo.mes.core.data.definition.DataFieldDefinition;
+import com.qcadoo.mes.core.data.internal.callbacks.CallbackFactory;
+import com.qcadoo.mes.core.data.types.FieldType;
+import com.qcadoo.mes.core.data.types.FieldTypeFactory;
+import com.qcadoo.mes.core.data.validation.FieldValidatorFactory;
+
+@Service
+public final class DataDefinitionServiceImpl implements DataDefinitionService {
+
+    @Autowired
+    private FieldTypeFactory fieldTypeFactory;
+
+    @Autowired
+    private CallbackFactory callbackFactory;
+
+    @Autowired
+    private FieldValidatorFactory fieldValidationFactory;
+
+    @Override
+    public void save(final DataDefinition dataDefinition) {
+        throw new UnsupportedOperationException("implement me");
+    }
+
+    @Override
+    public DataDefinition get(final String entityName) {
+        DataDefinition dataDefinition = null;
+        if ("products.product".equals(entityName)) {
+            dataDefinition = createProductDefinition();
+        } else if ("products.substitute".equals(entityName)) {
+            dataDefinition = createSubstituteDefinition();
+        } else if ("products.substituteComponent".equals(entityName)) {
+            dataDefinition = createSubstituteComponentDefinition();
+        } else if ("users.user".equals(entityName)) {
+            dataDefinition = createUserDefinition();
+        } else if ("users.group".equals(entityName)) {
+            dataDefinition = createUserGroupDefinition();
+        } else if ("orders.order".equals(entityName)) {
+            dataDefinition = createOrderDefinition();
+        } else if ("core.dictionary".equals(entityName)) {
+            dataDefinition = createDictionaryDefinition();
+        } else if ("core.dictionaryItem".equals(entityName)) {
+            dataDefinition = createDictionaryItemDefinition();
+        }
+
+        checkNotNull(dataDefinition, "data definition for %s cannot be found", entityName);
+
+        return dataDefinition;
+    }
+
+    private DataDefinition createProductDefinition() {
+        DataDefinition dataDefinition = new DataDefinition("products.product");
+
+        DataFieldDefinition fieldNumber = createFieldDefinition("number", fieldTypeFactory.stringType()).withValidator(
+                fieldValidationFactory.required());
+        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType()).withValidator(
+                fieldValidationFactory.required());
+        DataFieldDefinition fieldTypeOfMaterial = createFieldDefinition("typeOfMaterial",
+                fieldTypeFactory.enumType("product", "intermediate", "component")).withValidator(
+                fieldValidationFactory.required());
+        DataFieldDefinition fieldEan = createFieldDefinition("ean", fieldTypeFactory.stringType());
+        DataFieldDefinition fieldCategory = createFieldDefinition("category", fieldTypeFactory.dictionaryType("categories"));
+        DataFieldDefinition fieldUnit = createFieldDefinition("unit", fieldTypeFactory.stringType());
+
+        dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.Product");
+        dataDefinition.addField(fieldNumber);
+        dataDefinition.addField(fieldName);
+        dataDefinition.addField(fieldTypeOfMaterial);
+        dataDefinition.addField(fieldEan);
+        dataDefinition.addField(fieldCategory);
+        dataDefinition.addField(fieldUnit);
+
+        return dataDefinition;
+    }
+
+    private DataDefinition createSubstituteDefinition() {
+        DataDefinition dataDefinition = new DataDefinition("products.substitute");
+
+        DataFieldDefinition fieldNumber = createFieldDefinition("number", fieldTypeFactory.stringType()).withValidator(
+                fieldValidationFactory.required());
+        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType()).withValidator(
+                fieldValidationFactory.required());
+        DataFieldDefinition fieldEffectiveDateFrom = createFieldDefinition("effectiveDateFrom", fieldTypeFactory.dateTimeType());
+        DataFieldDefinition fieldEffectiveDateTo = createFieldDefinition("effectiveDateTo", fieldTypeFactory.dateTimeType());
+        DataFieldDefinition fieldProduct = createFieldDefinition("product",
+                fieldTypeFactory.eagerBelongsToType("products.product", "name")).withValidator(fieldValidationFactory.required());
+
+        DataFieldDefinition fieldPriority = createFieldDefinition("priority", fieldTypeFactory.priorityType(fieldProduct))
+                .readOnly();
+
+        dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.Substitute");
+        dataDefinition.addField(fieldNumber);
+        dataDefinition.addField(fieldName);
+        dataDefinition.addField(fieldEffectiveDateFrom);
+        dataDefinition.addField(fieldEffectiveDateTo);
+        dataDefinition.addField(fieldProduct);
+
+        dataDefinition.setPriorityField(fieldPriority);
+
+        dataDefinition.setValidators(fieldValidationFactory.customEntity("productService", "checkSubstituteDates")
+                .customErrorMessage("products.validation.error.datesOrder"));
+
+        return dataDefinition;
+    }
+
+    private DataDefinition createSubstituteComponentDefinition() {
+        DataDefinition dataDefinition = new DataDefinition("products.substituteComponent");
+
+        DataFieldDefinition fieldProduct = createFieldDefinition("product",
+                fieldTypeFactory.eagerBelongsToType("products.product", "name")).withValidator(fieldValidationFactory.required());
+        DataFieldDefinition fieldSubstitute = createFieldDefinition("substitute",
+                fieldTypeFactory.eagerBelongsToType("products.substitute", "name")).withValidator(
+                fieldValidationFactory.required());
+        DataFieldDefinition fieldQuantity = createFieldDefinition("quantity", fieldTypeFactory.decimalType()).withValidator(
+                fieldValidationFactory.required());
+
+        dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.SubstituteComponent");
+        dataDefinition.addField(fieldProduct);
+        dataDefinition.addField(fieldSubstitute);
+        dataDefinition.addField(fieldQuantity);
+
+        return dataDefinition;
+    }
+
+    private DataDefinition createUserDefinition() {
+        DataDefinition dataDefinition = new DataDefinition("users.user");
+
+        DataFieldDefinition fieldUserName = createFieldDefinition("userName", fieldTypeFactory.stringType()).withValidator(
+                fieldValidationFactory.required()).withValidator(fieldValidationFactory.unique());
+        DataFieldDefinition fieldUserGroup = createFieldDefinition("userGroup",
+                fieldTypeFactory.eagerBelongsToType("users.group", "name")).withValidator(fieldValidationFactory.required());
+        DataFieldDefinition fieldEmail = createFieldDefinition("email", fieldTypeFactory.stringType());
+        DataFieldDefinition fieldFirstName = createFieldDefinition("firstName", fieldTypeFactory.stringType());
+        DataFieldDefinition fieldLastName = createFieldDefinition("lastName", fieldTypeFactory.stringType());
+        DataFieldDefinition fieldDescription = createFieldDefinition("description", fieldTypeFactory.textType());
+        DataFieldDefinition fieldPassword = createFieldDefinition("password", fieldTypeFactory.passwordType()).withValidator(
+                fieldValidationFactory.requiredOnCreate());
+
+        dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.Users");
+
+        dataDefinition.addField(fieldUserName);
+        dataDefinition.addField(fieldUserGroup);
+        dataDefinition.addField(fieldEmail);
+        dataDefinition.addField(fieldFirstName);
+        dataDefinition.addField(fieldLastName);
+        dataDefinition.addField(fieldDescription);
+        dataDefinition.addField(fieldPassword);
+
+        return dataDefinition;
+    }
+
+    private DataDefinition createUserGroupDefinition() {
+        DataDefinition dataDefinition = new DataDefinition("users.group");
+
+        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.stringType()).withValidator(
+                fieldValidationFactory.required()).withValidator(fieldValidationFactory.unique());
+        DataFieldDefinition fieldDescription = createFieldDefinition("description", fieldTypeFactory.textType());
+        DataFieldDefinition fieldRole = createFieldDefinition("role", fieldTypeFactory.stringType());
+        fieldRole.setValidators(fieldValidationFactory.required());
+
+        dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.Groups");
+        dataDefinition.addField(fieldName);
+        dataDefinition.addField(fieldDescription);
+        dataDefinition.addField(fieldRole);
+
+        return dataDefinition;
+    }
+
+    private DataDefinition createOrderDefinition() {
+        DataDefinition dataDefinition = new DataDefinition("orders.order");
+
+        DataFieldDefinition fieldNumber = createFieldDefinition("number", fieldTypeFactory.stringType()).withValidator(
+                fieldValidationFactory.required()).withValidator(fieldValidationFactory.unique());
+        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType()).withValidator(
+                fieldValidationFactory.required());
+        DataFieldDefinition fieldDateFrom = createFieldDefinition("dateFrom", fieldTypeFactory.dateType()).withValidator(
+                fieldValidationFactory.required());
+        DataFieldDefinition fieldDateTo = createFieldDefinition("dateTo", fieldTypeFactory.dateType()).withValidator(
+                fieldValidationFactory.required());
+        DataFieldDefinition fieldState = createFieldDefinition("state", fieldTypeFactory.enumType("pending", "done"));
+        DataFieldDefinition fieldMachine = createFieldDefinition("machine", fieldTypeFactory.enumType("Maszyna 1", "Maszyna 2"));
+        DataFieldDefinition fieldProduct = createFieldDefinition("product",
+                fieldTypeFactory.eagerBelongsToType("products.product", "name"));
+        DataFieldDefinition fieldDefaultInstruction = createFieldDefinition("defaultInstruction", fieldTypeFactory.textType())
+                .readOnlyOnUpdate();
+        DataFieldDefinition fieldInstruction = createFieldDefinition("instruction",
+                fieldTypeFactory.enumType("Instrukcja 1", "Instrukcja 2"));
+        DataFieldDefinition fieldPlannedQuantity = createFieldDefinition("plannedQuantity", fieldTypeFactory.decimalType());
+        DataFieldDefinition fieldDoneQuantity = createFieldDefinition("doneQuantity", fieldTypeFactory.decimalType());
+        DataFieldDefinition fieldEffectiveDateFrom = createFieldDefinition("effectiveDateFrom", fieldTypeFactory.dateType())
+                .readOnly();
+        DataFieldDefinition fieldEffectiveDateTo = createFieldDefinition("effectiveDateTo", fieldTypeFactory.dateType())
+                .readOnly();
+        DataFieldDefinition fieldStartWorker = createFieldDefinition("startWorker", fieldTypeFactory.textType()).readOnly();
+        DataFieldDefinition fieldEndWorker = createFieldDefinition("endWorker", fieldTypeFactory.textType()).readOnly();
+
+        dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.ProductOrder");
+        dataDefinition.addField(fieldNumber);
+        dataDefinition.addField(fieldName);
+        dataDefinition.addField(fieldDateFrom);
+        dataDefinition.addField(fieldDateTo);
+        dataDefinition.addField(fieldState);
+        dataDefinition.addField(fieldMachine);
+        dataDefinition.addField(fieldProduct);
+        dataDefinition.addField(fieldDefaultInstruction);
+        dataDefinition.addField(fieldInstruction);
+        dataDefinition.addField(fieldPlannedQuantity);
+        dataDefinition.addField(fieldDoneQuantity);
+        dataDefinition.addField(fieldEffectiveDateFrom);
+        dataDefinition.addField(fieldEffectiveDateTo);
+        dataDefinition.addField(fieldStartWorker);
+        dataDefinition.addField(fieldEndWorker);
+
+        dataDefinition.setValidators(fieldValidationFactory.customEntity("productService", "checkOrderDates").customErrorMessage(
+                "products.validation.error.datesOrder"));
+        dataDefinition.setOnSave(callbackFactory.getCallback("productService", "fillOrderDatesAndWorkers"));
+
+        return dataDefinition;
+    }
+
+    private DataDefinition createDictionaryDefinition() {
+        DataDefinition dataDefinition = new DataDefinition("core.dictionary");
+        dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.Dictionary");
+        dataDefinition.setDeletable(false);
+
+        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.textType()).withValidator(
+                fieldValidationFactory.required());
+
+        dataDefinition.addField(fieldName);
+        return dataDefinition;
+    }
+
+    private DataDefinition createDictionaryItemDefinition() {
+        DataDefinition dataDefinition = new DataDefinition("core.dictionaryItem");
+        dataDefinition.setFullyQualifiedClassName("com.qcadoo.mes.core.data.beans.DictionaryItem");
+
+        DataFieldDefinition fieldName = createFieldDefinition("name", fieldTypeFactory.stringType()).withValidator(
+                fieldValidationFactory.required());
+        DataFieldDefinition fieldDescription = createFieldDefinition("description", fieldTypeFactory.textType());
+        DataFieldDefinition fieldDictionary = createFieldDefinition("dictionary",
+                fieldTypeFactory.eagerBelongsToType("core.dictionary", "name"));
+
+        dataDefinition.addField(fieldName);
+        dataDefinition.addField(fieldDescription);
+        dataDefinition.addField(fieldDictionary);
+        return dataDefinition;
+    }
+
+    private DataFieldDefinition createFieldDefinition(final String name, final FieldType type) {
+        return new DataFieldDefinition(name).withType(type);
+    }
+
+    @Override
+    public void delete(final String entityName) {
+        throw new UnsupportedOperationException("implement me");
+    }
+
+    @Override
+    public List<DataDefinition> list() {
+        throw new UnsupportedOperationException("implement me");
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: mes-core/mes-core-data/src/main/java/com/qcadoo/mes/core/data/internal/ViewDefinitionServiceImpl.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -23,17 +23,17 @@
+ import com.qcadoo.mes.core.data.definition.form.FormDefinition;
+ import com.qcadoo.mes.core.data.definition.form.FormFieldDefinition;
+ import com.qcadoo.mes.core.data.definition.grid.ColumnDefinition;
+ import com.qcadoo.mes.core.data.definition.grid.GridDefinition;
+ import com.qcadoo.mes.core.data.definition.view.ComponentDefinition;
+ import com.qcadoo.mes.core.data.definition.view.ViewDefinition;
+ 
+ @Service
+-public class ViewDefinitionServiceImpl implements ViewDefinitionService {
++public final class ViewDefinitionServiceImpl implements ViewDefinitionService {
+ 
+     @Autowired
+     private DataDefinitionService dataDefinitionService;
+ 
+     @Autowired
+     private FieldControlFactory fieldControlFactory;
+ 
+     private Map<String, ViewDefinition> viewDefinitions;
+@@ -353,25 +353,27 @@
+         FormFieldDefinition fieldFirstName = createFieldDefinition("firstName", userDataDefinition.getField("firstName"),
+                 fieldControlFactory.stringControl());
+         FormFieldDefinition fieldLastName = createFieldDefinition("lastName", userDataDefinition.getField("lastName"),
+                 fieldControlFactory.stringControl());
+         FormFieldDefinition fieldDescription = createFieldDefinition("description", userDataDefinition.getField("description"),
+                 fieldControlFactory.textControl());
+         FormFieldDefinition fieldPassword = createFieldDefinition("password", userDataDefinition.getField("password"),
+                 fieldControlFactory.passwordControl());
+-        fieldPassword.setConfirmable(true);
++        FormFieldDefinition fieldPasswordConfirmation = createFieldDefinition("passwordConfirmation",
++                userDataDefinition.getField("password"), fieldControlFactory.passwordConfirmationControl());
+ 
+         formDefinition.addField(fieldUserName);
+         formDefinition.addField(fieldUserGroup);
+         formDefinition.addField(fieldEmail);
+         formDefinition.addField(fieldFirstName);
+         formDefinition.addField(fieldLastName);
+         formDefinition.addField(fieldDescription);
+         formDefinition.addField(fieldPassword);
++        formDefinition.addField(fieldPasswordConfirmation);
+ 
+         elements.add(formDefinition);
+ 
+         viewDefinition.setElements(elements);
+         return viewDefinition;
+     }
+ 
+     private ViewDefinition createOrderGridView() {
+@@ -423,28 +425,28 @@
+                 fieldControlFactory.selectControl());
+         FormFieldDefinition fieldMachine = createFieldDefinition("machine", orderDataDefinition.getField("machine"),
+                 fieldControlFactory.editableSelectControl());
+         FormFieldDefinition fieldProduct = createFieldDefinition("product", orderDataDefinition.getField("product"),
+                 fieldControlFactory.lookupControl());
+         FormFieldDefinition fieldDefaultInstruction = createFieldDefinition("defaultInstruction",
+                 orderDataDefinition.getField("defaultInstruction"), fieldControlFactory.displayControl());
+         FormFieldDefinition fieldInstruction = createFieldDefinition("instruction", orderDataDefinition.getField("instruction"),
+-                fieldControlFactory.lookupControl());
++                fieldControlFactory.selectControl());
+         FormFieldDefinition fieldPlannedQuantity = createFieldDefinition("plannedQuantity",
+                 orderDataDefinition.getField("plannedQuantity"), fieldControlFactory.decimalControl());
+         FormFieldDefinition fieldDoneQuantity = createFieldDefinition("doneQuantity",
+                 orderDataDefinition.getField("doneQuantity"), fieldControlFactory.decimalControl());
+         FormFieldDefinition fieldEffectiveDateFrom = createFieldDefinition("effectiveDateFrom",
+                 orderDataDefinition.getField("effectiveDateFrom"), fieldControlFactory.displayControl());
+         FormFieldDefinition fieldEffectiveDateTo = createFieldDefinition("effectiveDateTo",
+                 orderDataDefinition.getField("effectiveDateTo"), fieldControlFactory.displayControl());
+         FormFieldDefinition fieldStartWorker = createFieldDefinition("startWorker", orderDataDefinition.getField("startWorker"),
+                 fieldControlFactory.displayControl());
+-        FormFieldDefinition fieldEndWorker = createFieldDefinition("startWorker", orderDataDefinition.getField("startWorker"),
++        FormFieldDefinition fieldEndWorker = createFieldDefinition("endWorker", orderDataDefinition.getField("endWorker"),
+                 fieldControlFactory.displayControl());
+ 
+         formDefinition.addField(fieldNumber);
+         formDefinition.addField(fieldName);
+         formDefinition.addField(fieldDateFrom);
+         formDefinition.addField(fieldDateTo);
+         formDefinition.addField(fieldState);
+         formDefinition.addField(fieldMachine);
+@@ -456,16 +458,17 @@
+         formDefinition.addField(fieldEffectiveDateFrom);
+         formDefinition.addField(fieldEffectiveDateTo);
+         formDefinition.addField(fieldStartWorker);
+         formDefinition.addField(fieldEndWorker);
+ 
+         elements.add(formDefinition);
+ 
+         viewDefinition.setElements(elements);
++
+         return viewDefinition;
+     }
+ 
+     private ViewDefinition createDictionaryGridView() {
+         ViewDefinition viewDefinition = new ViewDefinition("core.dictionaryGridView");
+         viewDefinition.setHeader("core.dictionaryGridView.header");
+ 
+         List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -262,19 +262,18 @@
+         Map<String, String> gridOptions = new HashMap<String, String>();
+         gridOptions.put("paging", "true");
+         gridOptions.put("sortable", "true");
+         gridOptions.put("filter", "false");
+         gridOptions.put("multiselect", "true");
+         gridOptions.put("height", "450");
+         gridDefinition.setOptions(gridOptions);
+         ColumnDefinition columnName = createColumnDefinition("name", gridDataDefinition.getField("name"), null);
+-        ColumnDefinition columnRole = createColumnDefinition("role", gridDataDefinition.getField("role"), null);
+-
+-        gridDefinition.setColumns(Arrays.asList(new ColumnDefinition[] { columnName, columnRole }));
++
++        gridDefinition.setColumns(Arrays.asList(new ColumnDefinition[] { columnName }));
+         elements.add(gridDefinition);
+ 
+         viewDefinition.setElements(elements);
+         return viewDefinition;
+     }
+ 
+     private ViewDefinition createUserGroupDetailsView() {
+         ViewDefinition viewDefinition = new ViewDefinition("users.groupDetailsView");
+@@ -286,17 +285,17 @@
+         formDefinition.setParent("entityId");
+         formDefinition.setCorrespondingViewName("users.groupGridView");
+ 
+         FormFieldDefinition fieldName = createFieldDefinition("name", groupDataDefinition.getField("name"),
+                 fieldControlFactory.stringControl());
+         FormFieldDefinition fieldDescription = createFieldDefinition("description", groupDataDefinition.getField("description"),
+                 fieldControlFactory.textControl());
+         FormFieldDefinition fieldRole = createFieldDefinition("role", groupDataDefinition.getField("role"),
+-                fieldControlFactory.selectControl());
++                fieldControlFactory.stringControl());
+ 
+         formDefinition.addField(fieldName);
+         formDefinition.addField(fieldDescription);
+         formDefinition.addField(fieldRole);
+ 
+         elements.add(formDefinition);
+ 
+         viewDefinition.setElements(elements);
+--- MERGED RESULT (mergiraf; full) ---
+package com.qcadoo.mes.core.data.internal;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.PostConstruct;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.qcadoo.mes.core.data.api.DataDefinitionService;
+import com.qcadoo.mes.core.data.api.ViewDefinitionService;
+import com.qcadoo.mes.core.data.controls.FieldControl;
+import com.qcadoo.mes.core.data.controls.FieldControlFactory;
+import com.qcadoo.mes.core.data.definition.DataDefinition;
+import com.qcadoo.mes.core.data.definition.DataFieldDefinition;
+import com.qcadoo.mes.core.data.definition.form.FormDefinition;
+import com.qcadoo.mes.core.data.definition.form.FormFieldDefinition;
+import com.qcadoo.mes.core.data.definition.grid.ColumnDefinition;
+import com.qcadoo.mes.core.data.definition.grid.GridDefinition;
+import com.qcadoo.mes.core.data.definition.view.ComponentDefinition;
+import com.qcadoo.mes.core.data.definition.view.ViewDefinition;
+
+@Service
+public final class ViewDefinitionServiceImpl implements ViewDefinitionService {
+
+    @Autowired
+    private DataDefinitionService dataDefinitionService;
+
+    @Autowired
+    private FieldControlFactory fieldControlFactory;
+
+    private Map<String, ViewDefinition> viewDefinitions;
+
+    @PostConstruct
+    public void initViews() {
+        viewDefinitions = new HashMap<String, ViewDefinition>();
+        viewDefinitions.put("products.productGridView", createProductGridView());
+        viewDefinitions.put("products.productDetailsView", createProductDetailsView());
+        viewDefinitions.put("products.substituteDetailsView", createProductSubstituteDetailsView());
+        viewDefinitions.put("products.substituteComponentDetailsView", createProductSubstituteComponentDetailsView());
+        viewDefinitions.put("users.groupGridView", createUserGroupGridView());
+        viewDefinitions.put("users.groupDetailsView", createUserGroupDetailsView());
+        viewDefinitions.put("users.userGridView", createUserGridView());
+        viewDefinitions.put("users.userDetailsView", createUserDetailsView());
+        viewDefinitions.put("orders.orderGridView", createOrderGridView());
+        viewDefinitions.put("orders.orderDetailsView", createOrderDetailsView());
+        viewDefinitions.put("core.dictionaryGridView", createDictionaryGridView());
+        viewDefinitions.put("core.dictionaryDetailsView", createDictionaryDetailsView());
+        viewDefinitions.put("core.dictionaryItemDetailsView", createDictionaryItemDetailsView());
+    }
+
+    @Override
+    public ViewDefinition getViewDefinition(final String viewName) {
+        return viewDefinitions.get(viewName);
+    }
+
+    @Override
+    public List<ViewDefinition> getAllViews() {
+        List<ViewDefinition> viewsList = new ArrayList<ViewDefinition>(viewDefinitions.values());
+        Collections.sort(viewsList, new Comparator<ViewDefinition>() {
+
+            @Override
+            public int compare(final ViewDefinition v1, final ViewDefinition v2) {
+                return v1.getName().compareTo(v2.getName());
+            }
+        });
+        return viewsList;
+
+    }
+
+    private ViewDefinition createProductGridView() {
+        ViewDefinition viewDefinition = new ViewDefinition("products.productGridView");
+        viewDefinition.setHeader("products.productGridView.header");
+
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition gridDataDefinition = dataDefinitionService.get("products.product");
+        GridDefinition gridDefinition = new GridDefinition("productsGrid", gridDataDefinition);
+        gridDefinition.setCorrespondingViewName("products.productDetailsView");
+        Map<String, String> gridOptions = new HashMap<String, String>();
+        gridOptions.put("paging", "true");
+        gridOptions.put("sortable", "true");
+        gridOptions.put("filter", "true");
+        gridOptions.put("multiselect", "true");
+        gridOptions.put("height", "450");
+        gridDefinition.setOptions(gridOptions);
+        Map<String, String> gridEvents = new HashMap<String, String>();
+        gridDefinition.setEvents(gridEvents);
+        ColumnDefinition columnNumber = createColumnDefinition("number", gridDataDefinition.getField("number"), null);
+        ColumnDefinition columnName = createColumnDefinition("name", gridDataDefinition.getField("name"), null);
+        ColumnDefinition columnType = createColumnDefinition("typeOfMaterial", gridDataDefinition.getField("typeOfMaterial"),
+                null);
+        ColumnDefinition columnEan = createColumnDefinition("ean", gridDataDefinition.getField("ean"), null);
+
+        gridDefinition.setColumns(Arrays.asList(new ColumnDefinition[] { columnNumber, columnName, columnType, columnEan }));
+        elements.add(gridDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ViewDefinition createProductDetailsView() {
+        ViewDefinition viewDefinition = new ViewDefinition("products.productDetailsView");
+        viewDefinition.setHeader("products.productDetailsView.header");
+
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition productDataDefinition = dataDefinitionService.get("products.product");
+        FormDefinition formDefinition = new FormDefinition("productDetailsForm", productDataDefinition);
+        formDefinition.setParent("entityId");
+        formDefinition.setCorrespondingViewName("products.productGridView");
+
+        FormFieldDefinition fieldNumber = createFieldDefinition("number", productDataDefinition.getField("number"),
+                fieldControlFactory.stringControl());
+        FormFieldDefinition fieldName = createFieldDefinition("name", productDataDefinition.getField("name"),
+                fieldControlFactory.textControl());
+        FormFieldDefinition fieldTypeOfMaterial = createFieldDefinition("typeOfMaterial",
+                productDataDefinition.getField("typeOfMaterial"), fieldControlFactory.selectControl());
+        FormFieldDefinition fieldEan = createFieldDefinition("ean", productDataDefinition.getField("ean"),
+                fieldControlFactory.stringControl());
+        FormFieldDefinition fieldCategory = createFieldDefinition("category", productDataDefinition.getField("category"),
+                fieldControlFactory.editableSelectControl());
+        FormFieldDefinition fieldUnit = createFieldDefinition("unit", productDataDefinition.getField("unit"),
+                fieldControlFactory.stringControl());
+
+        formDefinition.addField(fieldNumber);
+        formDefinition.addField(fieldName);
+        formDefinition.addField(fieldTypeOfMaterial);
+        formDefinition.addField(fieldEan);
+        formDefinition.addField(fieldCategory);
+        formDefinition.addField(fieldUnit);
+
+        elements.add(formDefinition);
+
+        DataDefinition substituteDataDefinition = dataDefinitionService.get("products.substitute");
+        GridDefinition substituteGridDefinition = new GridDefinition("substitutesGrid", substituteDataDefinition);
+        substituteGridDefinition.setParent("viewElement:productDetailsForm");
+        substituteGridDefinition.setParentField("product");
+        substituteGridDefinition.setHeader("products.productDetailsView.substitutesGrid.header");
+        ColumnDefinition columnNumber = createColumnDefinition("number", substituteDataDefinition.getField("number"), null);
+        ColumnDefinition columnName = createColumnDefinition("name", substituteDataDefinition.getField("name"), null);
+        ColumnDefinition columnPriority = createColumnDefinition("priority", substituteDataDefinition.getField("priority"), null);
+        substituteGridDefinition.setColumns(Arrays.asList(new ColumnDefinition[] { columnNumber, columnName, columnPriority }));
+        Map<String, String> substituteGridOptions = new HashMap<String, String>();
+        substituteGridOptions.put("paging", "false");
+        substituteGridOptions.put("sortable", "false");
+        substituteGridOptions.put("filter", "false");
+        substituteGridOptions.put("multiselect", "false");
+        substituteGridOptions.put("height", "150");
+        substituteGridDefinition.setOptions(substituteGridOptions);
+        Map<String, String> substituteGridEvents = new HashMap<String, String>();
+        substituteGridDefinition.setEvents(substituteGridEvents);
+        substituteGridDefinition.setCorrespondingViewName("products.substituteDetailsView");
+        // substituteGridDefinition.setCorrespondingViewModal(true);
+        elements.add(substituteGridDefinition);
+
+        DataDefinition substituteComponentDataDefinition = dataDefinitionService.get("products.substituteComponent");
+        GridDefinition substituteComponentGridDefinition = new GridDefinition("substitutesComponentGrid",
+                substituteComponentDataDefinition);
+        substituteComponentGridDefinition.setParent("viewElement:substitutesGrid");
+        substituteComponentGridDefinition.setParentField("substitute");
+        substituteComponentGridDefinition.setHeader("products.productDetailsView.substitutesComponentGrid.header");
+        ColumnDefinition columnSubstituteNumber = createColumnDefinition("number",
+                substituteComponentDataDefinition.getField("product"), "fields['product'].fields['number']");
+        ColumnDefinition columnProductName = createColumnDefinition("name",
+                substituteComponentDataDefinition.getField("product"), "fields['product'].fields['name']");
+        ColumnDefinition columnQuantity = createColumnDefinition("quantity",
+                substituteComponentDataDefinition.getField("quantity"), null);
+        substituteComponentGridDefinition.setColumns(Arrays.asList(new ColumnDefinition[] { columnSubstituteNumber,
+                columnProductName, columnQuantity }));
+        Map<String, String> substituteComponentGridOptions = new HashMap<String, String>();
+        substituteComponentGridOptions.put("paging", "false");
+        substituteComponentGridOptions.put("sortable", "false");
+        substituteComponentGridOptions.put("filter", "false");
+        substituteComponentGridOptions.put("multiselect", "false");
+        substituteComponentGridOptions.put("height", "150");
+        substituteComponentGridDefinition.setOptions(substituteComponentGridOptions);
+        substituteComponentGridDefinition.setCorrespondingViewName("products.substituteComponentDetailsView");
+        elements.add(substituteComponentGridDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ViewDefinition createProductSubstituteDetailsView() {
+        ViewDefinition viewDefinition = new ViewDefinition("products.substituteDetailsView");
+        viewDefinition.setHeader("products.substituteDetailsView.header");
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition substitutesDataDefinition = dataDefinitionService.get("products.substitute");
+        FormDefinition formDefinition = new FormDefinition("substitutesDetailsForm", substitutesDataDefinition);
+        formDefinition.setCorrespondingViewName("products.productDetailsView");
+        formDefinition.setParent("entityId");
+        formDefinition.setParentField("product");
+
+        FormFieldDefinition fieldNumber = createFieldDefinition("number", substitutesDataDefinition.getField("number"),
+                fieldControlFactory.stringControl());
+        FormFieldDefinition fieldName = createFieldDefinition("name", substitutesDataDefinition.getField("name"),
+                fieldControlFactory.stringControl());
+        FormFieldDefinition fieldPriority = createFieldDefinition("priority", substitutesDataDefinition.getField("priority"),
+                fieldControlFactory.displayControl());
+        FormFieldDefinition fieldEffectiveDateFrom = createFieldDefinition("effectiveDateFrom",
+                substitutesDataDefinition.getField("effectiveDateFrom"), fieldControlFactory.dateTimeControl());
+        FormFieldDefinition fieldEffectiveDateTo = createFieldDefinition("effectiveDateTo",
+                substitutesDataDefinition.getField("effectiveDateTo"), fieldControlFactory.dateTimeControl());
+
+        // product + hidden?
+
+        formDefinition.addField(fieldNumber);
+        formDefinition.addField(fieldName);
+        formDefinition.addField(fieldPriority);
+        formDefinition.addField(fieldEffectiveDateFrom);
+        formDefinition.addField(fieldEffectiveDateTo);
+
+        elements.add(formDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ViewDefinition createProductSubstituteComponentDetailsView() {
+        ViewDefinition viewDefinition = new ViewDefinition("products.substituteComponentDetailsView");
+        viewDefinition.setHeader("products.substituteComponentDetailsView.header");
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition substitutesComponentDataDefinition = dataDefinitionService.get("products.substituteComponent");
+        FormDefinition formDefinition = new FormDefinition("substitutesComponentDetailsForm", substitutesComponentDataDefinition);
+        formDefinition.setCorrespondingViewName("products.productDetailsView");
+        formDefinition.setParent("entityId");
+        formDefinition.setParentField("substitute");
+
+        FormFieldDefinition fieldProduct = createFieldDefinition("product",
+                substitutesComponentDataDefinition.getField("product"), fieldControlFactory.lookupControl());
+        FormFieldDefinition fieldQuantity = createFieldDefinition("quantity",
+                substitutesComponentDataDefinition.getField("quantity"), fieldControlFactory.decimalControl());
+
+        formDefinition.addField(fieldProduct);
+        formDefinition.addField(fieldQuantity);
+
+        elements.add(formDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ViewDefinition createUserGroupGridView() {
+        ViewDefinition viewDefinition = new ViewDefinition("users.groupGridView");
+        viewDefinition.setHeader("users.groupGridView.header");
+
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition gridDataDefinition = dataDefinitionService.get("users.group");
+        GridDefinition gridDefinition = new GridDefinition("groups", gridDataDefinition);
+        gridDefinition.setCorrespondingViewName("users.groupDetailsView");
+        Map<String, String> gridOptions = new HashMap<String, String>();
+        gridOptions.put("paging", "true");
+        gridOptions.put("sortable", "true");
+        gridOptions.put("filter", "false");
+        gridOptions.put("multiselect", "true");
+        gridOptions.put("height", "450");
+        gridDefinition.setOptions(gridOptions);
+        ColumnDefinition columnName = createColumnDefinition("name", gridDataDefinition.getField("name"), null);
+
+        gridDefinition.setColumns(Arrays.asList(new ColumnDefinition[] { columnName }));
+        elements.add(gridDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ViewDefinition createUserGroupDetailsView() {
+        ViewDefinition viewDefinition = new ViewDefinition("users.groupDetailsView");
+        viewDefinition.setHeader("users.groupDetailsView.header");
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition groupDataDefinition = dataDefinitionService.get("users.group");
+        FormDefinition formDefinition = new FormDefinition("groupDetailsForm", groupDataDefinition);
+        formDefinition.setParent("entityId");
+        formDefinition.setCorrespondingViewName("users.groupGridView");
+
+        FormFieldDefinition fieldName = createFieldDefinition("name", groupDataDefinition.getField("name"),
+                fieldControlFactory.stringControl());
+        FormFieldDefinition fieldDescription = createFieldDefinition("description", groupDataDefinition.getField("description"),
+                fieldControlFactory.textControl());
+        FormFieldDefinition fieldRole = createFieldDefinition("role", groupDataDefinition.getField("role"),
+                fieldControlFactory.stringControl());
+
+        formDefinition.addField(fieldName);
+        formDefinition.addField(fieldDescription);
+        formDefinition.addField(fieldRole);
+
+        elements.add(formDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ViewDefinition createUserGridView() {
+        ViewDefinition viewDefinition = new ViewDefinition("users.userGridView");
+        viewDefinition.setHeader("users.userGridView.header");
+
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition gridDataDefinition = dataDefinitionService.get("users.user");
+        GridDefinition gridDefinition = new GridDefinition("users", gridDataDefinition);
+        gridDefinition.setCorrespondingViewName("users.userDetailsView");
+        Map<String, String> gridOptions = new HashMap<String, String>();
+        gridOptions.put("paging", "true");
+        gridOptions.put("sortable", "true");
+        gridOptions.put("filter", "false");
+        gridOptions.put("multiselect", "true");
+        gridOptions.put("height", "450");
+        gridDefinition.setOptions(gridOptions);
+        ColumnDefinition columnLogin = createColumnDefinition("login", gridDataDefinition.getField("userName"), null);
+        ColumnDefinition columnEmail = createColumnDefinition("email", gridDataDefinition.getField("email"), null);
+        ColumnDefinition columnFirstName = createColumnDefinition("firstName", gridDataDefinition.getField("firstName"), null);
+        ColumnDefinition columnLastName = createColumnDefinition("lastName", gridDataDefinition.getField("lastName"), null);
+        ColumnDefinition columnUserGroup = createColumnDefinition("userGroup", gridDataDefinition.getField("userGroup"),
+                "fields['userGroup'].fields['name']");
+
+        gridDefinition.setColumns(Arrays.asList(new ColumnDefinition[] { columnLogin, columnEmail, columnFirstName,
+                columnLastName, columnUserGroup }));
+        elements.add(gridDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ViewDefinition createUserDetailsView() {
+        ViewDefinition viewDefinition = new ViewDefinition("users.userDetailsView");
+        viewDefinition.setHeader("users.userDetailsView.header");
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition userDataDefinition = dataDefinitionService.get("users.user");
+        FormDefinition formDefinition = new FormDefinition("userDetailsForm", userDataDefinition);
+        formDefinition.setParent("entityId");
+        formDefinition.setCorrespondingViewName("users.userGridView");
+
+        FormFieldDefinition fieldUserName = createFieldDefinition("userName", userDataDefinition.getField("userName"),
+                fieldControlFactory.stringControl());
+        FormFieldDefinition fieldUserGroup = createFieldDefinition("userGroup", userDataDefinition.getField("userGroup"),
+                fieldControlFactory.selectControl());
+        FormFieldDefinition fieldEmail = createFieldDefinition("email", userDataDefinition.getField("email"),
+                fieldControlFactory.stringControl());
+        FormFieldDefinition fieldFirstName = createFieldDefinition("firstName", userDataDefinition.getField("firstName"),
+                fieldControlFactory.stringControl());
+        FormFieldDefinition fieldLastName = createFieldDefinition("lastName", userDataDefinition.getField("lastName"),
+                fieldControlFactory.stringControl());
+        FormFieldDefinition fieldDescription = createFieldDefinition("description", userDataDefinition.getField("description"),
+                fieldControlFactory.textControl());
+        FormFieldDefinition fieldPassword = createFieldDefinition("password", userDataDefinition.getField("password"),
+                fieldControlFactory.passwordControl());
+        FormFieldDefinition fieldPasswordConfirmation = createFieldDefinition("passwordConfirmation",
+                userDataDefinition.getField("password"), fieldControlFactory.passwordConfirmationControl());
+
+        formDefinition.addField(fieldUserName);
+        formDefinition.addField(fieldUserGroup);
+        formDefinition.addField(fieldEmail);
+        formDefinition.addField(fieldFirstName);
+        formDefinition.addField(fieldLastName);
+        formDefinition.addField(fieldDescription);
+        formDefinition.addField(fieldPassword);
+        formDefinition.addField(fieldPasswordConfirmation);
+
+        elements.add(formDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ViewDefinition createOrderGridView() {
+        ViewDefinition viewDefinition = new ViewDefinition("orders.orderGridView");
+        viewDefinition.setHeader("orders.orderGridView.header");
+
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition gridDataDefinition = dataDefinitionService.get("orders.order");
+        GridDefinition gridDefinition = new GridDefinition("orders", gridDataDefinition);
+        gridDefinition.setCorrespondingViewName("orders.orderDetailsView");
+        Map<String, String> gridOptions = new HashMap<String, String>();
+        gridOptions.put("paging", "true");
+        gridOptions.put("sortable", "true");
+        gridOptions.put("filter", "true");
+        gridOptions.put("multiselect", "true");
+        gridOptions.put("height", "450");
+        gridDefinition.setOptions(gridOptions);
+        ColumnDefinition columnNumber = createColumnDefinition("number", gridDataDefinition.getField("number"), null);
+        ColumnDefinition columnName = createColumnDefinition("name", gridDataDefinition.getField("name"), null);
+        ColumnDefinition columnState = createColumnDefinition("state", gridDataDefinition.getField("state"), null);
+
+        gridDefinition.setColumns(Arrays.asList(new ColumnDefinition[] { columnNumber, columnName, columnState }));
+        elements.add(gridDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ViewDefinition createOrderDetailsView() {
+        ViewDefinition viewDefinition = new ViewDefinition("orders.orderDetailsView");
+        viewDefinition.setHeader("orders.orderDetailsView.header");
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition orderDataDefinition = dataDefinitionService.get("orders.order");
+        FormDefinition formDefinition = new FormDefinition("orderDetailsForm", orderDataDefinition);
+        formDefinition.setParent("entityId");
+        formDefinition.setCorrespondingViewName("orders.orderGridView");
+
+        FormFieldDefinition fieldNumber = createFieldDefinition("number", orderDataDefinition.getField("number"),
+                fieldControlFactory.stringControl());
+        FormFieldDefinition fieldName = createFieldDefinition("name", orderDataDefinition.getField("name"),
+                fieldControlFactory.textControl());
+        FormFieldDefinition fieldDateFrom = createFieldDefinition("dateFrom", orderDataDefinition.getField("dateFrom"),
+                fieldControlFactory.dateControl());
+        FormFieldDefinition fieldDateTo = createFieldDefinition("dateTo", orderDataDefinition.getField("dateTo"),
+                fieldControlFactory.dateControl());
+        FormFieldDefinition fieldState = createFieldDefinition("state", orderDataDefinition.getField("state"),
+                fieldControlFactory.selectControl());
+        FormFieldDefinition fieldMachine = createFieldDefinition("machine", orderDataDefinition.getField("machine"),
+                fieldControlFactory.editableSelectControl());
+        FormFieldDefinition fieldProduct = createFieldDefinition("product", orderDataDefinition.getField("product"),
+                fieldControlFactory.lookupControl());
+        FormFieldDefinition fieldDefaultInstruction = createFieldDefinition("defaultInstruction",
+                orderDataDefinition.getField("defaultInstruction"), fieldControlFactory.displayControl());
+        FormFieldDefinition fieldInstruction = createFieldDefinition("instruction", orderDataDefinition.getField("instruction"),
+                fieldControlFactory.selectControl());
+        FormFieldDefinition fieldPlannedQuantity = createFieldDefinition("plannedQuantity",
+                orderDataDefinition.getField("plannedQuantity"), fieldControlFactory.decimalControl());
+        FormFieldDefinition fieldDoneQuantity = createFieldDefinition("doneQuantity",
+                orderDataDefinition.getField("doneQuantity"), fieldControlFactory.decimalControl());
+        FormFieldDefinition fieldEffectiveDateFrom = createFieldDefinition("effectiveDateFrom",
+                orderDataDefinition.getField("effectiveDateFrom"), fieldControlFactory.displayControl());
+        FormFieldDefinition fieldEffectiveDateTo = createFieldDefinition("effectiveDateTo",
+                orderDataDefinition.getField("effectiveDateTo"), fieldControlFactory.displayControl());
+        FormFieldDefinition fieldStartWorker = createFieldDefinition("startWorker", orderDataDefinition.getField("startWorker"),
+                fieldControlFactory.displayControl());
+        FormFieldDefinition fieldEndWorker = createFieldDefinition("endWorker", orderDataDefinition.getField("endWorker"),
+                fieldControlFactory.displayControl());
+
+        formDefinition.addField(fieldNumber);
+        formDefinition.addField(fieldName);
+        formDefinition.addField(fieldDateFrom);
+        formDefinition.addField(fieldDateTo);
+        formDefinition.addField(fieldState);
+        formDefinition.addField(fieldMachine);
+        formDefinition.addField(fieldProduct);
+        formDefinition.addField(fieldDefaultInstruction);
+        formDefinition.addField(fieldInstruction);
+        formDefinition.addField(fieldPlannedQuantity);
+        formDefinition.addField(fieldDoneQuantity);
+        formDefinition.addField(fieldEffectiveDateFrom);
+        formDefinition.addField(fieldEffectiveDateTo);
+        formDefinition.addField(fieldStartWorker);
+        formDefinition.addField(fieldEndWorker);
+
+        elements.add(formDefinition);
+
+        viewDefinition.setElements(elements);
+
+        return viewDefinition;
+    }
+
+    private ViewDefinition createDictionaryGridView() {
+        ViewDefinition viewDefinition = new ViewDefinition("core.dictionaryGridView");
+        viewDefinition.setHeader("core.dictionaryGridView.header");
+
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+        DataDefinition gridDataDefinition = dataDefinitionService.get("core.dictionary");
+        GridDefinition gridDefinition = new GridDefinition("distionaries", gridDataDefinition);
+        gridDefinition.setCorrespondingViewName("core.dictionaryDetailsView");
+        Map<String, String> gridOptions = new HashMap<String, String>();
+        gridOptions.put("paging", "true");
+        gridOptions.put("sortable", "true");
+        gridOptions.put("filter", "true");
+        gridOptions.put("multiselect", "false");
+        gridOptions.put("height", "450");
+        gridOptions.put("canDelete", "false");
+        gridOptions.put("canNew", "false");
+        gridDefinition.setOptions(gridOptions);
+        ColumnDefinition columnName = createColumnDefinition("name", gridDataDefinition.getField("name"), null);
+
+        gridDefinition.setColumns(Arrays.asList(new ColumnDefinition[] { columnName }));
+        elements.add(gridDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ViewDefinition createDictionaryDetailsView() {
+        ViewDefinition viewDefinition = new ViewDefinition("core.dictionaryDetailsView");
+        viewDefinition.setHeader("core.dictionaryDetailsView.header");
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition gridDataDefinition = dataDefinitionService.get("core.dictionaryItem");
+        GridDefinition gridDefinition = new GridDefinition("dictionaryItems", gridDataDefinition);
+        gridDefinition.setParent("entityId");
+        gridDefinition.setParentField("dictionary");
+        gridDefinition.setCorrespondingViewName("core.dictionaryItemDetailsView");
+        Map<String, String> gridOptions = new HashMap<String, String>();
+        gridOptions.put("paging", "false");
+        gridOptions.put("sortable", "false");
+        gridOptions.put("filter", "false");
+        gridOptions.put("multiselect", "true");
+        gridOptions.put("height", "250");
+        gridDefinition.setOptions(gridOptions);
+        ColumnDefinition columnName = createColumnDefinition("name", gridDataDefinition.getField("name"), null);
+        ColumnDefinition columnDescription = createColumnDefinition("description", gridDataDefinition.getField("description"),
+                null);
+        gridDefinition.setColumns(Arrays.asList(new ColumnDefinition[] { columnName, columnDescription }));
+        elements.add(gridDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ViewDefinition createDictionaryItemDetailsView() {
+        ViewDefinition viewDefinition = new ViewDefinition("core.dictionaryItemDetailsView");
+        viewDefinition.setHeader("core.dictionaryItemDetailsView.header");
+        List<ComponentDefinition> elements = new LinkedList<ComponentDefinition>();
+
+        DataDefinition dictionaryItemDataDefinition = dataDefinitionService.get("core.dictionaryItem");
+        FormDefinition formDefinition = new FormDefinition("dictionaryItemDetailsForm", dictionaryItemDataDefinition);
+        formDefinition.setParent("entityId");
+        formDefinition.setParentField("dictionary");
+        formDefinition.setCorrespondingViewName("core.dictionaryDetailsView");
+
+        FormFieldDefinition fieldName = createFieldDefinition("name", dictionaryItemDataDefinition.getField("name"),
+                fieldControlFactory.stringControl());
+        FormFieldDefinition fieldDescription = createFieldDefinition("description",
+                dictionaryItemDataDefinition.getField("description"), fieldControlFactory.textControl());
+
+        formDefinition.addField(fieldName);
+        formDefinition.addField(fieldDescription);
+
+        elements.add(formDefinition);
+
+        viewDefinition.setElements(elements);
+        return viewDefinition;
+    }
+
+    private ColumnDefinition createColumnDefinition(final String name, final DataFieldDefinition field, final String expression) {
+        ColumnDefinition columnDefinition = new ColumnDefinition(name);
+        columnDefinition.setFields(Arrays.asList(new DataFieldDefinition[] { field }));
+        columnDefinition.setExpression(expression);
+        return columnDefinition;
+    }
+
+    private FormFieldDefinition createFieldDefinition(final String name, final DataFieldDefinition dataField,
+            final FieldControl control) {
+        FormFieldDefinition field = new FormFieldDefinition(name);
+        field.setControl(control);
+        field.setDataField(dataField);
+        return field;
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,1166 @@
+UNIT javaparser_javaparser__91ebf36c06
+repo: javaparser_javaparser   merge: 91ebf36c066190d49ef4ddb9b49d281f0763b417   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: javaparser-symbol-solver-core/src/main/java/com/github/javaparser/symbolsolver/javassistmodel/JavassistClassDeclaration.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -45,18 +45,16 @@
+ import java.util.function.Predicate;
+ import java.util.stream.Collectors;
+ 
+ /**
+  * @author Federico Tomassetti
+  */
+ public class JavassistClassDeclaration extends AbstractClassDeclaration {
+ 
+-
+-
+     private CtClass ctClass;
+     private TypeSolver typeSolver;
+     private JavassistTypeDeclarationAdapter javassistTypeDeclarationAdapter;
+ 
+     public JavassistClassDeclaration(CtClass ctClass, TypeSolver typeSolver) {
+         if (ctClass == null) {
+             throw new IllegalArgumentException();
+         }
+@@ -90,19 +88,17 @@
+ 
+     @Override
+     public boolean equals(Object o) {
+         if (this == o) return true;
+         if (o == null || getClass() != o.getClass()) return false;
+ 
+         JavassistClassDeclaration that = (JavassistClassDeclaration) o;
+ 
+-        if (!ctClass.equals(that.ctClass)) return false;
+-
+-        return true;
++        return ctClass.equals(that.ctClass);
+     }
+ 
+     @Override
+     public int hashCode() {
+         return ctClass.hashCode();
+     }
+ 
+     @Override
+@@ -182,43 +178,36 @@
+     }
+ 
+     @Deprecated
+     public SymbolReference<ResolvedMethodDeclaration> solveMethod(String name, List<ResolvedType> argumentsTypes, boolean staticOnly) {
+         List<ResolvedMethodDeclaration> candidates = new ArrayList<>();
+         Predicate<CtMethod> staticOnlyCheck = m -> !staticOnly || (staticOnly && Modifier.isStatic(m.getModifiers()));
+         for (CtMethod method : ctClass.getDeclaredMethods()) {
+             boolean isSynthetic = method.getMethodInfo().getAttribute(SyntheticAttribute.tag) != null;
+-            boolean isNotBridge =  (method.getMethodInfo().getAccessFlags() & AccessFlag.BRIDGE) == 0;
++            boolean isNotBridge = (method.getMethodInfo().getAccessFlags() & AccessFlag.BRIDGE) == 0;
+             if (method.getName().equals(name) && !isSynthetic && isNotBridge && staticOnlyCheck.test(method)) {
+                 candidates.add(new JavassistMethodDeclaration(method, typeSolver));
+             }
+         }
+ 
+-        try {
+-            CtClass superClass = ctClass.getSuperclass();
+-            if (superClass != null) {
+-                SymbolReference<ResolvedMethodDeclaration> ref = new JavassistClassDeclaration(superClass, typeSolver).solveMethod(name, argumentsTypes, staticOnly);
+-                if (ref.isSolved()) {
+-                    candidates.add(ref.getCorrespondingDeclaration());
+-                }
+-            }
+-        } catch (NotFoundException e) {
+-            throw new RuntimeException(e);
+-        }
+-
+-        try {
+-            for (CtClass interfaze : ctClass.getInterfaces()) {
+-                SymbolReference<ResolvedMethodDeclaration> ref = new JavassistInterfaceDeclaration(interfaze, typeSolver).solveMethod(name, argumentsTypes, staticOnly);
+-                if (ref.isSolved()) {
+-                    candidates.add(ref.getCorrespondingDeclaration());
+-                }
+-            }
+-        } catch (NotFoundException e) {
+-            throw new RuntimeException(e);
++        // add the method declaration of the superclass to the candidates, if present
++        SymbolReference<ResolvedMethodDeclaration> superClassMethodRef = MethodResolutionLogic
++                .solveMethodInType(getSuperClass().getTypeDeclaration(), name, argumentsTypes, staticOnly, typeSolver);
++        if (superClassMethodRef.isSolved()) {
++            candidates.add(superClassMethodRef.getCorrespondingDeclaration());
++        }
++
++        // add the method declaration of the interfaces to the candidates, if present
++        for (ResolvedReferenceType interfaceRef : getInterfaces()) {
++            SymbolReference<ResolvedMethodDeclaration> interfaceMethodRef = MethodResolutionLogic.solveMethodInType(interfaceRef.getTypeDeclaration(), name, argumentsTypes,
++                    staticOnly, typeSolver);
++            if (interfaceMethodRef.isSolved()) {
++                candidates.add(interfaceMethodRef.getCorrespondingDeclaration());
++            }
+         }
+ 
+         return MethodResolutionLogic.findMostApplicable(candidates, name, argumentsTypes, typeSolver);
+     }
+ 
+     public ResolvedType getUsage(Node node) {
+         return new ReferenceTypeImpl(this, typeSolver);
+     }
+@@ -255,17 +244,17 @@
+ 
+     @Override
+     public boolean isTypeParameter() {
+         return false;
+     }
+ 
+     @Override
+     public List<ResolvedFieldDeclaration> getAllFields() {
+-      return javassistTypeDeclarationAdapter.getDeclaredFields();
++        return javassistTypeDeclarationAdapter.getDeclaredFields();
+     }
+ 
+     @Override
+     public String getName() {
+         String[] nameElements = ctClass.getSimpleName().replace('$', '.').split("\\.");
+         return nameElements[nameElements.length - 1];
+     }
+ 
+@@ -296,19 +285,17 @@
+                 return new ReferenceTypeImpl(typeSolver.solveType(Object.class.getCanonicalName()), typeSolver);
+             }
+             if (ctClass.getGenericSignature() == null) {
+                 return new ReferenceTypeImpl(new JavassistClassDeclaration(ctClass.getSuperclass(), typeSolver), typeSolver);
+             }
+ 
+             SignatureAttribute.ClassSignature classSignature = SignatureAttribute.toClassSignature(ctClass.getGenericSignature());
+             return JavassistUtils.signatureTypeToType(classSignature.getSuperClass(), typeSolver, this).asReferenceType();
+-        } catch (NotFoundException e) {
+-            throw new RuntimeException(e);
+-        } catch (BadBytecode e) {
++        } catch (NotFoundException | BadBytecode e) {
+             throw new RuntimeException(e);
+         }
+     }
+ 
+     @Override
+     public List<ResolvedReferenceType> getInterfaces() {
+         try {
+             if (ctClass.getGenericSignature() == null) {
+@@ -317,19 +304,17 @@
+                         .map(i -> new ReferenceTypeImpl(i, typeSolver))
+                         .collect(Collectors.toList());
+             } else {
+                 SignatureAttribute.ClassSignature classSignature = SignatureAttribute.toClassSignature(ctClass.getGenericSignature());
+                 return Arrays.stream(classSignature.getInterfaces())
+                         .map(i -> JavassistUtils.signatureTypeToType(i, typeSolver, this).asReferenceType())
+                         .collect(Collectors.toList());
+             }
+-        } catch (NotFoundException e) {
+-            throw new RuntimeException(e);
+-        } catch (BadBytecode e) {
++        } catch (NotFoundException | BadBytecode e) {
+             throw new RuntimeException(e);
+         }
+     }
+ 
+     @Override
+     public boolean isInterface() {
+         return ctClass.isInterface();
+     }
+@@ -346,17 +331,17 @@
+ 
+     @Override
+     public AccessSpecifier accessSpecifier() {
+         return JavassistFactory.modifiersToAccessLevel(ctClass.getModifiers());
+     }
+ 
+     @Override
+     public List<ResolvedConstructorDeclaration> getConstructors() {
+-      return javassistTypeDeclarationAdapter.getConstructors();
++        return javassistTypeDeclarationAdapter.getConstructors();
+     }
+ 
+     @Override
+     public Optional<ResolvedReferenceTypeDeclaration> containerType() {
+         return javassistTypeDeclarationAdapter.containerType();
+     }
+ 
+     @Override
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -45,18 +45,16 @@
+ import java.util.function.Predicate;
+ import java.util.stream.Collectors;
+ 
+ /**
+  * @author Federico Tomassetti
+  */
+ public class JavassistClassDeclaration extends AbstractClassDeclaration {
+ 
+-
+-
+     private CtClass ctClass;
+     private TypeSolver typeSolver;
+     private JavassistTypeDeclarationAdapter javassistTypeDeclarationAdapter;
+ 
+     public JavassistClassDeclaration(CtClass ctClass, TypeSolver typeSolver) {
+         if (ctClass == null) {
+             throw new IllegalArgumentException();
+         }
+@@ -287,48 +285,44 @@
+     @Override
+     public boolean isClass() {
+         return !ctClass.isInterface();
+     }
+ 
+     @Override
+     public ResolvedReferenceType getSuperClass() {
+         try {
+-            if (ctClass.getSuperclass() == null) {
++            if (ctClass.getClassFile().getSuperclass() == null) {
+                 return new ReferenceTypeImpl(typeSolver.solveType(Object.class.getCanonicalName()), typeSolver);
+             }
+             if (ctClass.getGenericSignature() == null) {
+-                return new ReferenceTypeImpl(new JavassistClassDeclaration(ctClass.getSuperclass(), typeSolver), typeSolver);
++                return new ReferenceTypeImpl(typeSolver.solveType(JavassistUtils.internalNameToCanonicalName(ctClass.getClassFile().getSuperclass())), typeSolver);
+             }
+ 
+             SignatureAttribute.ClassSignature classSignature = SignatureAttribute.toClassSignature(ctClass.getGenericSignature());
+             return JavassistUtils.signatureTypeToType(classSignature.getSuperClass(), typeSolver, this).asReferenceType();
+-        } catch (NotFoundException e) {
+-            throw new RuntimeException(e);
+         } catch (BadBytecode e) {
+             throw new RuntimeException(e);
+         }
+     }
+ 
+     @Override
+     public List<ResolvedReferenceType> getInterfaces() {
+         try {
+             if (ctClass.getGenericSignature() == null) {
+-                return Arrays.stream(ctClass.getInterfaces())
+-                        .map(i -> new JavassistInterfaceDeclaration(i, typeSolver))
++                return Arrays.stream(ctClass.getClassFile().getInterfaces())
++                        .map(i -> typeSolver.solveType(JavassistUtils.internalNameToCanonicalName(i)))
+                         .map(i -> new ReferenceTypeImpl(i, typeSolver))
+                         .collect(Collectors.toList());
+             } else {
+                 SignatureAttribute.ClassSignature classSignature = SignatureAttribute.toClassSignature(ctClass.getGenericSignature());
+                 return Arrays.stream(classSignature.getInterfaces())
+                         .map(i -> JavassistUtils.signatureTypeToType(i, typeSolver, this).asReferenceType())
+                         .collect(Collectors.toList());
+             }
+-        } catch (NotFoundException e) {
+-            throw new RuntimeException(e);
+         } catch (BadBytecode e) {
+             throw new RuntimeException(e);
+         }
+     }
+ 
+     @Override
+     public boolean isInterface() {
+         return ctClass.isInterface();
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright 2016 Federico Tomassetti
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.github.javaparser.symbolsolver.javassistmodel;
+
+import com.github.javaparser.ast.AccessSpecifier;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.resolution.MethodUsage;
+import com.github.javaparser.resolution.UnsolvedSymbolException;
+import com.github.javaparser.resolution.declarations.*;
+import com.github.javaparser.resolution.types.ResolvedReferenceType;
+import com.github.javaparser.resolution.types.ResolvedType;
+import com.github.javaparser.symbolsolver.core.resolution.Context;
+import com.github.javaparser.symbolsolver.javaparsermodel.LambdaArgumentTypePlaceholder;
+import com.github.javaparser.symbolsolver.logic.AbstractClassDeclaration;
+import com.github.javaparser.symbolsolver.model.resolution.SymbolReference;
+import com.github.javaparser.symbolsolver.model.resolution.TypeSolver;
+import com.github.javaparser.symbolsolver.model.typesystem.ReferenceTypeImpl;
+import com.github.javaparser.symbolsolver.resolution.MethodResolutionLogic;
+import com.github.javaparser.symbolsolver.resolution.SymbolSolver;
+import javassist.CtClass;
+import javassist.CtField;
+import javassist.CtMethod;
+import javassist.NotFoundException;
+import javassist.bytecode.AccessFlag;
+import javassist.bytecode.BadBytecode;
+import javassist.bytecode.SignatureAttribute;
+import javassist.bytecode.SyntheticAttribute;
+
+import java.lang.reflect.Modifier;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+/**
+ * @author Federico Tomassetti
+ */
+public class JavassistClassDeclaration extends AbstractClassDeclaration {
+
+    private CtClass ctClass;
+    private TypeSolver typeSolver;
+    private JavassistTypeDeclarationAdapter javassistTypeDeclarationAdapter;
+
+    public JavassistClassDeclaration(CtClass ctClass, TypeSolver typeSolver) {
+        if (ctClass == null) {
+            throw new IllegalArgumentException();
+        }
+        if (ctClass.isInterface() || ctClass.isAnnotation() || ctClass.isPrimitive() || ctClass.isEnum()) {
+            throw new IllegalArgumentException("Trying to instantiate a JavassistClassDeclaration with something which is not a class: " + ctClass.toString());
+        }
+        this.ctClass = ctClass;
+        this.typeSolver = typeSolver;
+        this.javassistTypeDeclarationAdapter = new JavassistTypeDeclarationAdapter(ctClass, typeSolver);
+    }
+
+    @Override
+    protected ResolvedReferenceType object() {
+        return new ReferenceTypeImpl(typeSolver.solveType(Object.class.getCanonicalName()), typeSolver);
+    }
+
+    @Override
+    public boolean hasDirectlyAnnotation(String canonicalName) {
+        return ctClass.hasAnnotation(canonicalName);
+    }
+
+    @Override
+    public Set<ResolvedMethodDeclaration> getDeclaredMethods() {
+        return javassistTypeDeclarationAdapter.getDeclaredMethods();
+    }
+
+    @Override
+    public boolean isAssignableBy(ResolvedReferenceTypeDeclaration other) {
+        return isAssignableBy(new ReferenceTypeImpl(other, typeSolver));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        JavassistClassDeclaration that = (JavassistClassDeclaration) o;
+
+        return ctClass.equals(that.ctClass);
+    }
+
+    @Override
+    public int hashCode() {
+        return ctClass.hashCode();
+    }
+
+    @Override
+    public String getPackageName() {
+        return ctClass.getPackageName();
+    }
+
+    @Override
+    public String getClassName() {
+        String className = ctClass.getName().replace('$', '.');
+        if (getPackageName() != null) {
+            return className.substring(getPackageName().length() + 1, className.length());
+        }
+        return className;
+    }
+
+    @Override
+    public String getQualifiedName() {
+        return ctClass.getName().replace('$', '.');
+    }
+
+    public Optional<MethodUsage> solveMethodAsUsage(String name, List<ResolvedType> argumentsTypes, TypeSolver typeSolver,
+                                                    Context invokationContext, List<ResolvedType> typeParameterValues) {
+        return JavassistUtils.getMethodUsage(ctClass, name, argumentsTypes, typeSolver, invokationContext);
+    }
+
+    @Deprecated
+    public SymbolReference<? extends ResolvedValueDeclaration> solveSymbol(String name, TypeSolver typeSolver) {
+        for (CtField field : ctClass.getDeclaredFields()) {
+            if (field.getName().equals(name)) {
+                return SymbolReference.solved(new JavassistFieldDeclaration(field, typeSolver));
+            }
+        }
+
+        final String superclassFQN = getSuperclassFQN();
+        SymbolReference<? extends ResolvedValueDeclaration> ref = solveSymbolForFQN(name, typeSolver, superclassFQN);
+        if (ref.isSolved()) {
+            return ref;
+        }
+
+        String[] interfaceFQNs = getInterfaceFQNs();
+        for (String interfaceFQN : interfaceFQNs) {
+            SymbolReference<? extends ResolvedValueDeclaration> interfaceRef = solveSymbolForFQN(name, typeSolver, interfaceFQN);
+            if (interfaceRef.isSolved()) {
+                return interfaceRef;
+            }
+        }
+
+        return SymbolReference.unsolved(ResolvedValueDeclaration.class);
+    }
+
+    private SymbolReference<? extends ResolvedValueDeclaration> solveSymbolForFQN(String symbolName, TypeSolver typeSolver, String fqn) {
+        if (fqn == null) {
+            return SymbolReference.unsolved(ResolvedValueDeclaration.class);
+        }
+
+        ResolvedReferenceTypeDeclaration fqnTypeDeclaration = typeSolver.solveType(fqn);
+        return new SymbolSolver(typeSolver).solveSymbolInType(fqnTypeDeclaration, symbolName);
+    }
+
+    private String[] getInterfaceFQNs() {
+        return ctClass.getClassFile().getInterfaces();
+    }
+
+    private String getSuperclassFQN() {
+        return ctClass.getClassFile().getSuperclass();
+    }
+
+    @Override
+    public List<ResolvedReferenceType> getAncestors() {
+        List<ResolvedReferenceType> ancestors = new ArrayList<>();
+        if (getSuperClass() != null) {
+            ancestors.add(getSuperClass());
+        }
+        ancestors.addAll(getInterfaces());
+        return ancestors;
+    }
+
+    @Deprecated
+    public SymbolReference<ResolvedMethodDeclaration> solveMethod(String name, List<ResolvedType> argumentsTypes, boolean staticOnly) {
+        List<ResolvedMethodDeclaration> candidates = new ArrayList<>();
+        Predicate<CtMethod> staticOnlyCheck = m -> !staticOnly || (staticOnly && Modifier.isStatic(m.getModifiers()));
+        for (CtMethod method : ctClass.getDeclaredMethods()) {
+            boolean isSynthetic = method.getMethodInfo().getAttribute(SyntheticAttribute.tag) != null;
+            boolean isNotBridge = (method.getMethodInfo().getAccessFlags() & AccessFlag.BRIDGE) == 0;
+            if (method.getName().equals(name) && !isSynthetic && isNotBridge && staticOnlyCheck.test(method)) {
+                candidates.add(new JavassistMethodDeclaration(method, typeSolver));
+            }
+        }
+
+        // add the method declaration of the superclass to the candidates, if present
+        SymbolReference<ResolvedMethodDeclaration> superClassMethodRef = MethodResolutionLogic
+                .solveMethodInType(getSuperClass().getTypeDeclaration(), name, argumentsTypes, staticOnly, typeSolver);
+        if (superClassMethodRef.isSolved()) {
+            candidates.add(superClassMethodRef.getCorrespondingDeclaration());
+        }
+
+        // add the method declaration of the interfaces to the candidates, if present
+        for (ResolvedReferenceType interfaceRef : getInterfaces()) {
+            SymbolReference<ResolvedMethodDeclaration> interfaceMethodRef = MethodResolutionLogic.solveMethodInType(interfaceRef.getTypeDeclaration(), name, argumentsTypes,
+                    staticOnly, typeSolver);
+            if (interfaceMethodRef.isSolved()) {
+                candidates.add(interfaceMethodRef.getCorrespondingDeclaration());
+            }
+        }
+
+        return MethodResolutionLogic.findMostApplicable(candidates, name, argumentsTypes, typeSolver);
+    }
+
+    public ResolvedType getUsage(Node node) {
+        return new ReferenceTypeImpl(this, typeSolver);
+    }
+
+    @Override
+    public boolean isAssignableBy(ResolvedType type) {
+        if (type.isNull()) {
+            return true;
+        }
+
+        if (type instanceof LambdaArgumentTypePlaceholder) {
+            return isFunctionalInterface();
+        }
+
+        // TODO look into generics
+        if (type.describe().equals(this.getQualifiedName())) {
+            return true;
+        }
+        try {
+            if (this.ctClass.getSuperclass() != null
+                    && new JavassistClassDeclaration(this.ctClass.getSuperclass(), typeSolver).isAssignableBy(type)) {
+                return true;
+            }
+            for (CtClass interfaze : ctClass.getInterfaces()) {
+                if (new JavassistInterfaceDeclaration(interfaze, typeSolver).isAssignableBy(type)) {
+                    return true;
+                }
+            }
+        } catch (NotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isTypeParameter() {
+        return false;
+    }
+
+    @Override
+    public List<ResolvedFieldDeclaration> getAllFields() {
+        return javassistTypeDeclarationAdapter.getDeclaredFields();
+    }
+
+    @Override
+    public String getName() {
+        String[] nameElements = ctClass.getSimpleName().replace('$', '.').split("\\.");
+        return nameElements[nameElements.length - 1];
+    }
+
+    @Override
+    public boolean isField() {
+        return false;
+    }
+
+    @Override
+    public boolean isParameter() {
+        return false;
+    }
+
+    @Override
+    public boolean isType() {
+        return true;
+    }
+
+    @Override
+    public boolean isClass() {
+        return !ctClass.isInterface();
+    }
+
+    @Override
+    public ResolvedReferenceType getSuperClass() {
+        try {
+            if (ctClass.getClassFile().getSuperclass() == null) {
+                return new ReferenceTypeImpl(typeSolver.solveType(Object.class.getCanonicalName()), typeSolver);
+            }
+            if (ctClass.getGenericSignature() == null) {
+                return new ReferenceTypeImpl(typeSolver.solveType(JavassistUtils.internalNameToCanonicalName(ctClass.getClassFile().getSuperclass())), typeSolver);
+            }
+
+            SignatureAttribute.ClassSignature classSignature = SignatureAttribute.toClassSignature(ctClass.getGenericSignature());
+            return JavassistUtils.signatureTypeToType(classSignature.getSuperClass(), typeSolver, this).asReferenceType();
+        } catch (NotFoundException | BadBytecode e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public List<ResolvedReferenceType> getInterfaces() {
+        try {
+            if (ctClass.getGenericSignature() == null) {
+                return Arrays.stream(ctClass.getClassFile().getInterfaces())
+                        .map(i -> typeSolver.solveType(JavassistUtils.internalNameToCanonicalName(i)))
+                        .map(i -> new ReferenceTypeImpl(i, typeSolver))
+                        .collect(Collectors.toList());
+            } else {
+                SignatureAttribute.ClassSignature classSignature = SignatureAttribute.toClassSignature(ctClass.getGenericSignature());
+                return Arrays.stream(classSignature.getInterfaces())
+                        .map(i -> JavassistUtils.signatureTypeToType(i, typeSolver, this).asReferenceType())
+                        .collect(Collectors.toList());
+            }
+        } catch (NotFoundException | BadBytecode e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public boolean isInterface() {
+        return ctClass.isInterface();
+    }
+
+    @Override
+    public String toString() {
+        return "JavassistClassDeclaration {" + ctClass.getName() + '}';
+    }
+
+    @Override
+    public List<ResolvedTypeParameterDeclaration> getTypeParameters() {
+        return javassistTypeDeclarationAdapter.getTypeParameters();
+    }
+
+    @Override
+    public AccessSpecifier accessSpecifier() {
+        return JavassistFactory.modifiersToAccessLevel(ctClass.getModifiers());
+    }
+
+    @Override
+    public List<ResolvedConstructorDeclaration> getConstructors() {
+        return javassistTypeDeclarationAdapter.getConstructors();
+    }
+
+    @Override
+    public Optional<ResolvedReferenceTypeDeclaration> containerType() {
+        return javassistTypeDeclarationAdapter.containerType();
+    }
+
+    @Override
+    public Set<ResolvedReferenceTypeDeclaration> internalTypes() {
+        try {
+            /*
+            Get all internal types of the current class and get their corresponding ReferenceTypeDeclaration.
+            Finally, return them in a Set.
+             */
+            return Arrays.stream(ctClass.getDeclaredClasses()).map(itype -> JavassistFactory.toTypeDeclaration(itype, typeSolver)).collect(Collectors.toSet());
+        } catch (NotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public ResolvedReferenceTypeDeclaration getInternalType(String name) {
+        /*
+        The name of the ReferenceTypeDeclaration could be composed of the internal class and the outer class, e.g. A$B. That's why we search the internal type in the ending part.
+        In case the name is composed of the internal type only, i.e. f.getName() returns B, it will also works.
+         */
+        Optional<ResolvedReferenceTypeDeclaration> type =
+                this.internalTypes().stream().filter(f -> f.getName().endsWith(name)).findFirst();
+        return type.orElseThrow(() ->
+                new UnsolvedSymbolException("Internal type not found: " + name));
+    }
+
+    @Override
+    public boolean hasInternalType(String name) {
+        /*
+        The name of the ReferenceTypeDeclaration could be composed of the internal class and the outer class, e.g. A$B. That's why we search the internal type in the ending part.
+        In case the name is composed of the internal type only, i.e. f.getName() returns B, it will also works.
+         */
+        return this.internalTypes().stream().anyMatch(f -> f.getName().endsWith(name));
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -285,17 +285,17 @@
+                 return new ReferenceTypeImpl(typeSolver.solveType(Object.class.getCanonicalName()), typeSolver);
+             }
+             if (ctClass.getGenericSignature() == null) {
+                 return new ReferenceTypeImpl(typeSolver.solveType(JavassistUtils.internalNameToCanonicalName(ctClass.getClassFile().getSuperclass())), typeSolver);
+             }
+ 
+             SignatureAttribute.ClassSignature classSignature = SignatureAttribute.toClassSignature(ctClass.getGenericSignature());
+             return JavassistUtils.signatureTypeToType(classSignature.getSuperClass(), typeSolver, this).asReferenceType();
+-        } catch (NotFoundException | BadBytecode e) {
++        } catch (BadBytecode e) {
+             throw new RuntimeException(e);
+         }
+     }
+ 
+     @Override
+     public List<ResolvedReferenceType> getInterfaces() {
+         try {
+             if (ctClass.getGenericSignature() == null) {
+@@ -304,17 +304,17 @@
+                         .map(i -> new ReferenceTypeImpl(i, typeSolver))
+                         .collect(Collectors.toList());
+             } else {
+                 SignatureAttribute.ClassSignature classSignature = SignatureAttribute.toClassSignature(ctClass.getGenericSignature());
+                 return Arrays.stream(classSignature.getInterfaces())
+                         .map(i -> JavassistUtils.signatureTypeToType(i, typeSolver, this).asReferenceType())
+                         .collect(Collectors.toList());
+             }
+-        } catch (NotFoundException | BadBytecode e) {
++        } catch (BadBytecode e) {
+             throw new RuntimeException(e);
+         }
+     }
+ 
+     @Override
+     public boolean isInterface() {
+         return ctClass.isInterface();
+     }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: javaparser-symbol-solver-testing/src/test/java/com/github/javaparser/symbolsolver/resolution/AnalyseJavaSymbolSolver060Test.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -29,17 +29,16 @@
+ 
+ import java.io.*;
+ import java.nio.charset.StandardCharsets;
+ import java.nio.file.Files;
+ import java.nio.file.Path;
+ import java.nio.file.Paths;
+ 
+ import static org.junit.Assert.assertEquals;
+-import static org.junit.Assert.assertTrue;
+ 
+ /**
+  * We analyze JavaParser version 0.6.0.
+  */
+ @Category(SlowTest.class)
+ public class AnalyseJavaSymbolSolver060Test extends AbstractResolutionTest {
+ 
+     private static final Path root = adaptPath("src/test/test_sourcecode/javasymbolsolver_0_6_0");
+@@ -65,17 +64,17 @@
+         sourceFileInfoExtractor.setTypeSolver(combinedTypeSolver);
+         sourceFileInfoExtractor.setPrintFileName(false);
+         sourceFileInfoExtractor.setVerbose(true);
+         return sourceFileInfoExtractor;
+     }
+ 
+     private static SourceFileInfoExtractor sourceFileInfoExtractor = getSourceFileInfoExtractor();
+ 
+-    static String readFile(File file)
++    private static String readFile(File file)
+             throws IOException {
+         byte[] encoded = Files.readAllBytes(Paths.get(file.getAbsolutePath()));
+         return new String(encoded, StandardCharsets.UTF_8);
+     }
+ 
+     private static final boolean DEBUG = true;
+ 
+     /**
+@@ -103,25 +102,25 @@
+                 dstFile = dstFile9;
+             }
+         }
+ 
+         if (DEBUG && (sourceFileInfoExtractor.getKo() != 0 || sourceFileInfoExtractor.getUnsupported() != 0)) {
+             System.err.println(output);
+         }
+ 
+-        assertTrue("No failures expected when analyzing " + path, 0 == sourceFileInfoExtractor.getKo());
+-        assertTrue("No UnsupportedOperationException expected when analyzing " + path, 0 == sourceFileInfoExtractor.getUnsupported());
+-
+-        if (!dstFile.exists()) {
+-            // If we need to update the file uncomment these lines
++        assertEquals("No failures expected when analyzing " + path, 0, sourceFileInfoExtractor.getKo());
++        assertEquals("No UnsupportedOperationException expected when analyzing " + path, 0, sourceFileInfoExtractor.getUnsupported());
++
++        // If we need to update the file uncomment these lines
++//        if (!dstFile.exists()) {
+ //            PrintWriter writer = new PrintWriter(dstFile.getAbsoluteFile(), "UTF-8");
+ //            writer.print(output);
+ //            writer.close();
+-        }
++//        }
+ 
+         String expected = readFile(dstFile);
+ 
+         String[] outputLines = output.split("\n");
+         String[] expectedLines = expected.split("\n");
+ 
+         for (int i = 0; i < Math.min(outputLines.length, expectedLines.length); i++) {
+             assertEquals("Line " + (i + 1) + " of " + path + " is different from what is expected", expectedLines[i].trim(), outputLines[i].trim());
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -219,18 +219,22 @@
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarators/AbstractSymbolDeclarator");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarators/FieldSymbolDeclarator");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarators/NoSymbolDeclarator");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarators/ParameterSymbolDeclarator");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarators/VariableSymbolDeclarator");
+     }
+ 
+     @Test
++    public void parseCoreJavassistmodelJavassistClassDeclaration() throws IOException {
++        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistClassDeclaration");
++    }
++
++    @Test
+     public void parseCoreJavassistmodel() throws IOException {
+-        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistClassDeclaration");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistConstructorDeclaration");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistEnumDeclaration");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistFactory");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistFieldDeclaration");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistInterfaceDeclaration");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistMethodDeclaration");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistParameterDeclaration");
+         parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistTypeDeclarationAdapter");
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright 2016 Federico Tomassetti
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.github.javaparser.symbolsolver.resolution;
+
+import com.github.javaparser.SlowTest;
+import com.github.javaparser.symbolsolver.SourceFileInfoExtractor;
+import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import static org.junit.Assert.assertEquals;
+
+/**
+ * We analyze JavaParser version 0.6.0.
+ */
+@Category(SlowTest.class)
+public class AnalyseJavaSymbolSolver060Test extends AbstractResolutionTest {
+
+    private static final Path root = adaptPath("src/test/test_sourcecode/javasymbolsolver_0_6_0");
+    private static final Path src = root.resolve("src");
+    private static final Path lib = root.resolve("lib");
+    private static final Path expectedOutput = root.resolve("expected_output");
+
+    private static SourceFileInfoExtractor getSourceFileInfoExtractor() {
+        CombinedTypeSolver combinedTypeSolver = new CombinedTypeSolver();
+        combinedTypeSolver.add(new ReflectionTypeSolver());
+        combinedTypeSolver.add(new JavaParserTypeSolver(new File(src + "/java-symbol-solver-core")));
+        combinedTypeSolver.add(new JavaParserTypeSolver(new File(src + "/java-symbol-solver-logic")));
+        combinedTypeSolver.add(new JavaParserTypeSolver(new File(src + "/java-symbol-solver-model")));
+        try {
+			combinedTypeSolver.add(new JarTypeSolver(lib + "/guava-21.0.jar"));
+			combinedTypeSolver.add(new JarTypeSolver(lib + "/javaparser-core-3.3.0.jar"));
+			combinedTypeSolver.add(new JarTypeSolver(lib + "/javaslang-2.0.3.jar"));
+			combinedTypeSolver.add(new JarTypeSolver(lib + "/javassist-3.19.0-GA.jar"));
+		} catch (IOException e) {
+			Assert.fail("one or more jar dependencies could not be found.");
+		}
+        SourceFileInfoExtractor sourceFileInfoExtractor = new SourceFileInfoExtractor();
+        sourceFileInfoExtractor.setTypeSolver(combinedTypeSolver);
+        sourceFileInfoExtractor.setPrintFileName(false);
+        sourceFileInfoExtractor.setVerbose(true);
+        return sourceFileInfoExtractor;
+    }
+
+    private static SourceFileInfoExtractor sourceFileInfoExtractor = getSourceFileInfoExtractor();
+
+    private static String readFile(File file)
+            throws IOException {
+        byte[] encoded = Files.readAllBytes(Paths.get(file.getAbsolutePath()));
+        return new String(encoded, StandardCharsets.UTF_8);
+    }
+
+    private static final boolean DEBUG = true;
+
+    /**
+     * @param projectName is one of "java-symbol-solver-core", "java-symbol-solver-logic", "java-symbol-solver-model"
+     * @param fileName describes the file being analyzed
+     */
+    private void parse(String projectName, String fileName) throws IOException {
+        Path sourceFile = src.resolve(projectName + "/" + fileName + ".java");
+        OutputStream outErrStream = new ByteArrayOutputStream();
+        PrintStream outErr = new PrintStream(outErrStream);
+
+        sourceFileInfoExtractor.setOut(outErr);
+        sourceFileInfoExtractor.setErr(outErr);
+        sourceFileInfoExtractor.solveMethodCalls(sourceFile);
+        String output = outErrStream.toString();
+
+        String path = adaptPath(expectedOutput) + "/" + projectName + "/" + fileName.replaceAll("/", "_") + ".txt";
+        File dstFile = new File(path);
+
+        if (isJava9()) {
+            String path9 = adaptPath(expectedOutput) + "/" + projectName + "/" + fileName.replaceAll("/", "_") + "_J9.txt";
+            File dstFile9 = new File(path9);
+            if (dstFile9.exists()) {
+                path = path9;
+                dstFile = dstFile9;
+            }
+        }
+
+        if (DEBUG && (sourceFileInfoExtractor.getKo() != 0 || sourceFileInfoExtractor.getUnsupported() != 0)) {
+            System.err.println(output);
+        }
+
+        assertEquals("No failures expected when analyzing " + path, 0, sourceFileInfoExtractor.getKo());
+        assertEquals("No UnsupportedOperationException expected when analyzing " + path, 0, sourceFileInfoExtractor.getUnsupported());
+
+        // If we need to update the file uncomment these lines
+//        if (!dstFile.exists()) {
+//            PrintWriter writer = new PrintWriter(dstFile.getAbsoluteFile(), "UTF-8");
+//            writer.print(output);
+//            writer.close();
+//        }
+
+        String expected = readFile(dstFile);
+
+        String[] outputLines = output.split("\n");
+        String[] expectedLines = expected.split("\n");
+
+        for (int i = 0; i < Math.min(outputLines.length, expectedLines.length); i++) {
+            assertEquals("Line " + (i + 1) + " of " + path + " is different from what is expected", expectedLines[i].trim(), outputLines[i].trim());
+        }
+
+        assertEquals(expectedLines.length, outputLines.length);
+
+        JavaParserFacade.clearInstances();
+    }
+
+    @Test
+    public void parseCoreSourceFileInfoExtractor() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/SourceFileInfoExtractor");
+    }
+
+    @Test
+    public void parseCoreCoreResolution() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/core/resolution/Context");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/core/resolution/ContextHelper");
+    }
+
+    @Test
+    public void parseCoreDeclarationsCommon() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/declarations/common/MethodDeclarationCommonLogic");
+    }
+
+    @Test
+    public void parseCoreJavaparserNavigator() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparser/Navigator");
+    }
+
+    @Test
+    public void parseCoreJavaparsermodel() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/DefaultVisitorAdapter");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFacade");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/JavaParserFactory");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/LambdaArgumentTypePlaceholder");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/TypeExtractor");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/UnsolvedSymbolException");
+    }
+
+    @Test
+    public void parseCoreJavaparsermodelContexts() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/AbstractJavaParserContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/AbstractMethodLikeDeclarationContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/AnonymousClassDeclarationContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/CatchClauseContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/ClassOrInterfaceDeclarationContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/CompilationUnitContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/ConstructorContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/ContextHelper");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/EnumDeclarationContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/FieldAccessContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/ForechStatementContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/ForStatementContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/JavaParserTypeDeclarationAdapter");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/LambdaExprContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/MethodCallExprContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/MethodContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/StatementContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/SwitchEntryContext");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/contexts/TryWithResourceContext");
+    }
+
+    @Test
+    public void parseCoreJavaparsermodelJavaParserAnonymousClassDeclaration() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserAnonymousClassDeclaration");
+    }
+
+    @Test
+    public void parseCoreJavaparsermodelJavaParserInterfaceDeclaration() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserInterfaceDeclaration");
+    }
+
+    @Test
+    public void parseCoreJavaparsermodelDeclarations() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/DefaultConstructorDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/Helper");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserAnnotationDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserClassDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserConstructorDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserEnumConstantDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserEnumDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserFieldDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserMethodDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserParameterDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserSymbolDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserTypeAdapter");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserTypeParameter");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarations/JavaParserTypeVariableDeclaration");
+    }
+
+    @Test
+    public void parseCoreJavaparsermodelDeclarators() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarators/AbstractSymbolDeclarator");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarators/FieldSymbolDeclarator");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarators/NoSymbolDeclarator");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarators/ParameterSymbolDeclarator");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javaparsermodel/declarators/VariableSymbolDeclarator");
+    }
+
+    @Test
+    public void parseCoreJavassistmodelJavassistClassDeclaration() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistClassDeclaration");
+    }
+
+    @Test
+    public void parseCoreJavassistmodel() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistConstructorDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistEnumDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistFactory");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistFieldDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistInterfaceDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistMethodDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistParameterDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistTypeDeclarationAdapter");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistTypeParameter");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/javassistmodel/JavassistUtils");
+    }
+
+    @Test
+    public void parseCoreModelTypesystem() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/model/typesystem/LazyType");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/model/typesystem/ReferenceTypeImpl");
+    }
+
+    @Test
+    public void parseCoreReflectionmodel() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/MyObjectProvider");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassAdapter");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionClassDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionConstructorDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionEnumDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFactory");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionFieldDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionInterfaceDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionMethodDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionMethodResolutionLogic");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionParameterDeclaration");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/ReflectionTypeParameter");
+    }
+
+    @Test
+    public void parseCoreReflectionmodelComparators() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/comparators/ClassComparator");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/comparators/MethodComparator");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/reflectionmodel/comparators/ParameterComparator");
+    }
+
+    @Test
+    public void parseCoreResolution() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/resolution/ConstructorResolutionLogic");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/resolution/MethodResolutionLogic");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/resolution/SymbolDeclarator");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/resolution/SymbolSolver");
+    }
+
+    @Test
+    public void parseCoreResolutionTypesolvers() throws IOException {
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/resolution/typesolvers/CombinedTypeSolver");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/resolution/typesolvers/JarTypeSolver");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/resolution/typesolvers/JavaParserTypeSolver");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/resolution/typesolvers/MemoryTypeSolver");
+        parse("java-symbol-solver-core", "com/github/javaparser/symbolsolver/resolution/typesolvers/ReflectionTypeSolver");
+    }
+
+    @Test
+    public void parseLogic() throws IOException {
+		parse("java-symbol-solver-logic", "com/github/javaparser/symbolsolver/logic/AbstractClassDeclaration");
+		parse("java-symbol-solver-logic", "com/github/javaparser/symbolsolver/logic/AbstractTypeDeclaration");
+		parse("java-symbol-solver-logic", "com/github/javaparser/symbolsolver/logic/ConfilictingGenericTypesException");
+		parse("java-symbol-solver-logic", "com/github/javaparser/symbolsolver/logic/FunctionalInterfaceLogic");
+		parse("java-symbol-solver-logic", "com/github/javaparser/symbolsolver/logic/InferenceContext");
+		parse("java-symbol-solver-logic", "com/github/javaparser/symbolsolver/logic/InferenceVariableType");
+		parse("java-symbol-solver-logic", "com/github/javaparser/symbolsolver/logic/ObjectProvider");
+    }
+
+    @Test
+    public void parseModelDeclarations() throws IOException {
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/AccessLevel");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/AnnotationDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/ClassDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/ConstructorDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/Declaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/EnumDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/FieldDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/HasAccessLevel");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/InterfaceDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/MethodAmbiguityException");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/MethodDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/MethodLikeDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/ParameterDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/ReferenceTypeDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/TypeDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/TypeParameterDeclaration");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/TypeParametrizable");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/declarations/ValueDeclaration");
+    }
+
+    @Test
+    public void parseModelMethodsMethodUsage() throws IOException {
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/methods/MethodUsage");
+    }
+
+    @Test
+    public void parseModelResolution() throws IOException {
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/resolution/SymbolReference");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/resolution/TypeSolver");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/resolution/UnsolvedSymbolException");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/resolution/Value");
+    }
+
+    @Test
+    public void parseModelTypesystemReferenceType() throws IOException {
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/ReferenceType");
+    }
+
+    @Test
+    public void parseModelTypesystem() throws IOException {
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/ArrayType");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/LambdaConstraintType");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/NullType");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/PrimitiveType");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/Type");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/TypeTransformer");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/TypeVariable");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/VoidType");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/Wildcard");
+    }
+
+    @Test
+    public void parseModelTypesystemParametrization() throws IOException {
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/parametrization/TypeParametersMap");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/parametrization/TypeParameterValueProvider");
+        parse("java-symbol-solver-model", "com/github/javaparser/symbolsolver/model/typesystem/parametrization/TypeParametrized");
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

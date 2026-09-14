@@ -1,0 +1,1311 @@
+UNIT vkostyukov_la4j__843d8ff9de
+repo: vkostyukov_la4j   merge: 843d8ff9de5396558c41a4fd3012aef47258404b   stratum: B
+files shown: 9 of 9 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/9: src/main/java/org/la4j/matrix/AbstractMatrix.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -30,18 +30,18 @@
+ 
+ import org.la4j.LinearAlgebra;
+ import org.la4j.decomposition.MatrixDecompositor;
+ import org.la4j.factory.Factory;
+ import org.la4j.inversion.MatrixInverter;
+ import org.la4j.linear.LinearSystemSolver;
+ import org.la4j.matrix.functor.*;
+ import org.la4j.matrix.source.MatrixSource;
++import org.la4j.matrix.sparse.AbstractCompressedMatrix;
+ import org.la4j.vector.Vector;
+-import org.la4j.vector.Vectors;
+ 
+ import java.math.BigDecimal;
+ import java.math.RoundingMode;
+ import java.text.DecimalFormat;
+ import java.text.NumberFormat;
+ import java.util.Random;
+ 
+ public abstract class AbstractMatrix implements Matrix {
+@@ -1310,16 +1310,32 @@
+     protected void ensureDimensionsAreCorrect(int rows, int columns) {
+         if (rows < 0 || columns < 0) {
+             fail("Wrong matrix dimensions: " + rows + "x" + columns);
+         }
+         if (rows == Integer.MAX_VALUE || columns == Integer.MAX_VALUE) {
+             fail("Wrong matrix dimensions: use 'Integer.MAX_VALUE - 1' instead.");
+         }
+     }
++    
++    /**
++     * Ensures the provided row and column are in the bounds of this {@link AbstractCompressedMatrix}.
++     * 
++     * @param i The row to check.
++     * @param j The column to check
++     */
++    protected void ensureIndexesAreInBounds(int i, int j) {
++    	if (i < 0 || i >= this.rows) {
++        	throw new IndexOutOfBoundsException("Row '" + i + "' is invalid.");
++    	}
++    	
++    	if (j < 0 || j >= this.columns) {
++        	throw new IndexOutOfBoundsException("Column '" + j + "' is invalid.");
++    	}
++    }
+ 
+     protected void fail(String message) {
+         throw new IllegalArgumentException(message);
+     }
+ 
+     private void indent(StringBuilder sb, int howMany) {
+         while (howMany > 0) {
+             sb.append(" ");
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -30,18 +30,18 @@
+ 
+ import org.la4j.LinearAlgebra;
+ import org.la4j.decomposition.MatrixDecompositor;
+ import org.la4j.factory.Factory;
+ import org.la4j.inversion.MatrixInverter;
+ import org.la4j.linear.LinearSystemSolver;
+ import org.la4j.matrix.functor.*;
+ import org.la4j.matrix.source.MatrixSource;
++import org.la4j.matrix.sparse.AbstractCompressedMatrix;
+ import org.la4j.vector.Vector;
+-import org.la4j.vector.Vectors;
+ 
+ import java.math.BigDecimal;
+ import java.math.RoundingMode;
+ import java.text.DecimalFormat;
+ import java.text.NumberFormat;
+ import java.util.Random;
+ 
+ public abstract class AbstractMatrix implements Matrix {
+@@ -1310,16 +1310,32 @@
+     protected void ensureDimensionsAreCorrect(int rows, int columns) {
+         if (rows < 0 || columns < 0) {
+             fail("Wrong matrix dimensions: " + rows + "x" + columns);
+         }
+         if (rows == Integer.MAX_VALUE || columns == Integer.MAX_VALUE) {
+             fail("Wrong matrix dimensions: use 'Integer.MAX_VALUE - 1' instead.");
+         }
+     }
++    
++    /**
++     * Ensures the provided row and column are in the bounds of this {@link AbstractCompressedMatrix}.
++     * 
++     * @param i The row to check.
++     * @param j The column to check
++     */
++    protected void ensureIndexesAreInBounds(int i, int j) {
++    	if (i < 0 || i >= this.rows) {
++        	throw new IndexOutOfBoundsException("Row '" + i + "' is invalid.");
++    	}
++    	
++    	if (j < 0 || j >= this.columns) {
++        	throw new IndexOutOfBoundsException("Column '" + j + "' is invalid.");
++    	}
++    }
+ 
+     protected void fail(String message) {
+         throw new IllegalArgumentException(message);
+     }
+ 
+     private void indent(StringBuilder sb, int howMany) {
+         while (howMany > 0) {
+             sb.append(" ");
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/9: src/main/java/org/la4j/matrix/dense/Basic1DMatrix.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -28,17 +28,17 @@
+ import org.la4j.LinearAlgebra;
+ import org.la4j.matrix.Matrices;
+ import org.la4j.matrix.Matrix;
+ import org.la4j.matrix.source.MatrixSource;
+ import org.la4j.vector.Vector;
+ import org.la4j.vector.dense.BasicVector;
+ 
+ public class Basic1DMatrix extends AbstractBasicMatrix implements DenseMatrix {
+-	// TODO: Add range checks
++	
+     private static final long serialVersionUID = 4071505L;
+ 
+     private double self[];
+ 
+     public Basic1DMatrix() {
+         this(0, 0);
+     }
+ 
+@@ -73,21 +73,23 @@
+     public Basic1DMatrix(int rows, int columns, double array[]) {
+         super(LinearAlgebra.BASIC1D_FACTORY, rows, columns);
+ 
+         this.self = array;
+     }
+ 
+     @Override
+     public double get(int i, int j) {
++        ensureIndexesAreInBounds(i, j);
+         return self[i * columns + j];
+     }
+ 
+     @Override
+     public void set(int i, int j, double value) {
++        ensureIndexesAreInBounds(i, j);
+         self[i * columns + j] = value;
+     }
+ 
+     @Override
+     public void swapRows(int i, int j) {
+         if (i != j) {
+             for (int k = 0; k < columns; k++) {
+                 double tmp = self[i * columns + k];
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -28,17 +28,17 @@
+ import org.la4j.LinearAlgebra;
+ import org.la4j.matrix.Matrices;
+ import org.la4j.matrix.Matrix;
+ import org.la4j.matrix.source.MatrixSource;
+ import org.la4j.vector.Vector;
+ import org.la4j.vector.dense.BasicVector;
+ 
+ public class Basic1DMatrix extends AbstractBasicMatrix implements DenseMatrix {
+-	// TODO: Add range checks
++	
+     private static final long serialVersionUID = 4071505L;
+ 
+     private double self[];
+ 
+     public Basic1DMatrix() {
+         this(0, 0);
+     }
+ 
+@@ -73,21 +73,23 @@
+     public Basic1DMatrix(int rows, int columns, double array[]) {
+         super(LinearAlgebra.BASIC1D_FACTORY, rows, columns);
+ 
+         this.self = array;
+     }
+ 
+     @Override
+     public double get(int i, int j) {
++        ensureIndexesAreInBounds(i, j);
+         return self[i * columns + j];
+     }
+ 
+     @Override
+     public void set(int i, int j, double value) {
++        ensureIndexesAreInBounds(i, j);
+         self[i * columns + j] = value;
+     }
+ 
+     @Override
+     public void swapRows(int i, int j) {
+         if (i != j) {
+             for (int k = 0; k < columns; k++) {
+                 double tmp = self[i * columns + k];
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/9: src/main/java/org/la4j/matrix/sparse/AbstractCompressedMatrix.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -19,17 +19,16 @@
+  * 
+  */
+ 
+ package org.la4j.matrix.sparse;
+ 
+ import org.la4j.factory.Factory;
+ import org.la4j.matrix.AbstractMatrix;
+ import org.la4j.matrix.Matrices;
+-import org.la4j.matrix.Matrix;
+ import org.la4j.matrix.functor.MatrixAccumulator;
+ import org.la4j.matrix.functor.MatrixProcedure;
+ import org.la4j.vector.Vector;
+ 
+ public abstract class AbstractCompressedMatrix extends AbstractMatrix 
+     implements SparseMatrix {
+ 
+     protected int cardinality;
+@@ -45,16 +44,17 @@
+ 
+     @Override
+     public double density() {
+         return cardinality / (double) (rows * columns);
+     }
+ 
+     @Override
+     public double get(int i, int j) {
++        ensureIndexesAreInBounds(i, j);
+         return getOrElse(i, j, 0.0);
+     }
+ 
+     protected long capacity() {
+         return ((long) rows) * columns;
+     }
+ 
+     protected void ensureCardinalityIsCorrect(long rows, long columns, long cardinality) {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -19,17 +19,16 @@
+  * 
+  */
+ 
+ package org.la4j.matrix.sparse;
+ 
+ import org.la4j.factory.Factory;
+ import org.la4j.matrix.AbstractMatrix;
+ import org.la4j.matrix.Matrices;
+-import org.la4j.matrix.Matrix;
+ import org.la4j.matrix.functor.MatrixAccumulator;
+ import org.la4j.matrix.functor.MatrixProcedure;
+ import org.la4j.vector.Vector;
+ 
+ public abstract class AbstractCompressedMatrix extends AbstractMatrix 
+     implements SparseMatrix {
+ 
+     protected int cardinality;
+@@ -45,16 +44,17 @@
+ 
+     @Override
+     public double density() {
+         return cardinality / (double) (rows * columns);
+     }
+ 
+     @Override
+     public double get(int i, int j) {
++        ensureIndexesAreInBounds(i, j);
+         return getOrElse(i, j, 0.0);
+     }
+ 
+     protected long capacity() {
+         return ((long) rows) * columns;
+     }
+ 
+     protected void ensureCardinalityIsCorrect(long rows, long columns, long cardinality) {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/9: src/main/java/org/la4j/matrix/sparse/CCSMatrix.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -38,17 +38,17 @@
+ import org.la4j.matrix.source.MatrixSource;
+ import org.la4j.vector.Vector;
+ import org.la4j.vector.sparse.CompressedVector;
+ 
+ /**
+  * This is a CCS (Compressed Column Storage) matrix class.
+  */
+ public class CCSMatrix extends AbstractCompressedMatrix implements SparseMatrix {
+-	// TODO: Add range checks
++	
+     private static final long serialVersionUID = 4071505L;
+ 
+     private static final int MINIMUM_SIZE = 32;
+ 
+     private double values[];
+     private int rowIndices[];
+     private int columnPointers[];
+ 
+@@ -117,29 +117,29 @@
+         this.cardinality = cardinality;
+         this.values = values;
+         this.rowIndices = rowIndices;
+         this.columnPointers = columnPointers;
+     }
+ 
+     @Override
+     public double getOrElse(int i, int j, double defaultValue) {
+-
++        ensureIndexesAreInBounds(i, j);
+         int k = searchForRowIndex(i, columnPointers[j], columnPointers[j + 1]);
+ 
+         if (k < columnPointers[j + 1] && rowIndices[k] == i) {
+             return values[k];
+         }
+ 
+         return defaultValue;
+     }
+ 
+     @Override
+     public void set(int i, int j, double value) {
+-
++        ensureIndexesAreInBounds(i, j);
+         int k = searchForRowIndex(i, columnPointers[j], columnPointers[j + 1]);
+ 
+         if (k < columnPointers[j + 1] && rowIndices[k] == i) {
+             // if (Math.abs(value) < Matrices.EPS && value >= 0.0) {
+             if (value == 0.0) {
+                 remove(k, j);
+             } else {
+                 values[k] = value;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -38,17 +38,17 @@
+ import org.la4j.matrix.source.MatrixSource;
+ import org.la4j.vector.Vector;
+ import org.la4j.vector.sparse.CompressedVector;
+ 
+ /**
+  * This is a CCS (Compressed Column Storage) matrix class.
+  */
+ public class CCSMatrix extends AbstractCompressedMatrix implements SparseMatrix {
+-	// TODO: Add range checks
++	
+     private static final long serialVersionUID = 4071505L;
+ 
+     private static final int MINIMUM_SIZE = 32;
+ 
+     private double values[];
+     private int rowIndices[];
+     private int columnPointers[];
+ 
+@@ -117,29 +117,29 @@
+         this.cardinality = cardinality;
+         this.values = values;
+         this.rowIndices = rowIndices;
+         this.columnPointers = columnPointers;
+     }
+ 
+     @Override
+     public double getOrElse(int i, int j, double defaultValue) {
+-
++        ensureIndexesAreInBounds(i, j);
+         int k = searchForRowIndex(i, columnPointers[j], columnPointers[j + 1]);
+ 
+         if (k < columnPointers[j + 1] && rowIndices[k] == i) {
+             return values[k];
+         }
+ 
+         return defaultValue;
+     }
+ 
+     @Override
+     public void set(int i, int j, double value) {
+-
++        ensureIndexesAreInBounds(i, j);
+         int k = searchForRowIndex(i, columnPointers[j], columnPointers[j + 1]);
+ 
+         if (k < columnPointers[j + 1] && rowIndices[k] == i) {
+             // if (Math.abs(value) < Matrices.EPS && value >= 0.0) {
+             if (value == 0.0) {
+                 remove(k, j);
+             } else {
+                 values[k] = value;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/9: src/main/java/org/la4j/matrix/sparse/CRSMatrix.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -38,17 +38,17 @@
+ import org.la4j.matrix.source.MatrixSource;
+ import org.la4j.vector.Vector;
+ import org.la4j.vector.sparse.CompressedVector;
+ 
+ /**
+  * This is a CRS (Compressed Row Storage) matrix class.
+  */
+ public class CRSMatrix extends AbstractCompressedMatrix implements SparseMatrix {
+-	// TODO: Add range checks
++	
+     private static final long serialVersionUID = 4071505L;
+ 
+     private static final int MINIMUM_SIZE = 32;
+ 
+     private double values[];
+     private int columnIndices[];
+     private int rowPointers[];
+ 
+@@ -116,29 +116,29 @@
+ 
+         this.values = values;
+         this.columnIndices = columnIndices;
+         this.rowPointers = rowPointers;
+     }
+ 
+     @Override
+     public double getOrElse(int i, int j, double defaultValue) {
+-
++        ensureIndexesAreInBounds(i, j);
+         int k = searchForColumnIndex(j, rowPointers[i], rowPointers[i + 1]);
+ 
+         if (k < rowPointers[i + 1] && columnIndices[k] == j) {
+             return values[k];
+         }
+ 
+         return defaultValue;
+     }
+ 
+     @Override
+     public void set(int i, int j, double value) {
+-
++        ensureIndexesAreInBounds(i, j);
+         int k = searchForColumnIndex(j, rowPointers[i], rowPointers[i + 1]);
+ 
+         if (k < rowPointers[i + 1] && columnIndices[k] == j) {
+             // if (Math.abs(value) < Matrices.EPS && value >= 0.0) {
+             if (value == 0.0) {
+                 remove(k, i);
+             } else {
+                 values[k] = value;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -38,17 +38,17 @@
+ import org.la4j.matrix.source.MatrixSource;
+ import org.la4j.vector.Vector;
+ import org.la4j.vector.sparse.CompressedVector;
+ 
+ /**
+  * This is a CRS (Compressed Row Storage) matrix class.
+  */
+ public class CRSMatrix extends AbstractCompressedMatrix implements SparseMatrix {
+-	// TODO: Add range checks
++	
+     private static final long serialVersionUID = 4071505L;
+ 
+     private static final int MINIMUM_SIZE = 32;
+ 
+     private double values[];
+     private int columnIndices[];
+     private int rowPointers[];
+ 
+@@ -116,29 +116,29 @@
+ 
+         this.values = values;
+         this.columnIndices = columnIndices;
+         this.rowPointers = rowPointers;
+     }
+ 
+     @Override
+     public double getOrElse(int i, int j, double defaultValue) {
+-
++        ensureIndexesAreInBounds(i, j);
+         int k = searchForColumnIndex(j, rowPointers[i], rowPointers[i + 1]);
+ 
+         if (k < rowPointers[i + 1] && columnIndices[k] == j) {
+             return values[k];
+         }
+ 
+         return defaultValue;
+     }
+ 
+     @Override
+     public void set(int i, int j, double value) {
+-
++        ensureIndexesAreInBounds(i, j);
+         int k = searchForColumnIndex(j, rowPointers[i], rowPointers[i + 1]);
+ 
+         if (k < rowPointers[i + 1] && columnIndices[k] == j) {
+             // if (Math.abs(value) < Matrices.EPS && value >= 0.0) {
+             if (value == 0.0) {
+                 remove(k, i);
+             } else {
+                 values[k] = value;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/9: src/main/java/org/la4j/vector/sparse/SparseVector.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -238,16 +238,16 @@
+     @Override
+     public <T> T pipeTo(VectorVectorOperation<T> operation, Vector that) {
+         return that.pipeTo(operation.curry(this));
+     }
+     
+     /**
+      * Ensures the provided index is in the bounds of this {@link SparseVector}.
+      * 
+-     * @param index The index to check.
+-     */
+-    protected void ensureIndexIsInBounds(int index) {
+-        if (index < 0 || index >= this.length) {
+-        	throw new IndexOutOfBoundsException("Index '" + index + "' is invalid.");
++     * @param i The index to check.
++     */
++    protected void ensureIndexIsInBounds(int i) {
++        if (i < 0 || i >= this.length) {
++        	throw new IndexOutOfBoundsException("Index '" + i + "' is invalid.");
+         }
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -238,16 +238,16 @@
+     @Override
+     public <T> T pipeTo(VectorVectorOperation<T> operation, Vector that) {
+         return that.pipeTo(operation.curry(this));
+     }
+     
+     /**
+      * Ensures the provided index is in the bounds of this {@link SparseVector}.
+      * 
+-     * @param index The index to check.
+-     */
+-    protected void ensureIndexIsInBounds(int index) {
+-        if (index < 0 || index >= this.length) {
+-        	throw new IndexOutOfBoundsException("Index '" + index + "' is invalid.");
++     * @param i The index to check.
++     */
++    protected void ensureIndexIsInBounds(int i) {
++        if (i < 0 || i >= this.length) {
++        	throw new IndexOutOfBoundsException("Index '" + i + "' is invalid.");
+         }
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/9: src/test/java/org/la4j/matrix/AbstractMatrixTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -21,17 +21,16 @@
+  *                 Anveshi Charuvaka
+  *                 Todd Brunhoff
+  *                 Catherine da Graca
+  * 
+  */
+ 
+ package org.la4j.matrix;
+ 
+-import org.junit.Ignore;
+ import org.junit.Test;
+ import org.la4j.factory.Factory;
+ import org.la4j.vector.Vector;
+ import org.la4j.vector.Vectors;
+ 
+ import java.io.*;
+ import java.util.ArrayList;
+ 
+@@ -2077,44 +2076,32 @@
+                 {8.93, 5.88, 6.57, 9.3, 3.65, 0.08},// 0
+                 {3.96, 8.26, 2.51, 9.61, 4.63, 6.12},// 1
+                 {7.37, 5.79, 8.8, 0.87, 7.83, 6.15},// 2
+                 {3.43, 9.08, 1.16, 2.3, 3.66, 4.93},// 3
+                 {7.05, 7.75, 8.11, 2.93, 9.04, 6.72} // 4
+         });
+     }
+ 
+-    @Test
+-    @Ignore
+-    public void xtestSelect1() {
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testSelect1() {
+         // Throw exception when row indices are invalid
+         Matrix a = matrixA();
+-        int[] rowInd = new int[]{3, 4, 10};
+-        int[] colInd = new int[]{0, 1, 2}; // all columns
+-        try {
+-            a.select(rowInd, colInd);
+-            fail();
+-        } catch (IndexOutOfBoundsException ex) {
+-            // Do nothing
+-        }
+-    }
+-
+-    @Test
+-    @Ignore
+-    public void xtestSelect2() {
++        int[] rowInd = new int[]{3, 4, 10}; // 10 is too large of a row index
++        int[] colInd = new int[]{0, 1, 2};
++        a.select(rowInd, colInd);
++    }
++
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testSelect2() {
+         // Throw exception when column indices are invalid
+         Matrix a = matrixA();
+         int[] rowInd = new int[]{0, 1, 2};
+-        int[] colInd = new int[]{-1, 1, 2}; // all columns
+-        try {
+-            a.select(rowInd, colInd);
+-            fail();
+-        } catch (IndexOutOfBoundsException ex) {
+-            // Do nothing
+-        }
++        int[] colInd = new int[]{-1, 1, 2}; // -1 is a negative column index
++        a.select(rowInd, colInd);
+     }
+ 
+     @Test
+     public void testSelect3() {
+         // All columns and a subset of rows selected.
+         Matrix a = matrixA();
+         int[] rowInd = new int[]{1, 3, 4};
+         int[] colInd = new int[]{0, 1, 2, 3, 4, 5}; // all columns
+@@ -2305,10 +2292,165 @@
+                 {0.0, 2.0, 3.0, 0.0},
+                 {3.0, 3.0, 0.0, 0.0},
+                 {0.0, 0.0, 0.0, 2.0}
+         });
+ 
+         assertFalse(b.is(Matrices.SYMMETRIC_MATRIX));
+ 
+     }
+-
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGet_IndexCheck_RowNegative() {
++        Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.get(-1, 1);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGet_IndexCheck_ColumnNegative() {
++   	    Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.get(1, -1);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGet_IndexCheck_RowTooLarge() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.get(a.rows(), 1);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGet_IndexCheck_ColumnTooLarge() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.get(1, a.columns());
++    }
++    
++    @Test
++    public void testGet_IndexCheck_Valid() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 assertEquals(0.0, a.get(1, 1), 0.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testSet_IndexCheck_RowNegative() {
++    	 Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.set(-1, 1, 1.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testSet_IndexCheck_ColumnNegative() {
++    	 Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.set(1, -1, 1.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testSet_IndexCheck_RowTooLarge() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.set(a.rows(), 1, 1.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testSet_IndexCheck_ColumnTooLarge() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.set(1, a.columns(), 1.0);
++    }
++    
++    @Test
++    public void testSet_IndexCheck_Valid() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.set(1, 1, 1.0);
++    	 assertEquals(1.0, a.get(1, 1), 0.0);
++    }
++    @Test
++    public void testEqualsWithPrecision() throws Exception {
++        Matrix a = factory().createMatrix();
++        assertTrue(a.equals(a, Matrices.EPS));
++        assertTrue(a.equals(a.copy(), Matrices.EPS));
++
++        Matrix b = factory().createConstantMatrix(2, 2, 0.0);
++        Matrix c = factory().createConstantMatrix(2, 2, 0.0);
++        assertTrue(b.equals(c, Matrices.EPS));
++        assertTrue(c.equals(b, Matrices.EPS));
++        assertFalse(b.equals(a, Matrices.EPS));
++        assertFalse(c.equals(a, Matrices.EPS));
++
++        Matrix d = factory().createIdentityMatrix(2);
++        assertFalse(d.equals(b, Matrices.EPS));
++        assertFalse(d.equals(a, Matrices.EPS));
++        
++        Matrix e = factory().createConstantMatrix(2, 2, Double.MIN_VALUE);
++        assertTrue(e.equals(b, Matrices.EPS));
++        
++        Matrix f = factory().createConstantMatrix(2, 2, Double.MIN_NORMAL);
++        assertTrue(f.equals(b, Matrices.EPS));
++        assertTrue(f.equals(e, Matrices.EPS));
++        assertTrue(b.equals(f, Matrices.EPS));
++        assertTrue(e.equals(f, Matrices.EPS));
++        
++    }
++
++    @Test
++    public void testEquals() throws Exception {
++        Matrix a = factory().createMatrix();
++        assertTrue(a.equals(a));
++        assertTrue(a.copy().equals(a));
++
++        Matrix b = factory().createConstantMatrix(2, 2, 0.0);
++        Matrix c = factory().createConstantMatrix(2, 2, 0.0);
++        assertTrue(b.equals(c));
++        assertTrue(c.equals(b));
++        assertFalse(b.equals(a));
++        assertFalse(c.equals(a));
++
++        Matrix d = factory().createIdentityMatrix(2);
++        assertFalse(d.equals(b));
++        assertFalse(d.equals(a));
++
++        Matrix e = factory().createConstantMatrix(2, 2, Double.MIN_VALUE);
++        assertTrue(e.equals(b));
++
++        Matrix f = factory().createConstantMatrix(2, 2, Double.MIN_NORMAL);
++        assertTrue(f.equals(b));
++        assertTrue(f.equals(e));
++        assertTrue(b.equals(f));
++        assertTrue(e.equals(f));
++
++    }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -21,17 +21,16 @@
+  *                 Anveshi Charuvaka
+  *                 Todd Brunhoff
+  *                 Catherine da Graca
+  * 
+  */
+ 
+ package org.la4j.matrix;
+ 
+-import org.junit.Ignore;
+ import org.junit.Test;
+ import org.la4j.factory.Factory;
+ import org.la4j.vector.Vector;
+ import org.la4j.vector.Vectors;
+ 
+ import java.io.*;
+ import java.util.ArrayList;
+ 
+@@ -2077,44 +2076,32 @@
+                 {8.93, 5.88, 6.57, 9.3, 3.65, 0.08},// 0
+                 {3.96, 8.26, 2.51, 9.61, 4.63, 6.12},// 1
+                 {7.37, 5.79, 8.8, 0.87, 7.83, 6.15},// 2
+                 {3.43, 9.08, 1.16, 2.3, 3.66, 4.93},// 3
+                 {7.05, 7.75, 8.11, 2.93, 9.04, 6.72} // 4
+         });
+     }
+ 
+-    @Test
+-    @Ignore
++    @Test(expected = IndexOutOfBoundsException.class)
+     public void xtestSelect1() {
+         // Throw exception when row indices are invalid
+         Matrix a = matrixA();
+-        int[] rowInd = new int[]{3, 4, 10};
+-        int[] colInd = new int[]{0, 1, 2}; // all columns
+-        try {
+-            a.select(rowInd, colInd);
+-            fail();
+-        } catch (IndexOutOfBoundsException ex) {
+-            // Do nothing
+-        }
+-    }
+-
+-    @Test
+-    @Ignore
++        int[] rowInd = new int[]{3, 4, 10}; // 10 is too large of a row index
++        int[] colInd = new int[]{0, 1, 2};
++        a.select(rowInd, colInd);
++    }
++
++    @Test(expected = IndexOutOfBoundsException.class)
+     public void xtestSelect2() {
+         // Throw exception when column indices are invalid
+         Matrix a = matrixA();
+         int[] rowInd = new int[]{0, 1, 2};
+-        int[] colInd = new int[]{-1, 1, 2}; // all columns
+-        try {
+-            a.select(rowInd, colInd);
+-            fail();
+-        } catch (IndexOutOfBoundsException ex) {
+-            // Do nothing
+-        }
++        int[] colInd = new int[]{-1, 1, 2}; // -1 is a negative column index
++        a.select(rowInd, colInd);
+     }
+ 
+     @Test
+     public void testSelect3() {
+         // All columns and a subset of rows selected.
+         Matrix a = matrixA();
+         int[] rowInd = new int[]{1, 3, 4};
+         int[] colInd = new int[]{0, 1, 2, 3, 4, 5}; // all columns
+@@ -2305,10 +2292,110 @@
+                 {0.0, 2.0, 3.0, 0.0},
+                 {3.0, 3.0, 0.0, 0.0},
+                 {0.0, 0.0, 0.0, 2.0}
+         });
+ 
+         assertFalse(b.is(Matrices.SYMMETRIC_MATRIX));
+ 
+     }
+-
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGet_IndexCheck_RowNegative() {
++        Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.get(-1, 1);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGet_IndexCheck_ColumnNegative() {
++   	    Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.get(1, -1);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGet_IndexCheck_RowTooLarge() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.get(a.rows(), 1);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGet_IndexCheck_ColumnTooLarge() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.get(1, a.columns());
++    }
++    
++    @Test
++    public void testGet_IndexCheck_Valid() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 assertEquals(0.0, a.get(1, 1), 0.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testSet_IndexCheck_RowNegative() {
++    	 Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.set(-1, 1, 1.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testSet_IndexCheck_ColumnNegative() {
++    	 Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.set(1, -1, 1.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testSet_IndexCheck_RowTooLarge() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.set(a.rows(), 1, 1.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testSet_IndexCheck_ColumnTooLarge() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.set(1, a.columns(), 1.0);
++    }
++    
++    @Test
++    public void testSet_IndexCheck_Valid() {
++    	Matrix a = factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.set(1, 1, 1.0);
++    	 assertEquals(1.0, a.get(1, 1), 0.0);
++    }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -2393,17 +2393,16 @@
+     	Matrix a = factory().createMatrix(new double[][] {
+                  { 0.0, 0.0, 0.0, 1.0, 0.0 },
+                  { 0.0, 0.0, 3.0, 0.0, 0.0 },
+          });
+     	 
+     	 a.set(1, 1, 1.0);
+     	 assertEquals(1.0, a.get(1, 1), 0.0);
+     }
+-    
+     @Test
+     public void testEqualsWithPrecision() throws Exception {
+         Matrix a = factory().createMatrix();
+         assertTrue(a.equals(a, Matrices.EPS));
+         assertTrue(a.equals(a.copy(), Matrices.EPS));
+ 
+         Matrix b = factory().createConstantMatrix(2, 2, 0.0);
+         Matrix c = factory().createConstantMatrix(2, 2, 0.0);
+@@ -2421,30 +2420,29 @@
+         
+         Matrix f = factory().createConstantMatrix(2, 2, Double.MIN_NORMAL);
+         assertTrue(f.equals(b, Matrices.EPS));
+         assertTrue(f.equals(e, Matrices.EPS));
+         assertTrue(b.equals(f, Matrices.EPS));
+         assertTrue(e.equals(f, Matrices.EPS));
+         
+     }
+-    
++
+     @Test
+     public void testEquals() throws Exception {
+         Matrix a = factory().createMatrix();
+         assertTrue(a.equals(a));
+         assertTrue(a.copy().equals(a));
+ 
+         Matrix b = factory().createConstantMatrix(2, 2, 0.0);
+         Matrix c = factory().createConstantMatrix(2, 2, 0.0);
+         assertTrue(b.equals(c));
+         assertTrue(c.equals(b));
+         assertFalse(b.equals(a));
+         assertFalse(c.equals(a));
+-
+         Matrix d = factory().createIdentityMatrix(2);
+         assertFalse(d.equals(b));
+         assertFalse(d.equals(a));
+ 
+         Matrix e = factory().createConstantMatrix(2, 2, Double.MIN_VALUE);
+         assertTrue(e.equals(b));
+ 
+         Matrix f = factory().createConstantMatrix(2, 2, Double.MIN_NORMAL);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 8/9: src/test/java/org/la4j/matrix/sparse/SparseMatrixTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -182,9 +182,59 @@
+                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
+                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
+         });
+ 
+         assertEquals(0.0, a.getOrElse(0, 2, 0.0), Matrices.EPS);
+         assertEquals(3.0, a.getOrElse(1, 2, 3.14), Matrices.EPS);
+         assertEquals(4.2, a.getOrElse(1, 3, 4.2), Matrices.EPS);
+     }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGetOrElse_IndexCheck_RowNegative() {
++    	 SparseMatrix a = (SparseMatrix) factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.getOrElse(-1, 1, 0.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGetOrElse_IndexCheck_ColumnNegative() {
++    	 SparseMatrix a = (SparseMatrix) factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.getOrElse(1, -1, 0.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGetOrElse_IndexCheck_RowTooLarge() {
++    	 SparseMatrix a = (SparseMatrix) factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.getOrElse(a.rows(), 1, 0.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGetOrElse_IndexCheck_ColumnTooLarge() {
++    	 SparseMatrix a = (SparseMatrix) factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.getOrElse(1, a.columns(), 0.0);
++    }
++    
++    @Test
++    public void testGetOrElse_IndexCheck_Valid() {
++    	SparseMatrix a = (SparseMatrix) factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 assertEquals(0.0, a.getOrElse(1, 1, 0.0), 0.0);
++    }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -182,9 +182,59 @@
+                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
+                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
+         });
+ 
+         assertEquals(0.0, a.getOrElse(0, 2, 0.0), Matrices.EPS);
+         assertEquals(3.0, a.getOrElse(1, 2, 3.14), Matrices.EPS);
+         assertEquals(4.2, a.getOrElse(1, 3, 4.2), Matrices.EPS);
+     }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGetOrElse_IndexCheck_RowNegative() {
++    	 SparseMatrix a = (SparseMatrix) factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.getOrElse(-1, 1, 0.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGetOrElse_IndexCheck_ColumnNegative() {
++    	 SparseMatrix a = (SparseMatrix) factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.getOrElse(1, -1, 0.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGetOrElse_IndexCheck_RowTooLarge() {
++    	 SparseMatrix a = (SparseMatrix) factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.getOrElse(a.rows(), 1, 0.0);
++    }
++    
++    @Test(expected = IndexOutOfBoundsException.class)
++    public void testGetOrElse_IndexCheck_ColumnTooLarge() {
++    	 SparseMatrix a = (SparseMatrix) factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 a.getOrElse(1, a.columns(), 0.0);
++    }
++    
++    @Test
++    public void testGetOrElse_IndexCheck_Valid() {
++    	SparseMatrix a = (SparseMatrix) factory().createMatrix(new double[][] {
++                 { 0.0, 0.0, 0.0, 1.0, 0.0 },
++                 { 0.0, 0.0, 3.0, 0.0, 0.0 },
++         });
++    	 
++    	 assertEquals(0.0, a.getOrElse(1, 1, 0.0), 0.0);
++    }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 9/9: src/test/java/org/la4j/vector/sparse/SparseVectorTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -123,35 +123,35 @@
+     }
+     
+     @Test(expected=IndexOutOfBoundsException.class)
+     public void testGetOrElse_IndexCheck_Negative() {
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+         );
+         
+-        a.get(-1);
++        a.getOrElse(-1, 0.0);
+     }
+     
+     @Test(expected=IndexOutOfBoundsException.class)
+     public void testGetOrElse_IndexCheck_TooLarge() {
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+         );
+         
+-        a.get(a.length());
++        a.getOrElse(a.length(), 0.0);
+     }
+     
+     @Test
+     public void testGetOrElse_IndexCheck_Valid() {
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+         );
+ 
+-        assertEquals(1.0, a.get(2), 0.0);
++        assertEquals(1.0, a.getOrElse(2, 0.0), 0.0);
+     }
+     
+     @Test(expected = IndexOutOfBoundsException.class)
+     public void testSet_IndexCheck_Negative() {
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+         );
+         
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -123,35 +123,35 @@
+     }
+     
+     @Test(expected=IndexOutOfBoundsException.class)
+     public void testGetOrElse_IndexCheck_Negative() {
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+         );
+         
+-        a.get(-1);
++        a.getOrElse(-1, 0.0);
+     }
+     
+     @Test(expected=IndexOutOfBoundsException.class)
+     public void testGetOrElse_IndexCheck_TooLarge() {
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+         );
+         
+-        a.get(a.length());
++        a.getOrElse(a.length(), 0.0);
+     }
+     
+     @Test
+     public void testGetOrElse_IndexCheck_Valid() {
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+         );
+ 
+-        assertEquals(1.0, a.get(2), 0.0);
++        assertEquals(1.0, a.getOrElse(2, 0.0), 0.0);
+     }
+     
+     @Test(expected = IndexOutOfBoundsException.class)
+     public void testSet_IndexCheck_Negative() {
+         SparseVector a = (SparseVector) factory().createVector(
+                 new double[] { 0.0, 0.0, 1.0, 0.0, 0.0 }
+         );
+         
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,214 @@
+UNIT sstrickx_yahoofinance-api__216ad70070
+repo: sstrickx_yahoofinance-api   merge: 216ad700706d88020b9a9f8529f023327700320f   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/main/java/stockagent/RuleBasedAgent.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -42,17 +42,17 @@
+         double num = portfolio.getBuyingPower();
+ 
+         if(currMoney > pricing.doubleValue()) {
+             int shares = (int) (currMoney/pricing.doubleValue());
+ 
+             //possibly change
+ 
+ 
+-            portfolio.getPorfolio().put(stock, shares);
++            portfolio.getPortfolio().put(stock, shares);
+             portfolio.getPriceBoughtAt().put(stock, (pricing.doubleValue()));
+             portfolio.setBuyingPower(num-currMoney);
+ 
+ 
+ 
+ 
+         }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -58,37 +58,39 @@
+ 
+         else{
+             System.out.println("COULDN'T BUY STOCK DUE TO INSUFFICIENT FUNDS " + symbol);
+ 
+         }
+ 
+     }
+ 
+-//    public void sellStock(MarketSensor sensor, String symbol) throws IOException {
+-//        Stock stock = YahooFinance.get(symbol);
+-//        BigDecimal currPrice = sensor.getStockPrice(symbol);
+-//
+-//        double valueBoughtAt = portfolio.getPriceBoughtAt().get(stock);
+-//
+-//        if(currPrice.doubleValue() > valueBoughtAt){
+-//            buyingPower += currPrice.doubleValue()*portfolio.getPorfolio().get(stock);
+-//            portfolio.getPorfolio().remove(stock);
+-//            portfolio.getPriceBoughtAt().remove(stock);
+-//
+-//
+-//        }
+-//
+-//        else{
+-//            System.out.println("SELLING FOR LESS THAN BOUGHT AT ");
+-//
+-//        }
+-//
+-//
+-//    }
++    public void sellStock(MarketSensor sensor, String symbol) throws IOException {
++        Stock stock = YahooFinance.get(symbol);
++        BigDecimal currPrice = sensor.getStockPrice(symbol);
++
++
++
++        double valueBoughtAt = portfolio.getPriceBoughtAt().get(stock);
++
++        if(currPrice.doubleValue() > valueBoughtAt){
++            portfolio.setBuyingPower(currPrice.doubleValue()*portfolio.getPorfolio().get(stock));
++            portfolio.getPorfolio().remove(stock);
++            portfolio.getPriceBoughtAt().remove(stock);
++
++
++        }
++
++        else{
++            System.out.println("SELLING FOR LESS THAN BOUGHT AT ");
++
++        }
++
++
++    }
+     public Stock chooseStock(MarketSensor sensor){
+         List<String> key = new ArrayList<String>(sensor.getStocks().keySet());
+         String randomKey = key.get(random.nextInt(key.size()));
+         Stock value = sensor.getStocks().get(randomKey);
+ 
+ 
+         return value;
+ 
+--- MERGED RESULT (mergiraf; full) ---
+package stockagent;
+
+
+import yahoofinance.Stock;
+import yahoofinance.YahooFinance;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.*;
+
+public class RuleBasedAgent {
+
+    //private double buyingPower;
+
+
+    //better version of portfolio?
+    //private HashMap <Stock, Integer> portfolio = new HashMap<Stock,Integer>();
+
+
+    private Portfolio portfolio;
+    private MarketSensor sensor;
+
+
+    Random random = new Random();
+
+    public RuleBasedAgent(Portfolio portfolio, MarketSensor sensor) throws IOException {
+        this.portfolio = portfolio;
+        this.sensor = sensor;
+
+    }
+
+
+
+    //need to figure out how to get specific pricing for a day instead of getting the entire list in getStockPrice
+
+    public void buyStock(MarketSensor sensor, String symbol) throws IOException {
+        Stock stock = YahooFinance.get(symbol);
+        BigDecimal pricing = sensor.getStockPrice(symbol);
+
+        double currMoney = (portfolio.getBuyingPower())*.10;
+
+        double num = portfolio.getBuyingPower();
+
+        if(currMoney > pricing.doubleValue()) {
+            int shares = (int) (currMoney/pricing.doubleValue());
+
+            //possibly change
+
+
+            portfolio.getPortfolio().put(stock, shares);
+            portfolio.getPriceBoughtAt().put(stock, (pricing.doubleValue()));
+            portfolio.setBuyingPower(num-currMoney);
+
+
+
+
+        }
+
+        else{
+            System.out.println("COULDN'T BUY STOCK DUE TO INSUFFICIENT FUNDS " + symbol);
+
+        }
+
+    }
+
+    public void sellStock(MarketSensor sensor, String symbol) throws IOException {
+        Stock stock = YahooFinance.get(symbol);
+        BigDecimal currPrice = sensor.getStockPrice(symbol);
+
+
+
+        double valueBoughtAt = portfolio.getPriceBoughtAt().get(stock);
+
+        if(currPrice.doubleValue() > valueBoughtAt){
+            portfolio.setBuyingPower(currPrice.doubleValue()*portfolio.getPorfolio().get(stock));
+            portfolio.getPorfolio().remove(stock);
+            portfolio.getPriceBoughtAt().remove(stock);
+
+
+        }
+
+        else{
+            System.out.println("SELLING FOR LESS THAN BOUGHT AT ");
+
+        }
+
+
+    }
+    public Stock chooseStock(MarketSensor sensor){
+        List<String> key = new ArrayList<String>(sensor.getStocks().keySet());
+        String randomKey = key.get(random.nextInt(key.size()));
+        Stock value = sensor.getStocks().get(randomKey);
+
+
+        return value;
+
+    }
+
+
+
+
+
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

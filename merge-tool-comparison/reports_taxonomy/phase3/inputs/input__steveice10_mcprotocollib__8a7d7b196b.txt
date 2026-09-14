@@ -1,0 +1,679 @@
+UNIT steveice10_mcprotocollib__8a7d7b196b
+repo: steveice10_mcprotocollib   merge: 8a7d7b196b5c9f4b309777d5d411d8a1524d81e3   stratum: B
+files shown: 5 of 6 intersecting Java files
+dropped (textual-conflict, not silent — excluded): src/main/java/com/github/steveice10/mc/protocol/codec/MinecraftCodec.java
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/5: src/main/java/com/github/steveice10/mc/protocol/codec/MinecraftCodecHelper.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -2,58 +2,81 @@
+ 
+ import com.github.steveice10.mc.protocol.data.DefaultComponentSerializer;
+ import com.github.steveice10.mc.protocol.data.MagicValues;
+ import com.github.steveice10.mc.protocol.data.game.Identifier;
+ import com.github.steveice10.mc.protocol.data.game.chunk.BitStorage;
+ import com.github.steveice10.mc.protocol.data.game.chunk.ChunkSection;
+ import com.github.steveice10.mc.protocol.data.game.chunk.DataPalette;
+ import com.github.steveice10.mc.protocol.data.game.chunk.NibbleArray3d;
+-import com.github.steveice10.mc.protocol.data.game.chunk.palette.*;
++import com.github.steveice10.mc.protocol.data.game.chunk.palette.GlobalPalette;
++import com.github.steveice10.mc.protocol.data.game.chunk.palette.ListPalette;
++import com.github.steveice10.mc.protocol.data.game.chunk.palette.MapPalette;
++import com.github.steveice10.mc.protocol.data.game.chunk.palette.Palette;
++import com.github.steveice10.mc.protocol.data.game.chunk.palette.PaletteType;
++import com.github.steveice10.mc.protocol.data.game.chunk.palette.SingletonPalette;
+ import com.github.steveice10.mc.protocol.data.game.entity.Effect;
+ import com.github.steveice10.mc.protocol.data.game.entity.EntityEvent;
+ import com.github.steveice10.mc.protocol.data.game.entity.attribute.ModifierOperation;
+-import com.github.steveice10.mc.protocol.data.game.entity.metadata.*;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.EntityMetadata;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.GlobalPos;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.ItemStack;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.MetadataType;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.Pose;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.VillagerData;
+ import com.github.steveice10.mc.protocol.data.game.entity.object.Direction;
+ import com.github.steveice10.mc.protocol.data.game.entity.player.BlockBreakStage;
+ import com.github.steveice10.mc.protocol.data.game.entity.type.PaintingType;
+ import com.github.steveice10.mc.protocol.data.game.level.LightUpdateData;
+ import com.github.steveice10.mc.protocol.data.game.level.block.BlockEntityType;
+ import com.github.steveice10.mc.protocol.data.game.level.event.LevelEvent;
+-import com.github.steveice10.mc.protocol.data.game.level.particle.*;
++import com.github.steveice10.mc.protocol.data.game.level.particle.BlockParticleData;
++import com.github.steveice10.mc.protocol.data.game.level.particle.DustColorTransitionParticleData;
++import com.github.steveice10.mc.protocol.data.game.level.particle.DustParticleData;
++import com.github.steveice10.mc.protocol.data.game.level.particle.FallingDustParticleData;
++import com.github.steveice10.mc.protocol.data.game.level.particle.ItemParticleData;
++import com.github.steveice10.mc.protocol.data.game.level.particle.Particle;
++import com.github.steveice10.mc.protocol.data.game.level.particle.ParticleData;
++import com.github.steveice10.mc.protocol.data.game.level.particle.ParticleType;
++import com.github.steveice10.mc.protocol.data.game.level.particle.SculkChargeParticleData;
++import com.github.steveice10.mc.protocol.data.game.level.particle.ShriekParticleData;
++import com.github.steveice10.mc.protocol.data.game.level.particle.VibrationParticleData;
+ import com.github.steveice10.mc.protocol.data.game.level.particle.positionsource.BlockPositionSource;
+ import com.github.steveice10.mc.protocol.data.game.level.particle.positionsource.EntityPositionSource;
+ import com.github.steveice10.mc.protocol.data.game.level.particle.positionsource.PositionSource;
+ import com.github.steveice10.mc.protocol.data.game.level.particle.positionsource.PositionSourceType;
+ import com.github.steveice10.mc.protocol.data.game.level.sound.BuiltinSound;
+ import com.github.steveice10.mc.protocol.data.game.level.sound.SoundCategory;
+ import com.github.steveice10.mc.protocol.data.game.recipe.Ingredient;
+ import com.github.steveice10.mc.protocol.data.game.statistic.StatisticCategory;
+ import com.github.steveice10.mc.protocol.packet.ingame.clientbound.ClientboundLoginPacket;
+ import com.github.steveice10.opennbt.NBTIO;
+ import com.github.steveice10.opennbt.tag.builtin.CompoundTag;
+ import com.github.steveice10.opennbt.tag.builtin.Tag;
+ import com.github.steveice10.packetlib.codec.BasePacketCodecHelper;
+-import com.nukkitx.math.vector.Vector3f;
+-import com.nukkitx.math.vector.Vector3i;
+ import io.netty.buffer.ByteBuf;
+ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+ import lombok.RequiredArgsConstructor;
+ import net.kyori.adventure.text.Component;
++import org.cloudburstmc.math.vector.Vector3f;
++import org.cloudburstmc.math.vector.Vector3i;
+ import org.jetbrains.annotations.Nullable;
+ 
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.io.OutputStream;
+ import java.util.ArrayList;
+ import java.util.BitSet;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.UUID;
+-import java.util.function.*;
++import java.util.function.BiConsumer;
++import java.util.function.Function;
++import java.util.function.ObjIntConsumer;
++import java.util.function.ToIntFunction;
+ 
+ @RequiredArgsConstructor
+ public class MinecraftCodecHelper extends BasePacketCodecHelper {
+     private static final int POSITION_X_SIZE = 38;
+     private static final int POSITION_Y_SIZE = 12;
+     private static final int POSITION_Z_SIZE = 38;
+     private static final int POSITION_Y_SHIFT = 0xFFF;
+     private static final int POSITION_WRITE_SHIFT = 0x3FFFFFF;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,10 +1,11 @@
+ package com.github.steveice10.mc.protocol.codec;
+ 
++import com.github.steveice10.mc.auth.data.GameProfile;
+ import com.github.steveice10.mc.protocol.data.DefaultComponentSerializer;
+ import com.github.steveice10.mc.protocol.data.MagicValues;
+ import com.github.steveice10.mc.protocol.data.game.Identifier;
+ import com.github.steveice10.mc.protocol.data.game.chunk.BitStorage;
+ import com.github.steveice10.mc.protocol.data.game.chunk.ChunkSection;
+ import com.github.steveice10.mc.protocol.data.game.chunk.DataPalette;
+ import com.github.steveice10.mc.protocol.data.game.chunk.NibbleArray3d;
+ import com.github.steveice10.mc.protocol.data.game.chunk.palette.*;
+@@ -19,16 +20,18 @@
+ import com.github.steveice10.mc.protocol.data.game.level.block.BlockEntityType;
+ import com.github.steveice10.mc.protocol.data.game.level.event.LevelEvent;
+ import com.github.steveice10.mc.protocol.data.game.level.particle.*;
+ import com.github.steveice10.mc.protocol.data.game.level.particle.positionsource.BlockPositionSource;
+ import com.github.steveice10.mc.protocol.data.game.level.particle.positionsource.EntityPositionSource;
+ import com.github.steveice10.mc.protocol.data.game.level.particle.positionsource.PositionSource;
+ import com.github.steveice10.mc.protocol.data.game.level.particle.positionsource.PositionSourceType;
+ import com.github.steveice10.mc.protocol.data.game.level.sound.BuiltinSound;
++import com.github.steveice10.mc.protocol.data.game.level.sound.CustomSound;
++import com.github.steveice10.mc.protocol.data.game.level.sound.Sound;
+ import com.github.steveice10.mc.protocol.data.game.level.sound.SoundCategory;
+ import com.github.steveice10.mc.protocol.data.game.recipe.Ingredient;
+ import com.github.steveice10.mc.protocol.data.game.statistic.StatisticCategory;
+ import com.github.steveice10.mc.protocol.packet.ingame.clientbound.ClientboundLoginPacket;
+ import com.github.steveice10.opennbt.NBTIO;
+ import com.github.steveice10.opennbt.tag.builtin.CompoundTag;
+ import com.github.steveice10.opennbt.tag.builtin.Tag;
+ import com.github.steveice10.packetlib.codec.BasePacketCodecHelper;
+@@ -39,17 +42,19 @@
+ import lombok.RequiredArgsConstructor;
+ import net.kyori.adventure.text.Component;
+ import org.jetbrains.annotations.Nullable;
+ 
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.io.OutputStream;
+ import java.util.ArrayList;
++import java.util.Arrays;
+ import java.util.BitSet;
++import java.util.EnumSet;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.UUID;
+ import java.util.function.*;
+ 
+ @RequiredArgsConstructor
+ public class MinecraftCodecHelper extends BasePacketCodecHelper {
+     private static final int POSITION_X_SIZE = 38;
+@@ -74,16 +79,24 @@
+ 
+     public <T> void writeNullable(ByteBuf buf, @Nullable T value, BiConsumer<ByteBuf, T> ifPresent) {
+         if (value != null) {
+             buf.writeBoolean(true);
+             ifPresent.accept(buf, value);
+         } else {
+             buf.writeBoolean(false);
+         }
++    }
++
++    public String readResourceLocation(ByteBuf buf) {
++        return Identifier.formalize(this.readString(buf));
++    }
++
++    public void writeResourceLocation(ByteBuf buf, String location) {
++        this.writeString(buf, location);
+     }
+ 
+     public UUID readUUID(ByteBuf buf) {
+         return new UUID(buf.readLong(), buf.readLong());
+     }
+ 
+     public void writeUUID(ByteBuf buf, UUID uuid) {
+         buf.writeLong(uuid.getMostSignificantBits());
+@@ -275,17 +288,17 @@
+     public PaintingType readPaintingType(ByteBuf buf) {
+         return PaintingType.from(this.readVarInt(buf));
+     }
+ 
+     public void writePaintingType(ByteBuf buf, PaintingType type) {
+         this.writeEnum(buf, type);
+     }
+ 
+-    private void writeEnum(ByteBuf buf, Enum<?> e){
++    private void writeEnum(ByteBuf buf, Enum<?> e) {
+         this.writeVarInt(buf, e.ordinal());
+     }
+ 
+     public Component readComponent(ByteBuf buf) {
+         return DefaultComponentSerializer.get().deserialize(this.readString(buf));
+     }
+ 
+     public void writeComponent(ByteBuf buf, Component component) {
+@@ -587,24 +600,16 @@
+     public SoundCategory readSoundCategory(ByteBuf buf) {
+         return SoundCategory.from(this.readVarInt(buf));
+     }
+ 
+     public void writeSoundCategory(ByteBuf buf, SoundCategory category) {
+         this.writeEnum(buf, category);
+     }
+ 
+-    public BuiltinSound readBuiltinSound(ByteBuf buf) {
+-        return BuiltinSound.from(this.readVarInt(buf));
+-    }
+-
+-    public void writeBuiltinSound(ByteBuf buf, BuiltinSound sound) {
+-        this.writeEnum(buf, sound);
+-    }
+-
+     @Nullable
+     public BuiltinSound getBuiltinSound(String name) {
+         return this.soundNames.get(name);
+     }
+ 
+     public EntityEvent readEntityEvent(ByteBuf buf) {
+         return EntityEvent.from(buf.readByte());
+     }
+@@ -691,16 +696,95 @@
+     }
+ 
+     public void writeChunkSection(ByteBuf buf, ChunkSection section) {
+         buf.writeShort(section.getBlockCount());
+         this.writeDataPalette(buf, section.getChunkData());
+         this.writeDataPalette(buf, section.getBiomeData());
+     }
+ 
++    public <E extends Enum<E>> EnumSet<E> readEnumSet(ByteBuf buf, E[] values) {
++        BitSet bitSet = this.readFixedBitSet(buf, values.length);
++        List<E> readValues = new ArrayList<>();
++
++        for (int i = 0; i < values.length; i++) {
++            if (bitSet.get(i)) {
++                readValues.add(values[i]);
++            }
++        }
++
++        return EnumSet.copyOf(readValues);
++    }
++
++    public <E extends Enum<E>> void writeEnumSet(ByteBuf buf, EnumSet<E> enumSet, E[] values) {
++        BitSet bitSet = new BitSet(values.length);
++
++        for (int i = 0; i < values.length; i++) {
++            bitSet.set(i, enumSet.contains(values[i]));
++        }
++
++        this.writeFixedBitSet(buf, bitSet, values.length);
++    }
++
++    public BitSet readFixedBitSet(ByteBuf buf, int length) {
++        byte[] bytes = new byte[-Math.floorDiv(-length, 8)];
++        buf.readBytes(bytes);
++        return BitSet.valueOf(bytes);
++    }
++
++    public void writeFixedBitSet(ByteBuf buf, BitSet bitSet, int length) {
++        if (bitSet.length() > length) {
++            throw new IllegalArgumentException("BitSet is larger than expected size (" + bitSet.length() + " > " + length + ")");
++        } else {
++            byte[] bytes = bitSet.toByteArray();
++            buf.writeBytes(Arrays.copyOf(bytes, -Math.floorDiv(-length, 8)));
++        }
++    }
++
++    public GameProfile.Property readProperty(ByteBuf buf) {
++        String name = this.readString(buf);
++        String value = this.readString(buf);
++        if (buf.readBoolean()) {
++            return new GameProfile.Property(name, value, this.readString(buf));
++        } else {
++            return new GameProfile.Property(name, value);
++        }
++    }
++
++    public void writeProperty(ByteBuf buf, GameProfile.Property property) {
++        this.writeString(buf, property.getName());
++        this.writeString(buf, property.getValue());
++        buf.writeBoolean(property.hasSignature());
++        if (property.hasSignature()) {
++            this.writeString(buf, property.getSignature());
++        }
++    }
++
++    public <T> T readById(ByteBuf buf, IntFunction<T> registry, Function<ByteBuf, T> custom) {
++        int id = this.readVarInt(buf);
++        if (id == 0) {
++            return custom.apply(buf);
++        }
++        return registry.apply(id - 1);
++    }
++
++    public CustomSound readSoundEvent(ByteBuf buf) {
++        String name = this.readString(buf);
++        boolean isNewSystem = buf.readBoolean();
++        return new CustomSound(name, isNewSystem, isNewSystem ? buf.readFloat() : 16.0F);
++    }
++
++    public void writeSoundEvent(ByteBuf buf, Sound soundEvent) {
++        writeString(buf, soundEvent.getName());
++        buf.writeBoolean(soundEvent.isNewSystem());
++        if (soundEvent.isNewSystem()) {
++            buf.writeFloat(soundEvent.getRange());
++        }
++    }
++
+     public NibbleArray3d readNibbleArray(ByteBuf buf, int size) {
+         return new NibbleArray3d(this.readByteArray(buf, ignored -> size));
+     }
+ 
+     public void writeNibbleArray(ByteBuf buf, NibbleArray3d nibbleArray) {
+         buf.writeBytes(nibbleArray.getData());
+     }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/5: src/main/java/com/github/steveice10/mc/protocol/data/game/entity/metadata/MetadataType.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,21 +1,25 @@
+ package com.github.steveice10.mc.protocol.data.game.entity.metadata;
+ 
+ import com.github.steveice10.mc.protocol.codec.MinecraftCodecHelper;
+-import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.*;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.BooleanEntityMetadata;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.ByteEntityMetadata;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.FloatEntityMetadata;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.IntEntityMetadata;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.ObjectEntityMetadata;
+ import com.github.steveice10.mc.protocol.data.game.entity.object.Direction;
+ import com.github.steveice10.mc.protocol.data.game.entity.type.PaintingType;
+ import com.github.steveice10.mc.protocol.data.game.level.particle.Particle;
+ import com.github.steveice10.opennbt.tag.builtin.CompoundTag;
+-import com.nukkitx.math.vector.Vector3f;
+-import com.nukkitx.math.vector.Vector3i;
+ import io.netty.buffer.ByteBuf;
+ import lombok.Getter;
+ import net.kyori.adventure.text.Component;
++import org.cloudburstmc.math.vector.Vector3f;
++import org.cloudburstmc.math.vector.Vector3i;
+ 
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ 
+ @Getter
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -19,28 +19,29 @@
+ import java.util.UUID;
+ 
+ @Getter
+ public class MetadataType<T> {
+     private static final List<MetadataType<?>> VALUES = new ArrayList<>();
+ 
+     public static final ByteMetadataType BYTE = new ByteMetadataType(ByteBuf::readByte, ByteBuf::writeByte, ByteEntityMetadata::new);
+     public static final IntMetadataType INT = new IntMetadataType(MinecraftCodecHelper::readVarInt, MinecraftCodecHelper::writeVarInt, IntEntityMetadata::new);
++    public static final LongMetadataType LONG = new LongMetadataType(MinecraftCodecHelper::readVarLong, MinecraftCodecHelper::writeVarLong, LongEntityMetadata::new);
+     public static final FloatMetadataType FLOAT = new FloatMetadataType(ByteBuf::readFloat, ByteBuf::writeFloat, FloatEntityMetadata::new);
+     public static final MetadataType<String> STRING = new MetadataType<>(MinecraftCodecHelper::readString, MinecraftCodecHelper::writeString, ObjectEntityMetadata::new);
+     public static final MetadataType<Component> CHAT = new MetadataType<>(MinecraftCodecHelper::readComponent, MinecraftCodecHelper::writeComponent, ObjectEntityMetadata::new);
+     public static final MetadataType<Optional<Component>> OPTIONAL_CHAT = new MetadataType<>(optionalReader(MinecraftCodecHelper::readComponent), optionalWriter(MinecraftCodecHelper::writeComponent), ObjectEntityMetadata::new);
+     public static final MetadataType<ItemStack> ITEM = new MetadataType<>(MinecraftCodecHelper::readItemStack, MinecraftCodecHelper::writeItemStack, ObjectEntityMetadata::new);
+     public static final BooleanMetadataType BOOLEAN = new BooleanMetadataType(ByteBuf::readBoolean, ByteBuf::writeBoolean, BooleanEntityMetadata::new);
+     public static final MetadataType<Vector3f> ROTATION = new MetadataType<>(MinecraftCodecHelper::readRotation, MinecraftCodecHelper::writeRotation, ObjectEntityMetadata::new);
+     public static final MetadataType<Vector3i> POSITION = new MetadataType<>(MinecraftCodecHelper::readPosition, MinecraftCodecHelper::writePosition, ObjectEntityMetadata::new);
+     public static final MetadataType<Optional<Vector3i>> OPTIONAL_POSITION = new MetadataType<>(optionalReader(MinecraftCodecHelper::readPosition), optionalWriter(MinecraftCodecHelper::writePosition), ObjectEntityMetadata::new);
+     public static final MetadataType<Direction> DIRECTION = new MetadataType<>(MinecraftCodecHelper::readDirection, MinecraftCodecHelper::writeDirection, ObjectEntityMetadata::new);
+     public static final MetadataType<Optional<UUID>> OPTIONAL_UUID = new MetadataType<>(optionalReader(MinecraftCodecHelper::readUUID), optionalWriter(MinecraftCodecHelper::writeUUID), ObjectEntityMetadata::new);
+-    public static final IntMetadataType BLOCK_STATE = new IntMetadataType(MinecraftCodecHelper::readVarInt, MinecraftCodecHelper::writeVarInt, IntEntityMetadata::new);
++    public static final OptionalIntMetadataType BLOCK_STATE = new OptionalIntMetadataType(ObjectEntityMetadata::new);
+     public static final MetadataType<CompoundTag> NBT_TAG = new MetadataType<>(MinecraftCodecHelper::readTag, MinecraftCodecHelper::writeTag, ObjectEntityMetadata::new);
+     public static final MetadataType<Particle> PARTICLE = new MetadataType<>(MinecraftCodecHelper::readParticle, MinecraftCodecHelper::writeParticle, ObjectEntityMetadata::new);
+     public static final MetadataType<VillagerData> VILLAGER_DATA = new MetadataType<>(MinecraftCodecHelper::readVillagerData, MinecraftCodecHelper::writeVillagerData, ObjectEntityMetadata::new);
+     public static final OptionalIntMetadataType OPTIONAL_VARINT = new OptionalIntMetadataType(ObjectEntityMetadata::new);
+     public static final MetadataType<Pose> POSE = new MetadataType<>(MinecraftCodecHelper::readPose, MinecraftCodecHelper::writePose, ObjectEntityMetadata::new);
+     public static final IntMetadataType CAT_VARIANT = new IntMetadataType(MinecraftCodecHelper::readVarInt, MinecraftCodecHelper::writeVarInt, IntEntityMetadata::new);
+     public static final IntMetadataType FROG_VARIANT = new IntMetadataType(MinecraftCodecHelper::readVarInt, MinecraftCodecHelper::writeVarInt, IntEntityMetadata::new);
+     public static final MetadataType<Optional<GlobalPos>> OPTIONAL_GLOBAL_POS = new MetadataType<>(optionalReader(MinecraftCodecHelper::readGlobalPos), optionalWriter(MinecraftCodecHelper::writeGlobalPos), ObjectEntityMetadata::new);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/5: src/main/java/com/github/steveice10/mc/protocol/packet/ingame/clientbound/level/ClientboundBlockEventPacket.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,20 +1,33 @@
+ package com.github.steveice10.mc.protocol.packet.ingame.clientbound.level;
+ 
+ import com.github.steveice10.mc.protocol.codec.MinecraftCodecHelper;
+ import com.github.steveice10.mc.protocol.codec.MinecraftPacket;
+ import com.github.steveice10.mc.protocol.data.MagicValues;
+-import com.github.steveice10.mc.protocol.data.game.level.block.value.*;
+-import com.nukkitx.math.vector.Vector3i;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.BlockValue;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.BlockValueType;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.ChestValue;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.ChestValueType;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.EndGatewayValue;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.EndGatewayValueType;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.GenericBlockValue;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.GenericBlockValueType;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.MobSpawnerValue;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.MobSpawnerValueType;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.NoteBlockValue;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.NoteBlockValueType;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.PistonValue;
++import com.github.steveice10.mc.protocol.data.game.level.block.value.PistonValueType;
+ import io.netty.buffer.ByteBuf;
+ import lombok.AllArgsConstructor;
+ import lombok.Data;
+ import lombok.NonNull;
+ import lombok.With;
++import org.cloudburstmc.math.vector.Vector3i;
+ 
+ import java.io.IOException;
+ 
+ @Data
+ @With
+ @AllArgsConstructor
+ public class ClientboundBlockEventPacket implements MinecraftPacket {
+     private static final int NOTE_BLOCK = 89;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -12,37 +12,38 @@
+ import lombok.With;
+ 
+ import java.io.IOException;
+ 
+ @Data
+ @With
+ @AllArgsConstructor
+ public class ClientboundBlockEventPacket implements MinecraftPacket {
+-    private static final int NOTE_BLOCK = 89;
+-    private static final int STICKY_PISTON = 108;
+-    private static final int PISTON = 115;
+-    private static final int MOB_SPAWNER = 160; // Value does not show in 1.16
+-    private static final int CHEST = 162;
+-    private static final int ENDER_CHEST = 299;
+-    private static final int TRAPPED_CHEST = 360;
+-    private static final int END_GATEWAY = 537;
+-    private static final int SHULKER_BOX_LOWER = 547;
+-    private static final int SHULKER_BOX_HIGHER = 563;
++    // Do we really want these hardcoded values?
++    private static final int NOTE_BLOCK = 93;
++    private static final int STICKY_PISTON = 112;
++    private static final int PISTON = 119;
++    private static final int MOB_SPAWNER = 165; // Value does not show in 1.16
++    private static final int CHEST = 167;
++    private static final int ENDER_CHEST = 328;
++    private static final int TRAPPED_CHEST = 392;
++    private static final int END_GATEWAY = 576;
++    private static final int SHULKER_BOX_LOWER = 586;
++    private static final int SHULKER_BOX_HIGHER = 602;
+ 
+     private final @NonNull Vector3i position;
+     private final @NonNull BlockValueType type;
+     private final @NonNull BlockValue value;
+     private final int blockId;
+ 
+-    public ClientboundBlockEventPacket(ByteBuf in, MinecraftCodecHelper helper) throws IOException {
++    public ClientboundBlockEventPacket(ByteBuf in, MinecraftCodecHelper helper) {
+         this.position = helper.readPosition(in);
+         int type = in.readUnsignedByte();
+         int value = in.readUnsignedByte();
+-        this.blockId = helper.readVarInt(in) & 0xFFF;
++        this.blockId = helper.readVarInt(in);
+ 
+         // TODO: Handle this in MinecraftCodecHelper
+         if (this.blockId == NOTE_BLOCK) {
+             this.type = MagicValues.key(NoteBlockValueType.class, type);
+             this.value = new NoteBlockValue(value);
+         } else if (this.blockId == STICKY_PISTON || this.blockId == PISTON) {
+             this.type = MagicValues.key(PistonValueType.class, type);
+             this.value = MagicValues.key(PistonValue.class, value);
+@@ -58,27 +59,27 @@
+             this.value = new EndGatewayValue();
+         } else {
+             this.type = MagicValues.key(GenericBlockValueType.class, type);
+             this.value = new GenericBlockValue(value);
+         }
+     }
+ 
+     @Override
+-    public void serialize(ByteBuf out, MinecraftCodecHelper helper) throws IOException {
++    public void serialize(ByteBuf out, MinecraftCodecHelper helper) {
+         int val = 0;
+         // TODO: Handle this in MinecraftCodecHelper
+         if (this.type instanceof NoteBlockValueType) {
+             val = ((NoteBlockValue) this.value).getPitch();
+         } else if (this.type instanceof PistonValueType) {
+             val = MagicValues.value(Integer.class, this.value);
+         } else if (this.type instanceof ChestValueType) {
+             val = ((ChestValue) this.value).getViewers();
+         } else if (this.type instanceof GenericBlockValueType) {
+             val = ((GenericBlockValue) this.value).getValue();
+         }
+ 
+         helper.writePosition(out, this.position);
+         out.writeByte(MagicValues.value(Integer.class, this.type));
+         out.writeByte(val);
+-        helper.writeVarInt(out, this.blockId & 4095);
++        helper.writeVarInt(out, this.blockId);
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/5: src/main/java/com/github/steveice10/mc/protocol/packet/ingame/clientbound/level/ClientboundExplodePacket.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,18 +1,18 @@
+ package com.github.steveice10.mc.protocol.packet.ingame.clientbound.level;
+ 
+ import com.github.steveice10.mc.protocol.codec.MinecraftCodecHelper;
+ import com.github.steveice10.mc.protocol.codec.MinecraftPacket;
+-import com.nukkitx.math.vector.Vector3i;
+ import io.netty.buffer.ByteBuf;
+ import lombok.AllArgsConstructor;
+ import lombok.Data;
+ import lombok.NonNull;
+ import lombok.With;
++import org.cloudburstmc.math.vector.Vector3i;
+ 
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+ @Data
+ @With
+ @AllArgsConstructor
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -12,46 +12,46 @@
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+ @Data
+ @With
+ @AllArgsConstructor
+ public class ClientboundExplodePacket implements MinecraftPacket {
+-    private final float x;
+-    private final float y;
+-    private final float z;
++    private final double x;
++    private final double y;
++    private final double z;
+     private final float radius;
+     private final @NonNull List<Vector3i> exploded;
+     private final float pushX;
+     private final float pushY;
+     private final float pushZ;
+ 
+     public ClientboundExplodePacket(ByteBuf in, MinecraftCodecHelper helper) throws IOException {
+-        this.x = in.readFloat();
+-        this.y = in.readFloat();
+-        this.z = in.readFloat();
++        this.x = in.readDouble();
++        this.y = in.readDouble();
++        this.z = in.readDouble();
+         this.radius = in.readFloat();
+         this.exploded = new ArrayList<>();
+         int length = helper.readVarInt(in);
+         for (int count = 0; count < length; count++) {
+             this.exploded.add(Vector3i.from(in.readByte(), in.readByte(), in.readByte()));
+         }
+ 
+         this.pushX = in.readFloat();
+         this.pushY = in.readFloat();
+         this.pushZ = in.readFloat();
+     }
+ 
+     @Override
+     public void serialize(ByteBuf out, MinecraftCodecHelper helper) throws IOException {
+-        out.writeFloat(this.x);
+-        out.writeFloat(this.y);
+-        out.writeFloat(this.z);
++        out.writeDouble(this.x);
++        out.writeDouble(this.y);
++        out.writeDouble(this.z);
+         out.writeFloat(this.radius);
+         helper.writeVarInt(out, this.exploded.size());
+         for (Vector3i record : this.exploded) {
+             out.writeByte(record.getX());
+             out.writeByte(record.getY());
+             out.writeByte(record.getZ());
+         }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/5: src/test/java/com/github/steveice10/mc/protocol/packet/ingame/clientbound/level/ClientboundSetEntityDataPacketTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,17 +1,21 @@
+ package com.github.steveice10.mc.protocol.packet.ingame.clientbound.level;
+ 
+ import com.github.steveice10.mc.protocol.data.game.entity.metadata.EntityMetadata;
+ import com.github.steveice10.mc.protocol.data.game.entity.metadata.MetadataType;
+-import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.*;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.BooleanEntityMetadata;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.ByteEntityMetadata;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.FloatEntityMetadata;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.IntEntityMetadata;
++import com.github.steveice10.mc.protocol.data.game.entity.metadata.type.ObjectEntityMetadata;
+ import com.github.steveice10.mc.protocol.data.game.entity.object.Direction;
+ import com.github.steveice10.mc.protocol.packet.PacketTest;
+ import com.github.steveice10.mc.protocol.packet.ingame.clientbound.entity.ClientboundSetEntityDataPacket;
+-import com.nukkitx.math.vector.Vector3i;
++import org.cloudburstmc.math.vector.Vector3i;
+ import org.junit.Before;
+ 
+ import java.util.OptionalInt;
+ 
+ public class ClientboundSetEntityDataPacketTest extends PacketTest {
+ 
+     @Before
+     public void setup() {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -20,18 +20,19 @@
+                 new ClientboundSetEntityDataPacket(20, new EntityMetadata[] {
+                         new ObjectEntityMetadata<>(1, MetadataType.STRING, "Hello!")
+                 }),
+                 new ClientboundSetEntityDataPacket(2, new EntityMetadata[] {
+                         new BooleanEntityMetadata(0, MetadataType.BOOLEAN, true),
+                         new ByteEntityMetadata(4, MetadataType.BYTE, (byte) 45),
+                         new IntEntityMetadata(2, MetadataType.INT, 555),
+                         new FloatEntityMetadata(3, MetadataType.FLOAT, 3.0f),
++                        new LongEntityMetadata(8, MetadataType.LONG, 123456789L),
+                         new ObjectEntityMetadata<>(5, MetadataType.POSITION, Vector3i.from(0, 1, 0)),
+-                        new IntEntityMetadata(2, MetadataType.BLOCK_STATE, 60),
++                        new ObjectEntityMetadata<>(2, MetadataType.BLOCK_STATE, OptionalInt.of(60)),
+                         new ObjectEntityMetadata<>(6, MetadataType.DIRECTION, Direction.EAST),
+                         new ObjectEntityMetadata<>(7, MetadataType.OPTIONAL_VARINT, OptionalInt.of(1038))
+                 }),
+                 new ClientboundSetEntityDataPacket(700, new EntityMetadata[] {
+                         // Boxed variation test
+                         new ObjectEntityMetadata<>(0, MetadataType.INT, 0),
+                         new ObjectEntityMetadata<>(1, MetadataType.FLOAT, 1.0f)
+                 })
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

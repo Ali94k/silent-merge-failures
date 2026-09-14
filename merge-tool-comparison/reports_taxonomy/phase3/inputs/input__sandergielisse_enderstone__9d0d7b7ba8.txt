@@ -1,0 +1,927 @@
+UNIT sandergielisse_enderstone__9d0d7b7ba8
+repo: sandergielisse_enderstone   merge: 9d0d7b7ba8d784dc8a7bd684e4a4d2bf37cc44f9   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/3: src/org/enderstone/server/Main.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -453,17 +453,17 @@
+ 	}
+ 
+ 	public static boolean isCurrentThreadMainThread() {
+ 		return Main.getInstance().mainThread == Thread.currentThread();
+ 	}
+ 	
+ 	public EnderWorld getWorld(EnderPlayer player){
+ 		for(EnderWorld world : this.worlds){
+-			if(world.players.containsKey(player)){
++			if(world.players.contains(player)){
+ 				return world;
+ 			}
+ 		}
+ 		return null;
+ 	}
+ 
+ 	public Entity getEntityById(int targetId) {
+ 		for (EnderWorld w : this.worlds) {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -373,17 +373,17 @@
+ 		}
+ 
+ 		if ((latestChunkUpdate++ & 0b0001_1111) == 0) { // faster than % 31 == 0
+ 			for (EnderPlayer p : onlinePlayers) {
+ 				if (p.isDead()) {
+ 					p.networkManager.forcePacketFlush();
+ 					continue;
+ 				}
+-				p.getWorld().doChunkUpdatesForPlayer(p, p.chunkInformer, Math.min(p.clientSettings.getRenderDistance() - 1, MAX_VIEW_DISTANCE));
++				p.getWorld().doChunkUpdatesForPlayer(p, p.chunkInformer, Math.min(p.clientSettings.renderDistance - 1, MAX_VIEW_DISTANCE));
+ 				p.updatePlayers(onlinePlayers);
+ 			}
+ 			for (EnderWorld world : worlds) {
+ 				world.updateEntities(onlinePlayers);
+ 			}
+ 		}
+ 
+ 		if ((tick & 0b0011_1111) == 0){ // faster than % 64 == 0
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/org/enderstone/server/entity/EnderPlayer.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -42,28 +42,25 @@
+ import org.enderstone.server.packet.play.PacketOutBlockChange;
+ import org.enderstone.server.packet.play.PacketOutChatMessage;
+ import org.enderstone.server.packet.play.PacketOutChunkData;
+ import org.enderstone.server.packet.play.PacketOutEntityDestroy;
+ import org.enderstone.server.packet.play.PacketOutEntityHeadLook;
+ import org.enderstone.server.packet.play.PacketOutEntityLook;
+ import org.enderstone.server.packet.play.PacketOutEntityRelativeMove;
+ import org.enderstone.server.packet.play.PacketOutEntityTeleport;
+-import org.enderstone.server.packet.play.PacketOutJoinGame;
+-import org.enderstone.server.packet.play.PacketOutPlayerAbilities;
+ import org.enderstone.server.packet.play.PacketOutPlayerListHeaderFooter;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem;
+ import org.enderstone.server.packet.play.PacketOutRespawn;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.Action;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionAddPlayer;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionRemovePlayer;
+ import org.enderstone.server.packet.play.PacketOutPlayerPositionLook;
+ import org.enderstone.server.packet.play.PacketOutSoundEffect;
+ import org.enderstone.server.packet.play.PacketOutSpawnPlayer;
+-import org.enderstone.server.packet.play.PacketOutSpawnPosition;
+ import org.enderstone.server.packet.play.PacketOutTabComplete;
+ import org.enderstone.server.packet.play.PacketOutUpdateHealth;
+ import org.enderstone.server.permissions.Operator;
+ import org.enderstone.server.regions.BlockId;
+ import org.enderstone.server.regions.EnderChunk;
+ import org.enderstone.server.regions.EnderWorld;
+ import org.enderstone.server.regions.EnderWorld.ChunkInformer;
+ import org.enderstone.server.regions.RegionSet;
+@@ -103,21 +100,16 @@
+ 	private final String textureValue;
+ 	private final String textureSignature;
+ 	public int keepAliveID = 0;
+ 	public final EnumSet<PlayerDebugger> debugOutputs = EnumSet.noneOf(PlayerDebugger.class);
+ 
+ 	public ChunkInformer chunkInformer = new ChunkInformer() {
+ 
+ 		private List<EnderChunk> cache = new ArrayList<>();
+-
+-		@Override
+-		public List<EnderChunk> getCache(){
+-			return cache;
+-		}
+ 		
+ 		@Override
+ 		public void sendChunk(EnderChunk chunk) {
+ 			cache.add(chunk);
+ 		}
+ 
+ 		@Override
+ 		public void removeChunk(EnderChunk chunk) {
+@@ -138,16 +130,17 @@
+ 			networkManager.sendPacket(packets);
+ 		}
+ 
+ 		@Override
+ 		public int maxChunks() {
+ 			return MAX_CHUNKS_EVERY_UPDATE;
+ 		}
+ 	};
++	private final RegionSet loadedChunks = new RegionSet();
+ 
+ 	public EnderPlayer(EnderWorld world, String userName, NetworkManager networkManager, UUID uuid, PlayerTextureStore textures) {
+ 		super(world.getSpawn().clone());
+ 		this.networkManager = networkManager;
+ 		this.playerName = userName;
+ 		this.uuid = uuid;
+ 		this.textureValue = textures.getSkin().value;
+ 		this.textureSignature = textures.getSkin().signature;
+@@ -190,22 +183,21 @@
+ 	public ProfileProperty getTextureProperty() {
+ 		return new ProfileProperty("textures", textureValue, true, textureSignature);
+ 	}
+ 
+ 	public void switchWorld(EnderWorld toWorld) {
+ 		this.getNetworkManager().sendPacket(new PacketOutRespawn(0, (byte) 0, (byte) GameMode.SURVIVAL.getId(), "default"));
+ 		EnderWorld currentWorld = this.getWorld();
+ 		EnderLogger.warn("Switching player " + this.getPlayerName() + " from world " + currentWorld.worldName + " to " + toWorld.worldName + ".");
+-		if(currentWorld.players.containsKey(this)){
+-			currentWorld.players.remove(this);
+-		}
++		assert currentWorld.players.remove(this);
++		toWorld.players.add(this);
+ 		this.getLocation().cloneFrom(toWorld.getSpawn());
+-		this.chunkInformer.getCache().clear();
+-		toWorld.doChunkUpdatesForPlayer(this, this.chunkInformer, 10);
++		this.loadedChunks.clear();
++		toWorld.doChunkUpdatesForPlayer(this, this.chunkInformer, 3);
+ 		networkManager.player.getInventoryHandler().updateInventory();
+ 		this.getNetworkManager().sendPacket(new PacketOutPlayerPositionLook(toWorld.getSpawn().getX(), toWorld.getSpawn().getY(), toWorld.getSpawn().getZ(), 0F, 0F, (byte) 1));
+ 	}
+ 	
+ 	public ProfileProperty[] getProfileProperties() {
+ 		ProfileProperty[] list = new ProfileProperty[1];
+ 		list[0] = getTextureProperty();
+ 		return list;
+@@ -635,16 +627,20 @@
+ 
+ 	/**
+ 	 * @return the inventoryHandler
+ 	 */
+ 	public InventoryHandler getInventoryHandler() {
+ 		return inventoryHandler;
+ 	}
+ 
++	public RegionSet getLoadedChunks() {
++		return this.loadedChunks;
++	}
++
+ 	/**
+ 	 * Class used to store the client side settings from the user, the reason I
+ 	 * included setters and getters is that we can add a event or simulair to
+ 	 * the code later on
+ 	 *
+ 	 * @author ferrybig
+ 	 */
+ 	public final class ClientSettings {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -24,86 +24,76 @@
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Set;
+ import java.util.UUID;
+ import org.enderstone.server.EnderLogger;
+ import org.enderstone.server.Location;
+ import org.enderstone.server.Main;
+ import org.enderstone.server.Utill;
++import org.enderstone.server.api.entity.ChatPosition;
++import org.enderstone.server.api.entity.GameMode;
++import org.enderstone.server.api.entity.Player;
+ import org.enderstone.server.chat.ChatColor;
+ import org.enderstone.server.chat.Message;
+ import org.enderstone.server.chat.SimpleMessage;
+ import org.enderstone.server.commands.Command;
+ import org.enderstone.server.commands.CommandSender;
+ import org.enderstone.server.inventory.InventoryHandler;
+ import org.enderstone.server.inventory.ItemStack;
+ import org.enderstone.server.packet.NetworkManager;
+ import org.enderstone.server.packet.Packet;
+ import org.enderstone.server.packet.play.PacketInTabComplete;
+ import org.enderstone.server.packet.play.PacketOutBlockChange;
++import org.enderstone.server.packet.play.PacketOutChangeGameState;
+ import org.enderstone.server.packet.play.PacketOutChatMessage;
+ import org.enderstone.server.packet.play.PacketOutChunkData;
+ import org.enderstone.server.packet.play.PacketOutEntityDestroy;
+ import org.enderstone.server.packet.play.PacketOutEntityHeadLook;
+ import org.enderstone.server.packet.play.PacketOutEntityLook;
+ import org.enderstone.server.packet.play.PacketOutEntityRelativeMove;
+ import org.enderstone.server.packet.play.PacketOutEntityTeleport;
+-import org.enderstone.server.packet.play.PacketOutJoinGame;
+ import org.enderstone.server.packet.play.PacketOutPlayerAbilities;
+ import org.enderstone.server.packet.play.PacketOutPlayerListHeaderFooter;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem;
+-import org.enderstone.server.packet.play.PacketOutRespawn;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.Action;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionAddPlayer;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionRemovePlayer;
+ import org.enderstone.server.packet.play.PacketOutPlayerPositionLook;
++import org.enderstone.server.packet.play.PacketOutRespawn;
++import org.enderstone.server.packet.play.PacketOutSetExperience;
+ import org.enderstone.server.packet.play.PacketOutSoundEffect;
+ import org.enderstone.server.packet.play.PacketOutSpawnPlayer;
+-import org.enderstone.server.packet.play.PacketOutSpawnPosition;
+ import org.enderstone.server.packet.play.PacketOutTabComplete;
+ import org.enderstone.server.packet.play.PacketOutUpdateHealth;
+ import org.enderstone.server.permissions.Operator;
+ import org.enderstone.server.regions.BlockId;
+ import org.enderstone.server.regions.EnderChunk;
+ import org.enderstone.server.regions.EnderWorld;
+ import org.enderstone.server.regions.EnderWorld.ChunkInformer;
+-import org.enderstone.server.regions.RegionSet;
+-
+-public class EnderPlayer extends Entity implements CommandSender {
++
++public class EnderPlayer extends Entity implements CommandSender, Player {
+ 
+ 	private static final int MAX_CHUNKS_EVERY_UPDATE = 16;
+ 
+ 	private final InventoryHandler inventoryHandler = new InventoryHandler(this);
+-	public final ClientSettings clientSettings = new ClientSettings();
++	public final PlayerSettings clientSettings = new PlayerSettings();
+ 	public final NetworkManager networkManager;
+ 	public final String playerName;
+ 	public HashSet<String> visiblePlayers = new HashSet<>();
+ 	public HashSet<Entity> canSeeEntity = new HashSet<>();
+ 	/**
+ 	 * If this is above 0, then the server is waiting for a correction on the
+ 	 * last teleport the server sended
+ 	 */
+ 	public int waitingForValidMoveAfterTeleport = 0;
+ 	public final UUID uuid;
+-	public volatile boolean isOnline = true;
+-	public boolean isCreative = false;
+-	public boolean godMode = false;
+-	public boolean canFly = false;
+-	public boolean isFlying = false;
+-	public boolean isOnFire = false;
+-	public boolean isSneaking = false;
+-	public boolean isSprinting = false;
+-	public boolean isEating = false;
+-	private boolean isInvisible = false;
+-
++	public volatile boolean isOnline = true;	
+ 	public volatile boolean isOnGround = true;
+ 	public double yLocation;
+-	public short food = 20;
+-	public float foodSaturation = 0;
+ 	
+ 	private final String textureValue;
+ 	private final String textureSignature;
+ 	public int keepAliveID = 0;
+ 	public final EnumSet<PlayerDebugger> debugOutputs = EnumSet.noneOf(PlayerDebugger.class);
+ 
+ 	public ChunkInformer chunkInformer = new ChunkInformer() {
+ 
+@@ -198,16 +188,17 @@
+ 		if(currentWorld.players.containsKey(this)){
+ 			currentWorld.players.remove(this);
+ 		}
+ 		this.getLocation().cloneFrom(toWorld.getSpawn());
+ 		this.chunkInformer.getCache().clear();
+ 		toWorld.doChunkUpdatesForPlayer(this, this.chunkInformer, 10);
+ 		networkManager.player.getInventoryHandler().updateInventory();
+ 		this.getNetworkManager().sendPacket(new PacketOutPlayerPositionLook(toWorld.getSpawn().getX(), toWorld.getSpawn().getY(), toWorld.getSpawn().getZ(), 0F, 0F, (byte) 1));
++		this.onRespawn();
+ 	}
+ 	
+ 	public ProfileProperty[] getProfileProperties() {
+ 		ProfileProperty[] list = new ProfileProperty[1];
+ 		list[0] = getTextureProperty();
+ 		return list;
+ 	}
+ 
+@@ -228,25 +219,25 @@
+ 		}
+ 		Main.getInstance().broadcastMessage(new SimpleMessage(ChatColor.YELLOW + this.getPlayerName() + " joined the game!"));
+ 	}
+ 
+ 	@Override
+ 	public void updateDataWatcher() {
+ 		int meaning = 0;
+ 
+-		if (isOnFire)
++		if (this.clientSettings.isOnFire)
+ 			meaning = (byte) (meaning | 0x01);
+-		if (isSneaking)
++		if (this.clientSettings.isSneaking)
+ 			meaning = (byte) (meaning | 0x02);
+-		if (isSprinting)
++		if (this.clientSettings.isSprinting)
+ 			meaning = (byte) (meaning | 0x08);
+-		if (isEating)
++		if (this.clientSettings.isEating)
+ 			meaning = (byte) (meaning | 0x10);
+-		if (isInvisible)
++		if (this.clientSettings.isInvisible)
+ 			meaning = (byte) (meaning | 0x20);
+ 
+ 		this.getDataWatcher().watch(0, (byte) meaning);
+ 		this.getDataWatcher().watch(1, (short) 0);
+ 		this.getDataWatcher().watch(6, 1F);
+ 		this.getDataWatcher().watch(8, (byte) 0);
+ 	}
+ 
+@@ -444,35 +435,41 @@
+ 			} catch (Exception ex1) {
+ 				ex.addSuppressed(ex1);
+ 				EnderLogger.logger.throwing(null, null, ex);
+ 			}
+ 		}
+ 		return false;
+ 	}
+ 
++	public void onRespawn() { //this will also be called when a player switches world
++		this.updateAbilities();
++		this.networkManager.sendPacket(new PacketOutChangeGameState((byte) 3, this.clientSettings.gameMode.getId()));
++		//TODO send player equipment
++	}
++
+ 	@Override
+ 	public String getName() {
+ 		return this.getPlayerName();
+ 	}
+ 
+ 	@Override
+ 	public void teleport(Entity entity) {
+ 		this.teleport(entity.getLocation());
+ 	}
+ 
+ 	@Override
+ 	public void teleport(Location newLocation) {
+ 		this.waitingForValidMoveAfterTeleport = 1;
+ 		Location oldLocation = this.getLocation();
+-		oldLocation.setX(newLocation.getX());
+-		oldLocation.setY(newLocation.getY());
+-		oldLocation.setZ(newLocation.getZ());
+-		oldLocation.setPitch(newLocation.getPitch());
+-		oldLocation.setYaw(newLocation.getYaw());
++		
++		if(!oldLocation.getWorld().equals(newLocation.getWorld())){
++			this.switchWorld(newLocation.getWorld());
++		}
++		oldLocation.cloneFrom(newLocation);
+ 
+ 		this.getNetworkManager().sendPacket(new PacketOutPlayerPositionLook(newLocation.getX(), newLocation.getY(), newLocation.getZ(), newLocation.getYaw(), newLocation.getPitch(), (byte) 0b00000));
+ 
+ 		PacketOutEntityTeleport packet = new PacketOutEntityTeleport(this.getEntityId(), (int) (newLocation.getX() * 32.0D), (int) (newLocation.getY() * 32.0D), (int) (newLocation.getZ() * 32.0D), (byte) newLocation.getYaw(), (byte) newLocation.getPitch(), false);
+ 		for (EnderPlayer ep : Main.getInstance().onlinePlayers) {
+ 			if (!ep.equals(this)) {
+ 				ep.getNetworkManager().sendPacket(packet);
+ 			}
+@@ -511,28 +508,28 @@
+ 		return true;
+ 	}
+ 
+ 	@Override
+ 	public void damage(float damage) {
+ 		if (damage <= 0) {
+ 			throw new IllegalArgumentException("Damage cannot be smaller or equal to zero.");
+ 		}
+-		if (this.godMode)
++		if (this.clientSettings.godMode)
+ 			return;
+ 		super.damage(damage);
+ 	}
+ 
+ 	@Override
+ 	protected void onHealthUpdate(float health, float oldHealth) {
+-		networkManager.sendPacket(new PacketOutUpdateHealth(health, food, foodSaturation));
++		networkManager.sendPacket(new PacketOutUpdateHealth(health, clientSettings.food, clientSettings.foodSaturation));
+ 		if (health > 0) {
+ 			return;
+ 		}
+-		this.food = 20;
++		this.clientSettings.food = 20;
+ 		Packet packet = new PacketOutEntityDestroy(new Integer[] { this.getEntityId() });
+ 		for (EnderPlayer ep : Main.getInstance().onlinePlayers) {
+ 			if (ep.visiblePlayers.contains(this.getPlayerName())) {
+ 				ep.visiblePlayers.remove(this.getPlayerName());
+ 				ep.getNetworkManager().sendPacket(packet);
+ 			}
+ 		}
+ 		for (ItemStack inv : this.getInventoryHandler().getPlayerInventory().getRawItems()) {
+@@ -570,17 +567,17 @@
+ 				return true;
+ 			}
+ 		}
+ 		return false;
+ 	}
+ 
+ 	public void setOnGround(boolean onGround) {
+ 		if (this.isOnGround == false && onGround == true) {
+-			if (this.canFly)
++			if (this.clientSettings.isFlying)
+ 				return; // Flying players don't get damage in vanilla
+ 			// fall damage
+ 			double change = this.yLocation - this.getLocation().getY() - 3;
+ 			if (change > 0) {
+ 				damage((float) change);
+ 				if (change > 5) {
+ 					// can't find correct sound name
+ 				} else {
+@@ -604,100 +601,220 @@
+ 	}
+ 
+ 	@Override
+ 	public void onLeftClick(EnderPlayer attacker) {
+ 		this.damage(1F);
+ 	}
+ 
+ 	public int getFood() {
+-		return this.food;
++		return this.clientSettings.food;
+ 	}
+ 	
+ 	public void setFood(int foodLevel){
+ 		if(foodLevel < 0 || foodLevel > 20){
+ 			throw new IllegalArgumentException(foodLevel + " is not a valid food level value");
+ 		}
+-		this.food = (short) foodLevel;
+-		this.getNetworkManager().sendPacket(new PacketOutUpdateHealth(getHealth(), food, 0));
++		this.clientSettings.food = (short) foodLevel;
++		this.getNetworkManager().sendPacket(new PacketOutUpdateHealth(getHealth(), this.clientSettings.food, 0));
+ 	}
+ 	
+ 	public EnderWorld getWorld(){
+ 		return Main.getInstance().getWorld(this);
+ 	}
+ 
+ 	@Override
+ 	public boolean isValid() {
+ 		return this.isOnline;
+ 	}
+ 
++	@Override
+ 	public void kick(String reason) {
+ 		this.getNetworkManager().disconnect(new SimpleMessage(reason), false);
+ 	}
+-
++	
+ 	/**
+ 	 * @return the inventoryHandler
+ 	 */
+ 	public InventoryHandler getInventoryHandler() {
+ 		return inventoryHandler;
+ 	}
+-
+-	/**
+-	 * Class used to store the client side settings from the user, the reason I
+-	 * included setters and getters is that we can add a event or simulair to
+-	 * the code later on
+-	 *
+-	 * @author ferrybig
+-	 */
+-	public final class ClientSettings {
+-
+-		private String locale = "en_US";
+-		private byte renderDistance = 3;
+-		private byte chatFlags = 0;
+-		private boolean chatColors = true;
+-		private int displayedSkinParts = 0;
+-
+-		public String getLocale() {
+-			return locale;
+-		}
+-
+-		public void setLocale(String locale) {
+-			this.locale = locale;
+-		}
+-
+-		public byte getRenderDistance() {
+-			return renderDistance;
+-		}
+-
+-		public void setRenderDistance(byte renderDistance) {
+-			this.renderDistance = renderDistance;
+-		}
+-
+-		public byte getChatFlags() {
+-			return chatFlags;
+-		}
+-
+-		public void setChatFlags(byte chatFlags) {
+-			this.chatFlags = chatFlags;
+-		}
+-
+-		public boolean isChatColors() {
+-			return chatColors;
+-		}
+-
+-		public void setChatColors(boolean chatColors) {
+-			this.chatColors = chatColors;
+-		}
+-
+-		public int getDisplayedSkinParts() {
+-			return displayedSkinParts;
+-		}
+-
+-		public void setDisplayedSkinParts(int displayedSkinParts) {
+-			this.displayedSkinParts = displayedSkinParts;
+-		}
++	
++	public void updateAbilities(){
++		int i = 0;
++		if (this.clientSettings.isCreative)
++			i = (byte) (i | 0x1);
++		if (this.clientSettings.isFlying)
++			i = (byte) (i | 0x2);
++		if (this.clientSettings.allowFlight)
++			i = (byte) (i | 0x4);
++		if (this.clientSettings.godMode)
++			i = (byte) (i | 0x8);
++		
++		float fly = this.clientSettings.flySpeed;
++		float walk = this.clientSettings.walkSpeed;
++		this.networkManager.sendPacket(new PacketOutPlayerAbilities((byte) i, fly, walk));
+ 	}
+ 	
+ 	public enum PlayerDebugger
+ 	{
+ 		INVENTORY, PACKET, OTHER, 
+ 	}
++
++	@Override
++	public void sendMessage(Message message, ChatPosition position) {
++		this.getNetworkManager().sendPacket(new PacketOutChatMessage(message, (byte) position.getId()));
++	}
++
++	@Override
++	public int getFoodLevel() {
++		return clientSettings.food;
++	}
++
++	@Override
++	public void setFoodLevel(int foodLevel) {
++		this.clientSettings.food = foodLevel;
++		this.getNetworkManager().sendPacket(new PacketOutUpdateHealth(this.getHealth(), this.clientSettings.food, this.clientSettings.foodSaturation));
++	}
++
++	@Override
++	public boolean getAllowFlight() {
++		return this.clientSettings.allowFlight;
++	}
++
++	@Override
++	public void setAllowFlight(boolean allowFlight) {
++		this.clientSettings.allowFlight = allowFlight;
++		this.updateAbilities();
++	}
++
++	@Override
++	public boolean isFlying() {
++		return this.clientSettings.isFlying;
++	}
++
++	@Override
++	public void setFlying(boolean flying) {
++		this.clientSettings.isFlying = flying;
++		this.updateAbilities();
++	}
++
++	@Override
++	public float getFlySpeed() {
++		return this.clientSettings.flySpeed;
++	}
++
++	@Override
++	public void setFlySpeed(float speed) {
++		this.clientSettings.flySpeed = speed;
++		this.updateAbilities();
++	}
++
++	@Override
++	public float getWalkSpeed() {
++		return this.clientSettings.walkSpeed;
++	}
++
++	@Override
++	public void setWalkSpeed(float speed) {
++		this.clientSettings.walkSpeed = speed;
++		this.updateAbilities();
++	}
++
++	@Override
++	public int getExperience() {
++		return this.clientSettings.experience;
++	}
++
++	@Override
++	public int getExperienceLevel() {
++		return this.clientSettings.experience; //TODO convert this to a level
++	}
++
++	@Override
++	public void setExperience(int experience) {
++		this.clientSettings.experience = experience;
++		this.networkManager.sendPacket(new PacketOutSetExperience(0F, this.clientSettings.experience, this.clientSettings.experience)); //TODO calculate this correctly
++	}
++
++	@Override
++	public void setExperienceLevel(int experienceLevel) {
++		this.clientSettings.experience = experienceLevel;  //TODO convert this to a level
++		this.networkManager.sendPacket(new PacketOutSetExperience(0F, this.clientSettings.experience, this.clientSettings.experience)); //TODO calculate this correctly
++	}
++
++	@Override
++	public boolean canSprint() {
++		return this.clientSettings.food <= 3;
++	}
++
++	@Override
++	public boolean isOnGround() {
++		return this.isOnGround;
++	}
++
++	@Override
++	public boolean isSneaking() {
++		return clientSettings.isSneaking;
++	}
++
++	@Override
++	public void setSneaking(boolean sneaking) {
++		clientSettings.isSneaking = sneaking;
++		this.updateDataWatcher();
++		//TODO broadcast the new setting
++	}
++
++	@Override
++	public void playSound(String soundName, int volume, int pitch) {
++		this.networkManager.sendPacket(new PacketOutSoundEffect(soundName, getLocation().getBlockX(), getLocation().getBlockY(), getLocation().getBlockZ(), pitch, (byte) volume));
++	}
++
++	@Override
++	public void playParticle(String particleName, Location location) {
++		// TODO Auto-generated method stub
++	}
++
++	@Override
++	public void sendBlockUpdate(Location loc, BlockId blockId, byte dataValue) {
++		this.networkManager.sendPacket(new PacketOutBlockChange(loc, blockId, dataValue));
++	}
++
++	@Override
++	public String getDisplayName() {
++		if(clientSettings.displayName == null){
++			clientSettings.displayName = getPlayerName();
++		}
++		return clientSettings.displayName;
++	}
++
++	@Override
++	public void setDisplayName(String displayName) {
++		clientSettings.displayName = displayName;
++	}
++
++	@Override
++	public void closeInventory() {
++		this.inventoryHandler.getPlayerInventory().close(); //TODO test this
++	}
++
++	@Override
++	public GameMode getGameMode() {
++		return this.clientSettings.gameMode;
++	}
++	
++	public void setGameMode(GameMode mode) {
++		this.clientSettings.gameMode = mode;
++		byte reason = 3; //gamemode change
++		int value = mode.getId(); //gamemode id
++		this.networkManager.sendPacket(new PacketOutChangeGameState(reason, value));
++	}
++
++	@Override
++	public InventoryHandler getInventory() {
++		return this.getInventoryHandler();
++	}
++
++	@Override
++	public ItemStack getItemInHand() {
++		return this.getInventoryHandler().getItemInHand();
++	}
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -46,16 +46,17 @@
+ import org.enderstone.server.packet.play.PacketOutChangeGameState;
+ import org.enderstone.server.packet.play.PacketOutChatMessage;
+ import org.enderstone.server.packet.play.PacketOutChunkData;
+ import org.enderstone.server.packet.play.PacketOutEntityDestroy;
+ import org.enderstone.server.packet.play.PacketOutEntityHeadLook;
+ import org.enderstone.server.packet.play.PacketOutEntityLook;
+ import org.enderstone.server.packet.play.PacketOutEntityRelativeMove;
+ import org.enderstone.server.packet.play.PacketOutEntityTeleport;
++import org.enderstone.server.packet.play.PacketOutPlayerAbilities;
+ import org.enderstone.server.packet.play.PacketOutPlayerListHeaderFooter;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.Action;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionAddPlayer;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionRemovePlayer;
+ import org.enderstone.server.packet.play.PacketOutPlayerPositionLook;
+ import org.enderstone.server.packet.play.PacketOutRespawn;
+ import org.enderstone.server.packet.play.PacketOutSetExperience;
+@@ -63,16 +64,17 @@
+ import org.enderstone.server.packet.play.PacketOutSpawnPlayer;
+ import org.enderstone.server.packet.play.PacketOutTabComplete;
+ import org.enderstone.server.packet.play.PacketOutUpdateHealth;
+ import org.enderstone.server.permissions.Operator;
+ import org.enderstone.server.regions.BlockId;
+ import org.enderstone.server.regions.EnderChunk;
+ import org.enderstone.server.regions.EnderWorld;
+ import org.enderstone.server.regions.EnderWorld.ChunkInformer;
++import org.enderstone.server.regions.RegionSet;
+ 
+ public class EnderPlayer extends Entity implements CommandSender, Player {
+ 
+ 	private static final int MAX_CHUNKS_EVERY_UPDATE = 16;
+ 
+ 	private final InventoryHandler inventoryHandler = new InventoryHandler(this);
+ 	public final PlayerSettings clientSettings = new PlayerSettings();
+ 	public final NetworkManager networkManager;
+@@ -175,17 +177,19 @@
+ 	public ProfileProperty getTextureProperty() {
+ 		return new ProfileProperty("textures", textureValue, true, textureSignature);
+ 	}
+ 
+ 	public void switchWorld(EnderWorld toWorld) {
+ 		this.getNetworkManager().sendPacket(new PacketOutRespawn(0, (byte) 0, (byte) GameMode.SURVIVAL.getId(), "default"));
+ 		EnderWorld currentWorld = this.getWorld();
+ 		EnderLogger.warn("Switching player " + this.getPlayerName() + " from world " + currentWorld.worldName + " to " + toWorld.worldName + ".");
+-		assert currentWorld.players.remove(this);
++		if (currentWorld.players.contains(this)) {
++			currentWorld.players.remove(this);
++		}
+ 		toWorld.players.add(this);
+ 		this.getLocation().cloneFrom(toWorld.getSpawn());
+ 		this.loadedChunks.clear();
+ 		toWorld.doChunkUpdatesForPlayer(this, this.chunkInformer, 3);
+ 		networkManager.player.getInventoryHandler().updateInventory();
+ 		this.getNetworkManager().sendPacket(new PacketOutPlayerPositionLook(toWorld.getSpawn().getX(), toWorld.getSpawn().getY(), toWorld.getSpawn().getZ(), 0F, 0F, (byte) 1));
+ 		this.onRespawn();
+ 	}
+@@ -449,20 +453,16 @@
+ 	public void teleport(Entity entity) {
+ 		this.teleport(entity.getLocation());
+ 	}
+ 
+ 	@Override
+ 	public void teleport(Location newLocation) {
+ 		this.waitingForValidMoveAfterTeleport = 1;
+ 		Location oldLocation = this.getLocation();
+-		
+-		if(!oldLocation.getWorld().equals(newLocation.getWorld())){
+-			this.switchWorld(newLocation.getWorld());
+-		}
+ 		oldLocation.cloneFrom(newLocation);
+ 
+ 		this.getNetworkManager().sendPacket(new PacketOutPlayerPositionLook(newLocation.getX(), newLocation.getY(), newLocation.getZ(), newLocation.getYaw(), newLocation.getPitch(), (byte) 0b00000));
+ 
+ 		PacketOutEntityTeleport packet = new PacketOutEntityTeleport(this.getEntityId(), (int) (newLocation.getX() * 32.0D), (int) (newLocation.getY() * 32.0D), (int) (newLocation.getZ() * 32.0D), (byte) newLocation.getYaw(), (byte) newLocation.getPitch(), false);
+ 		for (EnderPlayer ep : Main.getInstance().onlinePlayers) {
+ 			if (!ep.equals(this)) {
+ 				ep.getNetworkManager().sendPacket(packet);
+@@ -626,20 +626,16 @@
+ 	}
+ 	
+ 	/**
+ 	 * @return the inventoryHandler
+ 	 */
+ 	public InventoryHandler getInventoryHandler() {
+ 		return inventoryHandler;
+ 	}
+-
+-	public RegionSet getLoadedChunks() {
+-		return this.loadedChunks;
+-	}
+ 	
+ 	public void updateAbilities(){
+ 		int i = 0;
+ 		if (this.clientSettings.isCreative)
+ 			i = (byte) (i | 0x1);
+ 		if (this.clientSettings.isFlying)
+ 			i = (byte) (i | 0x2);
+ 		if (this.clientSettings.allowFlight)
+@@ -652,16 +648,20 @@
+ 		this.networkManager.sendPacket(new PacketOutPlayerAbilities((byte) i, fly, walk));
+ 	}
+ 	
+ 	public enum PlayerDebugger
+ 	{
+ 		INVENTORY, PACKET, OTHER, 
+ 	}
+ 
++	public RegionSet getLoadedChunks() {
++		return this.loadedChunks;
++	}
++	
+ 	@Override
+ 	public void sendMessage(Message message, ChatPosition position) {
+ 		this.getNetworkManager().sendPacket(new PacketOutChatMessage(message, (byte) position.getId()));
+ 	}
+ 
+ 	@Override
+ 	public int getFoodLevel() {
+ 		return clientSettings.food;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/org/enderstone/server/packet/NetworkManager.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -225,16 +225,17 @@
+ 			Main.getInstance().sendToMainThread(new Runnable() {
+ 
+ 				@Override
+ 				public void run() {
+ 					EnderWorld world = Main.getInstance().worlds.get(0);
+ 
+ 					EnderLogger.debug("Player " + wantedName + " spawning in world: " + world.worldName);
+ 					player = new EnderPlayer(world, wantedName, NetworkManager.this, uuid, skinBlob);
++					world.players.add(player);
+ 					Main.getInstance().onlinePlayers.add(player);
+ 					try {
+ 						sendPacket(new PacketOutLoginSucces(player.uuid.toString(), player.getPlayerName()));
+ 						sendPacket(new PacketOutJoinGame(player.getEntityId(), (byte) GameMode.SURVIVAL.getId(), (byte) 0, (byte) 1, (byte) 60, "default", false));
+ 						sendPacket(new PacketOutUpdateTime(0, world.getTime()));
+ 						Location spawn = world.getSpawn();
+ 						Location loc = player.getLocation();
+ 						loc.setX(spawn.getX());
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -37,20 +37,20 @@
+ import java.util.logging.Level;
+ import javax.crypto.Cipher;
+ import javax.crypto.SecretKey;
+ import javax.crypto.ShortBufferException;
+ import javax.crypto.spec.IvParameterSpec;
+ import org.enderstone.server.EnderLogger;
+ import org.enderstone.server.Location;
+ import org.enderstone.server.Main;
++import org.enderstone.server.api.entity.GameMode;
+ import org.enderstone.server.chat.Message;
+ import org.enderstone.server.chat.SimpleMessage;
+ import org.enderstone.server.entity.EnderPlayer;
+-import org.enderstone.server.entity.GameMode;
+ import org.enderstone.server.entity.PlayerTextureStore;
+ import org.enderstone.server.packet.codec.DiscardingReader;
+ import org.enderstone.server.packet.codec.MinecraftCompressionCodex;
+ import org.enderstone.server.packet.codec.MinecraftDecompressionCodex;
+ import org.enderstone.server.packet.codec.MinecraftServerCodex;
+ import org.enderstone.server.packet.login.PacketOutLoginSucces;
+ import org.enderstone.server.packet.play.PacketOutJoinGame;
+ import org.enderstone.server.packet.play.PacketOutPlayerAbilities;
+@@ -241,31 +241,20 @@
+ 						loc.setY(spawn.getY());
+ 						loc.setZ(spawn.getZ());
+ 						loc.setYaw(spawn.getYaw());
+ 						loc.setPitch(spawn.getPitch());
+ 
+ 						world.doChunkUpdatesForPlayer(player, player.chunkInformer, 1);
+ 						player.teleport(world.getSpawn());
+ 						player.onSpawn();
++						player.onRespawn();
+ 						sendPacket(new PacketOutSpawnPosition(spawn));
+-
+-						int i = 0;
+-						if (player.isCreative)
+-							i = (byte) (i | 0x1);
+-						if (player.isFlying)
+-							i = (byte) (i | 0x2);
+-						if (player.canFly)
+-							i = (byte) (i | 0x4);
+-						if (player.godMode)
+-							i = (byte) (i | 0x8);
+-
+-						sendPacket(new PacketOutPlayerAbilities((byte) i, 0.1F, 0.1F));
+ 						sendPacket(new PacketOutPlayerPositionLook(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch(), (byte) 0b00000));
+-						sendPacket(new PacketOutUpdateHealth(player.getHealth(), player.food, player.foodSaturation));
++						sendPacket(new PacketOutUpdateHealth(player.getHealth(), player.clientSettings.food, player.clientSettings.foodSaturation));
+ 					} catch (Exception e) {
+ 						EnderLogger.exception(e);
+ 					} finally {
+ 						synchronized (lock) {
+ 							lock.notifyAll();
+ 						}
+ 					}
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

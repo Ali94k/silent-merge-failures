@@ -1,0 +1,1598 @@
+UNIT structr_structr__6738b144bb
+repo: structr_structr   merge: 6738b144bb399a85fc2459f47f8762c0e5905604   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: structr-core/src/main/java/org/structr/core/entity/AbstractNode.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -78,16 +78,17 @@
+ import org.structr.common.SecurityContext;
+ import org.structr.common.ValidationHelper;
+ import org.structr.common.View;
+ import org.structr.common.error.ErrorBuffer;
+ import org.structr.common.error.FrameworkException;
+ import org.structr.common.error.InternalSystemPropertyToken;
+ import org.structr.common.error.NullArgumentToken;
+ import org.structr.common.error.ReadOnlyPropertyToken;
++import org.structr.common.event.RuntimeUsageLog;
+ import org.structr.core.GraphObject;
+ import org.structr.core.IterableAdapter;
+ import org.structr.core.Services;
+ import org.structr.core.app.App;
+ import org.structr.core.app.StructrApp;
+ import org.structr.core.converter.PropertyConverter;
+ import org.structr.core.entity.relationship.Ownership;
+ import org.structr.core.entity.relationship.PrincipalOwnsNode;
+@@ -96,16 +97,17 @@
+ import org.structr.core.graph.NodeRelationshipStatisticsCommand;
+ import org.structr.core.graph.RelationshipFactory;
+ import org.structr.core.graph.RelationshipInterface;
+ import org.structr.core.property.FunctionProperty;
+ import org.structr.core.property.PropertyKey;
+ import org.structr.core.property.PropertyMap;
+ import org.structr.core.script.Scripting;
+ import org.structr.schema.action.ActionContext;
++import org.structr.schema.action.EvaluationHints;
+ import org.structr.schema.action.Function;
+ 
+ /**
+  * Abstract base class for all node entities in Structr.
+  */
+ public abstract class AbstractNode implements NodeInterface, AccessControllable, CMISInfo, CMISItemInfo {
+ 
+ 	private static final int permissionResolutionMaxLevel                                                     = Settings.ResolutionDepth.getValue();
+@@ -465,16 +467,18 @@
+ 	}
+ 
+ 	private <T> T getProperty(final PropertyKey<T> key, boolean applyConverter, final Predicate<GraphObject> predicate) {
+ 
+ 		// early null check, this should not happen...
+ 		if (key == null || key.dbName() == null) {
+ 			return null;
+ 		}
++
++		RuntimeUsageLog.log(this, key);
+ 
+ 		return key.getProperty(securityContext, this, applyConverter, predicate);
+ 	}
+ 
+ 	public final String getPropertyMD5(final PropertyKey key) {
+ 
+ 		Object value = getProperty(key);
+ 
+@@ -1627,54 +1631,62 @@
+ 				return factory.instantiate(rel);
+ 			}
+ 		}
+ 
+ 		return null;
+ 	}
+ 
+ 	@Override
+-	public final Object evaluate(final ActionContext actionContext, final String key, final String defaultValue) throws FrameworkException {
++	public final Object evaluate(final ActionContext actionContext, final String key, final String defaultValue, final EvaluationHints hints, final int row, final int column) throws FrameworkException {
++
++		hints.reportUsedKey(key, row, column);
+ 
+ 		switch (key) {
+ 
+ 			case "owner":
++				hints.reportExistingKey(key);
+ 				return getOwnerNode();
+ 
+ 			case "_path":
++				hints.reportExistingKey(key);
+ 				return getPath(actionContext.getSecurityContext());
+ 
+ 			default:
+ 
+ 				// evaluate object value or return default
+ 				final PropertyKey propertyKey = StructrApp.getConfiguration().getPropertyKeyForJSONName(entityType, key, false);
+ 				if (propertyKey != null) {
+ 
++					hints.reportExistingKey(key);
++
+ 					final Object value = getProperty(propertyKey, actionContext.getPredicate());
+ 					if (value != null) {
+ 
+ 						return value;
+ 					}
+ 				}
+ 
+-				final Object value = invokeMethod(actionContext.getSecurityContext(), key, Collections.EMPTY_MAP, false);
++				final Object value = invokeMethod(actionContext.getSecurityContext(), key, Collections.EMPTY_MAP, false, hints);
+ 				if (value != null) {
+ 
+ 					return value;
+ 				}
+ 
+ 				return Function.numberOrString(defaultValue);
+ 		}
+ 	}
+ 
+ 	@Override
+-	public final Object invokeMethod(final SecurityContext securityContext, final String methodName, final Map<String, Object> propertySet, final boolean throwExceptionForUnknownMethods) throws FrameworkException {
++	public final Object invokeMethod(final SecurityContext securityContext, final String methodName, final Map<String, Object> propertySet, final boolean throwExceptionForUnknownMethods, final EvaluationHints hints) throws FrameworkException {
+ 
+ 		final Method method = StructrApp.getConfiguration().getExportedMethodsForType(entityType).get(methodName);
+ 		if (method != null) {
++
++			hints.reportExistingKey(methodName);
+ 
+ 			try {
+ 
+ 				// new structure: first parameter is always securityContext and second parameter can be Map (for dynamically defined methods)
+ 				if (method.getParameterTypes().length == 2 && method.getParameterTypes()[0].isAssignableFrom(SecurityContext.class) && method.getParameterTypes()[1].equals(Map.class)) {
+ 					final Object[] args = new Object[] { securityContext };
+ 					return method.invoke(this, ArrayUtils.add(args, propertySet));
+ 				}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -73,16 +73,17 @@
+ import org.structr.common.AccessControllable;
+ import org.structr.common.Permission;
+ import org.structr.common.PermissionPropagation;
+ import org.structr.common.PermissionResolutionMask;
+ import org.structr.common.PropertyView;
+ import org.structr.common.SecurityContext;
+ import org.structr.common.ValidationHelper;
+ import org.structr.common.View;
++import org.structr.common.error.AssertException;
+ import org.structr.common.error.ErrorBuffer;
+ import org.structr.common.error.FrameworkException;
+ import org.structr.common.error.InternalSystemPropertyToken;
+ import org.structr.common.error.NullArgumentToken;
+ import org.structr.common.error.ReadOnlyPropertyToken;
+ import org.structr.core.GraphObject;
+ import org.structr.core.IterableAdapter;
+ import org.structr.core.Services;
+@@ -1679,32 +1680,34 @@
+ 					return method.invoke(this, ArrayUtils.add(args, propertySet));
+ 				}
+ 
+ 				// second try: extracted parameter list
+ 				final Object[] args = extractParameters(propertySet, method.getParameterTypes());
+ 
+ 				return method.invoke(this, ArrayUtils.add(args, 0, securityContext));
+ 
+-			} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException t) {
+-
+-				if (t instanceof FrameworkException) {
+-
+-					throw (FrameworkException) t;
+-
+-				} else if (t.getCause() instanceof FrameworkException) {
+-
+-					throw (FrameworkException) t.getCause();
+-
+-				} else {
+-
+-					logger.debug("Unable to invoke method {}: {}", new Object[]{methodName, t.getMessage()});
+-					logger.warn("", t);
+-
++			} catch (InvocationTargetException itex) {
++
++				final Throwable cause = itex.getCause();
++
++				if (cause instanceof AssertException) {
++
++					final AssertException e = (AssertException)cause;
++					throw new FrameworkException(e.getStatusCode(), e.getMessage());
+ 				}
++
++				if (cause instanceof FrameworkException) {
++
++					throw (FrameworkException)cause;
++				}
++
++			} catch (IllegalAccessException | IllegalArgumentException  t) {
++
++				logger.warn("Unable to invoke method {}: {}", methodName, t.getMessage());
+ 			}
+ 		}
+ 
+ 		// in the case of REST access we want to know if the method exists or not
+ 		if (throwExceptionForUnknownMethods) {
+ 			throw new FrameworkException(400, "Method " + methodName + " not found in type " + getType());
+ 		}
+ 
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package org.structr.core.entity;
+        // ... 1 lines elided ...
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import org.apache.chemistry.opencmis.commons.data.Ace;
+import org.apache.chemistry.opencmis.commons.data.AllowableActions;
+import org.apache.chemistry.opencmis.commons.enums.BaseTypeId;
+import org.apache.chemistry.opencmis.commons.enums.PropertyType;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.structr.api.DatabaseService;
+import org.structr.api.NativeQuery;
+import org.structr.api.Predicate;
+import org.structr.api.config.Settings;
+import org.structr.api.graph.Direction;
+import org.structr.api.graph.Identity;
+import org.structr.api.graph.Node;
+import org.structr.api.graph.PropagationDirection;
+import static org.structr.api.graph.PropagationDirection.In;
+import static org.structr.api.graph.PropagationDirection.Out;
+import static org.structr.api.graph.PropagationMode.Add;
+import static org.structr.api.graph.PropagationMode.Keep;
+import static org.structr.api.graph.PropagationMode.Remove;
+import org.structr.api.graph.PropertyContainer;
+import org.structr.api.graph.Relationship;
+import org.structr.api.graph.RelationshipType;
+import org.structr.api.util.FixedSizeCache;
+import org.structr.api.util.Iterables;
+import org.structr.cmis.CMISInfo;
+import org.structr.cmis.common.CMISExtensionsData;
+import org.structr.cmis.common.StructrItemActions;
+import org.structr.cmis.info.CMISDocumentInfo;
+import org.structr.cmis.info.CMISFolderInfo;
+import org.structr.cmis.info.CMISItemInfo;
+import org.structr.cmis.info.CMISPolicyInfo;
+import org.structr.cmis.info.CMISRelationshipInfo;
+import org.structr.cmis.info.CMISSecondaryInfo;
+import org.structr.common.AccessControllable;
+import org.structr.common.Permission;
+import org.structr.common.PermissionPropagation;
+import org.structr.common.PermissionResolutionMask;
+import org.structr.common.PropertyView;
+import org.structr.common.SecurityContext;
+import org.structr.common.ValidationHelper;
+import org.structr.common.View;
+import org.structr.common.error.AssertException;
+import org.structr.common.error.ErrorBuffer;
+import org.structr.common.error.FrameworkException;
+import org.structr.common.error.InternalSystemPropertyToken;
+import org.structr.common.error.NullArgumentToken;
+import org.structr.common.error.ReadOnlyPropertyToken;
+import org.structr.common.event.RuntimeUsageLog;
+import org.structr.core.GraphObject;
+import org.structr.core.IterableAdapter;
+import org.structr.core.Services;
+import org.structr.core.app.App;
+import org.structr.core.app.StructrApp;
+import org.structr.core.converter.PropertyConverter;
+import org.structr.core.entity.relationship.Ownership;
+import org.structr.core.entity.relationship.PrincipalOwnsNode;
+import org.structr.core.graph.ModificationQueue;
+import org.structr.core.graph.NodeInterface;
+import org.structr.core.graph.NodeRelationshipStatisticsCommand;
+import org.structr.core.graph.RelationshipFactory;
+import org.structr.core.graph.RelationshipInterface;
+import org.structr.core.property.FunctionProperty;
+import org.structr.core.property.PropertyKey;
+import org.structr.core.property.PropertyMap;
+import org.structr.core.script.Scripting;
+import org.structr.schema.action.ActionContext;
+import org.structr.schema.action.EvaluationHints;
+import org.structr.schema.action.Function;
+
+/**
+ * Abstract base class for all node entities in Structr.
+ */
+public abstract class AbstractNode implements NodeInterface, AccessControllable, CMISInfo, CMISItemInfo {
+
+	private static final int permissionResolutionMaxLevel                                                     = Settings.ResolutionDepth.getValue();
+	private static final Logger logger                                                                        = LoggerFactory.getLogger(AbstractNode.class.getName());
+	private static final FixedSizeCache<String, Boolean> isGrantedResultCache                                 = new FixedSizeCache<String, Boolean>("Grant result cache", 100000);
+	private static final FixedSizeCache<String, Object> relationshipTemplateInstanceCache                     = new FixedSizeCache<>("Relationship template cache", 1000);
+	private static final Map<String, Map<String, PermissionResolutionResult>> globalPermissionResolutionCache = new HashMap<>();
+
+	public static final View defaultView = new View(AbstractNode.class, PropertyView.Public, id, type, name);
+
+	public static final View uiView = new View(AbstractNode.class, PropertyView.Ui,
+		id, name, owner, type, createdBy, hidden, createdDate, lastModifiedDate, visibleToPublicUsers, visibleToAuthenticatedUsers
+	);
+
+	private Map<String, Object> tmpStorageContainer = null;
+	public boolean internalSystemPropertiesUnlocked = false;
+	private Identity rawPathSegmentId               = null;
+	private long sourceTransactionId                = -1;
+	private boolean readOnlyPropertiesUnlocked      = false;
+	protected String cachedUuid                     = null;
+	protected SecurityContext securityContext       = null;
+	protected Principal cachedOwnerNode             = null;
+	protected Class entityType                      = null;
+	protected Node dbNode                           = null;
+
+	public AbstractNode() {
+	}
+
+	public AbstractNode(SecurityContext securityContext, final Node dbNode, final Class entityType, final long sourceTransactionId) {
+		init(securityContext, dbNode, entityType, sourceTransactionId);
+	}
+
+	@Override
+	public void onNodeCreation() {
+	}
+        // ... 2 lines elided ...
+	public void onNodeInstantiation(final boolean isCreation) {
+        // ... 4 lines elided ...
+	public void onNodeDeletion() {
+        // ... 3 lines elided ...
+	public final void init(final SecurityContext securityContext, final Node dbNode, final Class entityType, final long sourceTransactionId) {
+        // ... 20 lines elided ...
+	public long getSourceTransactionId() {
+        // ... 4 lines elided ...
+	public Class getEntityType() {
+        // ... 4 lines elided ...
+	public final void setSecurityContext(SecurityContext securityContext) {
+        // ... 4 lines elided ...
+	public final SecurityContext getSecurityContext() {
+        // ... 4 lines elided ...
+	public boolean equals(final Object o) {
+        // ... 16 lines elided ...
+	public int hashCode() {
+        // ... 11 lines elided ...
+	public int compareTo(final Object other) {
+        // ... 36 lines elided ...
+	public String toString() {
+        // ... 12 lines elided ...
+	public final void unlockReadOnlyPropertiesOnce() {
+        // ... 11 lines elided ...
+	public final void unlockSystemPropertiesOnce() {
+        // ... 5 lines elided ...
+	public final void removeProperty(final PropertyKey key) throws FrameworkException {
+        // ... 63 lines elided ...
+	public final String getType() {
+        // ... 4 lines elided ...
+	public final PropertyContainer getPropertyContainer() {
+        // ... 9 lines elided ...
+	public final String getName() {
+        // ... 11 lines elided ...
+	public final String getUuid() {
+        // ... 13 lines elided ...
+	public final boolean getVisibleToPublicUsers() {
+        // ... 8 lines elided ...
+	public final boolean getVisibleToAuthenticatedUsers() {
+        // ... 8 lines elided ...
+	public final boolean getHidden() {
+        // ... 10 lines elided ...
+	public Set<PropertyKey> getPropertyKeys(final String propertyView) {
+        // ... 5 lines elided ...
+			final Set<String> customView = securityContext.getCustomView();
+
+			for (Iterator<PropertyKey> it = keys.iterator(); it.hasNext();) {
+				if (!customView.contains(it.next().jsonName())) {
+
+					it.remove();
+				}
+			}
+
+			return keys;
+		}
+
+		// this is the default if no application/json; properties=[...] content-type header is present on the request
+		return StructrApp.getConfiguration().getPropertySet(entityType, propertyView);
+	}
+
+	/**
+	 * Returns the (converted, validated, transformed, etc.) property for
+	 * the given property key.
+	 *
+	 * @param <T>
+	 * @param key the property key to retrieve the value for
+	 * @return the converted, validated, transformed property value
+	 */
+	@Override
+	public <T> T getProperty(final PropertyKey<T> key) {
+		return getProperty(key, null);
+	}
+
+	@Override
+	public <T> T getProperty(final PropertyKey<T> key, final Predicate<GraphObject> predicate) {
+		return getProperty(key, true, predicate);
+	}
+
+	private <T> T getProperty(final PropertyKey<T> key, boolean applyConverter, final Predicate<GraphObject> predicate) {
+
+		// early null check, this should not happen...
+		if (key == null || key.dbName() == null) {
+			return null;
+		}
+
+		RuntimeUsageLog.log(this, key);
+
+		return key.getProperty(securityContext, this, applyConverter, predicate);
+	}
+
+	public final String getPropertyMD5(final PropertyKey key) {
+
+		Object value = getProperty(key);
+
+		if (value instanceof String) {
+
+			return DigestUtils.md5Hex((String) value);
+		} else if (value instanceof byte[]) {
+
+			return DigestUtils.md5Hex((byte[]) value);
+		}
+
+		logger.warn("Could not create MD5 hex out of value {}", value);
+
+		return null;
+
+	}
+
+	/**
+	 * Returns the property value for the given key as a Comparable
+	 *
+	 * @param key the property key to retrieve the value for
+	 * @return the property value for the given key as a Comparable
+	 */
+	@Override
+	public final <T> Comparable getComparableProperty(final PropertyKey<T> key) {
+
+		if (key != null) {
+
+			final T propertyValue = getProperty(key);
+
+			// check property converter
+			PropertyConverter<T, ?> converter = key.databaseConverter(securityContext, this);
+			if (converter != null) {
+
+				try {
+        // ... 34 lines elided ...
+	public final Iterable getIterableProperty(final PropertyKey<? extends Iterable> propertyKey) {
+        // ... 10 lines elided ...
+	public Set<AbstractNode> getNodesForModificationPropagation() {
+        // ... 9 lines elided ...
+	public final Node getNode() {
+        // ... 4 lines elided ...
+	public boolean hasRelationshipTo(final RelationshipType type, final NodeInterface targetNode) {
+        // ... 9 lines elided ...
+	public <R extends AbstractRelationship> R getRelationshipTo(final RelationshipType type, final NodeInterface targetNode) {
+        // ... 16 lines elided ...
+	public final <R extends AbstractRelationship> Iterable<R> getRelationships() {
+        // ... 4 lines elided ...
+	public final <A extends NodeInterface, B extends NodeInterface, S extends Source, T extends Target, R extends Relation<A, B, S, T>> Iterable<R> getRelationships(final Class<R> type) {
+        // ... 10 lines elided ...
+	public final <A extends NodeInterface, B extends NodeInterface, T extends Target, R extends Relation<A, B, OneStartpoint<A>, T>> R getIncomingRelationship(final Class<R> type) {
+        // ... 13 lines elided ...
+	public final <A extends NodeInterface, B extends NodeInterface, T extends Target, R extends Relation<A, B, OneStartpoint<A>, T>> R getIncomingRelationshipAsSuperUser(final Class<R> type) {
+        // ... 14 lines elided ...
+	public final <A extends NodeInterface, B extends NodeInterface, T extends Target, R extends Relation<A, B, ManyStartpoint<A>, T>> Iterable<R> getIncomingRelationships(final Class<R> type) {
+        // ... 9 lines elided ...
+	public final <A extends NodeInterface, B extends NodeInterface, S extends Source, R extends Relation<A, B, S, OneEndpoint<B>>> R getOutgoingRelationship(final Class<R> type) {
+        // ... 13 lines elided ...
+	public final <A extends NodeInterface, B extends NodeInterface, S extends Source, R extends Relation<A, B, S, ManyEndpoint<B>>> Iterable<R> getOutgoingRelationships(final Class<R> type) {
+        // ... 8 lines elided ...
+	public final <R extends AbstractRelationship> Iterable<R> getIncomingRelationships() {
+        // ... 4 lines elided ...
+	public final <R extends AbstractRelationship> Iterable<R> getOutgoingRelationships() {
+        // ... 4 lines elided ...
+	public final <R extends AbstractRelationship> Iterable<R> getRelationshipsAsSuperUser() {
+        // ... 3 lines elided ...
+	protected final <A extends NodeInterface, B extends NodeInterface, T extends Target, R extends Relation<A, B, ManyStartpoint<A>, T>> Iterable<R> getIncomingRelationshipsAsSuperUser(final Class<R> type) {
+        // ... 3 lines elided ...
+	protected final <A extends NodeInterface, B extends NodeInterface, T extends Target, R extends Relation<A, B, ManyStartpoint<A>, T>> Iterable<R> getIncomingRelationshipsAsSuperUser(final Class<R> type, final Predicate<GraphObject> predicate) {
+        // ... 9 lines elided ...
+	public <A extends NodeInterface, B extends NodeInterface, S extends Source, R extends Relation<A, B, S, OneEndpoint<B>>> R getOutgoingRelationshipAsSuperUser(final Class<R> type) {
+        // ... 13 lines elided ...
+	protected final <A extends NodeInterface, B extends NodeInterface, S extends Source, T extends Target, R extends Relation<A, B, S, T>> Iterable<R> getRelationshipsAsSuperUser(final Class<R> type) {
+        // ... 15 lines elided ...
+	public final Map<String, Long> getRelationshipInfo(final Direction dir) throws FrameworkException {
+        // ... 10 lines elided ...
+	public final Principal getOwnerNode() {
+        // ... 19 lines elided ...
+	public final String getOwnerId() {
+        // ... 16 lines elided ...
+	public final <A extends NodeInterface, B extends NodeInterface, S extends Source, T extends Target> boolean hasRelationship(final Class<? extends Relation<A, B, S, T>> type) {
+        // ... 4 lines elided ...
+	public final <A extends NodeInterface, B extends NodeInterface, S extends Source, T extends Target, R extends Relation<A, B, S, T>> boolean hasIncomingRelationships(final Class<R> type) {
+        // ... 4 lines elided ...
+	public final <A extends NodeInterface, B extends NodeInterface, S extends Source, T extends Target, R extends Relation<A, B, S, T>> boolean hasOutgoingRelationships(final Class<R> type) {
+        // ... 5 lines elided ...
+	public boolean isGranted(final Permission permission, final SecurityContext context) {
+        // ... 3 lines elided ...
+	private boolean isGranted(final Permission permission, final SecurityContext context, final boolean isCreation) {
+        // ... 27 lines elided ...
+	private boolean isGranted(final Permission permission, final Principal accessingUser, final PermissionResolutionMask mask, final int level, final AlreadyTraversed alreadyTraversed, final boolean resolvePermissions, final boolean doLog, final boolean isCreation) {
+        // ... 3 lines elided ...
+	private boolean isGranted(final Permission permission, final Principal accessingUser, final PermissionResolutionMask mask, final int level, final AlreadyTraversed alreadyTraversed, final boolean resolvePermissions, final boolean doLog, final Map<String, Security> incomingSecurityRelationships, final boolean isCreation) {
+        // ... 164 lines elided ...
+	private void backtrack(final BFSInfo info, final String principalId, final Permission permission, final boolean value, final int level, final boolean doLog) {
+        // ... 34 lines elided ...
+	private boolean hasEffectivePermissions(final BFSInfo parent, final Principal principal, final Permission permission, final PermissionResolutionMask mask, final int level, final AlreadyTraversed alreadyTraversed, final Queue<BFSInfo> bfsNodes, final boolean doLog, final boolean isCreation) {
+        // ... 82 lines elided ...
+	private boolean propagationAllowed(final AbstractNode thisNode, final RelationshipInterface rel, final PropagationDirection propagationDirection, final boolean doLog) {
+        // ... 42 lines elided ...
+	private void applyCurrentStep(final PermissionPropagation rel, PermissionResolutionMask mask) {
+        // ... 57 lines elided ...
+	private Boolean getPermissionResolutionResult(final String principalId, final Permission permission) {
+        // ... 31 lines elided ...
+	private void storePermissionResolutionResult(final String principalId, final Permission permission, final boolean value) {
+        // ... 32 lines elided ...
+	private Security getSecurityRelationship(final Principal p, final Map<String, Security> securityRelationships) {
+        // ... 17 lines elided ...
+	public final Security getSecurityRelationship(final Principal p) {
+        // ... 15 lines elided ...
+	public void onCreation(SecurityContext securityContext, ErrorBuffer errorBuffer) throws FrameworkException {
+        // ... 3 lines elided ...
+	public void onModification(SecurityContext securityContext, ErrorBuffer errorBuffer, final ModificationQueue modificationQueue) throws FrameworkException {
+        // ... 4 lines elided ...
+	public void onDeletion(SecurityContext securityContext, ErrorBuffer errorBuffer, PropertyMap properties) throws FrameworkException {
+        // ... 4 lines elided ...
+	public void afterCreation(SecurityContext securityContext) throws FrameworkException {
+        // ... 3 lines elided ...
+	public void afterModification(SecurityContext securityContext) {
+        // ... 3 lines elided ...
+	public void afterDeletion(SecurityContext securityContext, PropertyMap properties) {
+        // ... 3 lines elided ...
+	public void ownerModified(SecurityContext securityContext) {
+        // ... 4 lines elided ...
+	public void securityModified(SecurityContext securityContext) {
+        // ... 4 lines elided ...
+	public void locationModified(SecurityContext securityContext) {
+        // ... 4 lines elided ...
+	public void propagatedModification(SecurityContext securityContext) {
+        // ... 4 lines elided ...
+	public boolean isValid(final ErrorBuffer errorBuffer) {
+        // ... 18 lines elided ...
+	public boolean isVisibleToPublicUsers() {
+        // ... 4 lines elided ...
+	public boolean isVisibleToAuthenticatedUsers() {
+        // ... 4 lines elided ...
+	public final boolean isNotHidden() {
+        // ... 6 lines elided ...
+	public final boolean isHidden() {
+        // ... 6 lines elided ...
+	public final Date getCreatedDate() {
+        // ... 4 lines elided ...
+	public final Date getLastModifiedDate() {
+        // ... 13 lines elided ...
+	public <T> Object setProperty(final PropertyKey<T> key, final T value) throws FrameworkException {
+        // ... 4 lines elided ...
+	public <T> Object setProperty(final PropertyKey<T> key, final T value, final boolean isCreation) throws FrameworkException {
+        // ... 48 lines elided ...
+	public void setProperties(final SecurityContext securityContext, final PropertyMap properties) throws FrameworkException {
+        // ... 4 lines elided ...
+	public void setProperties(final SecurityContext securityContext, final PropertyMap properties, final boolean isCreation) throws FrameworkException {
+        // ... 46 lines elided ...
+	private <T> Object setPropertyInternal(final PropertyKey<T> key, final T value) throws FrameworkException {
+        // ... 35 lines elided ...
+	public static void clearRelationshipTemplateInstanceCache() {
+        // ... 3 lines elided ...
+	public static void clearCaches() {
+        // ... 4 lines elided ...
+	public static <A extends NodeInterface, B extends NodeInterface, R extends Relation<A, B, ?, ?>> R getRelationshipForType(final Class<R> type) {
+        // ... 16 lines elided ...
+		}
+
+		return instance;
+	}
+
+	@Override
+	public final String getPropertyWithVariableReplacement(ActionContext renderContext, PropertyKey<String> key) throws FrameworkException {
+
+		final Object value = getProperty(key);
+		String result      = null;
+
+		try {
+
+			result = Scripting.replaceVariables(renderContext, this, value, true, key.jsonName());
+
+		} catch (Throwable t) {
+
+			logger.warn("Scripting error in {} {}:\n{}", key.dbName(), getUuid(), value, t);
+
+		}
+
+		return result;
+	}
+
+	public final Object getPath(final SecurityContext currentSecurityContext) {
+
+		if (rawPathSegmentId != null) {
+
+			final Relationship rel = StructrApp.getInstance(currentSecurityContext).getDatabaseService().getRelationshipById(rawPathSegmentId);
+			if (rel != null) {
+
+				final RelationshipFactory factory = new RelationshipFactory(currentSecurityContext);
+				return factory.instantiate(rel);
+			}
+		}
+
+		return null;
+	}
+
+	@Override
+	public final Object evaluate(final ActionContext actionContext, final String key, final String defaultValue, final EvaluationHints hints, final int row, final int column) throws FrameworkException {
+
+		hints.reportUsedKey(key, row, column);
+
+		switch (key) {
+
+			case "owner":
+				hints.reportExistingKey(key);
+				return getOwnerNode();
+
+			case "_path":
+				hints.reportExistingKey(key);
+				return getPath(actionContext.getSecurityContext());
+
+			default:
+
+				// evaluate object value or return default
+				final PropertyKey propertyKey = StructrApp.getConfiguration().getPropertyKeyForJSONName(entityType, key, false);
+				if (propertyKey != null) {
+
+					hints.reportExistingKey(key);
+
+					final Object value = getProperty(propertyKey, actionContext.getPredicate());
+					if (value != null) {
+
+						return value;
+					}
+				}
+
+				final Object value = invokeMethod(actionContext.getSecurityContext(), key, Collections.EMPTY_MAP, false, hints);
+				if (value != null) {
+
+					return value;
+				}
+
+				return Function.numberOrString(defaultValue);
+		}
+	}
+
+	@Override
+	public final Object invokeMethod(final SecurityContext securityContext, final String methodName, final Map<String, Object> propertySet, final boolean throwExceptionForUnknownMethods, final EvaluationHints hints) throws FrameworkException {
+
+		final Method method = StructrApp.getConfiguration().getExportedMethodsForType(entityType).get(methodName);
+		if (method != null) {
+
+			hints.reportExistingKey(methodName);
+
+			try {
+
+				// new structure: first parameter is always securityContext and second parameter can be Map (for dynamically defined methods)
+				if (method.getParameterTypes().length == 2 && method.getParameterTypes()[0].isAssignableFrom(SecurityContext.class) && method.getParameterTypes()[1].equals(Map.class)) {
+					final Object[] args = new Object[] { securityContext };
+					return method.invoke(this, ArrayUtils.add(args, propertySet));
+				}
+
+				// second try: extracted parameter list
+				final Object[] args = extractParameters(propertySet, method.getParameterTypes());
+
+				return method.invoke(this, ArrayUtils.add(args, 0, securityContext));
+
+			} catch (InvocationTargetException itex) {
+
+				final Throwable cause = itex.getCause();
+
+				if (cause instanceof AssertException) {
+
+					final AssertException e = (AssertException)cause;
+					throw new FrameworkException(e.getStatusCode(), e.getMessage());
+				}
+
+				if (cause instanceof FrameworkException) {
+
+					throw (FrameworkException)cause;
+				}
+
+			} catch (IllegalAccessException | IllegalArgumentException  t) {
+
+				logger.warn("Unable to invoke method {}: {}", methodName, t.getMessage());
+			}
+		}
+
+		// in the case of REST access we want to know if the method exists or not
+		if (throwExceptionForUnknownMethods) {
+			throw new FrameworkException(400, "Method " + methodName + " not found in type " + getType());
+		}
+
+		return null;
+	}
+
+	private Object[] extractParameters(Map<String, Object> properties, Class[] parameterTypes) {
+
+		final List<Object> values = new ArrayList<>(properties.values());
+		final List<Object> parameters = new ArrayList<>();
+		int index = 0;
+
+		// only try to convert when both lists have equal size
+		// subtract one because securityContext is default and not provided by user
+		if (values.size() == (parameterTypes.length - 1)) {
+
+			for (final Class parameterType : parameterTypes) {
+
+				// skip securityContext
+				if (!parameterType.isAssignableFrom(SecurityContext.class)) {
+
+					final Object value = convert(values.get(index++), parameterType);
+					if (value != null) {
+
+						parameters.add(value);
+					}
+				}
+			}
+		}
+
+		return parameters.toArray(new Object[0]);
+	}
+
+	/*
+	 * Tries to convert the given value into an object
+        // ... 3 lines elided ...
+	private Object convert(Object value, Class type) {
+        // ... 72 lines elided ...
+	private Map<String, Security> mapSecurityRelationshipsMapped(final Iterable<Security> src) {
+        // ... 12 lines elided ...
+	public final void grant(Permission permission, Principal principal) throws FrameworkException {
+        // ... 4 lines elided ...
+	public final void grant(final Set<Permission> permissions, Principal principal) throws FrameworkException {
+        // ... 4 lines elided ...
+	public final void grant(final Set<Permission> permissions, Principal principal, SecurityContext ctx) throws FrameworkException {
+        // ... 44 lines elided ...
+	public final void revoke(Permission permission, Principal principal) throws FrameworkException {
+        // ... 4 lines elided ...
+	public final void revoke(final Set<Permission> permissions, Principal principal) throws FrameworkException {
+        // ... 4 lines elided ...
+	public final void revoke(Set<Permission> permissions, Principal principal, SecurityContext ctx) throws FrameworkException {
+        // ... 16 lines elided ...
+	public final void setAllowed(Set<Permission> permissions, Principal principal) throws FrameworkException {
+        // ... 4 lines elided ...
+	public final void setAllowed(Set<Permission> permissions, Principal principal, SecurityContext ctx) throws FrameworkException {
+        // ... 46 lines elided ...
+	public final void setRawPathSegmentId(final Identity rawPathSegmentId) {
+        // ... 3 lines elided ...
+	public final void revokeAll() throws FrameworkException {
+        // ... 13 lines elided ...
+	public List<Security> getSecurityRelationships() {
+        // ... 29 lines elided ...
+	public boolean changelogEnabled() {
+        // ... 5 lines elided ...
+	public List<GraphObject> getSyncData() throws FrameworkException {
+        // ... 4 lines elided ...
+	public final boolean isNode() {
+        // ... 4 lines elided ...
+	public final boolean isRelationship() {
+        // ... 4 lines elided ...
+	public final NodeInterface getSyncNode() {
+        // ... 4 lines elided ...
+	public final RelationshipInterface getSyncRelationship() {
+        // ... 5 lines elided ...
+	public CMISInfo getCMISInfo() {
+        // ... 4 lines elided ...
+	public BaseTypeId getBaseTypeId() {
+        // ... 4 lines elided ...
+	public CMISFolderInfo getFolderInfo() {
+        // ... 4 lines elided ...
+	public CMISDocumentInfo getDocumentInfo() {
+        // ... 4 lines elided ...
+	public CMISItemInfo getItemInfo() {
+        // ... 4 lines elided ...
+	public CMISRelationshipInfo getRelationshipInfo() {
+        // ... 4 lines elided ...
+	public CMISPolicyInfo getPolicyInfo() {
+        // ... 4 lines elided ...
+	public CMISSecondaryInfo getSecondaryInfo() {
+        // ... 4 lines elided ...
+	public String getCreatedBy() {
+        // ... 4 lines elided ...
+	public String getLastModifiedBy() {
+        // ... 4 lines elided ...
+	public GregorianCalendar getLastModificationDate() {
+        // ... 14 lines elided ...
+	public GregorianCalendar getCreationDate() {
+        // ... 14 lines elided ...
+	public PropertyMap getDynamicProperties() {
+        // ... 24 lines elided ...
+	public AllowableActions getAllowableActions() {
+        // ... 4 lines elided ...
+	public List<Ace> getAccessControlEntries() {
+        // ... 15 lines elided ...
+	public synchronized Map<String, Object> getTemporaryStorage() {
+        // ... 8 lines elided ...
+	protected boolean isGenericNode() {
+        // ... 3 lines elided ...
+	protected boolean allowedBySchema(final Principal principal, final Permission permission) {
+        // ... 4 lines elided ...
+	private static class AceEntry extends CMISExtensionsData implements Ace, org.apache.chemistry.opencmis.commons.data.Principal {
+        // ... 22 lines elided ...
+		public org.apache.chemistry.opencmis.commons.data.Principal getPrincipal() {
+        // ... 4 lines elided ...
+		public String getPrincipalId() {
+        // ... 4 lines elided ...
+		public List<String> getPermissions() {
+        // ... 4 lines elided ...
+		public boolean isDirect() {
+        // ... 5 lines elided ...
+		public String getId() {
+        // ... 4 lines elided ...
+	private static class AlreadyTraversed {
+        // ... 3 lines elided ...
+		public boolean contains(final String key, final String uuid) {
+        // ... 11 lines elided ...
+		public int size(final String key) {
+        // ... 11 lines elided ...
+	private static class BFSInfo {
+        // ... 16 lines elided ...
+	private static class PermissionResolutionResult {
+        // ... 7 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: structr-core/src/main/java/org/structr/core/script/polyglot/StructrBinding.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -30,16 +30,17 @@
+ import org.structr.core.GraphObject;
+ import org.structr.core.Services;
+ import org.structr.core.app.StructrApp;
+ import org.structr.core.function.Functions;
+ import static org.structr.core.script.polyglot.PolyglotWrapper.wrap;
+ import org.structr.core.script.polyglot.function.*;
+ import org.structr.core.script.polyglot.wrappers.*;
+ import org.structr.schema.action.ActionContext;
++import org.structr.schema.action.EvaluationHints;
+ import org.structr.schema.action.Function;
+ 
+ public class StructrBinding implements ProxyObject {
+ 	private final static Logger logger = LoggerFactory.getLogger(StructrBinding.class);
+ 	private final GraphObject entity;
+ 	private final ActionContext actionContext;
+ 
+ 	public StructrBinding(final ActionContext actionContext, final GraphObject entity) {
+@@ -89,20 +90,21 @@
+ 				if (actionContext.getConstant(name) != null) {
+ 					return wrap(actionContext,actionContext.getConstant(name));
+ 				}
+ 
+ 				if (actionContext.getRequestStore().containsKey(name)) {
+ 					return wrap(actionContext, actionContext.getRequestStore().get(name));
+ 				}
+ 
+-				Object structrScriptResult = null;
++				final EvaluationHints hints = new EvaluationHints();
++				Object structrScriptResult  = null;
+ 				try {
+ 
+-					structrScriptResult = PolyglotWrapper.wrap(actionContext, actionContext.evaluate(entity, name, null, null, 0));
++					structrScriptResult = PolyglotWrapper.wrap(actionContext, actionContext.evaluate(entity, name, null, null, 0, hints, 1, 1));
+ 				} catch (FrameworkException ex) {
+ 
+ 					logger.error("Unexpected exception while trying to apply get function shortcut on script binding object.", ex);
+ 				}
+ 
+ 				if (structrScriptResult != null) {
+ 
+ 					return structrScriptResult;
+@@ -156,17 +158,17 @@
+ 				if (args.length == 1) {
+ 
+ 					// Special handling for request keyword, as it needs a wrapper
+ 					if (args[0].toString().equals("request")) {
+ 
+ 						return new HttpServletRequestWrapper(actionContext, actionContext.getSecurityContext().getRequest());
+ 					}
+ 
+-					return PolyglotWrapper.wrap(actionContext, actionContext.evaluate(entity, args[0].toString(), null, null, 0));
++					return PolyglotWrapper.wrap(actionContext, actionContext.evaluate(entity, args[0].toString(), null, null, 0, new EvaluationHints(), 1, 1));
+ 				} else if (args.length > 1) {
+ 
+ 					final Function<Object, Object> function = Functions.get("get");
+ 
+ 					return wrap(actionContext, function.apply(actionContext, entity, args));
+ 				}
+ 
+ 			} catch (FrameworkException ex) {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -74,16 +74,18 @@
+ 				return new HttpSessionWrapper(actionContext, actionContext.getSecurityContext().getSession());
+ 			case "cache":
+ 				return new CacheFunction(actionContext, entity);
+ 			case "vars":
+ 			case "requestStore":
+ 				return new PolyglotProxyMap(actionContext, actionContext.getRequestStore());
+ 			case "applicationStore":
+ 				return new PolyglotProxyMap(actionContext, Services.getInstance().getApplicationStore());
++			case "methodParameters":
++				return new PolyglotProxyMap(actionContext, actionContext.getContextStore().getTemporaryParameters());
+ 			default:
+ 				Function<Object, Object> func = Functions.get(CaseHelper.toUnderscore(name, false));
+ 				if (func != null) {
+ 
+ 					return new FunctionWrapper(actionContext, entity, func);
+ 				}
+ 
+ 				if (actionContext.getConstant(name) != null) {
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (C) 2010-2021 Structr GmbH
+ *
+ * This file is part of Structr <http://structr.org>.
+ *
+ * Structr is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * Structr is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Structr.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.structr.core.script.polyglot;
+
+import java.util.Arrays;
+import java.util.Set;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.structr.common.CaseHelper;
+import org.structr.common.error.FrameworkException;
+import org.structr.core.GraphObject;
+import org.structr.core.Services;
+import org.structr.core.app.StructrApp;
+import org.structr.core.function.Functions;
+import static org.structr.core.script.polyglot.PolyglotWrapper.wrap;
+import org.structr.core.script.polyglot.function.*;
+import org.structr.core.script.polyglot.wrappers.*;
+import org.structr.schema.action.ActionContext;
+import org.structr.schema.action.EvaluationHints;
+import org.structr.schema.action.Function;
+
+public class StructrBinding implements ProxyObject {
+	private final static Logger logger = LoggerFactory.getLogger(StructrBinding.class);
+	private final GraphObject entity;
+	private final ActionContext actionContext;
+
+	public StructrBinding(final ActionContext actionContext, final GraphObject entity) {
+
+		this.actionContext = actionContext;
+		this.entity        = entity;
+	}
+
+	@Override
+	public Object getMember(String name) {
+
+		switch (name) {
+			case "get":
+				return getGetFunctionWrapper();
+			case "this":
+				return wrap(actionContext, entity);
+			case "me":
+				return wrap(actionContext,actionContext.getSecurityContext().getUser(false));
+			case "predicate":
+				return new PredicateBinding(actionContext, entity);
+			case "batch":
+				logger.warn("The batch() function has been renamed to doInNewTransaction() to better communicate the sematics. Using batch() is deprecated as it will be removed in future versions.");
+			case "doInNewTransaction":
+				return new DoInNewTransactionFunction(actionContext, entity);
+			case "includeJs":
+				return new IncludeJSFunction(actionContext);
+			case "doPrivileged":
+				return new DoPrivilegedFunction(actionContext);
+			case "request":
+				return new HttpServletRequestWrapper(actionContext, actionContext.getSecurityContext().getRequest());
+			case "session":
+				return new HttpSessionWrapper(actionContext, actionContext.getSecurityContext().getSession());
+			case "cache":
+				return new CacheFunction(actionContext, entity);
+			case "vars":
+			case "requestStore":
+				return new PolyglotProxyMap(actionContext, actionContext.getRequestStore());
+			case "applicationStore":
+				return new PolyglotProxyMap(actionContext, Services.getInstance().getApplicationStore());
+			case "methodParameters":
+				return new PolyglotProxyMap(actionContext, actionContext.getContextStore().getTemporaryParameters());
+			default:
+				Function<Object, Object> func = Functions.get(CaseHelper.toUnderscore(name, false));
+				if (func != null) {
+
+					return new FunctionWrapper(actionContext, entity, func);
+				}
+
+				if (actionContext.getConstant(name) != null) {
+					return wrap(actionContext,actionContext.getConstant(name));
+				}
+
+				if (actionContext.getRequestStore().containsKey(name)) {
+					return wrap(actionContext, actionContext.getRequestStore().get(name));
+				}
+
+				final EvaluationHints hints = new EvaluationHints();
+				Object structrScriptResult  = null;
+				try {
+
+					structrScriptResult = PolyglotWrapper.wrap(actionContext, actionContext.evaluate(entity, name, null, null, 0, hints, 1, 1));
+				} catch (FrameworkException ex) {
+
+					logger.error("Unexpected exception while trying to apply get function shortcut on script binding object.", ex);
+				}
+
+				if (structrScriptResult != null) {
+
+					return structrScriptResult;
+				}
+
+				// Try to do a static class lookup as last resort
+				final Class clazz = StructrApp.getConfiguration().getNodeEntityClass(name);
+				if (clazz != null) {
+
+					return new StaticTypeWrapper(actionContext, clazz);
+				}
+
+				return null;
+		}
+	}
+
+	@Override
+	public Object getMemberKeys() {
+		Set<String> keys = actionContext.getRequestStore().keySet();
+		keys.add("this");
+		keys.add("me");
+		keys.add("predicate");
+		keys.add("batch");
+		keys.add("doInNewTransaction");
+		keys.add("includeJs");
+		keys.add("doPrivileged");
+		keys.add("request");
+		keys.add("session");
+		keys.add("cache");
+		keys.add("applicationStore");
+		return keys;
+	}
+
+	@Override
+	public boolean hasMember(String key) {
+		return true;
+	}
+
+	@Override
+	public void putMember(String key, Value value) {
+
+	}
+
+	private ProxyExecutable getGetFunctionWrapper() {
+
+		return arguments -> {
+
+			try {
+				Object[] args = Arrays.stream(arguments).map(arg -> PolyglotWrapper.unwrap(actionContext, arg)).toArray();
+
+				if (args.length == 1) {
+
+					// Special handling for request keyword, as it needs a wrapper
+					if (args[0].toString().equals("request")) {
+
+						return new HttpServletRequestWrapper(actionContext, actionContext.getSecurityContext().getRequest());
+					}
+
+					return PolyglotWrapper.wrap(actionContext, actionContext.evaluate(entity, args[0].toString(), null, null, 0, new EvaluationHints(), 1, 1));
+				} else if (args.length > 1) {
+
+					final Function<Object, Object> function = Functions.get("get");
+
+					return wrap(actionContext, function.apply(actionContext, entity, args));
+				}
+
+			} catch (FrameworkException ex) {
+
+				logger.error("Unexpected exception in StructrBinding.", ex);
+			}
+
+			return null;
+		};
+	}
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: structr-ui/src/main/java/org/structr/web/servlet/HtmlServlet.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -80,16 +80,17 @@
+ import org.structr.core.property.PropertyMap;
+ import org.structr.core.script.Scripting;
+ import org.structr.rest.auth.AuthHelper;
+ import org.structr.rest.service.HttpServiceServlet;
+ import org.structr.rest.service.StructrHttpServiceConfig;
+ import org.structr.rest.servlet.AbstractServletBase;
+ import org.structr.schema.ConfigurationProvider;
+ import org.structr.schema.action.ActionContext;
++import org.structr.schema.action.EvaluationHints;
+ import org.structr.util.Base64;
+ import org.structr.web.auth.UiAuthenticator;
+ import org.structr.web.common.FileHelper;
+ import org.structr.web.common.RenderContext;
+ import org.structr.web.common.RenderContext.EditMode;
+ import org.structr.web.common.StringRenderBuffer;
+ import org.structr.web.entity.AbstractFile;
+ import org.structr.web.entity.File;
+@@ -1686,17 +1687,17 @@
+ 
+ 
+ 		// WIDGET mode means "opened in frontend", which we don't want to count as an external download
+ 		if (!EditMode.WIDGET.equals(edit)) {
+ 
+ 			// call onDownload callback
+ 			try {
+ 
+-				file.invokeMethod(securityContext, "onDownload", callbackMap, false);
++				file.invokeMethod(securityContext, "onDownload", callbackMap, false, new EvaluationHints());
+ 
+ 			} catch (FrameworkException fex) {
+ 				logger.warn("", fex);
+ 			}
+ 		}
+ 	}
+ 
+ 	/**
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1099,17 +1099,17 @@
+ 		final PropertyKey<String> pathKey = StructrApp.key(Page.class, "path");
+ 		final PropertyKey<String> nameKey = StructrApp.key(Page.class, "name");
+ 
+ 		final PropertyMap attributes = new PropertyMap(pathKey, path);
+ 		final String name = PathHelper.getName(path);
+ 		attributes.put(nameKey, name);
+ 
+ 		// Find pages by path or name
+-		List<Page> possiblePages = StructrApp.getInstance(securityContext).nodeQuery(Page.class)
++		final List<Page> possiblePages = StructrApp.getInstance(securityContext).nodeQuery(Page.class)
+ 			.or()
+ 				.notBlank(pathKey)
+ 				.and(pathKey, path)
+ 				.parent()
+ 			.or()
+ 				.blank(pathKey)
+ 				.and(nameKey, name)
+ 				.parent()
+@@ -1118,31 +1118,20 @@
+ 		for (final Page page : possiblePages) {
+ 
+ 			if (EditMode.CONTENT.equals(edit) || isVisibleForSite(securityContext.getRequest(), page)) {
+ 
+ 				return page;
+ 			}
+ 		}
+ 
+-//		// Find pages by name
+-//		final String name     = PathHelper.getName(path);
+-//		possiblePages = StructrApp.getInstance(securityContext).nodeQuery(Page.class).andName(name).getAsList();
+-//
+-//		for (final Page page : possiblePages) {
+-//
+-//			if (EditMode.CONTENT.equals(edit) || isVisibleForSite(securityContext.getRequest(), page)) {
+-//
+-//				return page;
+-//			}
+-//		}
+-
+ 		// Check direct access by UUID
+ 		if (name.length() == 32) {
+-			NodeInterface possiblePage = StructrApp.getInstance(securityContext).get(NodeInterface.class, name);
++
++			final NodeInterface possiblePage = StructrApp.getInstance(securityContext).get(NodeInterface.class, name);
+ 
+ 			if (possiblePage != null && possiblePage instanceof Page && (EditMode.CONTENT.equals(edit) || isVisibleForSite(securityContext.getRequest(), (Page) possiblePage))) {
+ 
+ 				return (Page) possiblePage;
+ 			}
+ 		}
+ 
+ 		return null;
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package org.structr.web.servlet;
+        // ... 1 lines elided ...
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.nio.charset.Charset;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.servlet.AsyncContext;
+import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
+import javax.servlet.WriteListener;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.time.DateUtils;
+import org.eclipse.jetty.io.EofException;
+import org.eclipse.jetty.io.QuietException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.structr.api.config.Settings;
+import org.structr.api.util.Iterables;
+import org.structr.common.AccessMode;
+import org.structr.common.PathHelper;
+import org.structr.common.SecurityContext;
+import org.structr.common.ThreadLocalMatcher;
+import org.structr.common.error.FrameworkException;
+import org.structr.common.event.RuntimeEventLog;
+import org.structr.core.GraphObject;
+import org.structr.core.app.App;
+import org.structr.core.app.Query;
+import org.structr.core.app.StructrApp;
+import org.structr.core.auth.Authenticator;
+import org.structr.core.auth.exception.AuthenticationException;
+import org.structr.core.converter.PropertyConverter;
+import org.structr.core.entity.AbstractNode;
+import org.structr.core.entity.Principal;
+import org.structr.core.graph.NodeInterface;
+import org.structr.core.graph.Tx;
+import org.structr.core.property.PropertyKey;
+import org.structr.core.property.PropertyMap;
+import org.structr.core.script.Scripting;
+import org.structr.rest.auth.AuthHelper;
+import org.structr.rest.service.HttpServiceServlet;
+import org.structr.rest.service.StructrHttpServiceConfig;
+import org.structr.rest.servlet.AbstractServletBase;
+import org.structr.schema.ConfigurationProvider;
+import org.structr.schema.action.ActionContext;
+import org.structr.schema.action.EvaluationHints;
+import org.structr.util.Base64;
+import org.structr.web.auth.UiAuthenticator;
+import org.structr.web.common.FileHelper;
+import org.structr.web.common.RenderContext;
+import org.structr.web.common.RenderContext.EditMode;
+import org.structr.web.common.StringRenderBuffer;
+import org.structr.web.entity.AbstractFile;
+import org.structr.web.entity.File;
+import org.structr.web.entity.Linkable;
+import org.structr.web.entity.Site;
+import org.structr.web.entity.User;
+import org.structr.web.entity.dom.DOMNode;
+import org.structr.web.entity.dom.Page;
+
+/**
+ * Main servlet for content rendering.
+ */
+public class HtmlServlet extends AbstractServletBase implements HttpServiceServlet {
+
+	private static final Logger logger = LoggerFactory.getLogger(HtmlServlet.class.getName());
+
+	public static final String CONFIRM_REGISTRATION_PAGE = "/confirm_registration";
+	public static final String RESET_PASSWORD_PAGE       = "/reset-password";
+	public static final String POSSIBLE_ENTRY_POINTS_KEY = "possibleEntryPoints";
+	public static final String DOWNLOAD_AS_FILENAME_KEY  = "filename";
+	public static final String RANGE_KEY                 = "range";
+	public static final String DOWNLOAD_AS_DATA_URL_KEY  = "as-data-url";
+	public static final String CONFIRM_KEY_KEY           = "key";
+	public static final String TARGET_PAGE_KEY           = "target";
+	public static final String ERROR_PAGE_KEY            = "onerror";
+
+	public static final String OBJECT_RESOLUTION_PROPERTIES = "HtmlServlet.resolveProperties";
+
+	private static final ThreadLocalMatcher threadLocalUUIDMatcher = new ThreadLocalMatcher("[a-fA-F0-9]{32}");
+	private static final ExecutorService threadPool                = Executors.newCachedThreadPool();
+
+	private final Pattern FilenameCleanerPattern                      = Pattern.compile("[\n\r]", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL);
+	private final StructrHttpServiceConfig config                     = new StructrHttpServiceConfig();
+	private final Set<String> possiblePropertyNamesForEntityResolving = new LinkedHashSet<>();
+
+        // ... 19 lines elided ...
+	public StructrHttpServiceConfig getConfig() {
+        // ... 4 lines elided ...
+	public String getModuleName() {
+        // ... 4 lines elided ...
+	protected void doGet(final HttpServletRequest request, final HttpServletResponse response) {
+        // ... 374 lines elided ...
+	protected void doPost(final HttpServletRequest request, final HttpServletResponse response) throws ServletException, IOException {
+        // ... 5 lines elided ...
+	protected void doHead(final HttpServletRequest request, final HttpServletResponse response) {
+        // ... 268 lines elided ...
+	protected void doOptions(final HttpServletRequest request, final HttpServletResponse response) {
+        // ... 23 lines elided ...
+	protected void renderAsyncOutput(HttpServletRequest request, HttpServletResponse response, App app, RenderContext renderContext, DOMNode rootElement, final long requestStartTime) throws IOException {
+        // ... 9 lines elided ...
+			public void run() {
+        // ... 34 lines elided ...
+			public void onWritePossible() throws IOException {
+        // ... 40 lines elided ...
+			public void onError(Throwable t) {
+        // ... 19 lines elided ...
+	protected void writeOutputSteam(HttpServletResponse response, StringRenderBuffer buffer) throws IOException {
+        // ... 18 lines elided ...
+	private Page notFound(final HttpServletResponse response, final SecurityContext securityContext) throws IOException, FrameworkException {
+        // ... 27 lines elided ...
+	private AbstractNode findFirstNodeByName(final SecurityContext securityContext, final HttpServletRequest request, final String path) throws FrameworkException {
+        // ... 37 lines elided ...
+	private AbstractNode findNodeByUuid(final SecurityContext securityContext, final String uuid) throws FrameworkException {
+        // ... 20 lines elided ...
+	private File findFile(final SecurityContext securityContext, final HttpServletRequest request, final String path) throws FrameworkException {
+        // ... 23 lines elided ...
+	 * Find a partial by name (meaning a DOMNode which can not be a page - otherwise a check for Sites has to be applied)
+	 *
+	 * @param securityContext
+	 * @param name
+	 * @return
+	 * @throws FrameworkException
+	 */
+	private DOMNode findPartialByName(final SecurityContext securityContext, final String name) throws FrameworkException {
+
+		for (final DOMNode potentialPartial : StructrApp.getInstance(securityContext).nodeQuery(DOMNode.class).andName(name).not().and(DOMNode.type, "Page").getAsList()) {
+
+			if (potentialPartial.getOwnerDocumentAsSuperUser() != null) {
+				return potentialPartial;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Find a page by matching path.
+	 *
+	 * To be compatible with older versions, fallback to name-only lookup.
+	 *
+	 * @param securityContext
+	 * @param path
+	 * @param edit
+	 * @return page
+	 * @throws FrameworkException
+	 */
+	private Page findPage(final SecurityContext securityContext, final String path, final EditMode edit) throws FrameworkException {
+
+		final PropertyKey<String> pathKey = StructrApp.key(Page.class, "path");
+		final PropertyKey<String> nameKey = StructrApp.key(Page.class, "name");
+
+		final PropertyMap attributes = new PropertyMap(pathKey, path);
+		final String name = PathHelper.getName(path);
+		attributes.put(nameKey, name);
+
+		// Find pages by path or name
+		final List<Page> possiblePages = StructrApp.getInstance(securityContext).nodeQuery(Page.class)
+			.or()
+				.notBlank(pathKey)
+				.and(pathKey, path)
+				.parent()
+			.or()
+				.blank(pathKey)
+				.and(nameKey, name)
+				.parent()
+			.getAsList();
+
+		for (final Page page : possiblePages) {
+
+			if (EditMode.CONTENT.equals(edit) || isVisibleForSite(securityContext.getRequest(), page)) {
+
+				return page;
+			}
+		}
+
+		// Check direct access by UUID
+		if (name.length() == 32) {
+
+			final NodeInterface possiblePage = StructrApp.getInstance(securityContext).get(NodeInterface.class, name);
+
+			if (possiblePage != null && possiblePage instanceof Page && (EditMode.CONTENT.equals(edit) || isVisibleForSite(securityContext.getRequest(), (Page) possiblePage))) {
+
+				return (Page) possiblePage;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Find the page with the lowest non-empty position value which is visible in the
+	 * current security context and for the given site.
+	 *
+	 * @param securityContext
+	 * @param edit
+	 * @return page
+	 * @throws FrameworkException
+	 */
+	private Page findIndexPage(final SecurityContext securityContext, final EditMode edit) throws FrameworkException {
+
+		final PropertyKey<Integer> positionKey = StructrApp.key(Page.class, "position");
+
+		List<Page> possiblePages = StructrApp.getInstance(securityContext).nodeQuery(Page.class).notBlank(positionKey).sort(positionKey).getAsList();
+
+		for (Page page : possiblePages) {
+
+			if (securityContext.isVisible(page) && ((EditMode.CONTENT.equals(edit) || isVisibleForSite(securityContext.getRequest(), page)) || (page.getEnableBasicAuth() && page.isVisibleToAuthenticatedUsers()))) {
+
+				return page;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * This method checks if the current request is a user registration
+	 * confirmation, usually triggered by a user clicking on a confirmation
+	 * link in an e-mail.
+        // ... 8 lines elided ...
+	private boolean checkRegistration(final Authenticator auth, final HttpServletRequest request, final HttpServletResponse response, final String path) throws FrameworkException, IOException {
+        // ... 83 lines elided ...
+	private boolean checkResetPassword(final Authenticator auth, final HttpServletRequest request, final HttpServletResponse response, final String path) throws FrameworkException, IOException {
+        // ... 69 lines elided ...
+	private List<Linkable> findPossibleEntryPointsByUuid(final SecurityContext securityContext, final HttpServletRequest request, final String uuid) throws FrameworkException {
+        // ... 33 lines elided ...
+	private List<Linkable> findPossibleEntryPointsByPath(final SecurityContext securityContext, final HttpServletRequest request, final String path) throws FrameworkException {
+        // ... 34 lines elided ...
+	private List<Linkable> findPossibleEntryPoints(final SecurityContext securityContext, final HttpServletRequest request, final String path) throws FrameworkException {
+        // ... 25 lines elided ...
+	public static void setNoCacheHeaders(final HttpServletResponse response) {
+        // ... 6 lines elided ...
+	private void setLimitingDataObject(final SecurityContext securityContext, final HttpServletRequest request, final RenderContext renderContext) {
+        // ... 25 lines elided ...
+	private static boolean notModifiedSince(final HttpServletRequest request, HttpServletResponse response, final NodeInterface node, final boolean dontCache) {
+        // ... 62 lines elided ...
+	private void streamFile(final SecurityContext securityContext, final File file, HttpServletRequest request, HttpServletResponse response, final EditMode edit, final boolean sendContent) throws IOException {
+        // ... 119 lines elided ...
+						}
+
+						final int status = response.getStatus();
+
+						response.setStatus(status);
+
+						callbackMap.put("statusCode", status);
+					}
+
+				} catch (Throwable t) {
+
+				} finally {
+
+					if (out != null) {
+
+						try {
+							// 3: output content
+							out.flush();
+							out.close();
+
+						} catch (Throwable t) {
+						}
+					}
+
+					if (in != null) {
+						in.close();
+					}
+
+					response.setStatus(response.getStatus());
+				}
+			}
+		}
+
+
+		// WIDGET mode means "opened in frontend", which we don't want to count as an external download
+		if (!EditMode.WIDGET.equals(edit)) {
+
+			// call onDownload callback
+			try {
+
+				file.invokeMethod(securityContext, "onDownload", callbackMap, false, new EvaluationHints());
+
+			} catch (FrameworkException fex) {
+				logger.warn("", fex);
+			}
+		}
+	}
+
+	/**
+	 * Check if the given page is visible for the requested site defined by
+	 * a hostname and a port.
+	 *
+	 * @param request
+	 * @param page
+	 * @return
+	 */
+	public static boolean isVisibleForSite(final HttpServletRequest request, final Page page) {
+
+		final List<Site> sites = Iterables.toList(page.getSites());
+		if (sites == null || sites.isEmpty()) {
+
+			return true;
+		}
+
+		final String serverName = request.getServerName();
+		final int serverPort    = request.getServerPort();
+
+		boolean isVisible = false;
+
+		for (final Site site : sites) {
+
+				if (StringUtils.isBlank(serverName) || serverName.equals(site.getHostname())) {
+					isVisible = true;
+				}
+
+				final Integer sitePort = site.getPort();
+
+				if (isVisible && (sitePort == null || serverPort == sitePort)) {
+					isVisible = true;
+				}
+		}
+        // ... 5 lines elided ...
+	private void resolvePossiblePropertyNamesForObjectResolution(final ConfigurationProvider config, final Query query, final String name) {
+        // ... 56 lines elided ...
+	private HttpBasicAuthResult checkHttpBasicAuth(final SecurityContext outerSecurityContext, final HttpServletRequest request, final HttpServletResponse response, final String path) throws IOException, FrameworkException {
+        // ... 72 lines elided ...
+	private Principal getPrincipalForAuthorizationHeader(final String authHeader) {
+        // ... 38 lines elided ...
+	public static String filterMaliciousRedirects(final String source) {
+        // ... 27 lines elided ...
+	private enum AuthState {
+        // ... 3 lines elided ...
+	private static class HttpBasicAuthResult {
+        // ... 20 lines elided ...
+		public SecurityContext getSecurityContext() {
+        // ... 3 lines elided ...
+		public AuthState authState() {
+        // ... 3 lines elided ...
+		public Linkable getRootElement() {
+        // ... 4 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

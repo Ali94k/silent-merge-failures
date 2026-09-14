@@ -1,0 +1,301 @@
+UNIT progether_jadventure__e28401af85
+repo: progether_jadventure   merge: e28401af8516440716e8fe5e70ce6dcf872731ea   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/main/java/com/jadventure/game/prompts/CommandParser.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,18 +1,16 @@
+ package com.jadventure.game.prompts;
+ 
+-import com.jadventure.game.entities.Player;
+-import com.jadventure.game.QueueProvider;
+-import com.jadventure.game.DeathException;
+-
+-import java.lang.annotation.Annotation;
+ import java.lang.reflect.InvocationTargetException;
+ import java.lang.reflect.Method;
+ import java.util.TreeMap;
++
++import com.jadventure.game.DeathException;
++import com.jadventure.game.entities.Player;
+ 
+ /**
+  * CommandParser parses the game commands
+  *
+  * It parses all the commands automatically.
+  * To add a new command, you just need to make addition in the CommandCollection.
+  */
+ public class CommandParser {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,15 +1,14 @@
+ package com.jadventure.game.prompts;
+ 
+ import com.jadventure.game.entities.Player;
+ import com.jadventure.game.QueueProvider;
+ import com.jadventure.game.DeathException;
+ 
+-import java.lang.annotation.Annotation;
+ import java.lang.reflect.InvocationTargetException;
+ import java.lang.reflect.Method;
+ import java.util.TreeMap;
+ 
+ /**
+  * CommandParser parses the game commands
+  *
+  * It parses all the commands automatically.
+@@ -17,73 +16,88 @@
+  */
+ public class CommandParser {
+     Player player;
+     private TreeMap<String, Method> commandMap;
+ 
+     public CommandParser(Player player){
+         this.player = player;
+         commandMap = new TreeMap<String, Method>();
+-
+         initCommandMap();
+     }
+ 
+     // adds the command to the commandMap
+     private void initCommandMap() {
+         Method[] methods = CommandCollection.class.getMethods();
+ 
+         for(Method method: methods){
+-            if(!method.isAnnotationPresent(Command.class))
++            if (!method.isAnnotationPresent(Command.class)) {
+                 continue;
+-
++            }
+             Command annotation = method.getAnnotation(Command.class);
+             this.commandMap.put(annotation.command(), method);
+             for(String alias : annotation.aliases().split(",")){
+-                if(alias.length() == 0)
++                if (alias.length() == 0) {
+                     break;
++                }
+                 this.commandMap.put(alias, method);
+             }
+         }
+     }
+ 
+-    public boolean parse(Player player, String command, boolean continuePrompt) throws DeathException {
++    public boolean parse(Player player, String command) throws DeathException {
+         CommandCollection com = CommandCollection.getInstance();
+         com.initPlayer(player);
+ 
+-        if(command.equals("exit"))
++        if (command.equals("exit")) {
+             return false;
++        }
+ 
+         // descendingKeySet otherwise startsWith will return correspond to longer command
+         // e.g. 'de' will match startWith('d')
+-        for(String key : commandMap.descendingKeySet()) {
+-            if(command.startsWith(key)) {
++        for (String key : commandMap.descendingKeySet()) {
++            if (command.startsWith(key)) {
+                 Method method = commandMap.get(key);
+-                if(method.getParameterTypes().length == 0){
++                if (method.getParameterTypes().length == 0){
+                     try {
+-                        method.invoke(com);
+-                    } catch (IllegalAccessException e) {
+-                        e.printStackTrace();
+-                    } catch (InvocationTargetException e) {
+-                        e.printStackTrace();
+-                    }
+-                }
+-                else if(method.getParameterTypes()[0] == String.class) {
+-                    String arg = command.substring(key.length());
+-                    try {
+-                        method.invoke(com, arg);
+-                    } catch (IllegalAccessException e) {
+-                        e.printStackTrace();
+-                    } catch (InvocationTargetException e) {
++                        if (method.getAnnotation(Command.class).debug()) {
++                            if ("test".equals(player.getName())) {
++                                method.invoke(com);
++                            } else {
++                                QueueProvider.offer("Must be using test profile to debug");
++                            }
++                        } else {
++                            method.invoke(com);
++                        }
++                    } catch (IllegalAccessException | InvocationTargetException e) {
+                         if (e.getCause() instanceof DeathException) {
+                             throw (DeathException) e.getCause();
+                         } else {
+-                            e.printStackTrace();
++                            e.getCause().printStackTrace();
++                        }
++                    }
++                } else if (method.getParameterTypes()[0] == String.class) {
++                    String arg = command.substring(key.length());
++                    try {
++                        if (method.getAnnotation(Command.class).debug()) {
++                            if ("test".equals(player.getName())) {
++                                method.invoke(com, arg);
++                            } else {
++                                QueueProvider.offer("Must be using test profile to debug");
++                            }
++                        } else {
++                            method.invoke(com, arg);
++                        }
++                    } catch (IllegalAccessException | InvocationTargetException e) {
++                        if (e.getCause() instanceof DeathException) {
++                            throw (DeathException) e.getCause();
++                        } else {
++                            e.getCause().printStackTrace();
+                         }
+                     }
+                 }
+-                return continuePrompt;
++                return true;
+             }
+         }
+-
+-        return continuePrompt;
++        QueueProvider.offer("I don't know what'" + command + "' means.");
++        return true;
+     }
+-
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package com.jadventure.game.prompts;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.TreeMap;
+
+import com.jadventure.game.DeathException;
+import com.jadventure.game.entities.Player;
+
+/**
+ * CommandParser parses the game commands
+ *
+ * It parses all the commands automatically.
+ * To add a new command, you just need to make addition in the CommandCollection.
+ */
+public class CommandParser {
+    Player player;
+    private TreeMap<String, Method> commandMap;
+
+    public CommandParser(Player player){
+        this.player = player;
+        commandMap = new TreeMap<String, Method>();
+        initCommandMap();
+    }
+
+    // adds the command to the commandMap
+    private void initCommandMap() {
+        Method[] methods = CommandCollection.class.getMethods();
+
+        for(Method method: methods){
+            if (!method.isAnnotationPresent(Command.class)) {
+                continue;
+            }
+            Command annotation = method.getAnnotation(Command.class);
+            this.commandMap.put(annotation.command(), method);
+            for(String alias : annotation.aliases().split(",")){
+                if (alias.length() == 0) {
+                    break;
+                }
+                this.commandMap.put(alias, method);
+            }
+        }
+    }
+
+    public boolean parse(Player player, String command) throws DeathException {
+        CommandCollection com = CommandCollection.getInstance();
+        com.initPlayer(player);
+
+        if (command.equals("exit")) {
+            return false;
+        }
+
+        // descendingKeySet otherwise startsWith will return correspond to longer command
+        // e.g. 'de' will match startWith('d')
+        for (String key : commandMap.descendingKeySet()) {
+            if (command.startsWith(key)) {
+                Method method = commandMap.get(key);
+                if (method.getParameterTypes().length == 0){
+                    try {
+                        if (method.getAnnotation(Command.class).debug()) {
+                            if ("test".equals(player.getName())) {
+                                method.invoke(com);
+                            } else {
+                                QueueProvider.offer("Must be using test profile to debug");
+                            }
+                        } else {
+                            method.invoke(com);
+                        }
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        if (e.getCause() instanceof DeathException) {
+                            throw (DeathException) e.getCause();
+                        } else {
+                            e.getCause().printStackTrace();
+                        }
+                    }
+                } else if (method.getParameterTypes()[0] == String.class) {
+                    String arg = command.substring(key.length());
+                    try {
+                        if (method.getAnnotation(Command.class).debug()) {
+                            if ("test".equals(player.getName())) {
+                                method.invoke(com, arg);
+                            } else {
+                                QueueProvider.offer("Must be using test profile to debug");
+                            }
+                        } else {
+                            method.invoke(com, arg);
+                        }
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        if (e.getCause() instanceof DeathException) {
+                            throw (DeathException) e.getCause();
+                        } else {
+                            e.getCause().printStackTrace();
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+        QueueProvider.offer("I don't know what'" + command + "' means.");
+        return true;
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,9 +1,12 @@
+ package com.jadventure.game.prompts;
++
++import com.jadventure.game.QueueProvider;
++import com.jadventure.game.DeathException;
+ 
+ import java.lang.reflect.InvocationTargetException;
+ import java.lang.reflect.Method;
+ import java.util.TreeMap;
+ 
+ import com.jadventure.game.DeathException;
+ import com.jadventure.game.entities.Player;
+ 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

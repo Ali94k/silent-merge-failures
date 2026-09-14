@@ -1,0 +1,67 @@
+{
+  "type": "object",
+  "properties": {
+    "unit_id": { "type": "string" },
+    "per_side_changes": {
+      "type": "object",
+      "properties": {
+        "ours": { "type": "string" },
+        "theirs": { "type": "string" }
+      },
+      "required": ["ours", "theirs"],
+      "additionalProperties": false
+    },
+    "interaction_point": {
+      "type": "string",
+      "description": "Where the two sides' changes touch (file/method/state element); \"\" if none found"
+    },
+    "mechanism": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "1-3 sentence mechanism draft; \"\" for escape-hatch verdicts"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "1-4 kebab-case mechanism tags (open vocabulary); [] for escape-hatch verdicts"
+        },
+        "merge_induced": { "type": "string", "enum": ["yes", "unclear", "no"] },
+        "counterfactual": {
+          "type": "string",
+          "description": "Why neither parent alone would exhibit the failure; \"\" for escape-hatch verdicts"
+        }
+      },
+      "required": ["summary", "tags", "merge_induced", "counterfactual"],
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": ["ours-diff", "theirs-diff", "merged", "dev-diff", "compile-delta"]
+          },
+          "quote": { "type": "string", "description": "Verbatim substring of the input, <= 3 lines" },
+          "role": { "type": "string", "description": "What this quote establishes in the mechanism" }
+        },
+        "required": ["source", "quote", "role"],
+        "additionalProperties": false
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["attributed", "none-identified", "indeterminate", "flaky-suspect"]
+    },
+    "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+    "notes": { "type": "string" }
+  },
+  "required": [
+    "unit_id", "per_side_changes", "interaction_point", "mechanism",
+    "evidence", "verdict", "confidence", "notes"
+  ],
+  "additionalProperties": false
+}

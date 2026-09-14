@@ -1,0 +1,79 @@
+<ResearchSummary>
+    <ThesisContext>
+        <Overview>The research investigates "Semantic Merge Conflicts"—situations where concurrent code changes merge cleanly at the textual level (via standard Git merge) but introduce critical logical or semantic bugs when combined. The research provides a dataset of such conflicts and a prototype Python-based Git merge driver that uses static analysis (Joern/CPG) to detect and reject these faulty merges.</Overview>
+    </ThesisContext>
+
+    <Project name="semantic_merge_driver">
+        <Description>A custom Git merge driver written in Python that extends standard textual merging with an automated semantic analysis pipeline. It evaluates the merged code for logic bugs and rejects the merge if critical issues are found.</Description>
+        
+        <Architecture>
+            <Component name="SemanticMergeDriver">
+                <File>core/driver.py</File>
+                <Role>The entry point that orchestrates the merge. It first executes `git merge-file` to perform a standard text merge. If successful, it loads and runs semantic strategies. If any strategy returns critical issues, it rejects the merge with an exit code of 1.</Role>
+            </Component>
+            
+            <Component name="Interfaces">
+                <File>core/interfaces.py</File>
+                <Role>Defines the `MergeStrategy` abstract base class requiring an `analyze` method, and dataclasses for `AnalysisResult` and `Issue`.</Role>
+            </Component>
+            
+            <Component name="StrategyLoader">
+                <File>core/plugin_loader.py</File>
+                <Role>Dynamically walks through the `strategies` package to discover and instantiate classes that implement the `MergeStrategy` interface.</Role>
+            </Component>
+        </Architecture>
+
+        <ImplementedStrategies>
+            <Strategy name="JoernInfiniteLoop">
+                <File>strategies/joern_strategies/infinite_loop.py</File>
+                <Mechanism>Uses `joern-parse` to generate a Code Property Graph (CPG) of the merged file. It executes a Scala query to detect loops with constant true conditions (e.g., `while(1)`).</Mechanism>
+            </Strategy>
+            
+            <Strategy name="JoernInvalidLoopBounds">
+                <File>strategies/joern_strategies/invalid_loop_bounds.py</File>
+                <Mechanism>Parses the merged code into a CPG and uses a Scala script to inspect `FOR` loop headers. It identifies dead code loops where the assignment start value is inherently greater than the comparison end value.</Mechanism>
+            </Strategy>
+        </ImplementedStrategies>
+    </Project>
+
+    <Project name="merge-examples">
+        <Description>A dataset of Java examples demonstrating specific categories of semantic merge conflicts. These files act as test cases and motivation for the semantic merge driver.</Description>
+        
+        <SemanticConflictCategories>
+            <Category name="Atomic Updates">
+                <Directory>atamic_updates</Directory>
+                <Conflict>Developer A raises the minimum bound to 10. Developer B concurrently lowers the maximum bound to 5. Textual merge succeeds, but the resulting state violates the logical invariant `min &lt;= max`.</Conflict>
+            </Category>
+
+            <Category name="Control Flow Interference (Short Circuit)">
+                <Directory>cfi_short_circute</Directory>
+                <Conflict>Developer A adds a guard clause that exits early if `orderId` is null. Developer B adds an audit log intended to run for every attempt. Depending on text placement, the early return might improperly bypass the audit log.</Conflict>
+            </Category>
+
+            <Category name="Data Flow Interference (Stale Read)">
+                <Directory>dfi_stale_read</Directory>
+                <Conflict>Developer A clears a list of `pendingTasks` to reset state. Developer B concurrently introduces a loop that processes the items in `pendingTasks`. The merge results in an iteration over an empty list.</Conflict>
+            </Category>
+
+            <Category name="Exception Handling Divergence">
+                <Directory>exception_handling</Directory>
+                <Conflict>Developer A narrows a catch block from `Exception` to specifically `IOException`. Developer B adds a method call within the try block that throws a `SQLException`. The merged code either fails to compile or results in an unhandled exception.</Conflict>
+            </Category>
+
+            <Category name="Loop Semantics Divergence">
+                <Directory>loop_semantics_divergence</Directory>
+                <Conflict>Developer A changes a `while` loop bound from 10 to 100. Developer B introduces a `continue` statement inside the loop that skips the manual `i++` counter increment. The text merges cleanly, but creates an infinite loop.</Conflict>
+            </Category>
+
+            <Category name="Method Rename">
+                <Directory>method_rename</Directory>
+                <Conflict>Developer A renames `createUser` to `registerUser` and updates existing call sites. Developer B adds a new method `createAdmin` that calls the old `createUser` method. The merged code suffers from a dangling reference.</Conflict>
+            </Category>
+
+            <Category name="Scope Capture (Variable Shadowing)">
+                <Directory>scope_capture</Directory>
+                <Conflict>Developer A introduces a local variable `rate` with a value of 0.20. Developer B introduces validation logic checking if `rate &gt; 0.10`, assuming it is referring to the global class field `rate = 0.05`. The merge results in Developer B's logic inadvertently evaluating Developer A's local variable, throwing an erroneous exception.</Conflict>
+            </Category>
+        </SemanticConflictCategories>
+    </Project>
+</ResearchSummary>

@@ -1,0 +1,514 @@
+UNIT guhilling_cdi-test__04817bb259
+repo: guhilling_cdi-test   merge: 04817bb259d3c82197bc7e163c7ccbfb76a5e7f2   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: cdi-test-core/src/main/java/de/hilling/junit/cdi/CdiTestJunitExtension.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,23 +1,23 @@
+ package de.hilling.junit.cdi;
++
++import jakarta.inject.Inject;
++import jakarta.inject.Qualifier;
+ 
+ import de.hilling.junit.cdi.annotations.ActivatableTestImplementation;
+ import de.hilling.junit.cdi.lifecycle.LifecycleNotifier;
+ import de.hilling.junit.cdi.scope.TestState;
+ import de.hilling.junit.cdi.scope.InvocationTargetManager;
+ import de.hilling.junit.cdi.scope.context.TestContext;
+ import de.hilling.junit.cdi.util.LoggerConfigurator;
+ import de.hilling.junit.cdi.util.ReflectionsUtils;
+ 
+ import org.junit.jupiter.api.extension.*;
+ import org.mockito.Mockito;
+-
+-import javax.inject.Inject;
+-import javax.inject.Qualifier;
+ 
+ import java.lang.annotation.Annotation;
+ import java.lang.reflect.Field;
+ import java.util.Arrays;
+ import java.util.Optional;
+ 
+ /**
+  * JUnit 5 extension for cdi lifecycle management and injection into test cases. Detailed documentation available at <a
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -6,36 +6,44 @@
+ import de.hilling.junit.cdi.scope.InvocationTargetManager;
+ import de.hilling.junit.cdi.scope.context.TestContext;
+ import de.hilling.junit.cdi.util.LoggerConfigurator;
+ import de.hilling.junit.cdi.util.ReflectionsUtils;
+ 
+ import org.junit.jupiter.api.extension.*;
+ import org.mockito.Mockito;
+ 
++import javax.enterprise.inject.spi.Bean;
++import javax.enterprise.inject.spi.BeanManager;
+ import javax.inject.Inject;
+ import javax.inject.Qualifier;
+ 
+ import java.lang.annotation.Annotation;
+ import java.lang.reflect.Field;
+ import java.util.Arrays;
++import java.util.LinkedList;
++import java.util.List;
+ import java.util.Optional;
++import java.util.logging.Logger;
+ 
+ /**
+  * JUnit 5 extension for cdi lifecycle management and injection into test cases. Detailed documentation available at <a
+  * href="https://cdi-test.hilling.de">Github Pages</a>
+  * <p>
+  * {@link Mockito} will be automatically added to the lifecycle so the {@link Mockito} JUnit Extension should <em>not</em> be added to the test
+  * additionally.
+  * </p>
+  */
+ public class CdiTestJunitExtension implements TestInstancePostProcessor, BeforeAllCallback, AfterAllCallback, BeforeEachCallback, AfterEachCallback {
+ 
++    private static final Logger LOG;
++
+     static {
+         LoggerConfigurator.configure();
++        LOG = Logger.getLogger(CdiTestJunitExtension.class.getName());
+     }
+ 
+     private final InvocationTargetManager invocationTargetManager;
+     private final ContextControlWrapper   contextControl = ContextControlWrapper.getInstance();
+ 
+     private final LifecycleNotifier lifecycleNotifier;
+     private       TestEnvironment   testEnvironment;
+ 
+@@ -55,41 +63,45 @@
+         Mockito.framework()
+                 .removeListener(invocationTargetManager);
+     }
+ 
+     @Override
+     public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
+         testEnvironment = contextControl.getContextualReference(TestEnvironment.class);
+         testEnvironment.setTestInstance(testInstance);
++        TestContext.activate();
+         for (Field field : ReflectionsUtils.getAllFields(testInstance.getClass())) {
+             if (field.isAnnotationPresent(Inject.class)) {
+                 Optional<Annotation> qualifier = Arrays.stream(field.getDeclaredAnnotations()).filter(this::isQualifier).findFirst();
+-                setField(testInstance, field, qualifier);
++                if(qualifier.isPresent()) {
++                    setField(testInstance, field, new Annotation[]{qualifier.get()});
++                } else {
++                    setField(testInstance, field, new Annotation[0]);
++                }
+             }
+         }
+     }
+ 
+     private boolean isQualifier(Annotation annotation) {
+         return annotation.annotationType().isAnnotationPresent(Qualifier.class);
+     }
+ 
+-    private void setField(Object testInstance, Field field, Optional<Annotation> qualifierAnnotation) {
+-        Object bean;
+-        if(qualifierAnnotation.isPresent()) {
+-            bean = contextControl.getContextualReference(field.getType(), qualifierAnnotation.get());
+-        } else {
+-            bean = contextControl.getContextualReference(field.getType());
++    private void setField(Object testInstance, Field field, Annotation[] annotations) {
++        Object bean = contextControl.getContextualReference(field.getType(), annotations);
++        if(!contextControl.hasNormalScope(field.getType())) {
++            LOG.warning("injecting bean with scope 'dependant' '" + bean.getClass().getCanonicalName()
++                        + "' into test class '" + testInstance.getClass().getCanonicalName()
++                        + "' which might lead to unexpected behaviour");
+         }
+         ReflectionsUtils.setField(testInstance, bean, field);
+     }
+ 
+     @Override
+     public void beforeEach(ExtensionContext context) {
+-        TestContext.activate();
+         testEnvironment.setTestMethod(context.getRequiredTestMethod());
+         testEnvironment.setTestName(context.getDisplayName());
+         lifecycleNotifier.notify(TestState.STARTING, context);
+         contextControl.startContexts();
+         lifecycleNotifier.notify(TestState.STARTED, context);
+         for (Field field : ReflectionsUtils.getAllFields(testEnvironment.getTestClass())) {
+             if (isTestActivatable(field)) {
+                 invocationTargetManager.activateAlternative(field.getType());
+--- MERGED RESULT (mergiraf; full) ---
+package de.hilling.junit.cdi;
+
+import jakarta.inject.Inject;
+import jakarta.inject.Qualifier;
+
+import de.hilling.junit.cdi.annotations.ActivatableTestImplementation;
+import de.hilling.junit.cdi.lifecycle.LifecycleNotifier;
+import de.hilling.junit.cdi.scope.TestState;
+import de.hilling.junit.cdi.scope.InvocationTargetManager;
+import de.hilling.junit.cdi.scope.context.TestContext;
+import de.hilling.junit.cdi.util.LoggerConfigurator;
+import de.hilling.junit.cdi.util.ReflectionsUtils;
+
+import org.junit.jupiter.api.extension.*;
+import org.mockito.Mockito;
+
+import javax.enterprise.inject.spi.Bean;
+import javax.enterprise.inject.spi.BeanManager;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.logging.Logger;
+
+/**
+ * JUnit 5 extension for cdi lifecycle management and injection into test cases. Detailed documentation available at <a
+ * href="https://cdi-test.hilling.de">Github Pages</a>
+ * <p>
+ * {@link Mockito} will be automatically added to the lifecycle so the {@link Mockito} JUnit Extension should <em>not</em> be added to the test
+ * additionally.
+ * </p>
+ */
+public class CdiTestJunitExtension implements TestInstancePostProcessor, BeforeAllCallback, AfterAllCallback, BeforeEachCallback, AfterEachCallback {
+
+    private static final Logger LOG;
+
+    static {
+        LoggerConfigurator.configure();
+        LOG = Logger.getLogger(CdiTestJunitExtension.class.getName());
+    }
+
+    private final InvocationTargetManager invocationTargetManager;
+    private final ContextControlWrapper   contextControl = ContextControlWrapper.getInstance();
+
+    private final LifecycleNotifier lifecycleNotifier;
+    private       TestEnvironment   testEnvironment;
+
+    public CdiTestJunitExtension() {
+        invocationTargetManager = contextControl.getContextualReference(InvocationTargetManager.class);
+        lifecycleNotifier = contextControl.getContextualReference(LifecycleNotifier.class);
+    }
+
+    @Override
+    public void beforeAll(ExtensionContext context) {
+        Mockito.framework()
+                .addListener(invocationTargetManager);
+    }
+
+    @Override
+    public void afterAll(ExtensionContext context) {
+        Mockito.framework()
+                .removeListener(invocationTargetManager);
+    }
+
+    @Override
+    public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
+        testEnvironment = contextControl.getContextualReference(TestEnvironment.class);
+        testEnvironment.setTestInstance(testInstance);
+        TestContext.activate();
+        for (Field field : ReflectionsUtils.getAllFields(testInstance.getClass())) {
+            if (field.isAnnotationPresent(Inject.class)) {
+                Optional<Annotation> qualifier = Arrays.stream(field.getDeclaredAnnotations()).filter(this::isQualifier).findFirst();
+                if(qualifier.isPresent()) {
+                    setField(testInstance, field, new Annotation[]{qualifier.get()});
+                } else {
+                    setField(testInstance, field, new Annotation[0]);
+                }
+            }
+        }
+    }
+
+    private boolean isQualifier(Annotation annotation) {
+        return annotation.annotationType().isAnnotationPresent(Qualifier.class);
+    }
+
+    private void setField(Object testInstance, Field field, Annotation[] annotations) {
+        Object bean = contextControl.getContextualReference(field.getType(), annotations);
+        if(!contextControl.hasNormalScope(field.getType())) {
+            LOG.warning("injecting bean with scope 'dependant' '" + bean.getClass().getCanonicalName()
+                        + "' into test class '" + testInstance.getClass().getCanonicalName()
+                        + "' which might lead to unexpected behaviour");
+        }
+        ReflectionsUtils.setField(testInstance, bean, field);
+    }
+
+    @Override
+    public void beforeEach(ExtensionContext context) {
+        testEnvironment.setTestMethod(context.getRequiredTestMethod());
+        testEnvironment.setTestName(context.getDisplayName());
+        lifecycleNotifier.notify(TestState.STARTING, context);
+        contextControl.startContexts();
+        lifecycleNotifier.notify(TestState.STARTED, context);
+        for (Field field : ReflectionsUtils.getAllFields(testEnvironment.getTestClass())) {
+            if (isTestActivatable(field)) {
+                invocationTargetManager.activateAlternative(field.getType());
+            }
+        }
+    }
+
+    @Override
+    public void afterEach(ExtensionContext context) {
+        lifecycleNotifier.notify(TestState.FINISHING, context);
+        contextControl.stopContexts();
+        lifecycleNotifier.notify(TestState.FINISHED, context);
+        TestContext.deactivate();
+    }
+
+    private boolean isTestActivatable(Field field) {
+        Class<?> type = field.getType();
+        return type.isAnnotationPresent(ActivatableTestImplementation.class);
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -8,19 +8,16 @@
+ import de.hilling.junit.cdi.scope.TestState;
+ import de.hilling.junit.cdi.scope.InvocationTargetManager;
+ import de.hilling.junit.cdi.scope.context.TestContext;
+ import de.hilling.junit.cdi.util.LoggerConfigurator;
+ import de.hilling.junit.cdi.util.ReflectionsUtils;
+ 
+ import org.junit.jupiter.api.extension.*;
+ import org.mockito.Mockito;
+-
+-import javax.enterprise.inject.spi.Bean;
+-import javax.enterprise.inject.spi.BeanManager;
+ 
+ import java.lang.annotation.Annotation;
+ import java.lang.reflect.Field;
+ import java.util.Arrays;
+ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Optional;
+ import java.util.logging.Logger;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package javax.enterprise.inject.spi does not exist
+[RESOLVE] package javax.enterprise.inject.spi does not exist
+
+=== FILE 2/3: cdi-test-core/src/main/java/de/hilling/junit/cdi/ContextControlWrapper.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,17 +1,17 @@
+ package de.hilling.junit.cdi;
++
++import jakarta.enterprise.inject.spi.Bean;
+ 
+ import static java.util.logging.Level.INFO;
+ 
+ import java.lang.annotation.Annotation;
+ import java.util.Set;
+ import java.util.logging.Logger;
+-
+-import javax.enterprise.inject.spi.Bean;
+ 
+ import org.jboss.weld.construction.api.WeldCreationalContext;
+ import org.jboss.weld.environment.se.Weld;
+ import org.jboss.weld.environment.se.WeldContainer;
+ import org.jboss.weld.manager.api.WeldManager;
+ 
+ import de.hilling.junit.cdi.annotations.BypassTestInterceptor;
+ import de.hilling.junit.cdi.util.UserLogger;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -48,20 +48,30 @@
+             throw new CdiTestException("couldn't start weld");
+         }
+         weldManager = (WeldManager) weldContainer.getBeanManager();
+         contextControl = getContextualReference(ContextControl.class);
+     }
+ 
+     @SuppressWarnings({ "unchecked" })
+     public <T> T getContextualReference(Class<T> beanType, Annotation ... qualifiers) {
++        Bean<T> bean = resolveBean(beanType, qualifiers);
+         WeldCreationalContext<T> creationalContext = weldManager.createCreationalContext(null);
++        return (T) weldManager.getReference(bean, beanType, creationalContext);
++    }
++
++    @SuppressWarnings({ "unchecked" })
++    private <T> Bean<T> resolveBean(Class<T> beanType, Annotation[] qualifiers) {
+         Set<Bean<?>> beans = weldManager.getBeans(beanType, qualifiers);
+-        Bean<T> bean = (Bean<T>) weldManager.resolve(beans);
+-        return (T) weldManager.getReference(bean, beanType, creationalContext);
++        return (Bean<T>) weldManager.resolve(beans);
++    }
++
++    public <T> boolean hasNormalScope(Class<T> beanType, Annotation ... qualifiers) {
++        Class<? extends Annotation> bean = resolveBean(beanType, qualifiers).getScope();
++        return weldManager.isNormalScope(bean);
+     }
+ 
+     public void startContexts() {
+         contextControl.startContexts();
+     }
+ 
+     public void stopContexts() {
+         contextControl.stopContexts();
+--- MERGED RESULT (mergiraf; full) ---
+package de.hilling.junit.cdi;
+
+import jakarta.enterprise.inject.spi.Bean;
+
+import static java.util.logging.Level.INFO;
+
+import java.lang.annotation.Annotation;
+import java.util.Set;
+import java.util.logging.Logger;
+
+import org.jboss.weld.construction.api.WeldCreationalContext;
+import org.jboss.weld.environment.se.Weld;
+import org.jboss.weld.environment.se.WeldContainer;
+import org.jboss.weld.manager.api.WeldManager;
+
+import de.hilling.junit.cdi.annotations.BypassTestInterceptor;
+import de.hilling.junit.cdi.util.UserLogger;
+
+/**
+ * Singleton for booting the container and starting and stopping the standard CDI contexts.
+ */
+@BypassTestInterceptor
+public class ContextControlWrapper {
+    private static final Logger LOG = UserLogger.getInstance();
+
+    private static final ContextControlWrapper INSTANCE = new ContextControlWrapper();
+    private final WeldManager    weldManager;
+    private final ContextControl contextControl;
+
+    /**
+     * Returns the singleton.
+     * The first invocation of this method will boot the container, if it's not already running.
+     *
+     * @return the single instance of this class
+     */
+    public static ContextControlWrapper getInstance() {
+        return INSTANCE;
+    }
+
+    private ContextControlWrapper() {
+        Weld weld = new Weld();
+        LOG.info("booting cdi container");
+        long start = System.currentTimeMillis();
+        WeldContainer weldContainer = weld.initialize();
+        long end = System.currentTimeMillis();
+        LOG.log(INFO, "booting cdi container finished in {0} ms", end - start);
+        if(!weldContainer.isRunning()) {
+            throw new CdiTestException("couldn't start weld");
+        }
+        weldManager = (WeldManager) weldContainer.getBeanManager();
+        contextControl = getContextualReference(ContextControl.class);
+    }
+
+    @SuppressWarnings({ "unchecked" })
+    public <T> T getContextualReference(Class<T> beanType, Annotation ... qualifiers) {
+        Bean<T> bean = resolveBean(beanType, qualifiers);
+        WeldCreationalContext<T> creationalContext = weldManager.createCreationalContext(null);
+        return (T) weldManager.getReference(bean, beanType, creationalContext);
+    }
+
+    @SuppressWarnings({ "unchecked" })
+    private <T> Bean<T> resolveBean(Class<T> beanType, Annotation[] qualifiers) {
+        Set<Bean<?>> beans = weldManager.getBeans(beanType, qualifiers);
+        return (Bean<T>) weldManager.resolve(beans);
+    }
+
+    public <T> boolean hasNormalScope(Class<T> beanType, Annotation ... qualifiers) {
+        Class<? extends Annotation> bean = resolveBean(beanType, qualifiers).getScope();
+        return weldManager.isNormalScope(bean);
+    }
+
+    public void startContexts() {
+        contextControl.startContexts();
+    }
+
+    public void stopContexts() {
+        contextControl.stopContexts();
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: integration-tests/test-jee/src/main/java/de/hilling/junit/cdi/jpa/RequestScopedUserService.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,15 +1,13 @@
+ package de.hilling.junit.cdi.jpa;
+ 
+-import javax.ejb.Startup;
+-import javax.enterprise.context.RequestScoped;
+-import javax.inject.Inject;
+-import javax.inject.Singleton;
+-import javax.persistence.EntityManager;
++import jakarta.enterprise.context.RequestScoped;
++import jakarta.inject.Inject;
++import jakarta.persistence.EntityManager;
+ 
+ @RequestScoped
+ public class RequestScopedUserService {
+ 
+     @Inject
+     private EntityManager entityManager;
+ 
+     public long addUser(UserEntity userEntity) {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,14 +1,12 @@
+ package de.hilling.junit.cdi.jpa;
+ 
+-import javax.ejb.Startup;
+ import javax.enterprise.context.RequestScoped;
+ import javax.inject.Inject;
+-import javax.inject.Singleton;
+ import javax.persistence.EntityManager;
+ 
+ @RequestScoped
+ public class RequestScopedUserService {
+ 
+     @Inject
+     private EntityManager entityManager;
+ 
+--- MERGED RESULT (mergiraf; full) ---
+package de.hilling.junit.cdi.jpa;
+
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+
+@RequestScoped
+public class RequestScopedUserService {
+
+    @Inject
+    private EntityManager entityManager;
+
+    public long addUser(UserEntity userEntity) {
+        entityManager.persist(userEntity);
+        return userEntity.getId();
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

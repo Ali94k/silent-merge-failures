@@ -1,0 +1,1270 @@
+UNIT sander2798_enderstone__df0826f63b
+repo: sander2798_enderstone   merge: df0826f63b41377eed847f6a44bcf7e474384843   stratum: B
+files shown: 4 of 4 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/4: src/org/enderstone/server/Main.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,10 +1,14 @@
+ package org.enderstone.server;
+ 
++import io.netty.bootstrap.ServerBootstrap;
++import io.netty.channel.EventLoopGroup;
++import io.netty.channel.nio.NioEventLoopGroup;
++import io.netty.channel.socket.nio.NioServerSocketChannel;
+ import java.awt.image.BufferedImage;
+ import java.io.ByteArrayOutputStream;
+ import java.io.File;
+ import java.io.FileInputStream;
+ import java.io.FileNotFoundException;
+ import java.io.FileOutputStream;
+ import java.io.IOException;
+ import java.io.InputStream;
+@@ -14,33 +18,33 @@
+ import java.util.Collections;
+ import java.util.Date;
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Properties;
+ import java.util.Random;
+ import java.util.Set;
+ import java.util.concurrent.CopyOnWriteArrayList;
++import javax.imageio.ImageIO;
++import javax.xml.bind.DatatypeConverter;
++import org.enderstone.server.chat.Message;
+ import org.enderstone.server.commands.CommandMap;
+ import org.enderstone.server.commands.enderstone.PingCommand;
++import org.enderstone.server.commands.enderstone.QuitCommand;
++import org.enderstone.server.commands.enderstone.VersionCommand;
++import org.enderstone.server.commands.vanila.KillCommand;
++import org.enderstone.server.commands.vanila.StopCommand;
+ import org.enderstone.server.commands.vanila.TeleportCommand;
+-import org.enderstone.server.commands.enderstone.VersionCommand;
+-import org.enderstone.server.commands.vanila.StopCommand;
+ import org.enderstone.server.commands.vanila.TellCommand;
+ import org.enderstone.server.entity.EnderPlayer;
++import org.enderstone.server.packet.Packet;
+ import org.enderstone.server.packet.play.PacketKeepAlive;
+-import org.enderstone.server.packet.play.PacketOutUpdateHealth;
++import org.enderstone.server.packet.play.PacketOutChatMessage;
+ import org.enderstone.server.regions.EnderWorld;
+ import org.enderstone.server.uuid.UUIDFactory;
+-import io.netty.bootstrap.ServerBootstrap;
+-import io.netty.channel.EventLoopGroup;
+-import io.netty.channel.nio.NioEventLoopGroup;
+-import io.netty.channel.socket.nio.NioServerSocketChannel;
+-import javax.imageio.ImageIO;
+-import javax.xml.bind.DatatypeConverter;
+ 
+ public class Main implements Runnable {
+ 
+ 	public static final String NAME = "Enderstone";
+ 	public static final String VERSION = "1.0.0";
+ 	public static final String PROTOCOL_VERSION = "1.7.6";
+ 	private static final int EXCEPTED_SLEEP_TIME = 1000 / 20;
+ 	private static final int CANT_KEEP_UP_TIMEOUT = -10000;
+@@ -48,17 +52,17 @@
+ 	private static final int MAX_SLEEP = 100;
+ 	public static final Set<Integer> PROTOCOL = Collections.unmodifiableSet(new HashSet<Integer>() {
+ 		private static final long serialVersionUID = 1L;
+ 
+ 		{
+ 			this.add(5); // 1.7.9
+ 		}
+ 	});
+-	public static final String[] AUTHORS = new String[] { "bigteddy98", "ferrybig", "timbayens" };
++	public static final String[] AUTHORS = new String[]{"bigteddy98", "ferrybig", "timbayens"};
+ 	public static final Random random = new Random();
+ 	public volatile Thread mainThread;
+ 	public final List<Thread> listenThreads = new CopyOnWriteArrayList<>();
+ 	public boolean onlineMode = false;
+ 
+ 	public Properties prop = null;
+ 	public UUIDFactory uuidFactory = new UUIDFactory();
+ 	public String FAVICON = null;
+@@ -69,31 +73,36 @@
+ 
+ 	{
+ 		commands = new CommandMap();
+ 		commands.registerCommand(new TellCommand());
+ 		commands.registerCommand(new PingCommand());
+ 		commands.registerCommand(new VersionCommand());
+ 		commands.registerCommand(new TeleportCommand());
+ 		commands.registerCommand(new StopCommand());
++		commands.registerCommand(new KillCommand());
++		commands.registerCommand(new QuitCommand());
+ 	}
+ 
+ 	private static Main instance;
+ 
+ 	public final List<EnderPlayer> onlinePlayers = new ArrayList<>();
+ 	private final List<Runnable> sendToMainThread = Collections.synchronizedList(new ArrayList<Runnable>());
+ 
+ 	public static Main getInstance() {
+ 		return instance;
+ 	}
+ 
+ 	public void sendToMainThread(Runnable run) {
+-		synchronized (sendToMainThread) {
+-			sendToMainThread.add(run);
+-		}
++		if (isCurrentThreadMainThread())
++			run.run();
++		else
++			synchronized (sendToMainThread) {
++				sendToMainThread.add(run);
++			}
+ 	}
+ 
+ 	public static void main(String[] args) {
+ 		new Main().run();
+ 	}
+ 
+ 	@Override
+ 	public void run() {
+@@ -112,17 +121,17 @@
+ 			EnderLogger.info("server-icon.png not found!");
+ 		} catch (IOException e) {
+ 			EnderLogger.warn("Error while reading server-icon.png!");
+ 			EnderLogger.exception(e);
+ 		}
+ 
+ 		ThreadGroup nettyListeners = new ThreadGroup(Thread.currentThread().getThreadGroup(), "Netty Listeners");
+ 		EnderLogger.info("Starting Netty listeners... [" + this.port + "]");
+-		for (final int nettyPort : new int[] { this.port }) {
++		for (final int nettyPort : new int[]{this.port}) {
+ 
+ 			Thread t;
+ 			(t = new Thread(nettyListeners, new Runnable() {
+ 
+ 				@Override
+ 				public void run() {
+ 					EnderLogger.info("[Netty] Started Netty Server at port " + nettyPort + "...");
+ 					EventLoopGroup bossGroup = new NioEventLoopGroup();
+@@ -302,31 +311,37 @@
+ 		if ((latestKeepAlive++ & 0b0011_1111) == 0) { // faster than % 64 == 0
+ 			for (EnderPlayer p : onlinePlayers) {
+ 				p.getNetworkManager().sendPacket(new PacketKeepAlive(p.keepAliveID = random.nextInt(Integer.MAX_VALUE)));
+ 			}
+ 		}
+ 
+ 		if ((latestChunkUpdate++ & 0b0001_1111) == 0) { // faster than % 31 == 0
+ 			for (EnderPlayer p : onlinePlayers) {
+-				if(p.isDead()) 
+-				{
++				if (p.isDead()) {
+ 					p.networkManager.forcePacketFlush();
+ 					continue;
+ 				}
+ 				mainWorld.doChunkUpdatesForPlayer(p, p.chunkInformer, Math.min(p.clientSettings.getRenderDistance() - 1, MAX_VIEW_DISTANCE));
+ 				p.updatePlayers(onlinePlayers);
+ 			}
+ 			this.mainWorld.updateEntities(onlinePlayers);
+ 		}
+ 	}
++	
++	public void broadcastMessage(Message message)
++	{
++		Packet p = new PacketOutChatMessage(message);
++		for (EnderPlayer player : Main.getInstance().onlinePlayers) {
++			player.getNetworkManager().sendPacket(p);
++		}
++	}
+ 
+ 	/**
+-	 * Schedule a server shutdown, calling this methodes says to the main thread
+-	 * that the server need to shutdown
++	 * Schedule a server shutdown, calling this methodes says to the main thread that the server need to shutdown
+ 	 */
+ 	public void scheduleShutdown() {
+ 		this.mainThread.interrupt();
+ 		isRunning = false;
+ 	}
+ 
+ 	/**
+ 	 * Any mainthread-shutdown logic belongs to this method
+@@ -357,9 +372,13 @@
+ 	public EnderPlayer getPlayer(int entityId) {
+ 		for (EnderPlayer ep : this.onlinePlayers) {
+ 			if (ep.getEntityId() == entityId) {
+ 				return ep;
+ 			}
+ 		}
+ 		return null;
+ 	}
++
++	public static boolean isCurrentThreadMainThread() {
++		return Main.getInstance().mainThread == Thread.currentThread();
++	}
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -45,17 +45,17 @@
+ 	private static final int EXCEPTED_SLEEP_TIME = 1000 / 20;
+ 	private static final int CANT_KEEP_UP_TIMEOUT = -10000;
+ 	private static final int MAX_VIEW_DISTANCE = 10;
+ 	private static final int MAX_SLEEP = 100;
+ 	public static final Set<Integer> PROTOCOL = Collections.unmodifiableSet(new HashSet<Integer>() {
+ 		private static final long serialVersionUID = 1L;
+ 
+ 		{
+-			this.add(5); // 1.7.9
++			this.add(47); // 1.8
+ 		}
+ 	});
+ 	public static final String[] AUTHORS = new String[] { "bigteddy98", "ferrybig", "timbayens" };
+ 	public static final Random random = new Random();
+ 	public volatile Thread mainThread;
+ 	public final List<Thread> listenThreads = new CopyOnWriteArrayList<>();
+ 	public boolean onlineMode = false;
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -324,17 +324,17 @@
+ 				p.updatePlayers(onlinePlayers);
+ 			}
+ 			this.mainWorld.updateEntities(onlinePlayers);
+ 		}
+ 	}
+ 	
+ 	public void broadcastMessage(Message message)
+ 	{
+-		Packet p = new PacketOutChatMessage(message);
++		Packet p = new PacketOutChatMessage(message, (byte) 0);
+ 		for (EnderPlayer player : Main.getInstance().onlinePlayers) {
+ 			player.getNetworkManager().sendPacket(p);
+ 		}
+ 	}
+ 
+ 	/**
+ 	 * Schedule a server shutdown, calling this methodes says to the main thread that the server need to shutdown
+ 	 */
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/4: src/org/enderstone/server/entity/EnderPlayer.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -7,25 +7,23 @@
+ import java.util.Set;
+ import java.util.UUID;
+ import org.enderstone.server.EnderLogger;
+ import org.enderstone.server.Location;
+ import org.enderstone.server.Main;
+ import org.enderstone.server.Utill;
+ import org.enderstone.server.chat.ChatColor;
+ import org.enderstone.server.chat.Message;
++import org.enderstone.server.chat.SimpleMessage;
+ import org.enderstone.server.commands.Command;
+ import org.enderstone.server.commands.CommandSender;
+ import org.enderstone.server.inventory.Inventory;
+-import org.enderstone.server.inventory.ItemStack;
+-import org.enderstone.server.inventory.Inventory.InventoryType;
+ import org.enderstone.server.packet.NetworkManager;
+ import org.enderstone.server.packet.Packet;
+ import org.enderstone.server.packet.play.PacketInTabComplete;
+-import org.enderstone.server.packet.play.PacketOutAnimation;
+ import org.enderstone.server.packet.play.PacketOutChatMessage;
+ import org.enderstone.server.packet.play.PacketOutChunkData;
+ import org.enderstone.server.packet.play.PacketOutEntityDestroy;
+ import org.enderstone.server.packet.play.PacketOutEntityHeadLook;
+ import org.enderstone.server.packet.play.PacketOutEntityLook;
+ import org.enderstone.server.packet.play.PacketOutEntityRelativeMove;
+ import org.enderstone.server.packet.play.PacketOutEntityTeleport;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem;
+@@ -109,17 +107,17 @@
+ 
+ 	public EnderPlayer(String userName, NetworkManager networkManager, UUID uuid, PlayerTextureStore textures) {
+ 		super(new Location());
+ 		this.networkManager = networkManager;
+ 		this.playerName = userName;
+ 		this.uuid = uuid;
+ 		this.textureValue = textures.getSkin().value;
+ 		this.textureSignature = textures.getSkin().signature;
+-		EnderLogger.info(userName + " logged in with uuid "+uuid);
++		EnderLogger.info(userName + " logged in with uuid " + uuid);
+ 	}
+ 
+ 	@Override
+ 	public int hashCode() {
+ 		final int prime = 31;
+ 		int result = 1;
+ 		result = prime * result + ((uuid == null) ? 0 : uuid.hashCode());
+ 		return result;
+@@ -154,17 +152,17 @@
+ 	public void onSpawn() {
+ 		this.updateDataWatcher();
+ 
+ 		PacketOutPlayerListItem packet = new PacketOutPlayerListItem(this.getPlayerName(), this.isOnline, (short) 1);
+ 		for (EnderPlayer player : Main.getInstance().onlinePlayers) {
+ 			player.getNetworkManager().sendPacket(packet);
+ 			this.getNetworkManager().sendPacket(new PacketOutPlayerListItem(player.getPlayerName(), true, (short) 1));
+ 		}
+-		Utill.broadcastMessage(ChatColor.YELLOW + this.getPlayerName() + " joined the game!");
++		Main.getInstance().broadcastMessage(new SimpleMessage(ChatColor.YELLOW + this.getPlayerName() + " joined the game!"));
+ 		this.inventory = new Inventory(this);
+ 	}
+ 
+ 	@Override
+ 	public void updateDataWatcher() {
+ 		int meaning = 0;
+ 
+ 		if (isOnFire)
+@@ -217,24 +215,35 @@
+ 				@Override
+ 				public void run() {
+ 					Utill.broadcastMessage("<" + getPlayerName() + "> " + message);
+ 				}
+ 			});
+ 		}
+ 	}
+ 
+-	public void onDisconnect() throws Exception {
++	public void onDisconnect() {
+ 		this.isOnline = false;
+ 		Utill.broadcastMessage(ChatColor.YELLOW + this.getPlayerName() + " left the game!");
+ 		Main.getInstance().mainWorld.players.remove(this);
+ 
+ 		for (EnderPlayer p : Main.getInstance().onlinePlayers) {
+ 			p.getNetworkManager().sendPacket(new PacketOutPlayerListItem(this.getPlayerName(), false, (short) 1));
+ 		}
++		if (Main.getInstance().onlinePlayers.contains(this)) {
++			Main.getInstance().onlinePlayers.remove(this);
++			for (EnderPlayer ep : Main.getInstance().onlinePlayers) {
++				for (String name : ep.visiblePlayers) {
++					if (name.equals(this.getPlayerName()) && !this.getPlayerName().equals(ep.getPlayerName())) {
++						ep.getNetworkManager().sendPacket(new PacketOutEntityDestroy(new Integer[]{this.getEntityId()}));
++					}
++				}
++			}
++		}
++		Main.getInstance().broadcastMessage(new SimpleMessage(ChatColor.YELLOW + playerName + " left the game!"));
+ 	}
+ 
+ 	@Override
+ 	public boolean isOnline() {
+ 		return this.isOnline;
+ 	}
+ 
+ 	@Override
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -10,30 +10,30 @@
+ import org.enderstone.server.Location;
+ import org.enderstone.server.Main;
+ import org.enderstone.server.Utill;
+ import org.enderstone.server.chat.ChatColor;
+ import org.enderstone.server.chat.Message;
+ import org.enderstone.server.commands.Command;
+ import org.enderstone.server.commands.CommandSender;
+ import org.enderstone.server.inventory.Inventory;
+-import org.enderstone.server.inventory.ItemStack;
+-import org.enderstone.server.inventory.Inventory.InventoryType;
+ import org.enderstone.server.packet.NetworkManager;
+ import org.enderstone.server.packet.Packet;
+ import org.enderstone.server.packet.play.PacketInTabComplete;
+-import org.enderstone.server.packet.play.PacketOutAnimation;
+ import org.enderstone.server.packet.play.PacketOutChatMessage;
+ import org.enderstone.server.packet.play.PacketOutChunkData;
+ import org.enderstone.server.packet.play.PacketOutEntityDestroy;
+ import org.enderstone.server.packet.play.PacketOutEntityHeadLook;
+ import org.enderstone.server.packet.play.PacketOutEntityLook;
+ import org.enderstone.server.packet.play.PacketOutEntityRelativeMove;
+ import org.enderstone.server.packet.play.PacketOutEntityTeleport;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem;
++import org.enderstone.server.packet.play.PacketOutPlayerListItem.Action;
++import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionAddPlayer;
++import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionRemovePlayer;
+ import org.enderstone.server.packet.play.PacketOutPlayerPositionLook;
+ import org.enderstone.server.packet.play.PacketOutSoundEffect;
+ import org.enderstone.server.packet.play.PacketOutSpawnPlayer;
+ import org.enderstone.server.packet.play.PacketOutTabComplete;
+ import org.enderstone.server.packet.play.PacketOutUpdateHealth;
+ import org.enderstone.server.regions.EnderChunk;
+ import org.enderstone.server.regions.EnderWorld.ChunkInformer;
+ 
+@@ -42,17 +42,18 @@
+ 	private static final int MAX_CHUNKS_EVERY_UPDATE = 16;
+ 
+ 	public final ClientSettings clientSettings = new ClientSettings();
+ 	public final NetworkManager networkManager;
+ 	public final String playerName;
+ 	public HashSet<String> visiblePlayers = new HashSet<>();
+ 	public HashSet<Entity> canSeeEntity = new HashSet<>();
+ 	/**
+-	 * If this is above 0, then the server is waiting for a correction on the last teleport the server sended
++	 * If this is above 0, then the server is waiting for a correction on the
++	 * last teleport the server sended
+ 	 */
+ 	public int waitingForValidMoveAfterTeleport = 0;
+ 	public final UUID uuid;
+ 	public volatile boolean isOnline = true;
+ 	public boolean isCreative = false;
+ 	public boolean godMode = false;
+ 	public boolean canFly = false;
+ 	public boolean isFlying = false;
+@@ -63,17 +64,16 @@
+ 	private boolean isInvisible = false;
+ 
+ 	public volatile boolean isOnGround = true;
+ 	public double yLocation;
+ 	public short food = 20;
+ 	public float foodSaturation = 0;
+ 	public Inventory inventory;
+ 
+-	// our alternative for the stupid Steve skins :D
+ 	private final String textureValue;
+ 	private final String textureSignature;
+ 	public int keepAliveID = 0;
+ 
+ 	public ChunkInformer chunkInformer = new ChunkInformer() {
+ 
+ 		List<EnderChunk> cache = new ArrayList<>();
+ 
+@@ -109,17 +109,17 @@
+ 
+ 	public EnderPlayer(String userName, NetworkManager networkManager, UUID uuid, PlayerTextureStore textures) {
+ 		super(new Location());
+ 		this.networkManager = networkManager;
+ 		this.playerName = userName;
+ 		this.uuid = uuid;
+ 		this.textureValue = textures.getSkin().value;
+ 		this.textureSignature = textures.getSkin().signature;
+-		EnderLogger.info(userName + " logged in with uuid "+uuid);
++		EnderLogger.info(userName + " logged in with uuid " + uuid);
+ 	}
+ 
+ 	@Override
+ 	public int hashCode() {
+ 		final int prime = 31;
+ 		int result = 1;
+ 		result = prime * result + ((uuid == null) ? 0 : uuid.hashCode());
+ 		return result;
+@@ -145,24 +145,34 @@
+ 	public NetworkManager getNetworkManager() {
+ 		return networkManager;
+ 	}
+ 
+ 	public String getPlayerName() {
+ 		return playerName;
+ 	}
+ 
++	public ProfileProperty getTextureProperty() {
++		return new ProfileProperty("textures", textureValue, true, textureSignature);
++	}
++
++	public ProfileProperty[] getProfileProperties() {
++		ProfileProperty[] list = new ProfileProperty[1];
++		list[0] = getTextureProperty();
++		return list;
++	}
++
+ 	@Override
+ 	public void onSpawn() {
+ 		this.updateDataWatcher();
+ 
+-		PacketOutPlayerListItem packet = new PacketOutPlayerListItem(this.getPlayerName(), this.isOnline, (short) 1);
++		PacketOutPlayerListItem packet = new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(this.uuid, this.getPlayerName(), getProfileProperties(), GameMode.SURVIVAL.getId(), 1, false, "") });
+ 		for (EnderPlayer player : Main.getInstance().onlinePlayers) {
+ 			player.getNetworkManager().sendPacket(packet);
+-			this.getNetworkManager().sendPacket(new PacketOutPlayerListItem(player.getPlayerName(), true, (short) 1));
++			this.getNetworkManager().sendPacket(new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(player.uuid, player.getPlayerName(), player.getProfileProperties(), GameMode.SURVIVAL.getId(), 1, false, "") }));
+ 		}
+ 		Utill.broadcastMessage(ChatColor.YELLOW + this.getPlayerName() + " joined the game!");
+ 		this.inventory = new Inventory(this);
+ 	}
+ 
+ 	@Override
+ 	public void updateDataWatcher() {
+ 		int meaning = 0;
+@@ -181,20 +191,17 @@
+ 		this.getDataWatcher().watch(0, (byte) meaning);
+ 		this.getDataWatcher().watch(1, (short) 0);
+ 		this.getDataWatcher().watch(6, 1F);
+ 		this.getDataWatcher().watch(8, (byte) 0);
+ 	}
+ 
+ 	@Override
+ 	public Packet getSpawnPacket() {
+-		List<ProfileProperty> list = new ArrayList<>();
+-		ProfileProperty prop = new ProfileProperty("textures", this.textureValue, this.textureSignature);
+-		list.add(prop);
+-		return new PacketOutSpawnPlayer(this.getEntityId(), this.uuid.toString(), this.getPlayerName(), list, this.getLocation().getBlockX(), this.getLocation().getBlockY(), this.getLocation().getBlockZ(), (byte) this.getLocation().getYaw(), (byte) this.getLocation().getPitch(), (short) 0, this.getDataWatcher());
++		return new PacketOutSpawnPlayer(this.getEntityId(), this.uuid, (int) (this.getLocation().getX() * 32.0D), (int) (this.getLocation().getY() * 32.0D), (int) (this.getLocation().getZ() * 32.0D), (byte) 0, (byte) 0, (short) 0, this.getDataWatcher());
+ 	}
+ 
+ 	public void onPlayerChat(final String message) {
+ 		if (message.startsWith("/")) {
+ 			final String fullCommand = message.substring(1);
+ 			final String[] split = fullCommand.split(" ");
+ 			final String[] args;
+ 			if (split.length != 1) {
+@@ -223,17 +230,17 @@
+ 	}
+ 
+ 	public void onDisconnect() throws Exception {
+ 		this.isOnline = false;
+ 		Utill.broadcastMessage(ChatColor.YELLOW + this.getPlayerName() + " left the game!");
+ 		Main.getInstance().mainWorld.players.remove(this);
+ 
+ 		for (EnderPlayer p : Main.getInstance().onlinePlayers) {
+-			p.getNetworkManager().sendPacket(new PacketOutPlayerListItem(this.getPlayerName(), false, (short) 1));
++			p.getNetworkManager().sendPacket(new PacketOutPlayerListItem(new Action[] { new ActionRemovePlayer(this.uuid) }));
+ 		}
+ 	}
+ 
+ 	@Override
+ 	public boolean isOnline() {
+ 		return this.isOnline;
+ 	}
+ 
+@@ -263,20 +270,20 @@
+ 		double dx = (newLocation.getX() - this.getLocation().getX()) * 32;
+ 		double dy = (newLocation.getY() - this.getLocation().getY()) * 32;
+ 		double dz = (newLocation.getZ() - this.getLocation().getZ()) * 32;
+ 
+ 		Packet packet;
+ 
+ 		if (moveUpdates++ % 40 == 0 || dx > 127 || dx < -127 || dy > 127 || dy < -127 || dz > 127 || dz < -127) {
+ 			// teleport
+-			packet = new PacketOutEntityTeleport(this.getEntityId(), (int) (this.getLocation().getX() * 32.0D), (int) (this.getLocation().getY() * 32.0D), (int) (this.getLocation().getZ() * 32.0D), (byte) this.getLocation().getYaw(), (byte) this.getLocation().getPitch());
++			packet = new PacketOutEntityTeleport(this.getEntityId(), (int) (this.getLocation().getX() * 32.0D), (int) (this.getLocation().getY() * 32.0D), (int) (this.getLocation().getZ() * 32.0D), (byte) this.getLocation().getYaw(), (byte) this.getLocation().getPitch(), false);
+ 		} else {
+ 			// movement
+-			packet = new PacketOutEntityRelativeMove(this.getEntityId(), (byte) dx, (byte) dy, (byte) dz);
++			packet = new PacketOutEntityRelativeMove(this.getEntityId(), (byte) dx, (byte) dy, (byte) dz, false);
+ 		}
+ 
+ 		Iterator<String> players = this.visiblePlayers.iterator();
+ 
+ 		while (players.hasNext()) {
+ 			EnderPlayer ep = Main.getInstance().getPlayer(players.next());
+ 
+ 			if (ep == null) {
+@@ -289,17 +296,17 @@
+ 			}
+ 		}
+ 	}
+ 
+ 	@Override
+ 	public void broadcastRotation(float pitch, float yaw) {
+ 		Iterator<String> players = this.visiblePlayers.iterator();
+ 
+-		Packet pack1 = new PacketOutEntityLook(this.getEntityId(), (byte) Utill.calcYaw(yaw * 256.0F / 360.0F), (byte) Utill.calcYaw(pitch * 256.0F / 360.0F));
++		Packet pack1 = new PacketOutEntityLook(this.getEntityId(), (byte) Utill.calcYaw(yaw * 256.0F / 360.0F), (byte) Utill.calcYaw(pitch * 256.0F / 360.0F), false);
+ 		Packet pack2 = new PacketOutEntityHeadLook(this.getEntityId(), (byte) Utill.calcYaw(yaw * 256.0F / 360.0F));
+ 
+ 		while (players.hasNext()) {
+ 			EnderPlayer ep = Main.getInstance().getPlayer(players.next());
+ 
+ 			if (ep == null) {
+ 				players.remove();
+ 				continue;
+@@ -320,17 +327,17 @@
+ 		return this.sendRawMessage(message);
+ 	}
+ 
+ 	@Override
+ 	public boolean sendRawMessage(Message message) {
+ 		if (!this.isOnline)
+ 			return false;
+ 		try {
+-			this.networkManager.sendPacket(new PacketOutChatMessage(message));
++			this.networkManager.sendPacket(new PacketOutChatMessage(message, (byte) 0));
+ 			return true;
+ 		} catch (Exception ex) {
+ 			try {
+ 				this.networkManager.channelInactive(networkManager.ctx);
+ 				EnderLogger.logger.throwing(null, null, ex);
+ 			} catch (Exception ex1) {
+ 				ex.addSuppressed(ex1);
+ 				EnderLogger.logger.throwing(null, null, ex);
+@@ -354,19 +361,19 @@
+ 		this.waitingForValidMoveAfterTeleport = 1;
+ 		Location oldLocation = this.getLocation();
+ 		oldLocation.setX(newLocation.getX());
+ 		oldLocation.setY(newLocation.getY());
+ 		oldLocation.setZ(newLocation.getZ());
+ 		oldLocation.setPitch(newLocation.getPitch());
+ 		oldLocation.setYaw(newLocation.getYaw());
+ 
+-		this.getNetworkManager().sendPacket(new PacketOutPlayerPositionLook(newLocation.getX(), newLocation.getY(), newLocation.getZ(), newLocation.getYaw(), newLocation.getPitch(), false));
+-
+-		PacketOutEntityTeleport packet = new PacketOutEntityTeleport(this.getEntityId(), (int) (newLocation.getX() * 32.0D), (int) (newLocation.getY() * 32.0D), (int) (newLocation.getZ() * 32.0D), (byte) newLocation.getYaw(), (byte) newLocation.getPitch());
++		this.getNetworkManager().sendPacket(new PacketOutPlayerPositionLook(newLocation.getX(), newLocation.getY(), newLocation.getZ(), newLocation.getYaw(), newLocation.getPitch(), (byte) 0b00000));
++
++		PacketOutEntityTeleport packet = new PacketOutEntityTeleport(this.getEntityId(), (int) (newLocation.getX() * 32.0D), (int) (newLocation.getY() * 32.0D), (int) (newLocation.getZ() * 32.0D), (byte) newLocation.getYaw(), (byte) newLocation.getPitch(), false);
+ 		for (EnderPlayer ep : Main.getInstance().onlinePlayers) {
+ 			if (!ep.equals(this)) {
+ 				ep.getNetworkManager().sendPacket(packet);
+ 			}
+ 		}
+ 	}
+ 
+ 	public void onPlayerChatComplete(final PacketInTabComplete packet) {
+@@ -403,25 +410,27 @@
+ 		return true;
+ 	}
+ 
+ 	@Override
+ 	public void damage(float damage) {
+ 		if (damage <= 0) {
+ 			throw new IllegalArgumentException("Damage cannot be smaller or equal to zero.");
+ 		}
+-		if (this.godMode) return;
++		if (this.godMode)
++			return;
+ 		super.damage(damage);
+ 	}
+ 
+ 	@Override
+ 	protected void onHealthUpdate(float health, float oldHealth) {
+ 		networkManager.sendPacket(new PacketOutUpdateHealth(health, food, foodSaturation));
+-		if (health > 0) return;
+-		Packet packet = new PacketOutEntityDestroy(new Integer[]{this.getEntityId()});
++		if (health > 0)
++			return;
++		Packet packet = new PacketOutEntityDestroy(new Integer[] { this.getEntityId() });
+ 		for (EnderPlayer ep : Main.getInstance().onlinePlayers) {
+ 			if (ep.visiblePlayers.contains(this.getPlayerName())) {
+ 				ep.visiblePlayers.remove(this.getPlayerName());
+ 				ep.getNetworkManager().sendPacket(packet);
+ 			}
+ 		}
+ 	}
+ 
+@@ -442,17 +451,18 @@
+ 
+ 	@Override
+ 	protected float getBaseMaxHealth() {
+ 		return 20;
+ 	}
+ 
+ 	public void setOnGround(boolean onGround) {
+ 		if (this.isOnGround == false && onGround == true) {
+-			if (this.canFly) return; // Flying players don't get damage in vanilla
++			if (this.canFly)
++				return; // Flying players don't get damage in vanilla
+ 			// fall damage
+ 			double change = this.yLocation - this.getLocation().getY() - 3;
+ 			if (change > 0) {
+ 				damage((float) change);
+ 				if (change > 5) {
+ 					// can't find correct sound name
+ 				} else {
+ 					Main.getInstance().mainWorld.broadcastSound("damage.fallsmall", getLocation().getBlockX(), getLocation().getBlockY(), getLocation().getBlockZ(), 1F, (byte) 63, getLocation(), null);
+@@ -476,29 +486,29 @@
+ 	}
+ 
+ 	@Override
+ 	public boolean isValid() {
+ 		return this.isOnline;
+ 	}
+ 
+ 	/**
+-	 * Class used to store the client side settings from the user, the reason I included setters and getters is that we
+-	 * can add a event or simulair to the code later on
++	 * Class used to store the client side settings from the user, the reason I
++	 * included setters and getters is that we can add a event or simulair to
++	 * the code later on
+ 	 *
+ 	 * @author ferrybig
+ 	 */
+ 	public final class ClientSettings {
+ 
+ 		private String locale = "en_US";
+ 		private byte renderDistance = 3;
+ 		private byte chatFlags = 0;
+ 		private boolean chatColors = true;
+-		private byte difficulty = 2;
+-		private boolean showCapes = true;
++		private int displayedSkinParts = 0;
+ 
+ 		public String getLocale() {
+ 			return locale;
+ 		}
+ 
+ 		public void setLocale(String locale) {
+ 			this.locale = locale;
+ 		}
+@@ -522,26 +532,17 @@
+ 		public boolean isChatColors() {
+ 			return chatColors;
+ 		}
+ 
+ 		public void setChatColors(boolean chatColors) {
+ 			this.chatColors = chatColors;
+ 		}
+ 
+-		public byte getDifficulty() {
+-			return difficulty;
+-		}
+-
+-		public void setDifficulty(byte difficulty) {
+-			this.difficulty = difficulty;
+-		}
+-
+-		public boolean isShowCapes() {
+-			return showCapes;
+-		}
+-
+-		public void setShowCapes(boolean showCapes) {
+-			this.showCapes = showCapes;
+-		}
+-
++		public int getDisplayedSkinParts() {
++			return displayedSkinParts;
++		}
++
++		public void setDisplayedSkinParts(int displayedSkinParts) {
++			this.displayedSkinParts = displayedSkinParts;
++		}
+ 	}
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/4: src/org/enderstone/server/packet/NetworkManager.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,15 +1,14 @@
+ package org.enderstone.server.packet;
+ 
+ import io.netty.buffer.ByteBuf;
+ import io.netty.channel.Channel;
+ import io.netty.channel.ChannelHandlerAdapter;
+ import io.netty.channel.ChannelHandlerContext;
+-import io.netty.handler.codec.ByteToMessageDecoder;
+ import io.netty.handler.codec.MessageToByteEncoder;
+ import io.netty.handler.codec.MessageToMessageDecoder;
+ import java.io.IOException;
+ import java.security.GeneralSecurityException;
+ import java.security.Key;
+ import java.security.KeyPair;
+ import java.security.KeyPairGenerator;
+ import java.security.NoSuchAlgorithmException;
+@@ -19,44 +18,48 @@
+ import java.util.UUID;
+ import javax.crypto.Cipher;
+ import javax.crypto.SecretKey;
+ import javax.crypto.ShortBufferException;
+ import javax.crypto.spec.IvParameterSpec;
+ import org.enderstone.server.EnderLogger;
+ import org.enderstone.server.Location;
+ import org.enderstone.server.Main;
++import org.enderstone.server.chat.Message;
++import org.enderstone.server.chat.SimpleMessage;
+ import org.enderstone.server.entity.EnderPlayer;
+ import org.enderstone.server.entity.GameMode;
+ import org.enderstone.server.entity.PlayerTextureStore;
++import org.enderstone.server.packet.codec.DiscardingReader;
+ import org.enderstone.server.packet.codec.MinecraftServerCodex;
+ import org.enderstone.server.packet.login.PacketOutLoginSucces;
+-import org.enderstone.server.packet.play.PacketOutEntityDestroy;
+ import org.enderstone.server.packet.play.PacketOutJoinGame;
+ import org.enderstone.server.packet.play.PacketOutPlayerAbilities;
+ import org.enderstone.server.packet.play.PacketOutPlayerPositionLook;
+ import org.enderstone.server.packet.play.PacketOutSpawnPosition;
+ import org.enderstone.server.packet.play.PacketOutUpdateHealth;
+ import org.enderstone.server.regions.EnderWorld;
+ 
+ public class NetworkManager extends ChannelHandlerAdapter {
+ 
+ 	public ChannelHandlerContext ctx;
+ 	private Channel channel;
+ 	public EnderPlayer player;
+ 	public String wantedName;
+ 	private EncryptionSettings encryptionSettings;
+ 	public UUID uuid;
+ 	public PlayerTextureStore skinBlob;
++	public int clientVersion;
+ 
+ 	public PacketHandshake latestHandshakePacket;
+ 	public volatile int handShakeStatus = -1;
+ 	private int length;
+ 
+ 	private final Queue<Packet> packets = new LinkedList<>();
++	private volatile boolean isConnected = true;
+ 
+ 	public EncryptionSettings getEncryptionSettings() {
+ 		return encryptionSettings;
+ 	}
+ 
+ 	public void regenerateEncryptionSettings() {
+ 		encryptionSettings = new EncryptionSettings();
+ 		//encryptionSettings.serverid = new BigInteger(130, Main.random).toString(32).substring(0, 20);
+@@ -67,19 +70,18 @@
+ 		} catch (NoSuchAlgorithmException ex) {
+ 			throw new RuntimeException("Server platfrom unsuported, cannot hash rsa", ex);
+ 		}
+ 		keyPairGenerator.initialize(1024);
+ 		encryptionSettings.keyPair = keyPairGenerator.genKeyPair();
+ 		encryptionSettings.verifyToken = new byte[16];
+ 		Main.random.nextBytes(encryptionSettings.verifyToken);
+ 	}
+-	
+-	public void forcePacketFlush()
+-	{
++
++	public void forcePacketFlush() {
+ 		synchronized (packets) {
+ 			Packet p;
+ 			while ((p = packets.poll()) != null) {
+ 				ctx.write(p);
+ 				//EnderLogger.debug("Out: "+p.toString());
+ 				p.onSend(this);
+ 			}
+ 			ctx.flush();
+@@ -92,65 +94,64 @@
+ 		((Packet) msg).onRecieve(this);
+ 		//EnderLogger.debug("in: " + msg);
+ 		forcePacketFlush();
+ 	}
+ 
+ 	@Override
+ 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+ 		EnderLogger.exception(cause);
+-		this.channelInactive(ctx);
++		ctx.close();
+ 		super.exceptionCaught(ctx, cause);
+ 	}
+ 
+ 	@Override
+ 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+-		if (player != null && player.isOnline()) {
+-			final EnderPlayer subPlayer = player;
+-			Main.getInstance().sendToMainThread(new Runnable() {
+-
+-				@Override
+-				public void run() {
+-					try {
++		this.onDisconnect();
++		super.channelInactive(ctx);
++	}
++
++	private void onDisconnect() {
++		if (this.isConnected == false) return;
++		synchronized (packets) {
++			if (this.isConnected == false) return;
++			this.isConnected = false;
++			this.packets.clear();
++			if (player != null && player.isOnline()) {
++				final EnderPlayer subPlayer = player;
++				Main.getInstance().sendToMainThread(new Runnable() {
++
++					@Override
++					public void run() {
+ 						subPlayer.onDisconnect();
+-					} catch (Exception e) {
+-						e.printStackTrace();
+ 					}
+-					if (Main.getInstance().onlinePlayers.contains(subPlayer)) {
+-						Main.getInstance().onlinePlayers.remove(subPlayer);
+-
+-						for (EnderPlayer ep : Main.getInstance().onlinePlayers) {
+-							for (String name : ep.visiblePlayers) {
+-								if (name.equals(subPlayer.getPlayerName()) && !subPlayer.getPlayerName().equals(ep.getPlayerName())) {
+-									ep.getNetworkManager().sendPacket(new PacketOutEntityDestroy(new Integer[]{subPlayer.getEntityId()}));
+-								}
+-							}
+-						}
+-					}
+-				}
+-			});
+-			player.isOnline = false;
+-		}
+-		super.channelInactive(ctx);
+-	}
++				});
++				player.isOnline = false;
++			}
++		}
++	}
++
+ 	private MinecraftServerCodex codex;
+ 
+ 	public MinecraftServerCodex createCodex() {
+ 		return codex = new MinecraftServerCodex(this);
+ 	}
+ 
+ 	public MinecraftServerCodex getCodex() {
+ 		return codex;
+ 	}
+ 
+-	public synchronized void sendPacket(Packet... packets) {
+-		for (Packet packet : packets) {
+-			this.packets.offer(packet);
+-		}
+-		ctx.flush();
++	public void sendPacket(Packet... packets) {
++		if (this.isConnected == false) return;
++		synchronized (packets) {
++			if (this.isConnected == false) return;
++			for (Packet packet : packets) {
++				this.packets.offer(packet);
++			}
++		}
+ 	}
+ 
+ 	public void setupEncryption(final SecretKey key) throws IOException {
+ 		final Cipher decrypter = generateKey(2, key);
+ 		final Cipher encrypter = generateKey(1, key);
+ 		ctx.pipeline().addBefore("decrypt", "packet_rw_converter", new MessageToMessageDecoder<ByteBuf>() {
+ 
+ 			NetworkEncrypter chipper = new NetworkEncrypter(decrypter);
+@@ -202,26 +203,26 @@
+ 				@Override
+ 				public void run() {
+ 					Main.getInstance().onlinePlayers.add(player);
+ 					try {
+ 
+ 						sendPacket(new PacketOutLoginSucces(player.uuid.toString(), player.getPlayerName()));
+ 
+ 						sendPacket(new PacketOutJoinGame(player.getEntityId(), (byte) GameMode.SURVIVAL.getId(), (byte) 0, (byte) 1, (byte) 60, "default"));
+-						
++
+ 						EnderWorld mainWorld = Main.getInstance().mainWorld;
+ 						Location spawn = mainWorld.getSpawn();
+ 						Location loc = player.getLocation();
+ 						loc.setX(spawn.getX());
+ 						loc.setY(spawn.getY());
+ 						loc.setZ(spawn.getZ());
+ 						loc.setYaw(spawn.getYaw());
+ 						loc.setPitch(spawn.getPitch());
+-						
++
+ 						mainWorld.doChunkUpdatesForPlayer(player, player.chunkInformer, 1);
+ 						player.onSpawn();
+ 						sendPacket(new PacketOutSpawnPosition(spawn.getBlockX(), spawn.getBlockY(), spawn.getBlockZ()));
+ 
+ 						int i = 0;
+ 						if (player.isCreative)
+ 							i = (byte) (i | 0x1);
+ 						if (player.isFlying)
+@@ -269,16 +270,33 @@
+ 		}
+ 
+ 		public byte[] getVerifyToken() {
+ 			return verifyToken;
+ 		}
+ 	}
+ 
+ 	public void disconnect(String message) {
++		this.disconnect(new SimpleMessage(message));
++	}
++
++	public void disconnect(Message message) {
+ 		try {
+-			EnderLogger.error("Disconnecting unverified connection (name: " + this.wantedName + "): " + message);
+-			ctx.close();
++			this.ctx.channel().pipeline().addFirst("packet_r_disconnected", new DiscardingReader());
++			if (this.player == null)
++				EnderLogger.info("Kicking unregistered channel (" + this.wantedName + "" + this.uuid + "): " + message.toPlainText());
++			else
++				EnderLogger.info("Kicking (" + this.wantedName + "," + this.uuid + "): " + message.toPlainText());
++			Packet p = codex.getDisconnectionPacket(message);
++			System.out.println(p);
++			this.ctx.channel().pipeline().addFirst(new DiscardingReader());
++			if (p != null)
++				ctx.write(p);
+ 		} catch (Exception ex) {
+ 			EnderLogger.exception(ex);
+ 		}
++		finally
++		{
++			this.onDisconnect();
++			ctx.close();
++		}
+ 	}
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -54,48 +54,49 @@
+ 	private final Queue<Packet> packets = new LinkedList<>();
+ 
+ 	public EncryptionSettings getEncryptionSettings() {
+ 		return encryptionSettings;
+ 	}
+ 
+ 	public void regenerateEncryptionSettings() {
+ 		encryptionSettings = new EncryptionSettings();
+-		//encryptionSettings.serverid = new BigInteger(130, Main.random).toString(32).substring(0, 20);
++		// encryptionSettings.serverid = new BigInteger(130,
++		// Main.random).toString(32).substring(0, 20);
+ 		encryptionSettings.serverid = "";
+ 		KeyPairGenerator keyPairGenerator;
+ 		try {
+ 			keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+ 		} catch (NoSuchAlgorithmException ex) {
+ 			throw new RuntimeException("Server platfrom unsuported, cannot hash rsa", ex);
+ 		}
+ 		keyPairGenerator.initialize(1024);
+ 		encryptionSettings.keyPair = keyPairGenerator.genKeyPair();
+ 		encryptionSettings.verifyToken = new byte[16];
+ 		Main.random.nextBytes(encryptionSettings.verifyToken);
+ 	}
+-	
+-	public void forcePacketFlush()
+-	{
++
++	public void forcePacketFlush() {
+ 		synchronized (packets) {
+ 			Packet p;
+ 			while ((p = packets.poll()) != null) {
+ 				ctx.write(p);
+-				//EnderLogger.debug("Out: "+p.toString());
++				// EnderLogger.debug("Out: "+p.toString());
+ 				p.onSend(this);
+ 			}
+ 			ctx.flush();
+ 		}
+ 	}
+ 
+ 	@Override
+ 	public void channelRead(ChannelHandlerContext ctx, Object msg) {
+-		if (this.ctx == null) this.ctx = ctx;
++		if (this.ctx == null)
++			this.ctx = ctx;
+ 		((Packet) msg).onRecieve(this);
+-		//EnderLogger.debug("in: " + msg);
++		// EnderLogger.debug("in: " + msg);
+ 		forcePacketFlush();
+ 	}
+ 
+ 	@Override
+ 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+ 		EnderLogger.exception(cause);
+ 		this.channelInactive(ctx);
+ 		super.exceptionCaught(ctx, cause);
+@@ -115,27 +116,28 @@
+ 						e.printStackTrace();
+ 					}
+ 					if (Main.getInstance().onlinePlayers.contains(subPlayer)) {
+ 						Main.getInstance().onlinePlayers.remove(subPlayer);
+ 
+ 						for (EnderPlayer ep : Main.getInstance().onlinePlayers) {
+ 							for (String name : ep.visiblePlayers) {
+ 								if (name.equals(subPlayer.getPlayerName()) && !subPlayer.getPlayerName().equals(ep.getPlayerName())) {
+-									ep.getNetworkManager().sendPacket(new PacketOutEntityDestroy(new Integer[]{subPlayer.getEntityId()}));
++									ep.getNetworkManager().sendPacket(new PacketOutEntityDestroy(new Integer[] { subPlayer.getEntityId() }));
+ 								}
+ 							}
+ 						}
+ 					}
+ 				}
+ 			});
+ 			player.isOnline = false;
+ 		}
+ 		super.channelInactive(ctx);
+ 	}
++
+ 	private MinecraftServerCodex codex;
+ 
+ 	public MinecraftServerCodex createCodex() {
+ 		return codex = new MinecraftServerCodex(this);
+ 	}
+ 
+ 	public MinecraftServerCodex getCodex() {
+ 		return codex;
+@@ -181,63 +183,66 @@
+ 			localCipher.init(keyType, secretKey, new IvParameterSpec(secretKey.getEncoded()));
+ 			return localCipher;
+ 		} catch (GeneralSecurityException localGeneralSecurityException) {
+ 			throw new IOException("Unable to generate a encryption key", localGeneralSecurityException);
+ 		}
+ 	}
+ 
+ 	public void spawnPlayer() {
+-		if (player != null) throw new IllegalStateException();
++		if (player != null)
++			throw new IllegalStateException();
+ 		if (this.uuid == null) {
+ 			this.disconnect("Illegal uuid");
+ 			return;
+ 		}
+ 		if (this.skinBlob == null)
+-			this.skinBlob = PlayerTextureStore.DEFAULT_STORE; // Null oject design pattern
++			this.skinBlob = PlayerTextureStore.DEFAULT_STORE; // Null oject
++																// design
++																// pattern
+ 
+ 		player = new EnderPlayer(wantedName, this, uuid, this.skinBlob);
+ 		final Object lock = new Object();
+ 		synchronized (lock) {
+ 			Main.getInstance().sendToMainThread(new Runnable() {
+ 
+ 				@Override
+ 				public void run() {
+ 					Main.getInstance().onlinePlayers.add(player);
+ 					try {
+ 
+ 						sendPacket(new PacketOutLoginSucces(player.uuid.toString(), player.getPlayerName()));
+ 
+-						sendPacket(new PacketOutJoinGame(player.getEntityId(), (byte) GameMode.SURVIVAL.getId(), (byte) 0, (byte) 1, (byte) 60, "default"));
+-						
++						sendPacket(new PacketOutJoinGame(player.getEntityId(), (byte) GameMode.SURVIVAL.getId(), (byte) 0, (byte) 1, (byte) 60, "default", false));
++
+ 						EnderWorld mainWorld = Main.getInstance().mainWorld;
+ 						Location spawn = mainWorld.getSpawn();
+ 						Location loc = player.getLocation();
+ 						loc.setX(spawn.getX());
+ 						loc.setY(spawn.getY());
+ 						loc.setZ(spawn.getZ());
+ 						loc.setYaw(spawn.getYaw());
+ 						loc.setPitch(spawn.getPitch());
+-						
++
+ 						mainWorld.doChunkUpdatesForPlayer(player, player.chunkInformer, 1);
+ 						player.onSpawn();
+-						sendPacket(new PacketOutSpawnPosition(spawn.getBlockX(), spawn.getBlockY(), spawn.getBlockZ()));
++						sendPacket(new PacketOutSpawnPosition(spawn));
+ 
+ 						int i = 0;
+ 						if (player.isCreative)
+ 							i = (byte) (i | 0x1);
+ 						if (player.isFlying)
+ 							i = (byte) (i | 0x2);
+ 						if (player.canFly)
+ 							i = (byte) (i | 0x4);
+ 						if (player.godMode)
+ 							i = (byte) (i | 0x8);
+ 
+ 						sendPacket(new PacketOutPlayerAbilities((byte) i, 0.1F, 0.1F));
+-						sendPacket(new PacketOutPlayerPositionLook(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch(), false));
++						sendPacket(new PacketOutPlayerPositionLook(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch(), (byte) 0b00000));
+ 						sendPacket(new PacketOutUpdateHealth(player.getHealth(), player.food, player.foodSaturation));
+ 
+ 					} catch (Exception e) {
+ 						EnderLogger.exception(e);
+ 					} finally {
+ 						synchronized (lock) {
+ 							lock.notifyAll();
+ 						}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -206,17 +206,16 @@
+ 			Main.getInstance().sendToMainThread(new Runnable() {
+ 
+ 				@Override
+ 				public void run() {
+ 					Main.getInstance().onlinePlayers.add(player);
+ 					try {
+ 
+ 						sendPacket(new PacketOutLoginSucces(player.uuid.toString(), player.getPlayerName()));
+-
+ 						sendPacket(new PacketOutJoinGame(player.getEntityId(), (byte) GameMode.SURVIVAL.getId(), (byte) 0, (byte) 1, (byte) 60, "default", false));
+ 
+ 						EnderWorld mainWorld = Main.getInstance().mainWorld;
+ 						Location spawn = mainWorld.getSpawn();
+ 						Location loc = player.getLocation();
+ 						loc.setX(spawn.getX());
+ 						loc.setY(spawn.getY());
+ 						loc.setZ(spawn.getZ());
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/4: src/org/enderstone/server/regions/EnderChunk.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,14 +1,15 @@
+ package org.enderstone.server.regions;
+ 
+ import java.lang.ref.Reference;
+ import java.lang.ref.WeakReference;
+ import java.util.LinkedList;
+ import java.util.List;
++import java.util.concurrent.atomic.AtomicReference;
+ import org.enderstone.server.EnderLogger;
+ import org.enderstone.server.Main;
+ import org.enderstone.server.entity.EnderPlayer;
+ import org.enderstone.server.packet.play.PacketOutBlockChange;
+ 
+ /**
+  *
+  * @author Fernando
+@@ -295,9 +296,17 @@
+ 		}
+ 		return (short) 0;
+ 	}
+ 	
+ 	public boolean isValid()
+ 	{
+ 		return this.isValid;
+ 	}
++	
++	public final AtomicReference<ChunkState> chunkState = new AtomicReference<>(ChunkState.LOADED);
++	
++	public enum ChunkState {
++		LOADED, LOADED_SAVE, 
++		UNLOADED, UNLOADED_SAVE,
++		SAVING, GONE
++	}
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,15 +1,16 @@
+ package org.enderstone.server.regions;
+ 
+ import java.lang.ref.Reference;
+ import java.lang.ref.WeakReference;
+ import java.util.LinkedList;
+ import java.util.List;
+ import org.enderstone.server.EnderLogger;
++import org.enderstone.server.Location;
+ import org.enderstone.server.Main;
+ import org.enderstone.server.entity.EnderPlayer;
+ import org.enderstone.server.packet.play.PacketOutBlockChange;
+ 
+ /**
+  *
+  * @author Fernando
+  */
+@@ -91,17 +92,17 @@
+ 		}
+ 		blockID[y >> 4][((y & 0xF) << 8) | (z << 4) | x] = material.getId();
+ 		this.data[y >> 4][((y & 0xF) << 8) | (z << 4) | x] = data;
+ 
+ 		for (EnderPlayer player : Main.getInstance().onlinePlayers) {
+ 			if (Main.getInstance().mainWorld.players.containsKey(player)) {
+ 				if (Main.getInstance().mainWorld.players.get(player).contains(this)) {
+ 					try {
+-						player.getNetworkManager().sendPacket(new PacketOutBlockChange((this.getX() * 16) + x, y, (this.getZ() * 16) + z, material.getId(), data));
++						player.getNetworkManager().sendPacket(new PacketOutBlockChange(new Location("", (this.getX() * 16) + x, y, (this.getZ() * 16) + z, (float) 0,(float) 0), material.getId(), data));
+ 					} catch (Exception e) {
+ 						EnderLogger.exception(e);
+ 					}
+ 				}
+ 			}
+ 		}
+ 		compressed = NULL_REFERENCE;
+ 	}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

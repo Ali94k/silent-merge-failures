@@ -1,0 +1,1309 @@
+UNIT jmrozanec_cron-utils__a77c0476c3
+repo: jmrozanec_cron-utils   merge: a77c0476c311f59cdc6373f3297ed0523ba16842   stratum: B
+files shown: 11 of 11 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/11: src/main/java/com/cronutils/builder/CronBuilder.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -34,16 +34,20 @@
+ 	private CronDefinition definition;
+ 
+ 	private CronBuilder(CronDefinition definition) {
+ 		this.definition = definition;
+ 	}
+ 
+ 	public static CronBuilder cron(CronDefinition definition) {
+ 		return new CronBuilder(definition);
++	}
++	
++	public CronBuilder withDoY(FieldExpression expression) {
++	    return addField(DAY_OF_YEAR, expression);
+ 	}
+ 
+ 	public CronBuilder withYear(FieldExpression expression) {
+ 		return addField(YEAR, expression);
+ 	}
+ 
+ 	public CronBuilder withDoM(FieldExpression expression) {
+ 		return addField(DAY_OF_MONTH, expression);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -7,31 +7,37 @@
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package com.cronutils.builder;
+ 
++import static com.cronutils.model.field.CronFieldName.DAY_OF_MONTH;
++import static com.cronutils.model.field.CronFieldName.DAY_OF_WEEK;
++import static com.cronutils.model.field.CronFieldName.HOUR;
++import static com.cronutils.model.field.CronFieldName.MINUTE;
++import static com.cronutils.model.field.CronFieldName.MONTH;
++import static com.cronutils.model.field.CronFieldName.SECOND;
++import static com.cronutils.model.field.CronFieldName.YEAR;
++import static com.cronutils.utils.Preconditions.checkState;
++
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.Map;
++
+ import com.cronutils.model.Cron;
+ import com.cronutils.model.definition.CronDefinition;
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.constraint.FieldConstraints;
+ import com.cronutils.model.field.expression.FieldExpression;
+ import com.cronutils.model.field.expression.visitor.ValidationFieldExpressionVisitor;
+ import com.cronutils.utils.VisibleForTesting;
+-
+-import java.util.ArrayList;
+-import java.util.HashMap;
+-import java.util.Map;
+-
+-import static com.cronutils.model.field.CronFieldName.*;
+-import static com.cronutils.utils.Preconditions.checkState;
+ 
+ public class CronBuilder {
+ 
+ 	private final Map<CronFieldName, CronField> fields = new HashMap<>();
+ 	private CronDefinition definition;
+ 
+ 	private CronBuilder(CronDefinition definition) {
+ 		this.definition = definition;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -7,23 +7,17 @@
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package com.cronutils.builder;
+ 
+-import static com.cronutils.model.field.CronFieldName.DAY_OF_MONTH;
+-import static com.cronutils.model.field.CronFieldName.DAY_OF_WEEK;
+-import static com.cronutils.model.field.CronFieldName.HOUR;
+-import static com.cronutils.model.field.CronFieldName.MINUTE;
+-import static com.cronutils.model.field.CronFieldName.MONTH;
+-import static com.cronutils.model.field.CronFieldName.SECOND;
+-import static com.cronutils.model.field.CronFieldName.YEAR;
++import static com.cronutils.model.field.CronFieldName.*;
+ import static com.cronutils.utils.Preconditions.checkState;
+ 
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.Map;
+ 
+ import com.cronutils.model.Cron;
+ import com.cronutils.model.definition.CronDefinition;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/11: src/main/java/com/cronutils/model/definition/CronDefinition.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -74,14 +74,23 @@
+     /**
+      * Returns field definition for field name of this cron
+      * @param cronFieldName cron field name
+      * @return FieldDefinition instance
+      */
+     public FieldDefinition getFieldDefinition(CronFieldName cronFieldName){
+         return fieldDefinitions.get(cronFieldName);
+     }
++    
++    /**
++     * Returns {@code true} if this cron contains a field definition for field name.
++     * @param cronFieldName cron field name
++     * @return {@code true} if this cron contains a field definition for field name
++     */
++    public boolean containsFieldDefinition(CronFieldName cronFieldName){
++        return fieldDefinitions.containsKey(cronFieldName);
++    }
+ 
+     public Set<CronConstraint> getCronConstraints() {
+         return cronConstraints;
+     }
+ }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,16 +1,21 @@
+ package com.cronutils.model.definition;
++
++import java.io.Serializable;
++import java.util.Collections;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
+ 
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.definition.FieldDefinition;
+ import com.cronutils.utils.Preconditions;
+-
+-import java.io.Serializable;
+-import java.util.*;
+ 
+ /*
+  * Copyright 2014 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/11: src/main/java/com/cronutils/model/definition/CronDefinitionBuilder.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,20 +1,19 @@
+ package com.cronutils.model.definition;
+ 
+-import com.cronutils.model.Cron;
+ import com.cronutils.model.CronType;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.definition.FieldDayOfWeekDefinitionBuilder;
+ import com.cronutils.model.field.definition.FieldDefinition;
+ import com.cronutils.model.field.definition.FieldDefinitionBuilder;
++import com.cronutils.model.field.definition.FieldQuestionMarkDefinitionBuilder;
+ import com.cronutils.model.field.definition.FieldSpecialCharsDefinitionBuilder;
+-import com.cronutils.model.field.expression.QuestionMark;
+-
+ import java.util.*;
++import java.util.stream.Collectors;
+ 
+ /*
+  * Copyright 2014 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+@@ -95,16 +94,24 @@
+ 
+     /**
+      * Adds definition for year field
+      * @return new FieldDefinitionBuilder instance
+      */
+     public FieldDefinitionBuilder withYear() {
+         return new FieldDefinitionBuilder(this, CronFieldName.YEAR);
+     }
++    
++    /**
++     * Adds definition for day of year field
++     * @return new FieldDefinitionBuilder instance
++     */
++    public FieldQuestionMarkDefinitionBuilder withDayOfYear() {
++        return new FieldQuestionMarkDefinitionBuilder(this, CronFieldName.DAY_OF_YEAR);
++    }
+ 
+     /**
+      * Sets enforceStrictRanges value to true
+      * @return this CronDefinitionBuilder instance
+      */
+     public CronDefinitionBuilder enforceStrictRanges() {
+         enforceStrictRanges = true;
+         return this;
+@@ -132,17 +139,17 @@
+ 
+     /**
+      * Creates a new CronDefinition instance with provided field definitions
+      * @return returns CronDefinition instance, never null
+      */
+     public CronDefinition instance() {
+         Set<CronConstraint> validations = new HashSet<CronConstraint>();
+         validations.addAll(cronConstraints);
+-        return new CronDefinition(new ArrayList<>(this.fields.values()), validations, enforceStrictRanges);
++        return new CronDefinition(fields.values().stream().sorted((o1,o2) -> o1.getFieldName().getOrder() - o2.getFieldName().getOrder()).collect(Collectors.toList()), validations, enforceStrictRanges);
+     }
+ 
+     /**
+      * Creates CronDefinition instance matching cron4j specification;
+      * @return CronDefinition instance, never null;
+      */
+     private static CronDefinition cron4j() {
+         return CronDefinitionBuilder.defineCron()
+@@ -163,29 +170,17 @@
+         return CronDefinitionBuilder.defineCron()
+                 .withSeconds().and()
+                 .withMinutes().and()
+                 .withHours().and()
+                 .withDayOfMonth().supportsHash().supportsL().supportsW().supportsLW().supportsQuestionMark().and()
+                 .withMonth().and()
+                 .withDayOfWeek().withValidRange(1, 7).withMondayDoWValue(2).supportsHash().supportsL().supportsW().supportsQuestionMark().and()
+                 .withYear().withValidRange(1970, 2099).optional().and()
+-                .withCronValidation(
+-                        //Solves issue #63: https://github.com/jmrozanec/cron-utils/issues/63
+-                        //both a day-of-week AND a day-of-month parameter should fail for QUARTZ
+-                        new CronConstraint("Both, a day-of-week AND a day-of-month parameter, are not supported.") {
+-                            @Override
+-                            public boolean validate(Cron cron) {
+-                                if(!(cron.retrieve(CronFieldName.DAY_OF_MONTH).getExpression() instanceof QuestionMark)){
+-                                    return cron.retrieve(CronFieldName.DAY_OF_WEEK).getExpression() instanceof QuestionMark;
+-                                } else {
+-                                    return !(cron.retrieve(CronFieldName.DAY_OF_WEEK).getExpression() instanceof QuestionMark);
+-                                }
+-                            }
+-                        })
++                .withCronValidation(CronConstraints.ensureEitherDayOfWeekOrDayOfMonth())
+                 .instance();
+     }
+ 
+     /**
+      * Creates CronDefinition instance matching unix crontab specification;
+      * @return CronDefinition instance, never null;
+      */
+     private static CronDefinition unixCrontab() {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,20 +1,24 @@
+ package com.cronutils.model.definition;
++
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.Map;
++import java.util.Set;
+ 
+ import com.cronutils.model.Cron;
+ import com.cronutils.model.CronType;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.definition.FieldDayOfWeekDefinitionBuilder;
+ import com.cronutils.model.field.definition.FieldDefinition;
+ import com.cronutils.model.field.definition.FieldDefinitionBuilder;
+ import com.cronutils.model.field.definition.FieldSpecialCharsDefinitionBuilder;
+ import com.cronutils.model.field.expression.QuestionMark;
+-
+-import java.util.*;
+ 
+ /*
+  * Copyright 2014 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,23 +1,25 @@
+ package com.cronutils.model.definition;
++
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.Map;
++import java.util.Set;
+ 
+ import com.cronutils.model.CronType;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.definition.FieldDayOfWeekDefinitionBuilder;
+ import com.cronutils.model.field.definition.FieldDefinition;
+ import com.cronutils.model.field.definition.FieldDefinitionBuilder;
+ import com.cronutils.model.field.definition.FieldQuestionMarkDefinitionBuilder;
+ import com.cronutils.model.field.definition.FieldSpecialCharsDefinitionBuilder;
++
+ import java.util.stream.Collectors;
+-import java.util.ArrayList;
+-import java.util.HashMap;
+-import java.util.HashSet;
+-import java.util.Map;
+-import java.util.Set;
++
+ 
+ /*
+  * Copyright 2014 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/11: src/main/java/com/cronutils/model/field/CronField.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,13 +1,14 @@
+ package com.cronutils.model.field;
+ 
+ import com.cronutils.model.field.constraint.FieldConstraints;
+ import com.cronutils.model.field.expression.FieldExpression;
+ import com.cronutils.utils.Preconditions;
++import com.google.common.base.MoreObjects;
+ 
+ import java.io.Serializable;
+ import java.util.Comparator;
+ 
+ /*
+  * Copyright 2014 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -40,10 +41,15 @@
+ 
+     public FieldConstraints getConstraints() {
+         return constraints;
+     }
+ 
+     public static Comparator<CronField> createFieldComparator() {
+         return (o1, o2) -> o1.getField().getOrder() - o2.getField().getOrder();
+     }
++    
++    @Override
++    public String toString() {
++        return MoreObjects.toStringHelper(this).add("field", field).toString();
++    }
+ }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,16 +1,16 @@
+ package com.cronutils.model.field;
++
++import java.io.Serializable;
++import java.util.Comparator;
+ 
+ import com.cronutils.model.field.constraint.FieldConstraints;
+ import com.cronutils.model.field.expression.FieldExpression;
+ import com.cronutils.utils.Preconditions;
+-
+-import java.io.Serializable;
+-import java.util.Comparator;
+ 
+ /*
+  * Copyright 2014 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,16 +1,17 @@
+ package com.cronutils.model.field;
++
++import java.io.Serializable;
++import java.util.Comparator;
+ 
+ import com.cronutils.model.field.constraint.FieldConstraints;
+ import com.cronutils.model.field.expression.FieldExpression;
+ import com.cronutils.utils.Preconditions;
+ import com.google.common.base.MoreObjects;
+-import java.io.Serializable;
+-import java.util.Comparator;
+ 
+ /*
+  * Copyright 2014 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/11: src/main/java/com/cronutils/model/field/constraint/FieldConstraintsBuilder.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -64,16 +64,20 @@
+             case DAY_OF_MONTH:
+                 startRange = 1;
+                 endRange = 31;
+                 return this;
+             case MONTH:
+                 stringMapping = monthsMapping();
+                 startRange = 1;
+                 endRange = 12;
++                return this;
++            case DAY_OF_YEAR:
++                startRange = 1;
++                endRange = 366;
+                 return this;
+             default:
+                 return this;
+         }
+     }
+ 
+     /**
+      * Adds hash support
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,17 +1,17 @@
+ package com.cronutils.model.field.constraint;
+-
+-import com.cronutils.model.field.CronFieldName;
+-import com.cronutils.model.field.value.SpecialChar;
+ 
+ import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.Map;
+ import java.util.Set;
++
++import com.cronutils.model.field.CronFieldName;
++import com.cronutils.model.field.value.SpecialChar;
+ 
+ /*
+  * Copyright 2014 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/11: src/main/java/com/cronutils/model/time/ExecutionTime.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -9,22 +9,26 @@
+ import com.cronutils.model.field.expression.Always;
+ import com.cronutils.model.field.expression.QuestionMark;
+ import com.cronutils.model.time.generator.FieldValueGenerator;
+ import com.cronutils.model.time.generator.NoDaysForMonthException;
+ import com.cronutils.model.time.generator.NoSuchValueException;
+ import com.cronutils.utils.Preconditions;
+ import com.cronutils.utils.VisibleForTesting;
+ import com.google.common.base.Optional;
++import com.google.common.collect.Range;
++
+ import org.threeten.bp.*;
+-
+ import java.util.*;
++import java.util.stream.Collectors;
++import java.util.stream.Stream;
+ 
+ import static com.cronutils.model.field.CronFieldName.*;
+ import static com.cronutils.model.field.value.SpecialChar.QUESTION_MARK;
++import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfYearValueGeneratorInstance;
+ import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfMonthValueGeneratorInstance;
+ import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfWeekValueGeneratorInstance;
+ import static org.threeten.bp.temporal.TemporalAdjusters.lastDayOfMonth;
+ 
+ /*
+  * Copyright 2014 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -40,30 +44,32 @@
+ /**
+  * Calculates execution time given a cron pattern
+  */
+ public class ExecutionTime {
+ 	private CronDefinition cronDefinition;
+     private FieldValueGenerator yearsValueGenerator;
+     private CronField daysOfWeekCronField;
+     private CronField daysOfMonthCronField;
++    private CronField daysOfYearCronField;
+ 
+     private TimeNode months;
+     private TimeNode hours;
+     private TimeNode minutes;
+     private TimeNode seconds;
+ 
+     @VisibleForTesting
+     ExecutionTime(CronDefinition cronDefinition, FieldValueGenerator yearsValueGenerator, CronField daysOfWeekCronField,
+-                  CronField daysOfMonthCronField, TimeNode months, TimeNode hours,
++                  CronField daysOfMonthCronField, CronField daysOfYearCronField, TimeNode months, TimeNode hours,
+                   TimeNode minutes, TimeNode seconds) {
+         this.cronDefinition = Preconditions.checkNotNull(cronDefinition);
+         this.yearsValueGenerator = Preconditions.checkNotNull(yearsValueGenerator);
+         this.daysOfWeekCronField = Preconditions.checkNotNull(daysOfWeekCronField);
+         this.daysOfMonthCronField = Preconditions.checkNotNull(daysOfMonthCronField);
++        this.daysOfYearCronField = daysOfYearCronField;
+         this.months = Preconditions.checkNotNull(months);
+         this.hours = Preconditions.checkNotNull(hours);
+         this.minutes = Preconditions.checkNotNull(minutes);
+         this.seconds = Preconditions.checkNotNull(seconds);
+     }
+ 
+     /**
+      * Creates execution time for given Cron
+@@ -91,16 +97,19 @@
+                     case DAY_OF_MONTH:
+                         executionTimeBuilder.forDaysOfMonthMatching(fields.get(name));
+                         break;
+                     case MONTH:
+                         executionTimeBuilder.forMonthsMatching(fields.get(name));
+                         break;
+                     case YEAR:
+                         executionTimeBuilder.forYearsMatching(fields.get(name));
++                        break;
++                    case DAY_OF_YEAR:
++                        executionTimeBuilder.forDaysOfYearMatching(fields.get(name));
+                         break;
+                     default:
+                         break;
+                 }
+             }
+         }
+         return executionTimeBuilder.build();
+     }
+@@ -340,25 +349,45 @@
+                 return new ExecutionTimeResult(newDate, false);
+             }
+             return initDateTime(date.getYear(), date.getMonthValue(), date.getDayOfMonth(), date.getHour(), date.getMinute(), previousSeconds, date.getZone());
+         }
+         return new ExecutionTimeResult(date, true);
+     }
+ 
+     private TimeNode generateDays(CronDefinition cronDefinition, ZonedDateTime date) throws NoDaysForMonthException {
++        if(cronDefinition.containsFieldDefinition(DAY_OF_YEAR)){
++            return generateDayCandidatesUsingDoY(date);
++        }
+         //If DoW is not supported in custom definition, we just return an empty list.
+         if(cronDefinition.getFieldDefinition(DAY_OF_WEEK)!=null && cronDefinition.getFieldDefinition(DAY_OF_MONTH)!=null){
+             return generateDaysDoWAndDoMSupported(cronDefinition, date);
+         }
+         if(cronDefinition.getFieldDefinition(DAY_OF_WEEK)==null){
+             return generateDayCandidatesUsingDoM(date);
+         }
+         return generateDayCandidatesUsingDoW(date, ((DayOfWeekFieldDefinition)cronDefinition.getFieldDefinition(DAY_OF_WEEK)).getMondayDoWValue());
+     }
++    
++    private TimeNode generateDayCandidatesUsingDoY(ZonedDateTime reference) {
++        final int year = reference.getYear();
++        final int month = reference.getMonthValue();
++        LocalDate date = LocalDate.of(year, 1, 1);
++        int lengthOfYear = date.lengthOfYear();
++
++        List<Integer> candidates = createDayOfYearValueGeneratorInstance(daysOfYearCronField, year).generateCandidates(1, lengthOfYear);
++        
++        Range<Integer> rangeOfMonth = Range.closedOpen(LocalDate.of(year, month, 1).getDayOfYear(), LocalDate.of(year, month + 1, 1).getDayOfYear());
++        Stream<Integer> candidatesFilteredByMonth = candidates.stream().filter(dayOfYear -> rangeOfMonth.contains(dayOfYear));
++        Stream<Integer> uniqueCandidates = candidatesFilteredByMonth.distinct();
++        Stream<Integer> candidatesMappedToDayOfMonth = uniqueCandidates.map(dayOfYear -> LocalDate.ofYearDay(reference.getYear(), dayOfYear).getDayOfMonth());
++        
++        return new TimeNode(candidatesMappedToDayOfMonth.collect(Collectors.toList()));
++    }
++    
+ 
+     private TimeNode generateDaysDoWAndDoMSupported(CronDefinition cronDefinition, ZonedDateTime date) throws NoDaysForMonthException {
+         boolean questionMarkSupported =
+                 cronDefinition.getFieldDefinition(DAY_OF_WEEK).getConstraints().getSpecialChars().contains(QUESTION_MARK);
+         List<Integer> candidates = new ArrayList<>();
+         if(questionMarkSupported){
+             candidates = generateDayCandidatesQuestionMarkSupportedUsingDoWAndDoM(
+                     date.getYear(),
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,33 +1,49 @@
+ package com.cronutils.model.time;
++
++import static com.cronutils.model.field.CronFieldName.DAY_OF_MONTH;
++import static com.cronutils.model.field.CronFieldName.DAY_OF_WEEK;
++import static com.cronutils.model.field.CronFieldName.HOUR;
++import static com.cronutils.model.field.CronFieldName.MINUTE;
++import static com.cronutils.model.field.CronFieldName.MONTH;
++import static com.cronutils.model.field.CronFieldName.SECOND;
++import static com.cronutils.model.field.CronFieldName.YEAR;
++import static com.cronutils.model.field.value.SpecialChar.QUESTION_MARK;
++import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfMonthValueGeneratorInstance;
++import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfWeekValueGeneratorInstance;
++import static org.threeten.bp.temporal.TemporalAdjusters.lastDayOfMonth;
++
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
++
++import org.threeten.bp.Duration;
++import org.threeten.bp.LocalDate;
++import org.threeten.bp.LocalDateTime;
++import org.threeten.bp.ZoneId;
++import org.threeten.bp.ZonedDateTime;
+ 
+ import com.cronutils.mapper.WeekDay;
+ import com.cronutils.model.Cron;
+ import com.cronutils.model.definition.CronDefinition;
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.definition.DayOfWeekFieldDefinition;
+ import com.cronutils.model.field.expression.Always;
+ import com.cronutils.model.field.expression.QuestionMark;
+ import com.cronutils.model.time.generator.FieldValueGenerator;
+ import com.cronutils.model.time.generator.NoDaysForMonthException;
+ import com.cronutils.model.time.generator.NoSuchValueException;
+ import com.cronutils.utils.Preconditions;
+ import com.cronutils.utils.VisibleForTesting;
+ import com.google.common.base.Optional;
+-import org.threeten.bp.*;
+-
+-import java.util.*;
+-
+-import static com.cronutils.model.field.CronFieldName.*;
+-import static com.cronutils.model.field.value.SpecialChar.QUESTION_MARK;
+-import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfMonthValueGeneratorInstance;
+-import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfWeekValueGeneratorInstance;
+-import static org.threeten.bp.temporal.TemporalAdjusters.lastDayOfMonth;
+ 
+ /*
+  * Copyright 2014 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,50 +1,56 @@
+ package com.cronutils.model.time;
++
++import static com.cronutils.model.field.CronFieldName.DAY_OF_MONTH;
++import static com.cronutils.model.field.CronFieldName.DAY_OF_WEEK;
++import static com.cronutils.model.field.CronFieldName.HOUR;
++import static com.cronutils.model.field.CronFieldName.MINUTE;
++import static com.cronutils.model.field.CronFieldName.MONTH;
++import static com.cronutils.model.field.CronFieldName.SECOND;
++import static com.cronutils.model.field.CronFieldName.YEAR;
++import static com.cronutils.model.field.value.SpecialChar.QUESTION_MARK;
++import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfMonthValueGeneratorInstance;
++import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfWeekValueGeneratorInstance;
++import static org.threeten.bp.temporal.TemporalAdjusters.lastDayOfMonth;
++
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
++
++import org.threeten.bp.Duration;
++import org.threeten.bp.LocalDate;
++import org.threeten.bp.LocalDateTime;
++import org.threeten.bp.ZoneId;
++import org.threeten.bp.ZonedDateTime;
+ 
+ import com.cronutils.mapper.WeekDay;
+ import com.cronutils.model.Cron;
+ import com.cronutils.model.definition.CronDefinition;
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.definition.DayOfWeekFieldDefinition;
+ import com.cronutils.model.field.expression.Always;
+ import com.cronutils.model.field.expression.QuestionMark;
+ import com.cronutils.model.time.generator.FieldValueGenerator;
+ import com.cronutils.model.time.generator.NoDaysForMonthException;
+ import com.cronutils.model.time.generator.NoSuchValueException;
+ import com.cronutils.utils.Preconditions;
+ import com.cronutils.utils.VisibleForTesting;
+ import com.google.common.base.Optional;
+ import com.google.common.collect.Range;
++
+ import java.util.stream.Collectors;
+ import java.util.stream.Stream;
++
++import static com.cronutils.model.field.CronFieldName.*;
+ import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfYearValueGeneratorInstance;
+-import static com.cronutils.model.field.CronFieldName.DAY_OF_MONTH;
+-import static com.cronutils.model.field.CronFieldName.DAY_OF_WEEK;
+-import static com.cronutils.model.field.CronFieldName.HOUR;
+-import static com.cronutils.model.field.CronFieldName.MINUTE;
+-import static com.cronutils.model.field.CronFieldName.MONTH;
+-import static com.cronutils.model.field.CronFieldName.SECOND;
+-import static com.cronutils.model.field.CronFieldName.YEAR;
+-import static com.cronutils.model.field.value.SpecialChar.QUESTION_MARK;
+-import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfMonthValueGeneratorInstance;
+-import static com.cronutils.model.time.generator.FieldValueGeneratorFactory.createDayOfWeekValueGeneratorInstance;
+-import static org.threeten.bp.temporal.TemporalAdjusters.lastDayOfMonth;
+-import java.util.ArrayList;
+-import java.util.Collections;
+-import java.util.HashSet;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+-import org.threeten.bp.Duration;
+-import org.threeten.bp.LocalDate;
+-import org.threeten.bp.LocalDateTime;
+-import org.threeten.bp.ZoneId;
+-import org.threeten.bp.ZonedDateTime;
+ 
+ /*
+  * Copyright 2014 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/11: src/main/java/com/cronutils/model/time/generator/FieldValueGeneratorFactory.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -38,16 +38,20 @@
+             On on = (On) fieldExpression;
+             if(!SpecialChar.NONE.equals(on.getSpecialChar().getValue())) {
+                 throw new RuntimeException(String.format("Cannot create instance for On instance with %s value", on.getSpecialChar()));
+             }
+             return new OnFieldValueGenerator(cronField);
+         }
+         return new NullFieldValueGenerator(cronField);
+     }
++    
++    public static FieldValueGenerator createDayOfYearValueGeneratorInstance(CronField cronField, int year){
++        return forCronField(cronField);
++    }
+ 
+     public static FieldValueGenerator createDayOfMonthValueGeneratorInstance(CronField cronField, int year, int month){
+         FieldExpression fieldExpression = cronField.getExpression();
+         if(fieldExpression instanceof On){
+             On on = (On) fieldExpression;
+             if(!SpecialChar.NONE.equals(on.getSpecialChar().getValue())){
+                 return new OnDayOfMonthValueGenerator(cronField, year, month);
+             }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,13 +1,18 @@
+ package com.cronutils.model.time.generator;
+ 
+ import com.cronutils.mapper.WeekDay;
+ import com.cronutils.model.field.CronField;
+-import com.cronutils.model.field.expression.*;
++import com.cronutils.model.field.expression.Always;
++import com.cronutils.model.field.expression.And;
++import com.cronutils.model.field.expression.Between;
++import com.cronutils.model.field.expression.Every;
++import com.cronutils.model.field.expression.FieldExpression;
++import com.cronutils.model.field.expression.On;
+ import com.cronutils.model.field.value.SpecialChar;
+ 
+ /*
+  * Copyright 2015 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 8/11: src/main/java/com/cronutils/model/time/generator/OnDayOfMonthValueGenerator.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -2,42 +2,34 @@
+ 
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.expression.FieldExpression;
+ import com.cronutils.model.field.expression.On;
+ import com.cronutils.utils.Preconditions;
+ import org.threeten.bp.DayOfWeek;
+ import org.threeten.bp.LocalDate;
+-
+-import java.util.ArrayList;
+-import java.util.List;
+ 
+ /*
+  * Copyright 2015 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+-class OnDayOfMonthValueGenerator extends FieldValueGenerator {
+-    private int year;
+-    private int month;
++class OnDayOfMonthValueGenerator extends OnDayOfCalendarValueGenerator {
+ 
+     public OnDayOfMonthValueGenerator(CronField cronField, int year, int month) {
+-        super(cronField);
+-        Preconditions.checkArgument(CronFieldName.DAY_OF_MONTH.equals(cronField.getField()), "CronField does not belong to day of" +
+-                " month");
+-        this.year = year;
+-        this.month = month;
++        super(cronField, year, month);
++        Preconditions.checkArgument(CronFieldName.DAY_OF_MONTH.equals(cronField.getField()), "CronField does not belong to day of month");
+     }
+ 
+     @Override
+     public int generateNextValue(int reference) throws NoSuchValueException {
+         On on = ((On) cronField.getExpression());
+         int value = generateValue(on, year, month);
+ 
+         if (value <= reference) {
+@@ -52,36 +44,23 @@
+         int value = generateValue(on, year, month);
+         if (value >= reference) {
+             throw new NoSuchValueException();
+         }
+         return value;
+     }
+ 
+     @Override
+-    protected List<Integer> generateCandidatesNotIncludingIntervalExtremes(int start, int end) {
+-        List<Integer> values = new ArrayList<>();
+-        try {
+-            int reference = generateNextValue(start);
+-            while (reference < end) {
+-                values.add(reference);
+-                reference = generateNextValue(reference);
+-            }
+-        } catch (NoSuchValueException e) {
+-        }
+-        return values;
+-    }
+-
+-    @Override
+     public boolean isMatch(int value) {
+         On on = ((On) cronField.getExpression());
+         try {
+             return value == generateValue(on, year, month);
+         } catch (NoSuchValueException ignored) {
+-        }//we just skip, since we generate values until we get the exception
++            //we just skip, since we generate values until we get the exception
++        }
+         return false;
+     }
+ 
+     @Override
+     protected boolean matchesFieldExpressionClass(FieldExpression fieldExpression) {
+         return fieldExpression instanceof On;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,20 +1,21 @@
+ package com.cronutils.model.time.generator;
++
++import java.util.ArrayList;
++import java.util.List;
++
++import org.threeten.bp.DayOfWeek;
++import org.threeten.bp.LocalDate;
+ 
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.expression.FieldExpression;
+ import com.cronutils.model.field.expression.On;
+ import com.cronutils.utils.Preconditions;
+-import org.threeten.bp.DayOfWeek;
+-import org.threeten.bp.LocalDate;
+-
+-import java.util.ArrayList;
+-import java.util.List;
+ 
+ /*
+  * Copyright 2015 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+@@ -84,17 +85,18 @@
+     protected boolean matchesFieldExpressionClass(FieldExpression fieldExpression) {
+         return fieldExpression instanceof On;
+     }
+ 
+     private int generateValue(On on, int year, int month) throws NoSuchValueException {
+         int dayOfMonth = on.getTime().getValue();
+         switch (on.getSpecialChar().getValue()) {
+             case L:
+-                return LocalDate.of(year, month, 1).lengthOfMonth();
++                int daysBefore = on.getNth().getValue();
++                return LocalDate.of(year, month, 1).lengthOfMonth() - (daysBefore > 0 ? daysBefore : 0);
+             case W: // First work day of the week
+                 LocalDate doM = LocalDate.of(year, month, dayOfMonth);
+                 if (doM.getDayOfWeek() == DayOfWeek.SATURDAY) {//dayOfWeek is Saturday!
+                     if (dayOfMonth == 1) {//first day in month is Saturday! We execute on Monday
+                         return 3;
+                     }
+                     return dayOfMonth - 1;
+                 }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,12 +1,9 @@
+ package com.cronutils.model.time.generator;
+-
+-import java.util.ArrayList;
+-import java.util.List;
+ 
+ import org.threeten.bp.DayOfWeek;
+ import org.threeten.bp.LocalDate;
+ 
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.expression.FieldExpression;
+ import com.cronutils.model.field.expression.On;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 9/11: src/main/java/com/cronutils/model/time/generator/OnDayOfWeekValueGenerator.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -4,41 +4,35 @@
+ import com.cronutils.mapper.WeekDay;
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.expression.FieldExpression;
+ import com.cronutils.model.field.expression.On;
+ import com.cronutils.utils.Preconditions;
+ import org.threeten.bp.DayOfWeek;
+ import org.threeten.bp.LocalDate;
+-
+-import java.util.ArrayList;
+-import java.util.List;
+ /*
+  * Copyright 2015 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+-class OnDayOfWeekValueGenerator extends FieldValueGenerator {
+-    private int year;
+-    private int month;
++class OnDayOfWeekValueGenerator extends OnDayOfCalendarValueGenerator {
++
+     private WeekDay mondayDoWValue;
+     
+     public OnDayOfWeekValueGenerator(CronField cronField, int year, int month, WeekDay mondayDoWValue) {
+-        super(cronField);
++        super(cronField, year, month);
+         Preconditions.checkArgument(CronFieldName.DAY_OF_WEEK.equals(cronField.getField()), "CronField does not belong to day of week");
+-        this.year = year;
+-        this.month = month;
+         this.mondayDoWValue = mondayDoWValue;
+     }
+ 
+     @Override
+     public int generateNextValue(int reference) throws NoSuchValueException{
+         On on = ((On)cronField.getExpression());
+         int value = generateValue(on, year, month, reference);
+         if(value<=reference){
+@@ -53,34 +47,23 @@
+         int value = generateValue(on, year, month, reference);
+         if(value>=reference){
+             throw new NoSuchValueException();
+         }
+         return value;
+     }
+ 
+     @Override
+-    protected List<Integer> generateCandidatesNotIncludingIntervalExtremes(int start, int end) {
+-        List<Integer>values = new ArrayList<>();
+-        try {
+-            int reference = generateNextValue(start);
+-            while(reference<end){
+-                values.add(reference);
+-                reference=generateNextValue(reference);
+-            }
+-        } catch (NoSuchValueException e) {}
+-        return values;
+-    }
+-
+-    @Override
+     public boolean isMatch(int value) {
+         On on = ((On)cronField.getExpression());
+         try {
+             return value == generateValue(on, year, month, value - 1);
+-        } catch (NoSuchValueException e) {}
++        } catch (NoSuchValueException ignored) {
++            //we just skip, since we generate values until we get the exception
++        }
+         return false;
+     }
+ 
+     @Override
+     protected boolean matchesFieldExpressionClass(FieldExpression fieldExpression) {
+         return fieldExpression instanceof On;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,22 +1,23 @@
+ package com.cronutils.model.time.generator;
++
++import java.util.ArrayList;
++import java.util.List;
++
++import org.threeten.bp.DayOfWeek;
++import org.threeten.bp.LocalDate;
+ 
+ import com.cronutils.mapper.ConstantsMapper;
+ import com.cronutils.mapper.WeekDay;
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.expression.FieldExpression;
+ import com.cronutils.model.field.expression.On;
+ import com.cronutils.utils.Preconditions;
+-import org.threeten.bp.DayOfWeek;
+-import org.threeten.bp.LocalDate;
+-
+-import java.util.ArrayList;
+-import java.util.List;
+ /*
+  * Copyright 2015 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,13 +1,9 @@
+ package com.cronutils.model.time.generator;
+-
+-import java.util.ArrayList;
+-import java.util.List;
+-
+ import org.threeten.bp.DayOfWeek;
+ import org.threeten.bp.LocalDate;
+ 
+ import com.cronutils.mapper.ConstantsMapper;
+ import com.cronutils.mapper.WeekDay;
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.expression.FieldExpression;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 10/11: src/main/java/com/cronutils/parser/CronParserField.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -11,16 +11,17 @@
+  * limitations under the License.
+  */
+ package com.cronutils.parser;
+ 
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.constraint.FieldConstraints;
+ import com.cronutils.utils.Preconditions;
++import com.google.common.base.MoreObjects;
+ 
+ import java.util.Comparator;
+ 
+ /**
+  * Represents a cron field.
+  */
+ public class CronParserField {
+ 
+@@ -90,9 +91,14 @@
+ 	/**
+ 	 * Create a Comparator that compares CronField instances using CronFieldName value.
+ 	 * 
+ 	 * @return Comparator for CronField instance, never null.
+ 	 */
+ 	public static Comparator<CronParserField> createFieldTypeComparator() {
+ 		return (o1, o2) -> o1.getField().getOrder() - o2.getField().getOrder();
+ 	}
++	
++	@Override
++	public String toString() {
++	    return MoreObjects.toStringHelper(this).add("field", field).toString();
++	}
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -7,22 +7,22 @@
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package com.cronutils.parser;
+ 
++import java.util.Comparator;
++
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.constraint.FieldConstraints;
+ import com.cronutils.utils.Preconditions;
+-
+-import java.util.Comparator;
+ 
+ /**
+  * Represents a cron field.
+  */
+ public class CronParserField {
+ 
+ 	private final CronFieldName field;
+ 	private final FieldConstraints constraints;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -7,22 +7,23 @@
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package com.cronutils.parser;
+ 
++import java.util.Comparator;
++
+ import com.cronutils.model.field.CronField;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.constraint.FieldConstraints;
+ import com.cronutils.utils.Preconditions;
+ import com.google.common.base.MoreObjects;
+-import java.util.Comparator;
+ 
+ /**
+  * Represents a cron field.
+  */
+ public class CronParserField {
+ 
+ 	private final CronFieldName field;
+ 	private final FieldConstraints constraints;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 11/11: src/test/java/com/cronutils/parser/CronParserTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,14 +1,15 @@
+ package com.cronutils.parser;
+ 
+ import com.cronutils.model.Cron;
+ import com.cronutils.model.CronType;
+ import com.cronutils.model.definition.CronDefinition;
+ import com.cronutils.model.definition.CronDefinitionBuilder;
++import com.cronutils.model.definition.CronDefinitions;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.constraint.FieldConstraintsBuilder;
+ import com.cronutils.model.field.definition.FieldDefinition;
+ import com.google.common.collect.Sets;
+ import org.junit.Before;
+ import org.junit.Rule;
+ import org.junit.Test;
+ import org.junit.rules.ExpectedException;
+@@ -134,16 +135,22 @@
+     @Test(expected=IllegalArgumentException.class)
+     public void testRejectionOfPeriodUpperLimitExceedance() {
+         CronDefinition quartzDefinition = CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ);
+         parser = new CronParser(quartzDefinition);
+         
+         parser.parse("0/60 0 0 1 1 ? 2017/3");
+     }
+     
++    @Test
++    public void testParseExtendedQuartzCron() {
++        parser = new CronParser(CronDefinitions.quartzWithDayOfYearExtension());
++        parser.parse("0 0 0 ? * ? 2017 1/14");
++    }
++
+     //@Test TODO: issue #180
+     public void testThatEveryMinuteIsPreserved() {
+         CronDefinition quartzDefinition = CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ);
+         parser = new CronParser(quartzDefinition);
+         
+         Cron expression = parser.parse("0 0/1 * 1/1 * ? *");
+         assertEquals("0 0/1 * 1/1 * ? *", expression.asString());
+     }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,30 +1,31 @@
+ package com.cronutils.parser;
++
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertNotNull;
++import static org.mockito.Mockito.when;
++
++import java.util.Set;
++
++import org.junit.Before;
++import org.junit.Rule;
++import org.junit.Test;
++import org.junit.rules.ExpectedException;
++import org.mockito.Mock;
++import org.mockito.MockitoAnnotations;
+ 
+ import com.cronutils.model.Cron;
+ import com.cronutils.model.CronType;
+ import com.cronutils.model.definition.CronDefinition;
+ import com.cronutils.model.definition.CronDefinitionBuilder;
+ import com.cronutils.model.field.CronFieldName;
+ import com.cronutils.model.field.constraint.FieldConstraintsBuilder;
+ import com.cronutils.model.field.definition.FieldDefinition;
+ import com.google.common.collect.Sets;
+-import org.junit.Before;
+-import org.junit.Rule;
+-import org.junit.Test;
+-import org.junit.rules.ExpectedException;
+-import org.mockito.Mock;
+-import org.mockito.MockitoAnnotations;
+-
+-import java.util.Set;
+-
+-import static org.junit.Assert.assertEquals;
+-import static org.junit.Assert.assertNotNull;
+-import static org.mockito.Mockito.when;
+ /*
+  * Copyright 2015 jmrozanec
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  * http://www.apache.org/licenses/LICENSE-2.0
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,708 @@
+UNIT jcabi_jcabi-github__27cc460e3c
+repo: jcabi_jcabi-github   merge: 27cc460e3c9160329c0311e4814adcd0de41cf0a   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/main/java/com/jcabi/github/Gist.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -47,18 +47,16 @@
+  * @version $Id$
+  * @since 0.1
+  * @see <a href="http://developer.github.com/v3/gists/">Gists API</a>
+  * @todo #1:1hr New method star() and starred() for a single gist. Let's
+  *  add these methods as explained in
+  *  http://developer.github.com/v3/gists/
+  *  The method should be tested by integration and unit tests, and implemented
+  *  in MkGist as well. When done, remove this comment.
+- * @todo #1:0.5hr Integration test for fork() method is required.
+- *  Need to fork some gist and check the forked gist.
+  */
+ @Immutable
+ @SuppressWarnings("PMD.TooManyMethods")
+ public interface Gist extends JsonReadable {
+ 
+     /**
+      * Github we're in.
+      * @return Github
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -62,21 +62,21 @@
+     /**
+      * Github we're in.
+      * @return Github
+      */
+     @NotNull(message = "Github is never NULL")
+     Github github();
+ 
+     /**
+-     * Get gist id.
+-     * @return Gist id
+-     */
+-    @NotNull(message = "String is never NULL")
+-    String name();
++     * Get gist identifier.
++     * @return Gist identifier
++     */
++    @NotNull(message = "Identifier is never NULL")
++    String identifier();
+ 
+     /**
+      * Read file content.
+      * @param name Name of it
+      * @return File content
+      * @throws IOException If there is any I/O problem
+      * @see <a href="http://developer.github.com/v3/gists/#get-a-single-gist">Get a Single Gist</a>
+      */
+@@ -96,16 +96,22 @@
+         @NotNull(message = "file content can't be NULL") String content)
+         throws IOException;
+ 
+     /**
+      * Star a gist.
+      * @throws IOException If there is any I/O problem
+      */
+     void star() throws IOException;
++
++    /**
++     * Unstar a gist.
++     * @throws IOException If there is any I/O problem
++     */
++    void unstar() throws IOException;
+ 
+     /**
+      * Checks if Gist is starred.
+      * @throws IOException If there is any I/O problem
+      * @return True if gist is starred
+      */
+     boolean starred() throws IOException;
+ 
+@@ -145,18 +151,19 @@
+         public Smart(final Gist gst) {
+             this.gist = gst;
+         }
+ 
+         /**
+          * Get gist id.
+          * @return Gist id
+          */
+-        public String name() {
+-            return this.gist.name();
++        @Override
++        public String identifier() {
++            return this.gist.identifier();
+         }
+ 
+         /**
+          * Get a list of all file names in the gist.
+          * @return File names
+          * @throws IOException If there is any I/O problem
+          */
+         public Iterable<String> files() throws IOException {
+@@ -183,16 +190,21 @@
+         }
+ 
+         @Override
+         public void star() throws IOException {
+             this.gist.star();
+         }
+ 
+         @Override
++        public void unstar() throws IOException {
++            this.gist.unstar();
++        }
++
++        @Override
+         public boolean starred() throws IOException {
+             return this.gist.starred();
+         }
+ 
+         @Override
+         public Gist fork() throws IOException {
+             return this.gist.fork();
+         }
+--- MERGED RESULT (mergiraf; full) ---
+/**
+ * Copyright (c) 2012-2013, JCabi.com
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met: 1) Redistributions of source code must retain the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer. 2) Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer in the documentation and/or other materials provided
+ * with the distribution. 3) Neither the name of the jcabi.com nor
+ * the names of its contributors may be used to endorse or promote
+ * products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT
+ * NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+ * THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.jcabi.github;
+
+import com.jcabi.aspects.Immutable;
+import com.jcabi.aspects.Loggable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import javax.json.JsonObject;
+import javax.json.JsonValue;
+import javax.validation.constraints.NotNull;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+
+/**
+ * Github gist.
+ *
+ * @author Yegor Bugayenko (yegor@tpc2.com)
+ * @version $Id$
+ * @since 0.1
+ * @see <a href="http://developer.github.com/v3/gists/">Gists API</a>
+ * @todo #1:1hr New method star() and starred() for a single gist. Let's
+ *  add these methods as explained in
+ *  http://developer.github.com/v3/gists/
+ *  The method should be tested by integration and unit tests, and implemented
+ *  in MkGist as well. When done, remove this comment.
+ */
+@Immutable
+@SuppressWarnings("PMD.TooManyMethods")
+public interface Gist extends JsonReadable {
+
+    /**
+     * Github we're in.
+     * @return Github
+     */
+    @NotNull(message = "Github is never NULL")
+    Github github();
+
+    /**
+     * Get gist identifier.
+     * @return Gist identifier
+     */
+    @NotNull(message = "Identifier is never NULL")
+    String identifier();
+
+    /**
+     * Read file content.
+     * @param name Name of it
+     * @return File content
+     * @throws IOException If there is any I/O problem
+     * @see <a href="http://developer.github.com/v3/gists/#get-a-single-gist">Get a Single Gist</a>
+     */
+    @NotNull(message = "file content is never NULL")
+    String read(@NotNull(message = "file name can't be NULL") String name)
+        throws IOException;
+
+    /**
+     * Write file content.
+     * @param name Name of it
+     * @param content Content to write
+     * @throws IOException If there is any I/O problem
+     * @see <a href="http://developer.github.com/v3/gists/#edit-a-gist">Edit a Gist</a>
+     */
+    void write(
+        @NotNull(message = "file name can't be NULL") String name,
+        @NotNull(message = "file content can't be NULL") String content)
+        throws IOException;
+
+    /**
+     * Star a gist.
+     * @throws IOException If there is any I/O problem
+     */
+    void star() throws IOException;
+
+    /**
+     * Unstar a gist.
+     * @throws IOException If there is any I/O problem
+     */
+    void unstar() throws IOException;
+
+    /**
+     * Checks if Gist is starred.
+     * @throws IOException If there is any I/O problem
+     * @return True if gist is starred
+     */
+    boolean starred() throws IOException;
+
+    /**
+     * Fork the gist.
+     * @return Forked gist
+     * @throws IOException If there is any I/O problem
+     */
+    @NotNull(message = "gist is never NULL")
+    Gist fork() throws IOException;
+
+    /**
+     * Get all comments of the gist.
+     * @return GistComments
+     * @throws IOException If there is any I/O problem
+     * @see <a href="http://developer.github.com/v3/gists/comments/">Gist Comments API</a>
+     */
+    @NotNull(message = "comments are never NULL")
+    GistComments comments() throws IOException;
+
+    /**
+     * Smart Gist with extra features.
+     */
+    @Immutable
+    @ToString
+    @Loggable(Loggable.DEBUG)
+    @EqualsAndHashCode(of = "gist")
+    final class Smart implements Gist {
+        /**
+         * Encapsulated gist.
+         */
+        private final transient Gist gist;
+        /**
+         * Public ctor.
+         * @param gst Gist
+         */
+        public Smart(final Gist gst) {
+            this.gist = gst;
+        }
+
+        /**
+         * Get gist id.
+         * @return Gist id
+         */
+        @Override
+        public String identifier() {
+            return this.gist.identifier();
+        }
+
+        /**
+         * Get a list of all file names in the gist.
+         * @return File names
+         * @throws IOException If there is any I/O problem
+         */
+        public Iterable<String> files() throws IOException {
+            final JsonObject array = this.gist.json().getJsonObject("files");
+            final Collection<String> files =
+                new ArrayList<String>(array.size());
+            for (final JsonValue value : array.values()) {
+                files.add(JsonObject.class.cast(value).getString("filename"));
+            }
+            return files;
+        }
+        @Override
+        public Github github() {
+            return this.gist.github();
+        }
+        @Override
+        public String read(final String name) throws IOException {
+            return this.gist.read(name);
+        }
+        @Override
+        public void write(final String name, final String content)
+            throws IOException {
+            this.gist.write(name, content);
+        }
+
+        @Override
+        public void star() throws IOException {
+            this.gist.star();
+        }
+
+        @Override
+        public void unstar() throws IOException {
+            this.gist.unstar();
+        }
+
+        @Override
+        public boolean starred() throws IOException {
+            return this.gist.starred();
+        }
+
+        @Override
+        public Gist fork() throws IOException {
+            return this.gist.fork();
+        }
+
+        @Override
+        public GistComments comments() throws IOException {
+            return this.gist.comments();
+        }
+
+        @Override
+        public JsonObject json() throws IOException {
+            return this.gist.json();
+        }
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/com/jcabi/github/RtGistITCase.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,70 +1,88 @@
+-/**
+- * Copyright (c) 2012-2013, JCabi.com
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met: 1) Redistributions of source code must retain the above
+- * copyright notice, this list of conditions and the following
+- * disclaimer. 2) Redistributions in binary form must reproduce the above
+- * copyright notice, this list of conditions and the following
+- * disclaimer in the documentation and/or other materials provided
+- * with the distribution. 3) Neither the name of the jcabi.com nor
+- * the names of its contributors may be used to endorse or promote
+- * products derived from this software without specific prior written
+- * permission.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT
+- * NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+- * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+- * THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+- * OF THE POSSIBILITY OF SUCH DAMAGE.
+- */
+-package com.jcabi.github;
+-
+-import org.hamcrest.MatcherAssert;
+-import org.hamcrest.Matchers;
+-import org.junit.Assume;
+-import org.junit.Test;
+-
+-/**
+- * Integration case for {@link Gist}.
+- * @author Yegor Bugayenko (yegor@tpc2.com)
+- * @version $Id$
+- */
+-public final class RtGistITCase {
+-
+-    /**
+-     * RtGist can text and write files.
+-     * @throws Exception If some problem inside
+-     */
+-    @Test
+-    public void readsAndWritesGists() throws Exception {
+-        final Gist gist = RtGistITCase.gist();
+-        final String file = new Gist.Smart(gist).files().iterator().next();
+-        gist.write(file, "hey, works for you this way?");
+-        MatcherAssert.assertThat(
+-            gist.read(file),
+-            Matchers.startsWith("hey, works for ")
+-        );
+-    }
+-
+-    /**
+-     * Return gist to test.
+-     * @return Repo
+-     * @throws Exception If some problem inside
+-     */
+-    private static Gist gist() throws Exception {
+-        final String key = System.getProperty("failsafe.github.key");
+-        Assume.assumeThat(key, Matchers.notNullValue());
+-        return new RtGithub(key).gists().iterate().iterator().next();
+-    }
+-
+-}
++/**
++ * Copyright (c) 2012-2013, JCabi.com
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met: 1) Redistributions of source code must retain the above
++ * copyright notice, this list of conditions and the following
++ * disclaimer. 2) Redistributions in binary form must reproduce the above
++ * copyright notice, this list of conditions and the following
++ * disclaimer in the documentation and/or other materials provided
++ * with the distribution. 3) Neither the name of the jcabi.com nor
++ * the names of its contributors may be used to endorse or promote
++ * products derived from this software without specific prior written
++ * permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT
++ * NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
++ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
++ * THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++package com.jcabi.github;
++
++import org.hamcrest.MatcherAssert;
++import org.hamcrest.Matchers;
++import org.junit.Assume;
++import org.junit.Test;
++
++/**
++ * Integration case for {@link Gist}.
++ * @author Yegor Bugayenko (yegor@tpc2.com)
++ * @version $Id$
++ */
++public final class RtGistITCase {
++
++    /**
++     * RtGist can text and write files.
++     * @throws Exception If some problem inside
++     */
++    @Test
++    public void readsAndWritesGists() throws Exception {
++        final Gist gist = RtGistITCase.gist();
++        final String file = new Gist.Smart(gist).files().iterator().next();
++        gist.write(file, "hey, works for you this way?");
++        MatcherAssert.assertThat(
++            gist.read(file),
++            Matchers.startsWith("hey, works for ")
++        );
++    }
++
++    /**
++     * RtGist can fork a gist.
++     * @throws Exception If some problem inside
++     */
++    @Test
++    public void forkGist() throws Exception {
++        final String key = System.getProperty("failsafe.github.key.second");
++        Assume.assumeThat(key, Matchers.notNullValue());
++        final Gist gist = new RtGithub(key).gists().get(
++            RtGistITCase.gist().name()
++        );
++        final String file = new Gist.Smart(gist).files().iterator().next();
++        MatcherAssert.assertThat(
++            gist.fork().read(file),
++            Matchers.equalTo(gist.read(file))
++        );
++    }
++
++    /**
++     * Return gist to test.
++     * @return Repo
++     * @throws Exception If some problem inside
++     */
++    private static Gist gist() throws Exception {
++        final String key = System.getProperty("failsafe.github.key");
++        Assume.assumeThat(key, Matchers.notNullValue());
++        return new RtGithub(key).gists().iterate().iterator().next();
++    }
++
++}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -24,16 +24,17 @@
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+  * OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ package com.jcabi.github;
+ 
++import java.util.Collections;
+ import org.hamcrest.MatcherAssert;
+ import org.hamcrest.Matchers;
+ import org.junit.Assume;
+ import org.junit.Test;
+ 
+ /**
+  * Integration case for {@link Gist}.
+  * @author Yegor Bugayenko (yegor@tpc2.com)
+@@ -42,29 +43,41 @@
+ public final class RtGistITCase {
+ 
+     /**
+      * RtGist can text and write files.
+      * @throws Exception If some problem inside
+      */
+     @Test
+     public void readsAndWritesGists() throws Exception {
+-        final Gist gist = RtGistITCase.gist();
+-        final String file = new Gist.Smart(gist).files().iterator().next();
+-        gist.write(file, "hey, works for you this way?");
+-        MatcherAssert.assertThat(
+-            gist.read(file),
+-            Matchers.startsWith("hey, works for ")
+-        );
++        final String filename = "filename.txt";
++        final String content = "content of file";
++        final Gists gists = RtGistITCase.github().gists();
++        Gist.Smart smart = null;
++        try {
++            final Gist gist = gists.create(
++                Collections.singletonMap(filename, content)
++            );
++            smart = new Gist.Smart(gist);
++            final String file = smart.files().iterator().next();
++            gist.write(file, "hey, works for you this way?");
++            MatcherAssert.assertThat(
++                gist.read(file),
++                Matchers.startsWith("hey, works for ")
++            );
++        } finally {
++            if (smart != null) {
++                gists.remove(smart.identifier());
++            }
++        }
+     }
+ 
+     /**
+-     * Return gist to test.
++     * Return github to test.
+      * @return Repo
+      * @throws Exception If some problem inside
+      */
+-    private static Gist gist() throws Exception {
++    private static Github github() throws Exception {
+         final String key = System.getProperty("failsafe.github.key");
+         Assume.assumeThat(key, Matchers.notNullValue());
+-        return new RtGithub(key).gists().iterate().iterator().next();
++        return new RtGithub(key);
+     }
+-
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/**
+ * Copyright (c) 2012-2013, JCabi.com
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met: 1) Redistributions of source code must retain the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer. 2) Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer in the documentation and/or other materials provided
+ * with the distribution. 3) Neither the name of the jcabi.com nor
+ * the names of its contributors may be used to endorse or promote
+ * products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT
+ * NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+ * THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.jcabi.github;
+
+import java.util.Collections;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
+import org.junit.Assume;
+import org.junit.Test;
+
+/**
+ * Integration case for {@link Gist}.
+ * @author Yegor Bugayenko (yegor@tpc2.com)
+ * @version $Id$
+ */
+public final class RtGistITCase {
+
+    /**
+     * RtGist can text and write files.
+     * @throws Exception If some problem inside
+     */
+    @Test
+    public void readsAndWritesGists() throws Exception {
+        final String filename = "filename.txt";
+        final String content = "content of file";
+        final Gists gists = RtGistITCase.github().gists();
+        Gist.Smart smart = null;
+        try {
+            final Gist gist = gists.create(
+                Collections.singletonMap(filename, content)
+            );
+            smart = new Gist.Smart(gist);
+            final String file = smart.files().iterator().next();
+            gist.write(file, "hey, works for you this way?");
+            MatcherAssert.assertThat(
+                gist.read(file),
+                Matchers.startsWith("hey, works for ")
+            );
+        } finally {
+            if (smart != null) {
+                gists.remove(smart.identifier());
+            }
+        }
+    }
+
+    /**
+     * RtGist can fork a gist.
+     * @throws Exception If some problem inside
+     */
+    @Test
+    public void forkGist() throws Exception {
+        final String key = System.getProperty("failsafe.github.key.second");
+        Assume.assumeThat(key, Matchers.notNullValue());
+        final Gist gist = new RtGithub(key).gists().get(
+            RtGistITCase.gist().name()
+        );
+        final String file = new Gist.Smart(gist).files().iterator().next();
+        MatcherAssert.assertThat(
+            gist.fork().read(file),
+            Matchers.equalTo(gist.read(file))
+        );
+    }
+
+    /**
+     * Return github to test.
+     * @return Repo
+     * @throws Exception If some problem inside
+     */
+    private static Github github() throws Exception {
+        final String key = System.getProperty("failsafe.github.key");
+        Assume.assumeThat(key, Matchers.notNullValue());
+        return new RtGithub(key);
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

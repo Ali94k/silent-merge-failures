@@ -1,0 +1,1349 @@
+UNIT jline_jline2__5acfe59453
+repo: jline_jline2   merge: 5acfe5945383a620910a2d78eb131af86efe7022   stratum: B
+files shown: 4 of 4 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/4: src/main/java/jline/console/ConsoleKeys.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,22 +1,15 @@
+ /*
+- * Copyright (C) 2011 the original author(s).
++ * Copyright (c) 2002-2012, the original author or authors.
+  *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
++ * This software is distributable under the BSD license. See the terms of the
++ * BSD license in the documentation provided with this software.
+  *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++ * http://www.opensource.org/licenses/bsd-license.php
+  */
+ package jline.console;
+ 
+ import java.io.BufferedReader;
+ import java.io.File;
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.net.URL;
+@@ -36,21 +29,21 @@
+ 
+     private Map<String, KeyMap> keyMaps;
+     private Map<String, String> variables = new HashMap<String,String>();
+ 
+     public ConsoleKeys(String appName, URL inputrcUrl) {
+         keyMaps = KeyMap.keyMaps();
+         loadKeys(appName, inputrcUrl);
+     }
+-    
++
+     protected boolean isViEditMode() {
+         return keys.isViKeyMap();
+     }
+-    
++
+     protected boolean setKeyMap (String name) {
+         KeyMap map = keyMaps.get(name);
+         if (map == null) {
+             return false;
+         }
+         this.keys = map;
+         return true;
+     }
+@@ -68,17 +61,17 @@
+     }
+ 
+     protected boolean getViEditMode() {
+         return keys.isViKeyMap ();
+     }
+ 
+     protected void loadKeys(String appName, URL inputrcUrl) {
+         keys = keyMaps.get(KeyMap.EMACS);
+-        
++
+         try {
+             InputStream input = inputrcUrl.openStream();
+             try {
+                 loadKeys(input, appName);
+                 Log.debug("Loaded user configuration: ", inputrcUrl);
+             }
+             finally {
+                 try {
+@@ -101,164 +94,171 @@
+     }
+ 
+     private void loadKeys(InputStream input, String appName) throws IOException {
+         BufferedReader reader = new BufferedReader( new java.io.InputStreamReader( input ) );
+         String line;
+         boolean parsing = true;
+         List<Boolean> ifsStack = new ArrayList<Boolean>();
+         while ( (line = reader.readLine()) != null ) {
+-            line = line.trim();
+-            if (line.length() == 0) {
+-                continue;
+-            }
+-            if (line.charAt(0) == '#') {
+-                continue;
+-            }
+-            int i = 0;
+-            if (line.charAt(i) == '$') {
+-                String cmd;
+-                String args;
+-                for (++i; i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t'); i++);
+-                int s = i;
+-                for (; i < line.length() && (line.charAt(i) != ' ' && line.charAt(i) != '\t'); i++);
+-                cmd = line.substring(s, i);
+-                for (; i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t'); i++);
+-                s = i;
+-                for (; i < line.length() && (line.charAt(i) != ' ' && line.charAt(i) != '\t'); i++);
+-                args = line.substring(s, i);
+-                if ("if".equalsIgnoreCase(cmd)) {
+-                    ifsStack.add( parsing );
+-                    if (!parsing) {
+-                        continue;
+-                    }
+-                    if (args.startsWith("term=")) {
++            try {
++                line = line.trim();
++                if (line.length() == 0) {
++                    continue;
++                }
++                if (line.charAt(0) == '#') {
++                    continue;
++                }
++                int i = 0;
++                if (line.charAt(i) == '$') {
++                    String cmd;
++                    String args;
++                    for (++i; i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t'); i++);
++                    int s = i;
++                    for (; i < line.length() && (line.charAt(i) != ' ' && line.charAt(i) != '\t'); i++);
++                    cmd = line.substring(s, i);
++                    for (; i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t'); i++);
++                    s = i;
++                    for (; i < line.length() && (line.charAt(i) != ' ' && line.charAt(i) != '\t'); i++);
++                    args = line.substring(s, i);
++                    if ("if".equalsIgnoreCase(cmd)) {
++                        ifsStack.add( parsing );
++                        if (!parsing) {
++                            continue;
++                        }
++                        if (args.startsWith("term=")) {
++                            // TODO
++                        } else if (args.startsWith("mode=")) {
++                            if (args.equalsIgnoreCase("mode=vi")) {
++                                parsing = isViEditMode();
++                            } else if (args.equals("mode=emacs")) {
++                                parsing = !isViEditMode();
++                            } else {
++                                parsing = false;
++                            }
++                        } else {
++                            parsing = args.equalsIgnoreCase(appName);
++                        }
++                    } else if ("else".equalsIgnoreCase(cmd)) {
++                        if (ifsStack.isEmpty()) {
++                            throw new IllegalArgumentException("$else found without matching $if");
++                        }
++                        boolean invert = true;
++                        for (boolean b : ifsStack) {
++                            if (!b) {
++                                invert = false;
++                                break;
++                            }
++                        }
++                        if (invert) {
++                            parsing = !parsing;
++                        }
++                    } else if ("endif".equalsIgnoreCase(cmd)) {
++                        if (ifsStack.isEmpty()) {
++                            throw new IllegalArgumentException("endif found without matching $if");
++                        }
++                        parsing = ifsStack.remove( ifsStack.size() - 1 );
++                    } else if ("include".equalsIgnoreCase(cmd)) {
+                         // TODO
+-                    } else if (args.startsWith("mode=")) {
+-                        if (args.equalsIgnoreCase("mode=vi")) {
+-                            parsing = isViEditMode();
+-                        } else if (args.equals("mode=emacs")) {
+-                            parsing = !isViEditMode();
+-                        } else {
+-                            parsing = false;
+-                        }
+-                    } else {
+-                        parsing = args.equalsIgnoreCase(appName);
+-                    }
+-                } else if ("else".equalsIgnoreCase(cmd)) {
+-                    if (ifsStack.isEmpty()) {
+-                        throw new IllegalArgumentException("$else found without matching $if");
+-                    }
+-                    boolean invert = true;
+-                    for (boolean b : ifsStack) {
+-                        if (!b) {
+-                            invert = false;
+-                            break;
+-                        }
+-                    }
+-                    if (invert) {
+-                        parsing = !parsing;
+-                    }
+-                } else if ("endif".equalsIgnoreCase(cmd)) {
+-                    if (ifsStack.isEmpty()) {
+-                        throw new IllegalArgumentException("endif found without matching $if");
+-                    }
+-                    parsing = ifsStack.remove( ifsStack.size() - 1 );
+-                } else if ("include".equalsIgnoreCase(cmd)) {
+-                    // TODO
+-                }
+-                continue;
+-            }
+-            if (!parsing) {
+-                continue;
+-            }
+-            boolean equivalency;
+-            String keySeq = "";
+-            if (line.charAt(i++) == '"') {
+-                boolean esc = false;
+-                for (;; i++) {
+-                    if (i >= line.length()) {
+-                        throw new IllegalArgumentException("Missing closing quote on line '" + line + "'");
+-                    }
+-                    if (esc) {
+-                        esc = false;
+-                    } else if (line.charAt(i) == '\\') {
+-                        esc = true;
+-                    } else if (line.charAt(i) == '"') {
+-                        break;
+-                    }
+-                }
+-            }
+-            for (; i < line.length() && line.charAt(i) != ':'
+-                    && line.charAt(i) != ' ' && line.charAt(i) != '\t'
+-                    ; i++);
+-            keySeq = line.substring(0, i);
+-            equivalency = (i + 1 < line.length() && line.charAt(i) == ':' && line.charAt(i + 1) == '=');
+-            i++;
+-            if (equivalency) {
+-                i++;
+-            }
+-            if (keySeq.equalsIgnoreCase("set")) {
+-                String key;
+-                String val;
+-                for (; i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t'); i++);
+-                int s = i;
+-                for (; i < line.length() && (line.charAt(i) != ' ' && line.charAt(i) != '\t'); i++);
+-                key = line.substring( s, i );
+-                for (; i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t'); i++);
+-                s = i;
+-                for (; i < line.length() && (line.charAt(i) != ' ' && line.charAt(i) != '\t'); i++);
+-                val = line.substring( s, i );
+-                setVar( key, val );
+-            } else {
+-                for (; i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t'); i++);
+-                int start = i;
+-                if (i < line.length() && (line.charAt(i) == '\'' || line.charAt(i) == '\"')) {
+-                    char delim = line.charAt(i++);
++                    }
++                    continue;
++                }
++                if (!parsing) {
++                    continue;
++                }
++                boolean equivalency;
++                String keySeq = "";
++                if (line.charAt(i++) == '"') {
+                     boolean esc = false;
+                     for (;; i++) {
+                         if (i >= line.length()) {
+-                            break;
++                            throw new IllegalArgumentException("Missing closing quote on line '" + line + "'");
+                         }
+                         if (esc) {
+                             esc = false;
+                         } else if (line.charAt(i) == '\\') {
+                             esc = true;
+-                        } else if (line.charAt(i) == delim) {
++                        } else if (line.charAt(i) == '"') {
+                             break;
+                         }
+                     }
+                 }
+-                for (; i < line.length() && line.charAt(i) != ' ' && line.charAt(i) != '\t'; i++);
+-                String val = line.substring(Math.min(start, line.length()), Math.min(i, line.length()));
+-                if (keySeq.charAt(0) == '"') {
+-                    keySeq = translateQuoted(keySeq);
++                for (; i < line.length() && line.charAt(i) != ':'
++                        && line.charAt(i) != ' ' && line.charAt(i) != '\t'
++                        ; i++);
++                keySeq = line.substring(0, i);
++                equivalency = (i + 1 < line.length() && line.charAt(i) == ':' && line.charAt(i + 1) == '=');
++                i++;
++                if (equivalency) {
++                    i++;
++                }
++                if (keySeq.equalsIgnoreCase("set")) {
++                    String key;
++                    String val;
++                    for (; i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t'); i++);
++                    int s = i;
++                    for (; i < line.length() && (line.charAt(i) != ' ' && line.charAt(i) != '\t'); i++);
++                    key = line.substring( s, i );
++                    for (; i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t'); i++);
++                    s = i;
++                    for (; i < line.length() && (line.charAt(i) != ' ' && line.charAt(i) != '\t'); i++);
++                    val = line.substring( s, i );
++                    setVar( key, val );
+                 } else {
+-                    // Bind key name
+-                    String keyName = keySeq.lastIndexOf('-') > 0 ? keySeq.substring( keySeq.lastIndexOf('-') + 1 ) : keySeq;
+-                    char key = getKeyFromName(keyName);
+-                    keyName = keySeq.toLowerCase();
+-                    keySeq = "";
+-                    if (keyName.contains("meta-") || keyName.contains("m-")) {
+-                        keySeq += "\u001b";
+-                    }
+-                    if (keyName.contains("control-") || keyName.contains("c-") || keyName.contains("ctrl-")) {
+-                        key = (char)(Character.toUpperCase( key ) & 0x1f);
+-                    }
+-                    keySeq += key;
+-                }
+-                if (val.length() > 0 && (val.charAt(0) == '\'' || val.charAt(0) == '\"')) {
+-                    keys.bind( keySeq, translateQuoted(val) );
+-                } else {
+-                    val = val.replace('-', '_').toUpperCase();
+-                    keys.bind( keySeq, Operation.valueOf(val) );
+-                }
+-            }
+-        }
+-
++                    for (; i < line.length() && (line.charAt(i) == ' ' || line.charAt(i) == '\t'); i++);
++                    int start = i;
++                    if (i < line.length() && (line.charAt(i) == '\'' || line.charAt(i) == '\"')) {
++                        char delim = line.charAt(i++);
++                        boolean esc = false;
++                        for (;; i++) {
++                            if (i >= line.length()) {
++                                break;
++                            }
++                            if (esc) {
++                                esc = false;
++                            } else if (line.charAt(i) == '\\') {
++                                esc = true;
++                            } else if (line.charAt(i) == delim) {
++                                break;
++                            }
++                        }
++                    }
++                    for (; i < line.length() && line.charAt(i) != ' ' && line.charAt(i) != '\t'; i++);
++                    String val = line.substring(Math.min(start, line.length()), Math.min(i, line.length()));
++                    if (keySeq.charAt(0) == '"') {
++                        keySeq = translateQuoted(keySeq);
++                    } else {
++                        // Bind key name
++                        String keyName = keySeq.lastIndexOf('-') > 0 ? keySeq.substring( keySeq.lastIndexOf('-') + 1 ) : keySeq;
++                        char key = getKeyFromName(keyName);
++                        keyName = keySeq.toLowerCase();
++                        keySeq = "";
++                        if (keyName.contains("meta-") || keyName.contains("m-")) {
++                            keySeq += "\u001b";
++                        }
++                        if (keyName.contains("control-") || keyName.contains("c-") || keyName.contains("ctrl-")) {
++                            key = (char)(Character.toUpperCase( key ) & 0x1f);
++                        }
++                        keySeq += key;
++                    }
++                    if (val.length() > 0 && (val.charAt(0) == '\'' || val.charAt(0) == '\"')) {
++                        keys.bind( keySeq, translateQuoted(val) );
++                    } else {
++                        String operationName = val.replace('-', '_').toUpperCase();
++                        try {
++                          keys.bind(keySeq, Operation.valueOf(operationName));
++                        } catch(IllegalArgumentException e) {
++                          Log.info("Unable to bind key for unsupported operation: ", val);
++                        }
++                    }
++                }
++            } catch (IllegalArgumentException e) {
++              Log.warn("Unable to parse user configuration: ", e);
++            }
++        }
+     }
+ 
+     private String translateQuoted(String keySeq) {
+         int i;
+         String str = keySeq.substring( 1, keySeq.length() - 1 );
+         keySeq = "";
+         for (i = 0; i < str.length(); i++) {
+             char c = str.charAt(i);
+@@ -367,25 +367,25 @@
+             }
+         } else if ("editing-mode".equals(key)) {
+             if ("vi".equalsIgnoreCase(val)) {
+                 keys = keyMaps.get(KeyMap.VI_INSERT);
+             } else if ("emacs".equalsIgnoreCase(key)) {
+                 keys = keyMaps.get(KeyMap.EMACS);
+             }
+         }
+-        
++
+         /*
+          * Technically variables should be defined as a functor class
+          * so that validation on the variable value can be done at parse
+-         * time. This is a stop-gap. 
++         * time. This is a stop-gap.
+          */
+         variables.put(key, val);
+     }
+-    
++
+     /**
+      * Retrieves the value of a variable that was set in the .inputrc file
+      * during processing
+      * @param var The variable name
+      * @return The variable value.
+      */
+     public String getVariable(String var) {
+         return variables.get (var);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -366,16 +366,22 @@
+                 keys = keyMaps.get(val);
+             }
+         } else if ("editing-mode".equals(key)) {
+             if ("vi".equalsIgnoreCase(val)) {
+                 keys = keyMaps.get(KeyMap.VI_INSERT);
+             } else if ("emacs".equalsIgnoreCase(key)) {
+                 keys = keyMaps.get(KeyMap.EMACS);
+             }
++        } else if ("blink-matching-paren".equals(key)) {
++            if ("on".equalsIgnoreCase(val)) {
++              keys.setBlinkMatchingParen(true);
++            } else if ("off".equalsIgnoreCase(val)) {
++              keys.setBlinkMatchingParen(false);
++            }
+         }
+         
+         /*
+          * Technically variables should be defined as a functor class
+          * so that validation on the variable value can be done at parse
+          * time. This is a stop-gap. 
+          */
+         variables.put(key, val);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/4: src/main/java/jline/console/ConsoleReader.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,15 +1,16 @@
+ /*
+- * Copyright (c) 2002-2007, Marc Prud'hommeaux. All rights reserved.
++ * Copyright (c) 2002-2012, the original author or authors.
+  *
+  * This software is distributable under the BSD license. See the terms of the
+  * BSD license in the documentation provided with this software.
++ *
++ * http://www.opensource.org/licenses/bsd-license.php
+  */
+-
+ package jline.console;
+ 
+ import java.awt.*;
+ import java.awt.datatransfer.Clipboard;
+ import java.awt.datatransfer.DataFlavor;
+ import java.awt.datatransfer.Transferable;
+ import java.awt.datatransfer.UnsupportedFlavorException;
+ import java.awt.event.ActionListener;
+@@ -25,16 +26,17 @@
+ import java.io.OutputStreamWriter;
+ import java.io.Reader;
+ import java.io.Writer;
+ import java.net.URL;
+ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.HashMap;
++import java.util.Iterator;
+ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.ListIterator;
+ import java.util.Map;
+ import java.util.ResourceBundle;
+ import java.util.Stack;
+ 
+ import jline.Terminal;
+@@ -44,16 +46,17 @@
+ import jline.console.completer.CompletionHandler;
+ import jline.console.history.History;
+ import jline.console.history.MemoryHistory;
+ import jline.internal.Configuration;
+ import jline.internal.InputStreamReader;
+ import jline.internal.Log;
+ import jline.internal.NonBlockingInputStream;
+ 
++import jline.internal.Nullable;
+ import jline.internal.Urls;
+ import org.fusesource.jansi.AnsiOutputStream;
+ 
+ import static jline.internal.Preconditions.checkNotNull;
+ 
+ /**
+  * A reader for console applications. It supports custom tab-completion,
+  * saveable command history, and command line editing. On some platforms,
+@@ -85,23 +88,22 @@
+ 
+     public static final int TAB_WIDTH = 4;
+ 
+     private static final ResourceBundle
+         resources = ResourceBundle.getBundle(CandidateListCompletionHandler.class.getName());
+ 
+     private final Terminal terminal;
+ 
+-    private InputStream in;
+-
+     private final Writer out;
+ 
+     private final CursorBuffer buf = new CursorBuffer();
+ 
+     private String prompt;
++    private int    promptLen;
+ 
+     private boolean expandEvents = true;
+ 
+     private boolean bellEnabled = !Configuration.getBoolean(JLINE_NOBELL, true);
+ 
+     private Character mask;
+ 
+     private Character echoCharacter;
+@@ -112,19 +114,25 @@
+ 
+     private int searchIndex = -1;
+ 
+     /*
+      * The reader and the nonBlockingInput go hand-in-hand.  The reader wraps
+      * the nonBlockingInput, but we have to retain a handle to it so that
+      * we can shut down its blocking read thread when we go away.
+      */
+-    private NonBlockingInputStream nonBlockingInput;
++    private NonBlockingInputStream in;
+     private long                   escapeTimeout;
+     private Reader                 reader;
++    
++    /*
++     * TODO: Please read the comments about this in setInput(), but this needs
++     * to be done away with.
++     */
++    private boolean                isUnitTestInput;
+     
+     /**
+      * Last character searched for with a vi character search
+      */
+     private char  charSearchChar = 0;           // Character to search for
+     private char  charSearchLastInvokeChar = 0; // Most recent invocation key
+     private char  charSearchFirstInvokeChar = 0;// First character that invoked
+     
+@@ -179,87 +187,99 @@
+          */
+         VI_CHANGE_TO
+     }
+ 
+     public ConsoleReader() throws IOException {
+         this(null, new FileInputStream(FileDescriptor.in), System.out, null);
+     }
+ 
+-    public ConsoleReader(final InputStream in, final OutputStream out) throws
+-        IOException
+-    {
++    public ConsoleReader(final InputStream in, final OutputStream out) throws IOException {
+         this(null, in, out, null);
+     }
+ 
+-    public ConsoleReader(final InputStream in, final OutputStream out, final Terminal term) throws
+-        IOException
+-    {
++    public ConsoleReader(final InputStream in, final OutputStream out, final Terminal term) throws IOException {
+         this(null, in, out, term);
+     }
+ 
+-    public ConsoleReader(final String appName, final InputStream in, final OutputStream out, final Terminal term) throws
+-        IOException
++    public ConsoleReader(final @Nullable String appName, final InputStream in, final OutputStream out, final @Nullable Terminal term)
++        throws IOException
+     {
+         this.appName = appName != null ? appName : "JLine";
+-        this.encoding = encoding != null ? encoding : Configuration.getEncoding();
++        this.encoding = encoding != null ? encoding : Configuration.getEncoding(); // FIXME: This is fishy, encoding will always be null at this point
+         this.terminal = term != null ? term : TerminalFactory.get();
+         this.out = new OutputStreamWriter(terminal.wrapOutIfNeeded(out), this.encoding);
+         setInput( in );
+ 
+         this.inputrcUrl = Urls.create(Configuration.getString(JLINE_INPUTRC,
+                 Urls.create(new File(Configuration.getUserHome(), INPUT_RC)).toExternalForm()));
+         
+         consoleKeys = new ConsoleKeys(appName, inputrcUrl);
+     }
+ 
+     public KeyMap getKeys() {
+         return consoleKeys.getKeys();
+     }
+ 
+     void setInput(final InputStream in) throws IOException {
+-        this.escapeTimeout = Configuration.getLong(JLINE_ESC_TIMEOUT, 150);
++        this.escapeTimeout = Configuration.getLong(JLINE_ESC_TIMEOUT, 100);
++        /*
++         * This is gross and here is how to fix it. In getCurrentPosition()
++         * and getCurrentAnsiRow(), the logic is disabled when running unit 
++         * tests and the fact that it is a unit test is determined by knowing
++         * if the original input stream was a ByteArrayInputStream. So, this
++         * is our test to do this.  What SHOULD happen is that the unit
++         * tests should pass in a terminal that is appropriately configured
++         * such that whatever behavior they expect to happen (or not happen)
++         * happens (or doesn't). 
++         * 
++         * So, TODO, get rid of this and fix the unit tests.
++         */
++        this.isUnitTestInput = in instanceof ByteArrayInputStream;
+         boolean nonBlockingEnabled =
+                escapeTimeout > 0L
+             && terminal.isSupported()
+             && in != null;
+         
+         /*
+          * If we had a non-blocking thread already going, then shut it down
+          * and start a new one.
+          */
+-        if (nonBlockingInput != null) {
+-            nonBlockingInput.shutdown();
++        if (this.in != null) {
++            this.in.shutdown();
+         }
+         
+         final InputStream wrapped = terminal.wrapInIfNeeded( in );
+         
+-        this.nonBlockingInput = 
+-            new NonBlockingInputStream(wrapped, nonBlockingEnabled);
+-        this.reader = new InputStreamReader( nonBlockingInput, encoding );
++        this.in = new NonBlockingInputStream(wrapped, nonBlockingEnabled);
++        this.reader = new InputStreamReader( this.in, encoding );
+     }
+     
+     /**
+      * Shuts the console reader down.  This method should be called when you
+      * have completed using the reader as it shuts down and cleans up resources
+      * that would otherwise be "leaked".
+      */
+     public void shutdown() {
+-        if (nonBlockingInput != null) {
+-            nonBlockingInput.shutdown();
+-        }
+-    }
+-    
+-    /**
+-     * Shuts down the ConsoleReader if the JVN attempts to clean it up.
+-     * @throws Throwable
++        if (in != null) {
++            in.shutdown();
++        }
++    }
++    
++    /**
++     * Shuts down the ConsoleReader if the JVM attempts to clean it up.
+      */
+     @Override
+     protected void finalize() throws Throwable {
+-        shutdown();
++        try {
++            shutdown();
++        }
++        finally {
++            super.finalize();
++        }
+     }
+ 
+     public InputStream getInput() {
+         return in;
+     }
+ 
+     public Writer getOutput() {
+         return out;
+@@ -325,16 +345,17 @@
+                 str = "#";
+             }
+         }
+         return str;
+     }
+ 
+     public void setPrompt(final String prompt) {
+         this.prompt = prompt;
++        this.promptLen = ((prompt == null) ? 0 : stripAnsi(lastLine(prompt)).length());
+     }
+ 
+     public String getPrompt() {
+         return prompt;
+     }
+ 
+     /**
+      * Set the echo character. For example, to have "*" entered when a password is typed:
+@@ -382,18 +403,17 @@
+ 
+         backspaceAll();
+ 
+         return true;
+     }
+ 
+     int getCursorPosition() {
+         // FIXME: does not handle anything but a line with a prompt absolute position
+-        String prompt = getPrompt();
+-        return ((prompt == null) ? 0 : stripAnsi(lastLine(prompt)).length()) + buf.cursor;
++        return promptLen + buf.cursor;
+     }
+ 
+     /**
+      * Returns the text after the last '\n'.
+      * prompt is returned if no '\n' characters are present.
+      * null is returned if prompt is null.
+      */
+     private String lastLine(String str) {
+@@ -1382,33 +1402,34 @@
+      * @return true if it worked, false if you tried to delete too many words
+      * @throws IOException
+      */
+     private boolean unixWordRubout(int count) throws IOException {
+         for (; count > 0; --count) {
+             if (buf.cursor == 0)
+                 return false;
+             
+-            while (isWhitespace (buf.current ()) && backspace()) {
+-                /* nothing */
+-            }
+-            while (!isWhitespace (buf.current ()) && backspace()) {
+-                /* nothing */
++            while (isWhitespace(buf.current()) && backspace()) {
++                // nothing
++            }
++            while (!isWhitespace(buf.current()) && backspace()) {
++                // nothing
+             }
+         }
+         
+         return true;
+     }
+     
+     private String insertComment(boolean isViMode) throws IOException {
+         String comment = this.getCommentBegin ();
+         setCursorPosition(0);
+         putString(comment);
+-        if (isViMode)
++        if (isViMode) {
+             consoleKeys.setKeyMap(KeyMap.VI_INSERT);
++        }
+         return accept();
+     }
+     
+     /**
+      * Similar to putString() but allows the string to be repeated a specific
+      * number of times, allowing easy support of vi digit arguments to a given
+      * command. The string is placed as the current cursor position.
+      * 
+@@ -1459,34 +1480,34 @@
+         
+         /*
+          * Readline doesn't seem to do any special character map handling
+          * here, so I think we are safe.
+          */
+         int ch = -1;
+         while (!isAborted && !isComplete && (ch = readCharacter()) != -1) {
+             switch (ch) {
+-                case '\033':  /* ESC */
++                case '\033':  // ESC
+                     /*
+                      * The ESC behavior doesn't appear to be readline behavior,
+                      * but it is a little tweak of my own. I like it.
+                      */
+                     isAborted = true;
+                     break;
+-                case '\010':  /* Backspace */
+-                case '\177':  /* Delete */
++                case '\010':  // Backspace
++                case '\177':  // Delete
+                     backspace();
+                     /*
+                      * Backspacing through the "prompt" aborts the search.
+                      */
+                     if (buf.cursor == 0) {
+                         isAborted = true;
+                     }
+                     break;
+-                case '\012': /* Enter */
++                case '\012': // Enter
+                     isComplete = true;
+                     break;
+                 default:
+                     putString(Character.toString((char) ch));
+             }
+             
+             flush();
+         }
+@@ -1502,29 +1523,37 @@
+         
+         /*
+          * The first character of the buffer was the search character itself
+          * so we discard it.
+          */
+         String searchTerm = buf.buffer.substring(1);
+         int idx = -1;
+         
++        /*
++         * The semantics of the history thing is gross when you want to 
++         * explicitly iterate over entries (without an iterator) as size()
++         * returns the actual number of entries in the list but get()
++         * doesn't work the way you think.
++         */
++        int end   = history.index();
++        int start = (end <= history.size()) ? 0 : end - history.size();
++        
+         if (isForward) {
+-            for (idx = 0; idx < history.size(); idx++) {
+-                if (history.get(idx).toString().contains(searchTerm)) {
++            for (int i = start; i < end; i++) {
++                if (history.get(i).toString().contains(searchTerm)) {
++                    idx = i;
+                     break;
+                 }
+             }
+-            if (idx == history.size ()) {
+-                idx = -1;
+-            }
+         }
+         else {
+-            for (idx = history.size()-1; idx > 0; idx--) {
+-                if (history.get(idx).toString().contains(searchTerm)) {
++            for (int i = end-1; i >= start; i--) {
++                if (history.get(i).toString().contains(searchTerm)) {
++                    idx = i;
+                     break;
+                 }
+             }
+         }
+         
+         /*
+          * No match? Then restore what we were working on, but make sure
+          * the cursor is at the beginning of the line.
+@@ -1548,36 +1577,44 @@
+         
+         /*
+          * While searching really only the "n" and "N" keys are interpreted
+          * as movement, any other key is treated as if you are editing the 
+          * line with it, so we return it back up to the caller for interpretation.
+          */
+         isComplete = false;
+         while (!isComplete && (ch = readCharacter()) != -1) {
++            boolean forward = isForward;
+             switch (ch) {
+-                case 'n':
+-                case 'N':
+-                    if (isForward) {
+-                        if (idx < (history.size()-1)) {
+-                            ++idx;
+-                            setCursorPosition(0);
+-                            killLine();
+-                            putString(history.get(idx));
+-                            setCursorPosition(0);
++                case 'p': case 'P':
++                    forward = !isForward;
++                    // Fallthru
++                case 'n': case 'N':
++                    boolean isMatch = false;
++                    if (forward) {
++                        for (int i = idx+1; !isMatch && i < end; i++) {
++                            if (history.get(i).toString().contains(searchTerm)) {
++                                idx = i;
++                                isMatch = true;
++                            }
+                         }
+                     }
+                     else {
+-                        if (idx > 0) {
+-                            --idx;
+-                            setCursorPosition(0);
+-                            killLine();
+-                            putString(history.get(idx));
+-                            setCursorPosition(0);
++                        for (int i = idx - 1; !isMatch && i >= start; i--) {
++                            if (history.get(i).toString().contains(searchTerm)) {
++                                idx = i;
++                                isMatch = true;
++                            }
+                         }
++                    }
++                    if (isMatch) {
++                        setCursorPosition(0);
++                        killLine();
++                        putString(history.get(idx));
++                        setCursorPosition(0);
+                     }
+                     break;
+                 default:
+                     isComplete = true;
+             }
+             flush();
+         }
+         
+@@ -1824,25 +1861,16 @@
+             if (where < 0) {
+                 back(Math.abs(where));
+             } else {
+                 int width = getTerminal().getWidth();
+                 int cursor = getCursorPosition();
+                 int oldLine = (cursor - where) / width;
+                 int newLine = cursor / width;
+                 if (newLine > oldLine) {
+-                    if (terminal.hasWeirdWrap()) {
+-                        // scroll up if at bottom
+-                        // note:
+-                        //   on rxvt cywgin terminal.getHeight() is incorrect
+-                        //   MacOs xterm does not seem to support scrolling
+-                        if (getCurrentAnsiRow() == terminal.getHeight()) {
+-                            printAnsiSequence((newLine - oldLine) + "S");
+-                        }
+-                    }
+                     printAnsiSequence((newLine - oldLine) + "B");
+                 }
+                 printAnsiSequence(1 +(cursor % width) + "G");
+             }
+ //            flush();
+             return;
+         }
+ 
+@@ -2140,18 +2168,18 @@
+                      * When ESC is encountered and there is no other pending
+                      * character in the pushback queue, then attempt to peek
+                      * into the input stream (if the feature is enabled) for
+                      * 150ms. If nothing else is coming, then assume it is
+                      * not a terminal control sequence, but a raw escape.
+                      */
+                     if (c == 27
+                             && pushBackChar.isEmpty()
+-                            && nonBlockingInput.isNonBlockingEnabled()
+-                            && nonBlockingInput.peek(escapeTimeout) == -2) {
++                            && in.isNonBlockingEnabled()
++                            && in.peek(escapeTimeout) == -2) {
+                         o = ((KeyMap) o).getAnotherKey();
+                         if (o == null || o instanceof KeyMap) {
+                             continue;
+                         }
+                         sb.setLength(0);
+                     }
+                     else {
+                         continue;
+@@ -2955,17 +2983,17 @@
+ 
+         return true;
+     }
+ 
+     //
+     // Printing
+     //
+ 
+-    public static final String CR = System.getProperty("line.separator");
++    public static final String CR = Configuration.getLineSeparator();
+ 
+     /**
+      * Output the specified character to the output stream without manipulating the current buffer.
+      */
+     private void print(final int c) throws IOException {
+         if (c == '\t') {
+             char chars[] = new char[TAB_WIDTH];
+             Arrays.fill(chars, ' ');
+@@ -3359,20 +3387,20 @@
+      * */
+     public void resetPromptLine(String prompt, String buffer, int cursorDest) throws IOException {
+         // move cursor to end of line
+         moveToEnd();
+ 
+         // backspace all text, including prompt
+         buf.buffer.append(this.prompt);
+         buf.cursor += this.prompt.length();
+-        this.prompt = "";
++        setPrompt("");
+         backspaceAll();
+ 
+-        this.prompt = prompt;
++        setPrompt(prompt);
+         redrawLine();
+         setBuffer(buffer);
+ 
+         // move cursor to destination (-1 will move to end of line)
+         if (cursorDest < 0) cursorDest = buffer.length();
+         setCursorPosition(cursorDest);
+ 
+         flush();
+@@ -3464,60 +3492,9 @@
+ 
+     private void printAnsiSequence(String sequence) throws IOException {
+         print(27);
+         print('[');
+         print(sequence);
+         flush(); // helps with step debugging
+     }
+ 
+-    // return column position, reported by the terminal
+-    private int getCurrentPosition() {
+-        // check for ByteArrayInputStream to disable for unit tests
+-        if (terminal.isAnsiSupported() && !(in instanceof ByteArrayInputStream)) {
+-            try {
+-                printAnsiSequence("6n");
+-                flush();
+-                StringBuffer b = new StringBuffer(8);
+-                // position is sent as <ESC>[{ROW};{COLUMN}R
+-                int r;
+-                while((r = in.read()) > -1 && r != 'R') {
+-                    if (r != 27 && r != '[') {
+-                        b.append((char) r);
+-                    }
+-                }
+-                String[] pos = b.toString().split(";");
+-                return Integer.parseInt(pos[1]);
+-            } catch (Exception x) {
+-                // no luck
+-            }
+-        }
+-
+-        return -1; // TODO: throw exception instead?
+-    }
+-
+-    // return row position, reported by the terminal
+-    // needed to know whether to scroll up on cursor move in last col for weird
+-    // wrapping terminals - not tested for anything else
+-    private int getCurrentAnsiRow() {
+-        // check for ByteArrayInputStream to disable for unit tests
+-        if (terminal.isAnsiSupported() && !(in instanceof ByteArrayInputStream)) {
+-            try {
+-                printAnsiSequence("6n");
+-                flush();
+-                StringBuffer b = new StringBuffer(8);
+-                // position is sent as <ESC>[{ROW};{COLUMN}R
+-                int r;
+-                while((r = in.read()) > -1 && r != 'R') {
+-                    if (r != 27 && r != '[') {
+-                        b.append((char) r);
+-                    }
+-                }
+-                String[] pos = b.toString().split(";");
+-                return Integer.parseInt(pos[0]);
+-            } catch (Exception x) {
+-                // no luck
+-            }
+-        }
+-
+-        return -1; // TODO: throw exception instead?
+-    }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -106,16 +106,18 @@
+ 
+     private Character echoCharacter;
+ 
+     private StringBuffer searchTerm = null;
+ 
+     private String previousSearchTerm = "";
+ 
+     private int searchIndex = -1;
++
++    private int parenBlinkTimeout = 500;
+ 
+     /*
+      * The reader and the nonBlockingInput go hand-in-hand.  The reader wraps
+      * the nonBlockingInput, but we have to retain a handle to it so that
+      * we can shut down its blocking read thread when we go away.
+      */
+     private NonBlockingInputStream nonBlockingInput;
+     private long                   escapeTimeout;
+@@ -1582,16 +1584,35 @@
+         }
+         
+         /* 
+          * Complete?
+          */
+         return ch;
+     }
+     
++    public void setParenBlinkTimeout(int timeout) {
++        parenBlinkTimeout = timeout;
++    }
++
++    private void insertClose(String s) throws IOException {
++         putString(s);
++         int closePosition = buf.cursor;
++
++         moveCursor(-1);
++         viMatch();
++
++
++         if (nonBlockingInput.isNonBlockingEnabled()) {
++         nonBlockingInput.peek(parenBlinkTimeout);
++         }
++
++         setCursorPosition(closePosition);
++    }
++
+     /**
+      * Implements vi style bracket matching ("%" command). The matching
+      * bracket for the current bracket type that you are sitting on is matched.
+      * The logic works like so:
+      * @return true if it worked, false if the cursor was not on a bracket 
+      *   character or if there was no matching bracket.
+      * @throws IOException
+      */
+@@ -2557,16 +2578,28 @@
+                                 
+                             case TRANSPOSE_CHARS:
+                                 success = transposeChars(count);
+                                 break;
+                                 
+                             case INSERT_COMMENT:
+                                 return insertComment (false);
+                                 
++                            case INSERT_CLOSE_CURLY:
++                                insertClose("}");
++                                break;
++
++                            case INSERT_CLOSE_PAREN:
++                                insertClose(")");
++                                break;
++
++                            case INSERT_CLOSE_SQUARE:
++                                insertClose("]");
++                                break;
++
+                             case VI_INSERT_COMMENT:
+                                 return insertComment (true);
+                                 
+                             case VI_MATCH:
+                                 success = viMatch ();
+                                 break;
+                                 
+                             case VI_SEARCH:
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,10 +1,8 @@
+-
+-
+ /*
+  * Copyright (c) 2002-2012, the original author or authors.
+  *
+  * This software is distributable under the BSD license. See the terms of the
+  * BSD license in the documentation provided with this software.
+  *
+  * http://www.opensource.org/licenses/bsd-license.php
+  */
+@@ -28,17 +26,16 @@
+ import java.io.OutputStreamWriter;
+ import java.io.Reader;
+ import java.io.Writer;
+ import java.net.URL;
+ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.HashMap;
+-import java.util.Iterator;
+ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.ListIterator;
+ import java.util.Map;
+ import java.util.ResourceBundle;
+ import java.util.Stack;
+ 
+ import jline.Terminal;
+@@ -47,17 +44,16 @@
+ import jline.console.completer.Completer;
+ import jline.console.completer.CompletionHandler;
+ import jline.console.history.History;
+ import jline.console.history.MemoryHistory;
+ import jline.internal.Configuration;
+ import jline.internal.InputStreamReader;
+ import jline.internal.Log;
+ import jline.internal.NonBlockingInputStream;
+-
+ import jline.internal.Nullable;
+ import jline.internal.Urls;
+ import org.fusesource.jansi.AnsiOutputStream;
+ 
+ import static jline.internal.Preconditions.checkNotNull;
+ 
+ /**
+  * A reader for console applications. It supports custom tab-completion,
+@@ -1635,18 +1631,18 @@
+     private void insertClose(String s) throws IOException {
+          putString(s);
+          int closePosition = buf.cursor;
+ 
+          moveCursor(-1);
+          viMatch();
+ 
+ 
+-         if (nonBlockingInput.isNonBlockingEnabled()) {
+-         nonBlockingInput.peek(parenBlinkTimeout);
++         if (in.isNonBlockingEnabled()) {
++            in.peek(parenBlinkTimeout);
+          }
+ 
+          setCursorPosition(closePosition);
+     }
+ 
+     /**
+      * Implements vi style bracket matching ("%" command). The matching
+      * bracket for the current bracket type that you are sitting on is matched.
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/4: src/main/java/jline/console/KeyMap.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,22 +1,15 @@
+ /*
+- * Copyright (C) 2011 the original author(s).
++ * Copyright (c) 2002-2012, the original author or authors.
+  *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
++ * This software is distributable under the BSD license. See the terms of the
++ * BSD license in the documentation provided with this software.
+  *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++ * http://www.opensource.org/licenses/bsd-license.php
+  */
+ package jline.console;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+ 
+ /**
+  * The KeyMap class contains all bindings from keys to operations.
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -138,16 +138,24 @@
+                             || op == Operation.VI_MOVEMENT_MODE ) {
+                             
+                         }
+                         
+                         map.mapping[c] = function;
+                     }
+                 }
+             }
++        }
++    }
++
++    public void setBlinkMatchingParen(boolean on) {
++        if (on) {
++            bind( "}", Operation.INSERT_CLOSE_CURLY );
++            bind( ")", Operation.INSERT_CLOSE_PAREN );
++            bind( "]", Operation.INSERT_CLOSE_SQUARE );
+         }
+     }
+ 
+     private static void bindArrowKeys(KeyMap map) {
+         
+         // MS-DOS
+         bind( map, "\033[0A", Operation.PREVIOUS_HISTORY );
+         bind( map, "\033[0B", Operation.BACKWARD_CHAR );
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/4: src/main/java/jline/console/Operation.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,22 +1,15 @@
+ /*
+- * Copyright (C) 2011 the original author(s).
++ * Copyright (c) 2002-2012, the original author or authors.
+  *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
++ * This software is distributable under the BSD license. See the terms of the
++ * BSD license in the documentation provided with this software.
+  *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++ * http://www.opensource.org/licenses/bsd-license.php
+  */
+ package jline.console;
+ 
+ /**
+  * List of all operations.
+  *
+  * @author <a href="mailto:gnodet@gmail.com">Guillaume Nodet</a>
+  * @since 2.6
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -60,16 +60,19 @@
+     EXIT_OR_DELETE_CHAR,
+     FORWARD_BACKWARD_DELETE_CHAR,
+     FORWARD_BYTE,
+     FORWARD_CHAR,
+     FORWARD_SEARCH_HISTORY,
+     FORWARD_WORD,
+     HISTORY_SEARCH_BACKWARD,
+     HISTORY_SEARCH_FORWARD,
++    INSERT_CLOSE_CURLY,
++    INSERT_CLOSE_PAREN,
++    INSERT_CLOSE_SQUARE,
+     INSERT_COMMENT,
+     INSERT_COMPLETIONS,
+     KILL_WHOLE_LINE,
+     KILL_LINE,
+     KILL_REGION,
+     KILL_WORD,
+     MENU_COMPLETE,
+     MENU_COMPLETE_BACKWARD,
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

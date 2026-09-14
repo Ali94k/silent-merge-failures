@@ -1,0 +1,1352 @@
+UNIT mbosecke_pebble__bb807558a3
+repo: mbosecke_pebble   merge: bb807558a3f0fc27a485dda2bd5a4b5eed2be84c   stratum: B
+files shown: 6 of 6 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/6: src/main/java/com/mitchellbosecke/pebble/PebbleEngine.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -249,19 +249,21 @@
+      * A builder to configure and construct an instance of a PebbleEngine.
+      */
+     public static class Builder {
+ 
+         private Loader<?> loader;
+ 
+         private List<Extension> userProvidedExtensions = new ArrayList<>();
+ 
+-        private Syntax syntax = new Syntax.Builder().build();
++        private Syntax syntax;
+ 
+         private boolean strictVariables = false;
++
++        private boolean enableNewLineTrimming = true;
+ 
+         private Locale defaultLocale;
+ 
+         private ExecutorService executorService;
+ 
+         private Cache<Object, PebbleTemplate> templateCache;
+ 
+         private boolean cacheActive = true;
+@@ -330,16 +332,38 @@
+          * @return This builder object
+          */
+         public Builder strictVariables(boolean strictVariables) {
+             this.strictVariables = strictVariables;
+             return this;
+         }
+ 
+         /**
++         * Changes the <code>newLineTrimming</code> setting of the PebbleEngine.
++         * The default value of this setting is "true".
++         * <p>
++         *      By default, Pebble will trim a newline that immediately follows
++         *      a Pebble tag. For example, <code>{{key1}}\n{{key2}}</code> will
++         *      have the newline removed.
++         * </p>
++         * <p>
++         * If <code>newLineTrimming</code> is set to false, then the
++         * first newline following a Pebble tag won't be trimmed.  All newlines
++         * will be preserved
++         * </p>
++         *
++         * @param enableNewLineTrimming Whether or not the newline should be trimmed.
++         * @return This builder object
++         */
++        public Builder newLineTrimming(boolean enableNewLineTrimming) {
++            this.enableNewLineTrimming = enableNewLineTrimming;
++            return this;
++        }
++
++        /**
+          * Sets the Locale passed to all templates constructed by this PebbleEngine.
+          * <p>
+          * An individual template can always be given a new locale during evaluation.
+          *
+          * @param defaultLocale The default locale
+          * @return This builder object
+          */
+         public Builder defaultLocale(Locale defaultLocale) {
+@@ -464,13 +488,17 @@
+                 if (tagCache == null) {
+                     tagCache = CacheBuilder.newBuilder().maximumSize(200).build();
+                 }
+             } else {
+                 templateCache = CacheBuilder.newBuilder().maximumSize(0).build();
+                 tagCache = CacheBuilder.newBuilder().maximumSize(0).build();
+             }
+ 
++            if(syntax == null) {
++                syntax = new Syntax.Builder().setEnableNewLineTrimming(enableNewLineTrimming).build();
++            }
++
+             return new PebbleEngine(loader, syntax, strictVariables, defaultLocale, tagCache, templateCache,
+                     executorService, extensions);
+         }
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -3,21 +3,24 @@
+  * <p>
+  * Copyright (c) 2014 by Mitchell Bösecke
+  * <p>
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  ******************************************************************************/
+ package com.mitchellbosecke.pebble;
+ 
+-import com.google.common.cache.Cache;
+-import com.google.common.cache.CacheBuilder;
++
++import com.github.benmanes.caffeine.cache.Cache;
++import com.github.benmanes.caffeine.cache.Caffeine;
+ import com.mitchellbosecke.pebble.cache.BaseTagCacheKey;
+ import com.mitchellbosecke.pebble.error.LoaderException;
++import com.mitchellbosecke.pebble.error.ParserException;
+ import com.mitchellbosecke.pebble.error.PebbleException;
++import com.mitchellbosecke.pebble.error.RuntimePebbleException;
+ import com.mitchellbosecke.pebble.extension.Extension;
+ import com.mitchellbosecke.pebble.extension.ExtensionRegistry;
+ import com.mitchellbosecke.pebble.extension.NodeVisitorFactory;
+ import com.mitchellbosecke.pebble.extension.core.CoreExtension;
+ import com.mitchellbosecke.pebble.extension.escaper.EscaperExtension;
+ import com.mitchellbosecke.pebble.extension.escaper.EscapingStrategy;
+ import com.mitchellbosecke.pebble.extension.i18n.I18nExtension;
+ import com.mitchellbosecke.pebble.lexer.LexerImpl;
+@@ -33,19 +36,20 @@
+ import com.mitchellbosecke.pebble.template.PebbleTemplate;
+ import com.mitchellbosecke.pebble.template.PebbleTemplateImpl;
+ 
+ import java.io.Reader;
+ import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.List;
+ import java.util.Locale;
+-import java.util.concurrent.Callable;
+-import java.util.concurrent.ExecutionException;
++import java.util.concurrent.CompletionException;
+ import java.util.concurrent.ExecutorService;
++
++import static java.util.Objects.isNull;
+ 
+ /**
+  * The main class used for compiling templates. The PebbleEngine is responsible
+  * for delegating responsibility to the lexer, parser, compiler, and template
+  * cache.
+  *
+  * @author Mitchell
+  */
+@@ -112,53 +116,63 @@
+         }
+ 
+         final PebbleEngine self = this;
+         PebbleTemplate result;
+ 
+         try {
+             final Object cacheKey = this.loader.createCacheKey(templateName);
+ 
+-            result = templateCache.get(cacheKey, new Callable<PebbleTemplate>() {
+-
+-                public PebbleTemplateImpl call() throws Exception {
+-
+-                    LexerImpl lexer = new LexerImpl(syntax, extensionRegistry.getUnaryOperators().values(),
+-                            extensionRegistry.getBinaryOperators().values());
+-                    Reader templateReader = self.retrieveReaderFromLoader(self.loader, cacheKey);
+-                    TokenStream tokenStream = lexer.tokenize(templateReader, templateName);
+-
+-                    Parser parser = new ParserImpl(extensionRegistry.getUnaryOperators(),
+-                            extensionRegistry.getBinaryOperators(), extensionRegistry.getTokenParsers());
+-                    RootNode root = parser.parse(tokenStream);
+-
+-                    PebbleTemplateImpl instance = new PebbleTemplateImpl(self, root, templateName);
+-
+-                    for (NodeVisitorFactory visitorFactory : extensionRegistry.getNodeVisitors()) {
+-                        visitorFactory.createVisitor(instance).visit(root);
++            if(isNull(templateCache)){
++                result = getPebbleTemplate(self, templateName, cacheKey);
++            }
++            else {
++                result = templateCache.get(cacheKey, k -> {
++                    try {
++                        return getPebbleTemplate(self, templateName, cacheKey);
++                    } catch (PebbleException e) {
++                        throw new RuntimePebbleException(e);
+                     }
+-
+-                    return instance;
+-                }
+-            });
+-        } catch (ExecutionException e) {
++                });
++            }
++        } catch (CompletionException e) {
+             /*
+-             * The execution exception is probably caused by a PebbleException
+-             * being thrown in the above Callable. We will unravel it and throw
++             * The completion exception is probably caused by a PebbleException
++             * being thrown in the above function. We will unravel it and throw
+              * the original PebbleException which is more helpful to the end
+              * user.
+              */
+-            if (e.getCause() != null && e.getCause() instanceof PebbleException) {
+-                throw (PebbleException) e.getCause();
++            if (e.getCause() != null && e.getCause() instanceof RuntimePebbleException) {
++                RuntimePebbleException runtimePebbleException = (RuntimePebbleException) e.getCause();
++                throw (PebbleException) runtimePebbleException.getCause();
+             } else {
+                 throw new PebbleException(e, String.format("An error occurred while compiling %s", templateName));
+             }
+         }
+ 
+         return result;
++    }
++
++    private PebbleTemplate getPebbleTemplate(final PebbleEngine self, final String templateName, final Object cacheKey) throws LoaderException, ParserException {
++        LexerImpl lexer = new LexerImpl(syntax, extensionRegistry.getUnaryOperators().values(),
++                extensionRegistry.getBinaryOperators().values());
++        Reader templateReader = self.retrieveReaderFromLoader(self.loader, cacheKey);
++        TokenStream tokenStream = lexer.tokenize(templateReader, templateName);
++
++        Parser parser = new ParserImpl(extensionRegistry.getUnaryOperators(),
++                extensionRegistry.getBinaryOperators(), extensionRegistry.getTokenParsers());
++        RootNode root = parser.parse(tokenStream);
++
++        PebbleTemplateImpl instance = new PebbleTemplateImpl(self, root, templateName);
++
++        for (NodeVisitorFactory visitorFactory : extensionRegistry.getNodeVisitors()) {
++            visitorFactory.createVisitor(instance).visit(root);
++        }
++
++        return instance;
+     }
+ 
+     /**
+      * This method calls the loader and fetches the reader. We use this method
+      * to handle the generic cast.
+      *
+      * @param loader   the loader to use fetch the reader.
+      * @param cacheKey the cache key to use.
+@@ -453,24 +467,24 @@
+             if (defaultLocale == null) {
+                 defaultLocale = Locale.getDefault();
+             }
+ 
+ 
+             if (cacheActive) {
+                 // default caches
+                 if (templateCache == null) {
+-                    templateCache = CacheBuilder.newBuilder().maximumSize(200).build();
++                    templateCache = Caffeine.newBuilder().maximumSize(200).build();
+                 }
+ 
+                 if (tagCache == null) {
+-                    tagCache = CacheBuilder.newBuilder().maximumSize(200).build();
++                    tagCache = Caffeine.newBuilder().maximumSize(200).build();
+                 }
+             } else {
+-                templateCache = CacheBuilder.newBuilder().maximumSize(0).build();
+-                tagCache = CacheBuilder.newBuilder().maximumSize(0).build();
++                templateCache = null;
++                tagCache = null;
+             }
+ 
+             return new PebbleEngine(loader, syntax, strictVariables, defaultLocale, tagCache, templateCache,
+                     executorService, extensions);
+         }
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/6: src/main/java/com/mitchellbosecke/pebble/node/CacheNode.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -7,17 +7,17 @@
+  * file that was distributed with this source code.
+  ******************************************************************************/
+ package com.mitchellbosecke.pebble.node;
+ 
+ import com.mitchellbosecke.pebble.cache.BaseTagCacheKey;
+ import com.mitchellbosecke.pebble.error.PebbleException;
+ import com.mitchellbosecke.pebble.extension.NodeVisitor;
+ import com.mitchellbosecke.pebble.node.expression.Expression;
+-import com.mitchellbosecke.pebble.template.EvaluationContext;
++import com.mitchellbosecke.pebble.template.EvaluationContextImpl;
+ import com.mitchellbosecke.pebble.template.PebbleTemplateImpl;
+ import com.mitchellbosecke.pebble.tokenParser.CacheTokenParser;
+ 
+ import java.io.IOException;
+ import java.io.StringWriter;
+ import java.io.Writer;
+ import java.util.Locale;
+ import java.util.concurrent.Callable;
+@@ -115,17 +115,17 @@
+     }
+ 
+     @Override
+     public void accept(NodeVisitor visitor) {
+         visitor.visit(this);
+     }
+ 
+     @Override
+-    public void render(final PebbleTemplateImpl self, Writer writer, final EvaluationContext context)
++    public void render(final PebbleTemplateImpl self, Writer writer, final EvaluationContextImpl context)
+             throws PebbleException, IOException {
+         try {
+             CacheKey key = new CacheKey((String) this.name.evaluate(self, context), context.getLocale());
+             String body = (String) context.getTagCache().get(key, new Callable<Object>() {
+ 
+                 @Override
+                 public String call() throws Exception {
+                     StringWriter tempWriter = new StringWriter();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -3,30 +3,34 @@
+  * <p>
+  * Copyright (c) 2014 by Mitchell Bösecke
+  * <p>
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  ******************************************************************************/
+ package com.mitchellbosecke.pebble.node;
+ 
++import com.github.benmanes.caffeine.cache.Cache;
+ import com.mitchellbosecke.pebble.cache.BaseTagCacheKey;
+ import com.mitchellbosecke.pebble.error.PebbleException;
++import com.mitchellbosecke.pebble.error.RuntimePebbleException;
+ import com.mitchellbosecke.pebble.extension.NodeVisitor;
+ import com.mitchellbosecke.pebble.node.expression.Expression;
+ import com.mitchellbosecke.pebble.template.EvaluationContext;
+ import com.mitchellbosecke.pebble.template.PebbleTemplateImpl;
+ import com.mitchellbosecke.pebble.tokenParser.CacheTokenParser;
+ 
+ import java.io.IOException;
+ import java.io.StringWriter;
+ import java.io.Writer;
+ import java.util.Locale;
+-import java.util.concurrent.Callable;
+-import java.util.concurrent.ExecutionException;
++import java.util.Objects;
++import java.util.concurrent.CompletionException;
++
++import static java.util.Objects.isNull;
+ 
+ /**
+  * Node for the cache tag
+  *
+  * @author Eric Bussieres
+  */
+ public class CacheNode extends AbstractRenderableNode {
+ 
+@@ -118,25 +122,39 @@
+     public void accept(NodeVisitor visitor) {
+         visitor.visit(this);
+     }
+ 
+     @Override
+     public void render(final PebbleTemplateImpl self, Writer writer, final EvaluationContext context)
+             throws PebbleException, IOException {
+         try {
+-            CacheKey key = new CacheKey((String) this.name.evaluate(self, context), context.getLocale());
+-            String body = (String) context.getTagCache().get(key, new Callable<Object>() {
+-
+-                @Override
+-                public String call() throws Exception {
+-                    StringWriter tempWriter = new StringWriter();
+-                    CacheNode.this.body.render(self, tempWriter, context);
+-
+-                    return tempWriter.toString();
+-                }
+-            });
++            final String body;
++            Cache tagCache = context.getTagCache();
++            if(isNull(tagCache)){ //No cache
++                body = render(self, context);
++            }
++            else {
++                CacheKey key = new CacheKey((String) this.name.evaluate(self, context), context.getLocale());
++                body = (String) context.getTagCache().get(key, k -> {
++                    try {
++                        return render(self, context);
++                    } catch (PebbleException e) {
++                        throw new RuntimePebbleException(e);
++                    } catch (IOException e) {
++                        throw new RuntimeException(e);
++                    }
++                });
++            }
+             writer.write(body);
+-        } catch (ExecutionException e) {
++        } catch (CompletionException e) {
+             throw new PebbleException(e, "Could not render cache block [" + this.name + "]");
+         }
+     }
++
++    private String render(final PebbleTemplateImpl self, final EvaluationContext context) throws PebbleException, IOException {
++        StringWriter tempWriter = new StringWriter();
++        CacheNode.this.body.render(self, tempWriter, context);
++
++        return tempWriter.toString();
++    }
++
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/6: src/main/java/com/mitchellbosecke/pebble/template/EvaluationContext.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,205 +1,13 @@
+-/*******************************************************************************
+- * This file is part of Pebble.
+- * <p>
+- * Copyright (c) 2014 by Mitchell Bösecke
+- * <p>
+- * For the full copyright and license information, please view the LICENSE
+- * file that was distributed with this source code.
+- ******************************************************************************/
+ package com.mitchellbosecke.pebble.template;
+ 
+-import com.google.common.cache.Cache;
+-import com.mitchellbosecke.pebble.cache.BaseTagCacheKey;
+-import com.mitchellbosecke.pebble.extension.ExtensionRegistry;
+-
+-import java.util.ArrayList;
+-import java.util.List;
+ import java.util.Locale;
+-import java.util.concurrent.ExecutorService;
+ 
+ /**
+- * An evaluation context will store all stateful data that is necessary for the
+- * evaluation of a template. Passing the entire state around will assist with
+- * thread safety.
+- *
+- * @author Mitchell
++ * Created by mitchell on 2016-11-13.
+  */
+-public class EvaluationContext {
++public interface EvaluationContext {
+ 
+-    private final boolean strictVariables;
++    boolean isStrictVariables();
+ 
+-    /**
+-     * A template will look to it's parent and children for overridden macros
+-     * and other features; this inheritance chain will help the template keep
+-     * track of where in the inheritance chain it currently is.
+-     */
+-    private final Hierarchy hierarchy;
+-
+-    /**
+-     * A scope is a set of visible variables. A trivial template will only have
+-     * one scope. New scopes are added with for loops and macros for example.
+-     * <p>
+-     * Most scopes will have a link to their parent scope which allow an
+-     * evaluation to look up the scope chain for variables. A macro is an
+-     * exception to this as it only has access to it's local variables.
+-     */
+-    private final ScopeChain scopeChain;
+-
+-    /**
+-     * The locale of this template.
+-     */
+-    private final Locale locale;
+-
+-    /**
+-     * All the available filters/tests/functions for this template.
+-     */
+-    private final ExtensionRegistry extensionRegistry;
+-
+-    /**
+-     * The tag cache
+-     */
+-    private final Cache<BaseTagCacheKey, Object> tagCache;
+-
+-    /**
+-     * The user-provided ExecutorService (can be null).
+-     */
+-    private final ExecutorService executorService;
+-
+-    /**
+-     * The imported templates are used to look up macros.
+-     */
+-    private final List<PebbleTemplateImpl> importedTemplates;
+-
+-    /**
+-     * Constructor used to provide all final variables.
+-     *
+-     * @param self              The template implementation
+-     * @param strictVariables   Whether strict variables is to be used
+-     * @param locale            The locale of the template
+-     * @param extensionRegistry The extension registry
+-     * @param executorService   The optional executor service
+-     * @param scopeChain        The scope chain
+-     * @param hierarchy         The inheritance chain
+-     * @param tagCache          The cache used by the "cache" tag
+-     */
+-    public EvaluationContext(PebbleTemplateImpl self, boolean strictVariables, Locale locale,
+-                             ExtensionRegistry extensionRegistry, Cache<BaseTagCacheKey, Object> tagCache,
+-                             ExecutorService executorService, List<PebbleTemplateImpl> importedTemplates, ScopeChain scopeChain,
+-                             Hierarchy hierarchy) {
+-
+-        if (hierarchy == null) {
+-            hierarchy = new Hierarchy(self);
+-        }
+-
+-        this.strictVariables = strictVariables;
+-        this.locale = locale;
+-        this.extensionRegistry = extensionRegistry;
+-        this.tagCache = tagCache;
+-        this.executorService = executorService;
+-        this.importedTemplates = importedTemplates;
+-        this.scopeChain = scopeChain;
+-        this.hierarchy = hierarchy;
+-    }
+-
+-    /**
+-     * Makes an exact copy of the evaluation context EXCEPT for the inheritance
+-     * chain. This is necessary for the "include" tag.
+-     *
+-     * @param self The template implementation
+-     * @return A copy of the evaluation context
+-     */
+-    public EvaluationContext shallowCopyWithoutInheritanceChain(PebbleTemplateImpl self) {
+-        EvaluationContext result = new EvaluationContext(self, strictVariables, locale, extensionRegistry, tagCache,
+-                executorService, importedTemplates, scopeChain, null);
+-        return result;
+-    }
+-
+-    /**
+-     * Makes a "snapshot" of the evaluation context. The scopeChain
+-     * object will be a deep copy and the imported templates will be
+-     * a new list. This is used for the "parallel" tag.
+-     *
+-     * @param self The template implementation
+-     * @return A copy of the evaluation context
+-     */
+-    public EvaluationContext threadSafeCopy(PebbleTemplateImpl self) {
+-        EvaluationContext result = new EvaluationContext(self, strictVariables, locale, extensionRegistry, tagCache,
+-                executorService, new ArrayList<>(importedTemplates), scopeChain.deepCopy(), hierarchy);
+-        return result;
+-    }
+-
+-    /**
+-     * Returns whether or not this template is being evaluated in "strict templates" mode
+-     *
+-     * @return Whether or not this template is being evaluated in "strict tempaltes" mode.
+-     */
+-    public boolean isStrictVariables() {
+-        return strictVariables;
+-    }
+-
+-    /**
+-     * Returns the locale
+-     *
+-     * @return The current locale
+-     */
+-    public Locale getLocale() {
+-        return locale;
+-    }
+-
+-    /**
+-     * Returns the extension registry used to access all of the tests/filters/functions
+-     *
+-     * @return The extension registry
+-     */
+-    public ExtensionRegistry getExtensionRegistry() {
+-        return extensionRegistry;
+-    }
+-
+-    /**
+-     * Returns the executor service if exists or null
+-     *
+-     * @return The executor service if exists, or null
+-     */
+-    public ExecutorService getExecutorService() {
+-        return executorService;
+-    }
+-
+-    /**
+-     * Returns a list of imported templates.
+-     *
+-     * @return A list of imported templates.
+-     */
+-    public List<PebbleTemplateImpl> getImportedTemplates() {
+-        return this.importedTemplates;
+-    }
+-
+-    /**
+-     * Returns the cache used for the "cache" tag
+-     *
+-     * @return The cache used for the "cache" tag
+-     */
+-    public Cache<BaseTagCacheKey, Object> getTagCache() {
+-        return tagCache;
+-    }
+-
+-    /**
+-     * Returns the scope chain data structure that allows variables to be added/removed from the current scope
+-     * and retrieved from the nearest visible scopes.
+-     *
+-     * @return The scope chain.
+-     */
+-    public ScopeChain getScopeChain() {
+-        return scopeChain;
+-    }
+-
+-    /**
+-     * Returns the data structure representing the entire hierarchy of
+-     * the template currently being evaluated.
+-     *
+-     * @return The inheritance chain
+-     */
+-    public Hierarchy getHierarchy() {
+-        return hierarchy;
+-    }
+-
++    Locale getLocale();
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -3,17 +3,17 @@
+  * <p>
+  * Copyright (c) 2014 by Mitchell Bösecke
+  * <p>
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  ******************************************************************************/
+ package com.mitchellbosecke.pebble.template;
+ 
+-import com.google.common.cache.Cache;
++import com.github.benmanes.caffeine.cache.Cache;
+ import com.mitchellbosecke.pebble.cache.BaseTagCacheKey;
+ import com.mitchellbosecke.pebble.extension.ExtensionRegistry;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.concurrent.ExecutorService;
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,11 +1,10 @@
+ package com.mitchellbosecke.pebble.template;
+ 
+-import com.github.benmanes.caffeine.cache.Cache;
+ import java.util.Locale;
+ 
+ /**
+  * Created by mitchell on 2016-11-13.
+  */
+ public interface EvaluationContext {
+ 
+     boolean isStrictVariables();
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package com.github.benmanes.caffeine.cache does not exist
+
+=== FILE 4/6: src/test/java/com/mitchellbosecke/pebble/ArraySyntaxTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -594,30 +594,30 @@
+         assertEquals("true", writer.toString());
+     }
+ 
+     @Test
+     public void testContainsOperator4() throws PebbleException, IOException {
+ 
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+-        String source = "{% if not [0,1,2] contains 10 %}true{% endif %}";
+-        PebbleTemplate template = pebble.getTemplate(source);
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer, new HashMap<String, Object>());
+-        assertEquals("true", writer.toString());
++        String source = "{% if [0,1,2] contains 10 %}true{% else %}false{% endif %}";
++        PebbleTemplate template = pebble.getTemplate(source);
++
++        Writer writer = new StringWriter();
++        template.evaluate(writer, new HashMap<String, Object>());
++        assertEquals("false", writer.toString());
+     }
+ 
+     @Test
+     public void testContainsOperator5() throws PebbleException, IOException {
+ 
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+-        String source = "{% if [0,1,2] contains 1 and not [0,1] contains 0 %}true{% else %}false{% endif %}";
++        String source = "{% if [0,1,2] contains 1 and not ([0,1] contains 0) %}true{% else %}false{% endif %}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, new HashMap<String, Object>());
+         assertEquals("false", writer.toString());
+     }
+ 
+     @Test
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -5,30 +5,38 @@
+  * <p>
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  ******************************************************************************/
+ package com.mitchellbosecke.pebble;
+ 
+ import com.mitchellbosecke.pebble.error.ParserException;
+ import com.mitchellbosecke.pebble.error.PebbleException;
++import com.mitchellbosecke.pebble.error.RuntimePebbleException;
+ import com.mitchellbosecke.pebble.loader.StringLoader;
+ import com.mitchellbosecke.pebble.template.PebbleTemplate;
++import org.junit.Rule;
+ import org.junit.Test;
++import org.junit.rules.ExpectedException;
+ 
+ import java.io.IOException;
+ import java.io.StringWriter;
+ import java.io.Writer;
+ import java.util.HashMap;
+ import java.util.Map;
+ 
++import static org.hamcrest.core.IsInstanceOf.instanceOf;
++import static org.hamcrest.core.StringStartsWith.startsWith;
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.fail;
+ 
+ public class ArraySyntaxTest extends AbstractTest {
++
++    @Rule
++    public final ExpectedException thrown = ExpectedException.none();
+ 
+     @Test
+     public void testArraySyntax() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{{ [] }}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+@@ -82,25 +90,28 @@
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, new HashMap<String, Object>());
+         assertEquals(
+                 "[repeated-name, repeated-name, repeated-name, repeated-name, repeated-name, repeated-name, repeated-name]",
+                 writer.toString());
+     }
+ 
+-    @Test(expected = ParserException.class)
++    @Test
+     public void testIncompleteArraySyntax() throws PebbleException, IOException {
++        //Arrange
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{{ [,] }}";
+-        PebbleTemplate template = pebble.getTemplate(source);
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer, new HashMap<String, Object>());
++
++        thrown.expect(RuntimePebbleException.class);
++        thrown.expectCause(instanceOf(ParserException.class));
++
++        //Act + Assert
++        pebble.getTemplate(source);
+     }
+ 
+     @SuppressWarnings("serial")
+     @Test
+     public void testArrayWithExpressions() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{{ ['one', 2, three, numbers['four']] }}";
+@@ -435,26 +446,31 @@
+         String source = "{% set arr = [0,1] + [2,3] %}{{ arr }}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, new HashMap<String, Object>());
+         assertEquals("[0, 1, 2, 3]", writer.toString());
+     }
+ 
+-    @Test(expected = PebbleException.class)
++    @Test
+     public void testAdditionOverloading3() throws PebbleException, IOException {
+-
++        //Arrange
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{% set arr = 1 + [0,1] %}{{ arr }}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+         Writer writer = new StringWriter();
+-        template.evaluate(writer, new HashMap<String, Object>());
++
++        thrown.expect(PebbleException.class);
++        thrown.expectMessage(startsWith("Could not perform addition"));
++
++        //Act + Assert
++        template.evaluate(writer, new HashMap<>());
+     }
+ 
+     @Test
+     public void testSubtractionOverloading() throws PebbleException, IOException {
+ 
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{% set arr = [0,1,2] - 1 %}{{ arr }}";
+@@ -473,26 +489,31 @@
+         String source = "{% set arr = [0,1,2] - [0,2,3] %}{{ arr }}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, new HashMap<String, Object>());
+         assertEquals("[1]", writer.toString());
+     }
+ 
+-    @Test(expected = PebbleException.class)
++    @Test
+     public void testSubtractionOverloading3() throws PebbleException, IOException {
+-
++        //Arrange
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{% set arr = 1 - [0,2] %}{{ arr }}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+         Writer writer = new StringWriter();
+-        template.evaluate(writer, new HashMap<String, Object>());
++
++        thrown.expect(PebbleException.class);
++        thrown.expectMessage(startsWith("Could not perform subtraction"));
++
++        //Act + Assert
++        template.evaluate(writer, new HashMap<>());
+     }
+ 
+     @Test
+     public void testEmptyTest() throws PebbleException, IOException {
+ 
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{% set arr = [0,1,2] %}{% if arr is empty %}{{ 'true' }}{% else %}{{ 'false' }}{% endif %}";
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/6: src/test/java/com/mitchellbosecke/pebble/CoreTagsTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -6,31 +6,27 @@
+  * <p>
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  * ****************************************************************************
+  */
+ package com.mitchellbosecke.pebble;
+ 
+ import com.mitchellbosecke.pebble.error.PebbleException;
+-import com.mitchellbosecke.pebble.extension.InvocationCountingFunction;
+-import com.mitchellbosecke.pebble.extension.TestingExtension;
+ import com.mitchellbosecke.pebble.loader.StringLoader;
+ import com.mitchellbosecke.pebble.template.PebbleTemplate;
+-
+ import org.junit.Test;
+ 
+ import java.io.IOException;
+ import java.io.StringWriter;
+ import java.io.Writer;
+ import java.util.*;
+ import java.util.concurrent.Executors;
+ 
+ import static org.junit.Assert.assertEquals;
+-import static org.junit.Assert.fail;
+ 
+ public class CoreTagsTest extends AbstractTest {
+ 
+     public static final String LINE_SEPARATOR = System.lineSeparator();
+ 
+     @Test
+     public void testBlock() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+@@ -357,126 +353,17 @@
+         List<User> users = new ArrayList<>();
+         context.put("users", users);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, context);
+         assertEquals("yes", writer.toString());
+     }
+ 
+-    @Test
+-    public void testMacro() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.macro1.peb");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("	<input name=\"company\" value=\"google\" type=\"text\" />" + LINE_SEPARATOR,
+-                writer.toString());
+-    }
+-
+-    /**
+-     * This ensures that macro inheritance works properly even if it skips a
+-     * generation.
+-     *
+-     * @throws PebbleException
+-     * @throws IOException
+-     */
+-    @Test
+-    public void skipGenerationMacro() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.skipGenerationMacro1.peb");
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("success", writer.toString());
+-    }
+-
+-    @Test(expected = RuntimeException.class)
+-    public void testMacrosWithSameName() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate(
+-                "{{ test() }}{% macro test(one) %}ONE{% endmacro %}{% macro test(one,two) %}TWO{% endmacro %}");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("	<input name=\"company\" value=\"google\" type=\"text\" />" + LINE_SEPARATOR,
+-                writer.toString());
+-    }
+-
+-    @Test
+-    public void testMacroWithDefaultArgument() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate(
+-                "{{ input(name='country') }}{% macro input(type='text', name) %}{{ type }} {{ name }}{% endmacro %}");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("text country", writer.toString());
+-    }
+-
+-    /**
+-     * There was an issue where the second invokation of a macro did not have
+-     * access to the original arguments any more.
+-     *
+-     * @throws PebbleException
+-     * @throws IOException
+-     */
+-    @Test
+-    public void testMacroInvokedTwice() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.macroDouble.peb");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("onetwo", writer.toString());
+-    }
+-
+-    @Test
+-    public void testFunctionInMacroInvokedTwice() throws PebbleException, IOException {
+-
+-        TestingExtension extension = new TestingExtension();
+-        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false)
+-                .extension(extension).build();
+-
+-        PebbleTemplate template = pebble
+-                .getTemplate("{{ test() }}{% macro test() %}{{ invocationCountingFunction() }}{% endmacro %}");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-
+-        InvocationCountingFunction function = extension.getInvocationCountingFunction();
+-        assertEquals(1, function.getInvocationCount());
+-    }
+-
+-    @Test
+-    public void testMacroInvocationWithoutAllArguments() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+-        PebbleTemplate template = pebble
+-                .getTemplate("{{ test('1') }}{% macro test(one,two) %}{{ one }}{{ two }}{% endmacro %}");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("1", writer.toString());
+-    }
+-
+-    /**
+-     * I was once writing macro output directly to writer which was preventing
+-     * output from being filtered. I have fixed this now.
+-     *
+-     * @throws PebbleException
+-     */
+-    @Test
+-    public void testMacroBeingFiltered() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.macro3.peb");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("HELLO" + LINE_SEPARATOR, writer.toString());
+-    }
++
+ 
+     @Test
+     public void testCache() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{% cache 'test' %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+@@ -660,55 +547,17 @@
+         PebbleTemplate template = pebble.getTemplate("templates/template.importWithinBlock.peb");
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer);
+         assertEquals("\t<input name=\"company\" value=\"forcorp\" type=\"text\" />" + LINE_SEPARATOR,
+                 writer.toString());
+     }
+ 
+-    @Test
+-    public void testImportFile() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.macro2.peb");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("	<input name=\"company\" value=\"forcorp\" type=\"text\" />" + LINE_SEPARATOR,
+-                writer.toString());
+-    }
+-
+-    @Test
+-    public void testImportInChildTemplateOutsideOfBlock() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.macro.child.peb");
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer);
+-        assertEquals("	<input name=\"company\" value=\"forcorp\" type=\"text\" />" + LINE_SEPARATOR,
+-                writer.toString());
+-    }
+-    
+-    @Test
+-    public void testDynamicImport() throws PebbleException, IOException {
+-        PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+-        PebbleTemplate template = pebble.getTemplate("templates/template.import.dynamic.peb");
+-
+-        Map<String, Object> context = new HashMap<>();
+-
+-        context.put("modern", false);
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer, context);
+-        assertEquals("classic macro" + LINE_SEPARATOR, writer.toString());
+-
+-        context.put("modern", true);
+-        writer = new StringWriter();
+-        template.evaluate(writer, context);
+-        assertEquals("ajax macro" + LINE_SEPARATOR, writer.toString());
+-    }
++
+ 
+     @Test
+     public void testDynamicInclude() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().strictVariables(false).build();
+         PebbleTemplate template = pebble.getTemplate("templates/template.include.dynamic.peb");
+ 
+         Map<String, Object> context = new HashMap<>();
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -6,16 +6,17 @@
+  * <p>
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  * ****************************************************************************
+  */
+ package com.mitchellbosecke.pebble;
+ 
+ import com.mitchellbosecke.pebble.error.PebbleException;
++import com.mitchellbosecke.pebble.error.RuntimePebbleException;
+ import com.mitchellbosecke.pebble.extension.InvocationCountingFunction;
+ import com.mitchellbosecke.pebble.extension.TestingExtension;
+ import com.mitchellbosecke.pebble.loader.StringLoader;
+ import com.mitchellbosecke.pebble.template.PebbleTemplate;
+ 
+ import org.junit.Test;
+ 
+ import java.io.IOException;
+@@ -533,17 +534,17 @@
+ 
+         //Value should be cached
+         context.put("foobar", false);
+         writer = new StringWriter();
+         template.evaluate(writer, context);
+         assertEquals("true", writer.toString());
+     }
+ 
+-    @Test(expected = PebbleException.class)
++    @Test(expected = RuntimePebbleException.class)
+     public void testCacheWithNoName() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{% cache %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+         Map<String, Object> context = new HashMap<>();
+         context.put("foobar", true);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -7,16 +7,18 @@
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  * ****************************************************************************
+  */
+ package com.mitchellbosecke.pebble;
+ 
+ import com.mitchellbosecke.pebble.error.PebbleException;
+ import com.mitchellbosecke.pebble.error.RuntimePebbleException;
++import com.mitchellbosecke.pebble.extension.InvocationCountingFunction;
++import com.mitchellbosecke.pebble.extension.TestingExtension;
+ import com.mitchellbosecke.pebble.loader.StringLoader;
+ import com.mitchellbosecke.pebble.template.PebbleTemplate;
+ import org.junit.Test;
+ 
+ import java.io.IOException;
+ import java.io.StringWriter;
+ import java.io.Writer;
+ import java.util.*;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/6: src/test/java/com/mitchellbosecke/pebble/MapSyntaxTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -363,29 +363,29 @@
+         template.evaluate(writer, new HashMap<String, Object>());
+         assertEquals("true", writer.toString());
+     }
+ 
+     @Test
+     public void testContainsOperator2() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+-        String source = "{% if not {'Bob':'Marley','Maria':'Callas','John':'Cobra'} contains 'Freddie' %}true{% else %}false{% endif %}";
++        String source = "{% if not ( {'Bob':'Marley','Maria':'Callas','John':'Cobra'} contains 'Freddie') %}true{% else %}false{% endif %}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, new HashMap<String, Object>());
+         assertEquals("true", writer.toString());
+     }
+ 
+     @Test
+     public void testContainsOperator3() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+-        String source = "{% if {'Bob':'Marley','Maria':'Callas','John':'Cobra'} contains 'John' and not {'Freddie':'Mercury'} contains 'Bob' %}true{% else %}false{% endif %}";
++        String source = "{% if {'Bob':'Marley','Maria':'Callas','John':'Cobra'} contains 'John' and not ({'Freddie':'Mercury'} contains 'Bob') %}true{% else %}false{% endif %}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, new HashMap<String, Object>());
+         assertEquals("true", writer.toString());
+     }
+ 
+     @Test
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -5,31 +5,39 @@
+  *
+  * For the full copyright and license information, please view the LICENSE
+  * file that was distributed with this source code.
+  ******************************************************************************/
+ package com.mitchellbosecke.pebble;
+ 
+ import com.mitchellbosecke.pebble.error.ParserException;
+ import com.mitchellbosecke.pebble.error.PebbleException;
++import com.mitchellbosecke.pebble.error.RuntimePebbleException;
+ import com.mitchellbosecke.pebble.extension.TestingExtension;
+ import com.mitchellbosecke.pebble.loader.StringLoader;
+ import com.mitchellbosecke.pebble.template.PebbleTemplate;
++import org.junit.Rule;
+ import org.junit.Test;
++import org.junit.rules.ExpectedException;
+ 
+ import java.io.IOException;
+ import java.io.StringWriter;
+ import java.io.Writer;
+ import java.util.HashMap;
+ import java.util.Map;
+ 
++import static org.hamcrest.core.IsInstanceOf.instanceOf;
++import static org.hamcrest.core.StringEndsWith.endsWith;
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertTrue;
+ 
+ public class MapSyntaxTest extends AbstractTest {
++
++    @Rule
++    public final ExpectedException thrown = ExpectedException.none();
+ 
+     @Test
+     public void testMapSyntax() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{{ {} }}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+@@ -84,69 +92,84 @@
+         String source = "{{ {'key1':'value1','key2':'value2','key3':'value3','key4':'value4','key5':'value5'} | mapToString }}";
+         PebbleTemplate template = pebble.getTemplate(source);
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, new HashMap<String, Object>());
+         assertEquals("{key1=value1, key2=value2, key3=value3, key4=value4, key5=value5}", writer.toString());
+     }
+ 
+-    @Test(expected = ParserException.class)
++    @Test
+     public void testIncompleteMapSyntax() throws PebbleException, IOException {
++        //Arrange
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{{ {,} }}";
+-        PebbleTemplate template = pebble.getTemplate(source);
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer, new HashMap<String, Object>());
+-    }
+-
+-    @Test(expected = ParserException.class)
++
++        thrown.expect(RuntimePebbleException.class);
++        thrown.expectCause(instanceOf(ParserException.class));
++
++        //Act + Assert
++        pebble.getTemplate(source);
++    }
++
++    @Test
+     public void testIncompleteMapSyntax2() throws PebbleException, IOException {
++        //Arrange
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{{ {'key'} }}";
+-        PebbleTemplate template = pebble.getTemplate(source);
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer, new HashMap<String, Object>());
+-    }
+-
+-    @Test(expected = ParserException.class)
++
++        thrown.expect(RuntimePebbleException.class);
++        thrown.expectCause(instanceOf(ParserException.class));
++
++        //Act + Assert
++        pebble.getTemplate(source);
++    }
++
++    @Test
+     public void testIncompleteMapSyntax3() throws PebbleException, IOException {
++        //Arrange
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{{ {'key':} }}";
+-        PebbleTemplate template = pebble.getTemplate(source);
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer, new HashMap<String, Object>());
+-    }
+-
+-    @Test(expected = ParserException.class)
++
++        thrown.expect(RuntimePebbleException.class);
++        thrown.expectCause(instanceOf(ParserException.class));
++
++        //Act + Assert
++        pebble.getTemplate(source);
++    }
++
++    @Test
+     public void testIncompleteMapSyntax4() throws PebbleException, IOException {
++        //Arrange
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{{ {:'value'} }}";
+-        PebbleTemplate template = pebble.getTemplate(source);
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer, new HashMap<String, Object>());
+-    }
+-
+-    @Test(expected = ParserException.class)
++
++        thrown.expect(RuntimePebbleException.class);
++        thrown.expectCause(instanceOf(ParserException.class));
++
++        //Act + Assert
++        pebble.getTemplate(source);
++    }
++
++    @Test
+     public void testIncompleteMapSyntax5() throws PebbleException, IOException {
++        //Arrange
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).strictVariables(false).build();
+ 
+         String source = "{{ {'key':'value',} }}";
+-        PebbleTemplate template = pebble.getTemplate(source);
+-
+-        Writer writer = new StringWriter();
+-        template.evaluate(writer, new HashMap<String, Object>());
++
++        thrown.expect(RuntimePebbleException.class);
++        thrown.expectCause(instanceOf(ParserException.class));
++
++        //Act + Assert
++        pebble.getTemplate(source);
+     }
+ 
+     @SuppressWarnings("serial")
+     @Test
+     public void testMapWithExpressions() throws PebbleException, IOException {
+         PebbleEngine pebble = new PebbleEngine.Builder().loader(new StringLoader()).extension(new TestingExtension())
+                 .strictVariables(false).build();
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

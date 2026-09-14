@@ -1,0 +1,259 @@
+UNIT softinstigate_restheart__b196d4fc15
+repo: softinstigate_restheart   merge: b196d4fc15bb19a3a3c21b8a39559ad4405acca3   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: graphql/src/main/java/org/restheart/graphql/scalars/BsonScalars.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -14,16 +14,17 @@
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  * GNU General Public License for more details.
+  *
+  * You should have received a copy of the GNU Affero General Public License
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  * =========================LICENSE_END==================================
+  */
+ package org.restheart.graphql.scalars;
++import graphql.schema.Coercing;
+ import graphql.schema.GraphQLScalarType;
+ import org.restheart.graphql.scalars.bsonCoercing.*;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.Set;
+ 
+ import com.google.common.collect.Sets;
+@@ -38,28 +39,33 @@
+             .name("Decimal128").description("BSON Decimal128 scalar").coercing(new GraphQLBsonDecimal128Coercing()).build();
+ 
+     public static final GraphQLScalarType GraphQLBsonTimestamp = GraphQLScalarType.newScalar()
+             .name("Timestamp").description("BSON Timestamp scalar").coercing(new GraphQLBsonTimestampCoercing()).build();
+ 
+     public static final GraphQLScalarType GraphQLBsonDocument = GraphQLScalarType.newScalar()
+             .name("BsonDocument").description("BSON Document scalar").coercing(new GraphQLBsonDocumentCoercing()).build();
+ 
++    public static final GraphQLScalarType GraphQLBsonArray = GraphQLScalarType.newScalar()
++            .name("BsonArray").description("BSON Array scalar").coercing(new GraphQLBsonArrayCoercing()).build();
++
+     public static final GraphQLScalarType GraphQLBsonDate = GraphQLScalarType.newScalar()
+             .name("DateTime").description("BSON DateTime scalar").coercing(new GraphQLBsonDateCoercing()).build();
+ 
+     public static final GraphQLScalarType GraphQLBsonRegularExpression = GraphQLScalarType.newScalar()
+             .name("Regex").description("Bson regular expression scalar").coercing(new GraphQLBsonRegexCoercing()).build();
++
+ 
+     public static final Set<GraphQLScalarType> BSON_SCALARS = Sets.newHashSet(
+         GraphQLBsonObjectId,
+         GraphQLBsonDecimal128,
+         GraphQLBsonTimestamp,
+         GraphQLBsonDocument,
+         GraphQLBsonDate,
++        GraphQLBsonArray,
+         GraphQLBsonRegularExpression
+     );
+ 
+     public static Map<String, GraphQLScalarType> getBsonScalars(){
+         Map<String, GraphQLScalarType> bsonScalars = new HashMap<>();
+         for(var scalar: BSON_SCALARS){
+             bsonScalars.put(scalar.getName(), scalar);
+         }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -44,27 +44,31 @@
+             .name("BsonDocument").description("BSON Document scalar").coercing(new GraphQLBsonDocumentCoercing()).build();
+ 
+     public static final GraphQLScalarType GraphQLBsonDate = GraphQLScalarType.newScalar()
+             .name("DateTime").description("BSON DateTime scalar").coercing(new GraphQLBsonDateCoercing()).build();
+ 
+     public static final GraphQLScalarType GraphQLBsonRegularExpression = GraphQLScalarType.newScalar()
+             .name("Regex").description("Bson regular expression scalar").coercing(new GraphQLBsonRegexCoercing()).build();
+ 
++    public static final GraphQLScalarType GraphQLBsonInt64 = GraphQLScalarType.newScalar()
++            .name("Long").description("BSON Int64 scalar (Long)").coercing(new GraphQLBsonInt64Coercing()).build();
++
+     public static final Set<GraphQLScalarType> BSON_SCALARS = Sets.newHashSet(
++        GraphQLBsonDocument,
+         GraphQLBsonObjectId,
+         GraphQLBsonDecimal128,
+         GraphQLBsonTimestamp,
+-        GraphQLBsonDocument,
+         GraphQLBsonDate,
+-        GraphQLBsonRegularExpression
++        GraphQLBsonRegularExpression,
++        GraphQLBsonInt64
+     );
+ 
+     public static Map<String, GraphQLScalarType> getBsonScalars(){
+-        Map<String, GraphQLScalarType> bsonScalars = new HashMap<>();
++        var bsonScalars = new HashMap<String, GraphQLScalarType> ();
+         for(var scalar: BSON_SCALARS){
+             bsonScalars.put(scalar.getName(), scalar);
+         }
+         return bsonScalars;
+     }
+ 
+     public static String getBsonScalarHeader(){
+         var header = "";
+--- MERGED RESULT (mergiraf; full) ---
+/*-
+ * ========================LICENSE_START=================================
+ * restheart-graphql
+ * %%
+ * Copyright (C) 2020 - 2021 SoftInstigate
+ * %%
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * =========================LICENSE_END==================================
+ */
+package org.restheart.graphql.scalars;
+import graphql.schema.Coercing;
+import graphql.schema.GraphQLScalarType;
+import org.restheart.graphql.scalars.bsonCoercing.*;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+import com.google.common.collect.Sets;
+
+
+public class BsonScalars {
+
+    public static final GraphQLScalarType GraphQLBsonObjectId = GraphQLScalarType.newScalar()
+            .name("ObjectId").description("BSON ObjectId scalar").coercing(new GraphQLBsonObjectIdCoercing()).build();
+
+    public static final GraphQLScalarType GraphQLBsonDecimal128 = GraphQLScalarType.newScalar()
+            .name("Decimal128").description("BSON Decimal128 scalar").coercing(new GraphQLBsonDecimal128Coercing()).build();
+
+    public static final GraphQLScalarType GraphQLBsonTimestamp = GraphQLScalarType.newScalar()
+            .name("Timestamp").description("BSON Timestamp scalar").coercing(new GraphQLBsonTimestampCoercing()).build();
+
+    public static final GraphQLScalarType GraphQLBsonDocument = GraphQLScalarType.newScalar()
+            .name("BsonDocument").description("BSON Document scalar").coercing(new GraphQLBsonDocumentCoercing()).build();
+
+    public static final GraphQLScalarType GraphQLBsonArray = GraphQLScalarType.newScalar()
+            .name("BsonArray").description("BSON Array scalar").coercing(new GraphQLBsonArrayCoercing()).build();
+
+    public static final GraphQLScalarType GraphQLBsonDate = GraphQLScalarType.newScalar()
+            .name("DateTime").description("BSON DateTime scalar").coercing(new GraphQLBsonDateCoercing()).build();
+
+    public static final GraphQLScalarType GraphQLBsonRegularExpression = GraphQLScalarType.newScalar()
+            .name("Regex").description("Bson regular expression scalar").coercing(new GraphQLBsonRegexCoercing()).build();
+
+
+    public static final GraphQLScalarType GraphQLBsonInt64 = GraphQLScalarType.newScalar()
+            .name("Long").description("BSON Int64 scalar (Long)").coercing(new GraphQLBsonInt64Coercing()).build();
+
+    public static final Set<GraphQLScalarType> BSON_SCALARS = Sets.newHashSet(
+        GraphQLBsonDocument,
+        GraphQLBsonObjectId,
+        GraphQLBsonDecimal128,
+        GraphQLBsonTimestamp,
+        GraphQLBsonDate,
+        GraphQLBsonArray,
+        GraphQLBsonRegularExpression,
+        GraphQLBsonInt64
+    );
+
+    public static Map<String, GraphQLScalarType> getBsonScalars(){
+        var bsonScalars = new HashMap<String, GraphQLScalarType> ();
+        for(var scalar: BSON_SCALARS){
+            bsonScalars.put(scalar.getName(), scalar);
+        }
+        return bsonScalars;
+    }
+
+    public static String getBsonScalarHeader(){
+        var header = "";
+        for (var scalar: BSON_SCALARS){
+            header += "scalar " + scalar.getName() +" ";
+        }
+        return header;
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -14,17 +14,16 @@
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  * GNU General Public License for more details.
+  *
+  * You should have received a copy of the GNU Affero General Public License
+  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  * =========================LICENSE_END==================================
+  */
+ package org.restheart.graphql.scalars;
+-import graphql.schema.Coercing;
+ import graphql.schema.GraphQLScalarType;
+ import org.restheart.graphql.scalars.bsonCoercing.*;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.Set;
+ 
+ import com.google.common.collect.Sets;
+@@ -39,36 +38,31 @@
+             .name("Decimal128").description("BSON Decimal128 scalar").coercing(new GraphQLBsonDecimal128Coercing()).build();
+ 
+     public static final GraphQLScalarType GraphQLBsonTimestamp = GraphQLScalarType.newScalar()
+             .name("Timestamp").description("BSON Timestamp scalar").coercing(new GraphQLBsonTimestampCoercing()).build();
+ 
+     public static final GraphQLScalarType GraphQLBsonDocument = GraphQLScalarType.newScalar()
+             .name("BsonDocument").description("BSON Document scalar").coercing(new GraphQLBsonDocumentCoercing()).build();
+ 
+-    public static final GraphQLScalarType GraphQLBsonArray = GraphQLScalarType.newScalar()
+-            .name("BsonArray").description("BSON Array scalar").coercing(new GraphQLBsonArrayCoercing()).build();
+-
+     public static final GraphQLScalarType GraphQLBsonDate = GraphQLScalarType.newScalar()
+             .name("DateTime").description("BSON DateTime scalar").coercing(new GraphQLBsonDateCoercing()).build();
+ 
+     public static final GraphQLScalarType GraphQLBsonRegularExpression = GraphQLScalarType.newScalar()
+             .name("Regex").description("Bson regular expression scalar").coercing(new GraphQLBsonRegexCoercing()).build();
+-
+ 
+     public static final GraphQLScalarType GraphQLBsonInt64 = GraphQLScalarType.newScalar()
+             .name("Long").description("BSON Int64 scalar (Long)").coercing(new GraphQLBsonInt64Coercing()).build();
+ 
+     public static final Set<GraphQLScalarType> BSON_SCALARS = Sets.newHashSet(
+         GraphQLBsonDocument,
+         GraphQLBsonObjectId,
+         GraphQLBsonDecimal128,
+         GraphQLBsonTimestamp,
+         GraphQLBsonDate,
+-        GraphQLBsonArray,
+         GraphQLBsonRegularExpression,
+         GraphQLBsonInt64
+     );
+ 
+     public static Map<String, GraphQLScalarType> getBsonScalars(){
+         var bsonScalars = new HashMap<String, GraphQLScalarType> ();
+         for(var scalar: BSON_SCALARS){
+             bsonScalars.put(scalar.getName(), scalar);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

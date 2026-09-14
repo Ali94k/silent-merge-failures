@@ -1,0 +1,664 @@
+UNIT glowroot_glowroot__5edc6961f8
+repo: glowroot_glowroot   merge: 5edc6961f8576c72256fe9d28b358dc6e35ff997   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/3: central/src/main/java/org/glowroot/central/repo/AggregateDaoImpl.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -103,16 +103,18 @@
+ 
+     @SuppressWarnings("deprecation")
+     private static final HashFunction SHA_1 = Hashing.sha1();
+ 
+     private static final Table summaryTable = ImmutableTable.builder()
+             .partialName("summary")
+             .addColumns(ImmutableColumn.of("total_duration_nanos", "double"))
+             .addColumns(ImmutableColumn.of("transaction_count", "bigint"))
++            .addColumns(ImmutableColumn.of("total_cpu_nanos", "double"))
++            .addColumns(ImmutableColumn.of("total_allocated_bytes", "double"))
+             .summary(true)
+             .fromInclusive(false)
+             .build();
+ 
+     private static final Table errorSummaryTable = ImmutableTable.builder()
+             .partialName("error_summary")
+             .addColumns(ImmutableColumn.of("error_count", "bigint"))
+             .addColumns(ImmutableColumn.of("transaction_count", "bigint"))
+@@ -522,17 +524,20 @@
+         // currently have to do aggregation client-site (don't want to require Cassandra 2.2 yet)
+         ResultSet results = executeQuery(agentRollupId, query, summaryTable);
+         for (Row row : results) {
+             int i = 0;
+             // results are ordered by capture time so Math.max() is not needed here
+             long captureTime = checkNotNull(row.getTimestamp(i++)).getTime();
+             double totalDurationNanos = row.getDouble(i++);
+             long transactionCount = row.getLong(i++);
+-            collector.mergeSummary(totalDurationNanos, transactionCount, captureTime);
++            double totalCpuNanos = row.getDouble(i++);
++            double totalAllocatedBytes = row.getDouble(i++);
++            collector.mergeSummary(totalDurationNanos, transactionCount, totalCpuNanos, totalAllocatedBytes,
++                    captureTime);
+         }
+     }
+ 
+     // sortOrder and limit are only used by embedded H2 repository, while the central cassandra
+     // repository which currently has to pull in all records anyways just delegates ordering and
+     // limit to TransactionNameSummaryCollector
+     //
+     // query.from() is non-inclusive
+@@ -546,17 +551,20 @@
+         bindQuery(boundStatement, agentRollupId, query);
+         ResultSet results = session.read(boundStatement);
+         for (Row row : results) {
+             int i = 0;
+             long captureTime = checkNotNull(row.getTimestamp(i++)).getTime();
+             String transactionName = checkNotNull(row.getString(i++));
+             double totalDurationNanos = row.getDouble(i++);
+             long transactionCount = row.getLong(i++);
+-            collector.collect(transactionName, totalDurationNanos, transactionCount, captureTime);
++            double totalCpuNanos = row.getDouble(i++);
++            double totalAllocatedBytes = row.getDouble(i++);
++            collector.collect(transactionName, totalDurationNanos, transactionCount, totalCpuNanos, totalAllocatedBytes,
++                    captureTime);
+         }
+     }
+ 
+     // query.from() is non-inclusive
+     @Override
+     public void mergeOverallErrorSummaryInto(String agentRollupId, SummaryQuery query,
+             OverallErrorSummaryCollector collector) throws Exception {
+         // currently have to do aggregation client-site (don't want to require Cassandra 2.2 yet)
+@@ -1042,28 +1050,34 @@
+             }
+         });
+     }
+ 
+     private ListenableFuture<?> rollupOverallSummaryFromRows(RollupParams rollup,
+             AggregateQuery query, Iterable<Row> rows) throws Exception {
+         double totalDurationNanos = 0;
+         long transactionCount = 0;
++        double totalCpuNanos = 0;
++        double totalAllocatedBytes = 0;
+         for (Row row : rows) {
+             totalDurationNanos += row.getDouble(0);
+             transactionCount += row.getLong(1);
++            totalCpuNanos += row.getDouble(2);
++            totalAllocatedBytes += row.getDouble(3);
+         }
+         BoundStatement boundStatement =
+                 getInsertOverallPS(summaryTable, rollup.rollupLevel()).bind();
+         int i = 0;
+         boundStatement.setString(i++, rollup.agentRollupId());
+         boundStatement.setString(i++, query.transactionType());
+         boundStatement.setTimestamp(i++, new Date(query.to()));
+         boundStatement.setDouble(i++, totalDurationNanos);
+         boundStatement.setLong(i++, transactionCount);
++        boundStatement.setDouble(i++, totalCpuNanos);
++        boundStatement.setDouble(i++, totalAllocatedBytes);
+         boundStatement.setInt(i++, rollup.adjustedTTL().generalTTL());
+         return session.writeAsync(boundStatement);
+     }
+ 
+     private ListenableFuture<?> rollupErrorSummary(RollupParams rollup, AggregateQuery query)
+             throws Exception {
+         ListenableFuture<ResultSet> future =
+                 executeQueryForRollup(rollup.agentRollupId(), query, errorSummaryTable, false);
+@@ -1152,16 +1166,18 @@
+             boundStatement = preparedStatement.bind();
+             int i = 0;
+             boundStatement.setString(i++, rollup.agentRollupId());
+             boundStatement.setString(i++, query.transactionType());
+             boundStatement.setTimestamp(i++, new Date(query.to()));
+             boundStatement.setString(i++, entry.getKey());
+             boundStatement.setDouble(i++, summary.totalDurationNanos);
+             boundStatement.setLong(i++, summary.transactionCount);
++            boundStatement.setDouble(i++, summary.totalCpuNanos);
++            boundStatement.setDouble(i++, summary.totalAllocatedBytes);
+             boundStatement.setInt(i++, rollup.adjustedTTL().generalTTL());
+             futures.add(session.writeAsync(boundStatement));
+         }
+         return Futures.allAsList(futures);
+     }
+ 
+     private ListenableFuture<?> rollupTransactionErrorSummary(RollupParams rollup,
+             AggregateQuery query) throws Exception {
+@@ -1632,19 +1648,17 @@
+         final int rollupLevel = 0;
+ 
+         List<ListenableFuture<?>> futures = new ArrayList<>();
+         BoundStatement boundStatement = getInsertOverallPS(summaryTable, rollupLevel).bind();
+         int i = 0;
+         boundStatement.setString(i++, agentRollupId);
+         boundStatement.setString(i++, transactionType);
+         boundStatement.setTimestamp(i++, new Date(captureTime));
+-        boundStatement.setDouble(i++, aggregate.getTotalDurationNanos());
+-        boundStatement.setLong(i++, aggregate.getTransactionCount());
+-        boundStatement.setInt(i++, adjustedTTL.generalTTL());
++        bindAggregateForSummary(boundStatement, aggregate, i, adjustedTTL);
+         futures.add(session.writeAsync(boundStatement));
+ 
+         if (aggregate.getErrorCount() > 0) {
+             boundStatement = getInsertOverallPS(errorSummaryTable, rollupLevel).bind();
+             i = 0;
+             boundStatement.setString(i++, agentRollupId);
+             boundStatement.setString(i++, transactionType);
+             boundStatement.setTimestamp(i++, new Date(captureTime));
+@@ -1790,19 +1804,17 @@
+ 
+         List<Future<?>> futures = new ArrayList<>();
+         BoundStatement boundStatement = getInsertTransactionPS(summaryTable, rollupLevel).bind();
+         int i = 0;
+         boundStatement.setString(i++, agentRollupId);
+         boundStatement.setString(i++, transactionType);
+         boundStatement.setTimestamp(i++, new Date(captureTime));
+         boundStatement.setString(i++, transactionName);
+-        boundStatement.setDouble(i++, aggregate.getTotalDurationNanos());
+-        boundStatement.setLong(i++, aggregate.getTransactionCount());
+-        boundStatement.setInt(i++, adjustedTTL.generalTTL());
++        bindAggregateForSummary(boundStatement, aggregate, i, adjustedTTL);
+         futures.add(session.writeAsync(boundStatement));
+ 
+         if (aggregate.getErrorCount() > 0) {
+             boundStatement = getInsertTransactionPS(errorSummaryTable, rollupLevel).bind();
+             i = 0;
+             boundStatement.setString(i++, agentRollupId);
+             boundStatement.setString(i++, transactionType);
+             boundStatement.setTimestamp(i++, new Date(captureTime));
+@@ -2074,17 +2086,54 @@
+         String transactionName = checkNotNull(row.getString(i++));
+         MutableSummary summary = summaries.get(transactionName);
+         if (summary == null) {
+             summary = new MutableSummary();
+             summaries.put(transactionName, summary);
+         }
+         summary.totalDurationNanos += row.getDouble(i++);
+         summary.transactionCount += row.getLong(i++);
++        summary.totalCpuNanos += row.getDouble(i++);
++        summary.totalAllocatedBytes += row.getDouble(i++);
+         return transactionName;
++    }
++
++    private static void bindAggregateForSummary(BoundStatement boundStatement, Aggregate aggregate,
++            int startIndex, TTL adjustedTTL) throws IOException {
++        int i = startIndex;
++        boundStatement.setDouble(i++, aggregate.getTotalDurationNanos());
++        boundStatement.setLong(i++, aggregate.getTransactionCount());
++        double totalCpuNanos = 0;
++        double totalAllocatedBytes = 0;
++        if (aggregate.hasOldMainThreadStats()) {
++            // data from agent prior to 0.10.9
++            Aggregate.OldThreadStats mainThreadStats = aggregate.getOldMainThreadStats();
++            totalCpuNanos += mainThreadStats.getTotalCpuNanos().getValue();
++            totalAllocatedBytes += mainThreadStats.getTotalAllocatedBytes().getValue();
++        } else {
++            Aggregate.ThreadStats mainThreadStats = aggregate.getMainThreadStats();
++            totalCpuNanos += mainThreadStats.getTotalCpuNanos();
++            totalAllocatedBytes += mainThreadStats.getTotalAllocatedBytes();
++        }
++        if (aggregate.hasAuxThreadRootTimer()) {
++            // writing as delimited singleton list for backwards compatibility with data written
++            // prior to 0.12.0
++            if (aggregate.hasOldAuxThreadStats()) {
++                Aggregate.OldThreadStats auxThreadStats = aggregate.getOldAuxThreadStats();
++                totalCpuNanos += auxThreadStats.getTotalCpuNanos().getValue();
++                totalAllocatedBytes += auxThreadStats.getTotalAllocatedBytes().getValue();
++            } else {
++                Aggregate.ThreadStats auxThreadStats = aggregate.getAuxThreadStats();
++                totalCpuNanos += auxThreadStats.getTotalCpuNanos();
++                totalAllocatedBytes += auxThreadStats.getTotalAllocatedBytes();
++            }
++        }
++        boundStatement.setDouble(i++, totalCpuNanos);
++        boundStatement.setDouble(i++, totalAllocatedBytes);
++        boundStatement.setInt(i++, adjustedTTL.generalTTL());
+     }
+ 
+     private static void bindAggregate(BoundStatement boundStatement, Aggregate aggregate,
+             int startIndex, TTL adjustedTTL) throws IOException {
+         int i = startIndex;
+         boundStatement.setDouble(i++, aggregate.getTotalDurationNanos());
+         boundStatement.setLong(i++, aggregate.getTransactionCount());
+         boundStatement.setBool(i++, aggregate.getAsyncTransactions());
+@@ -2531,16 +2580,18 @@
+         int queryTTL();
+         int serviceCallTTL();
+         int profileTTL();
+     }
+ 
+     private static class MutableSummary {
+         private double totalDurationNanos;
+         private long transactionCount;
++        private double totalCpuNanos;
++        private double totalAllocatedBytes;
+     }
+ 
+     private static class MutableErrorSummary {
+         private long errorCount;
+         private long transactionCount;
+     }
+ 
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -232,17 +232,17 @@
+     private final PreparedStatement insertNeedsRollupFromChild;
+     private final PreparedStatement readNeedsRollupFromChild;
+     private final PreparedStatement deleteNeedsRollupFromChild;
+ 
+     private final ImmutableList<Table> allTables;
+ 
+     AggregateDaoImpl(Session session, ActiveAgentDao activeAgentDao,
+             TransactionTypeDao transactionTypeDao, FullQueryTextDao fullQueryTextDao,
+-            ConfigRepositoryImpl configRepository, Executor asyncExecutor, Clock clock)
++            ConfigRepositoryImpl configRepository, Executor asyncExecutor, int cassandraGcGraceSeconds, Clock clock)
+             throws Exception {
+         this.session = session;
+         this.activeAgentDao = activeAgentDao;
+         this.transactionTypeDao = transactionTypeDao;
+         this.fullQueryTextDao = fullQueryTextDao;
+         this.configRepository = configRepository;
+         this.asyncExecutor = asyncExecutor;
+         this.clock = clock;
+@@ -357,33 +357,24 @@
+             existsAuxThreadProfileTransactionPS
+                     .add(session.prepare(existsPS(auxThreadProfileTable, true, i)));
+         }
+         this.existsMainThreadProfileOverallPS = existsMainThreadProfileOverallPS;
+         this.existsMainThreadProfileTransactionPS = existsMainThreadProfileTransactionPS;
+         this.existsAuxThreadProfileOverallPS = existsAuxThreadProfileOverallPS;
+         this.existsAuxThreadProfileTransactionPS = existsAuxThreadProfileTransactionPS;
+ 
+-        // since rollup operations are idempotent, any records resurrected after gc_grace_seconds
+-        // would just create extra work, but not have any other effect
+-        //
+-        // not using gc_grace_seconds of 0 since that disables hinted handoff
+-        // (http://www.uberobert.com/cassandra_gc_grace_disables_hinted_handoff)
+-        //
+-        // it seems any value over max_hint_window_in_ms (which defaults to 3 hours) is good
+-        long needsRollupGcGraceSeconds = HOURS.toSeconds(4);
+-
+         List<PreparedStatement> insertNeedsRollup = new ArrayList<>();
+         List<PreparedStatement> readNeedsRollup = new ArrayList<>();
+         List<PreparedStatement> deleteNeedsRollup = new ArrayList<>();
+         for (int i = 1; i < count; i++) {
+             session.createTableWithLCS("create table if not exists aggregate_needs_rollup_" + i
+                     + " (agent_rollup varchar, capture_time timestamp, uniqueness timeuuid,"
+                     + " transaction_types set<varchar>, primary key (agent_rollup, capture_time,"
+-                    + " uniqueness)) with gc_grace_seconds = " + needsRollupGcGraceSeconds, true);
++                    + " uniqueness)) with gc_grace_seconds = " + cassandraGcGraceSeconds, true);
+             // TTL is used to prevent non-idempotent rolling up of partially expired aggregates
+             // (e.g. "needs rollup" record resurrecting due to small gc_grace_seconds)
+             insertNeedsRollup.add(session.prepare("insert into aggregate_needs_rollup_" + i
+                     + " (agent_rollup, capture_time, uniqueness, transaction_types) values"
+                     + " (?, ?, ?, ?) using TTL ?"));
+             readNeedsRollup.add(session.prepare("select capture_time, uniqueness, transaction_types"
+                     + " from aggregate_needs_rollup_" + i + " where agent_rollup = ?"));
+             deleteNeedsRollup.add(session.prepare("delete from aggregate_needs_rollup_" + i
+@@ -392,17 +383,17 @@
+         this.insertNeedsRollup = insertNeedsRollup;
+         this.readNeedsRollup = readNeedsRollup;
+         this.deleteNeedsRollup = deleteNeedsRollup;
+ 
+         session.createTableWithLCS("create table if not exists aggregate_needs_rollup_from_child"
+                 + " (agent_rollup varchar, capture_time timestamp, uniqueness timeuuid,"
+                 + " child_agent_rollup varchar, transaction_types set<varchar>, primary key"
+                 + " (agent_rollup, capture_time, uniqueness)) with gc_grace_seconds = "
+-                + needsRollupGcGraceSeconds, true);
++                + cassandraGcGraceSeconds, true);
+         // TTL is used to prevent non-idempotent rolling up of partially expired aggregates
+         // (e.g. "needs rollup" record resurrecting due to small gc_grace_seconds)
+         insertNeedsRollupFromChild = session.prepare("insert into aggregate_needs_rollup_from_child"
+                 + " (agent_rollup, capture_time, uniqueness, child_agent_rollup, transaction_types)"
+                 + " values (?, ?, ?, ?, ?) using TTL ?");
+         readNeedsRollupFromChild = session.prepare("select capture_time, uniqueness,"
+                 + " child_agent_rollup, transaction_types from aggregate_needs_rollup_from_child"
+                 + " where agent_rollup = ?");
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: central/src/main/java/org/glowroot/central/repo/SchemaUpgrade.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -102,17 +102,17 @@
+ 
+     private static final Logger logger = LoggerFactory.getLogger(SchemaUpgrade.class);
+ 
+     // log startup messages using logger name "org.glowroot"
+     private static final Logger startupLogger = LoggerFactory.getLogger("org.glowroot");
+ 
+     private static final ObjectMapper mapper = ObjectMappers.create();
+ 
+-    private static final int CURR_SCHEMA_VERSION = 90;
++    private static final int CURR_SCHEMA_VERSION = 91;
+ 
+     private final Session session;
+     private final Clock clock;
+     private final boolean servlet;
+ 
+     private final PreparedStatement insertIntoSchemVersionPS;
+     private final @Nullable Integer initialSchemaVersion;
+ 
+@@ -529,16 +529,20 @@
+         }
+         if (initialSchemaVersion < 89) {
+             splitActiveAgentRollupTables(2);
+             updateSchemaVersion(89);
+         }
+         if (initialSchemaVersion < 90) {
+             splitActiveAgentRollupTables(3);
+             updateSchemaVersion(90);
++        }
++        if (initialSchemaVersion < 91) {
++            addAggregateSummaryColumns();
++            updateSchemaVersion(91);
+         }
+ 
+         // when adding new schema upgrade, make sure to update CURR_SCHEMA_VERSION above
+         startupLogger.info("upgraded glowroot central schema from version {} to version {}",
+                 initialSchemaVersion, CURR_SCHEMA_VERSION);
+     }
+ 
+     public boolean reloadCentralConfiguration() {
+@@ -2840,16 +2844,36 @@
+             waitForSome(futures);
+         }
+         MoreFutures.waitForAll(futures);
+         dropTableIfExists("active_agent_rollup_" + rollupLevel);
+         logger.info("populating active_top_level_rollup_{} and active_child_rollup_{} tables"
+                 + " - complete", rollupLevel);
+     }
+ 
++    private void addAggregateSummaryColumns() throws Exception {
++        addColumnIfNotExists("aggregate_tt_summary_rollup_0", "total_cpu_nanos", "double");
++        addColumnIfNotExists("aggregate_tt_summary_rollup_1", "total_cpu_nanos", "double");
++        addColumnIfNotExists("aggregate_tt_summary_rollup_2", "total_cpu_nanos", "double");
++        addColumnIfNotExists("aggregate_tt_summary_rollup_3", "total_cpu_nanos", "double");
++        addColumnIfNotExists("aggregate_tn_summary_rollup_0", "total_cpu_nanos", "double");
++        addColumnIfNotExists("aggregate_tn_summary_rollup_1", "total_cpu_nanos", "double");
++        addColumnIfNotExists("aggregate_tn_summary_rollup_2", "total_cpu_nanos", "double");
++        addColumnIfNotExists("aggregate_tn_summary_rollup_3", "total_cpu_nanos", "double");
++
++        addColumnIfNotExists("aggregate_tt_summary_rollup_0", "total_allocated_bytes", "double");
++        addColumnIfNotExists("aggregate_tt_summary_rollup_1", "total_allocated_bytes", "double");
++        addColumnIfNotExists("aggregate_tt_summary_rollup_2", "total_allocated_bytes", "double");
++        addColumnIfNotExists("aggregate_tt_summary_rollup_3", "total_allocated_bytes", "double");
++        addColumnIfNotExists("aggregate_tn_summary_rollup_0", "total_allocated_bytes", "double");
++        addColumnIfNotExists("aggregate_tn_summary_rollup_1", "total_allocated_bytes", "double");
++        addColumnIfNotExists("aggregate_tn_summary_rollup_2", "total_allocated_bytes", "double");
++        addColumnIfNotExists("aggregate_tn_summary_rollup_3", "total_allocated_bytes", "double");
++    }
++
+     private void addColumnIfNotExists(String tableName, String columnName, String cqlType)
+             throws Exception {
+         try {
+             if (tableExists(tableName) && !columnExists(tableName, columnName)) {
+                 session.updateSchemaWithRetry(
+                         "alter table " + tableName + " add " + columnName + " " + cqlType);
+             }
+         } catch (InvalidQueryException e) {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -53,16 +53,17 @@
+ import com.google.common.collect.Multimap;
+ import com.google.common.collect.Multimaps;
+ import com.google.common.collect.Ordering;
+ import com.google.common.collect.Sets;
+ import com.google.common.primitives.Ints;
+ import com.google.common.util.concurrent.ListenableFuture;
+ import com.google.protobuf.InvalidProtocolBufferException;
+ import org.checkerframework.checker.nullness.qual.Nullable;
++import org.glowroot.central.CentralModule;
+ import org.immutables.value.Value;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ import org.glowroot.central.util.MoreFutures;
+ import org.glowroot.central.util.Session;
+ import org.glowroot.common.ConfigDefaults;
+ import org.glowroot.common.Constants;
+@@ -105,26 +106,28 @@
+     // log startup messages using logger name "org.glowroot"
+     private static final Logger startupLogger = LoggerFactory.getLogger("org.glowroot");
+ 
+     private static final ObjectMapper mapper = ObjectMappers.create();
+ 
+     private static final int CURR_SCHEMA_VERSION = 90;
+ 
+     private final Session session;
++    private final int cassandraGcGraceSeconds;
+     private final Clock clock;
+     private final boolean servlet;
+ 
+     private final PreparedStatement insertIntoSchemVersionPS;
+     private final @Nullable Integer initialSchemaVersion;
+ 
+     private boolean reloadCentralConfiguration;
+ 
+-    public SchemaUpgrade(Session session, Clock clock, boolean servlet) throws Exception {
++    public SchemaUpgrade(Session session, int cassandraGcGraceSeconds, Clock clock, boolean servlet) throws Exception {
+         this.session = session;
++        this.cassandraGcGraceSeconds = cassandraGcGraceSeconds;
+         this.clock = clock;
+         this.servlet = servlet;
+ 
+         session.createTableWithLCS("create table if not exists schema_version (one int,"
+                 + " schema_version int, primary key (one))");
+         insertIntoSchemVersionPS =
+                 session.prepare("insert into schema_version (one, schema_version) values (1, ?)");
+         initialSchemaVersion = getSchemaVersion(session);
+@@ -731,60 +734,48 @@
+             String compactionClass = table.getOptions().getCompaction().get("class");
+             if (compactionClass == null) {
+                 continue;
+             }
+             if (compactionClass
+                     .equals("org.apache.cassandra.db.compaction.TimeWindowCompactionStrategy")
+                     || compactionClass.equals(
+                             "org.apache.cassandra.db.compaction.DateTieredCompactionStrategy")) {
+-                // see gc_grace_seconds related comments in Sessions.createTableWithTWCS()
+-                // for reasoning behind the value of 4 hours
+                 session.updateSchemaWithRetry("alter table " + table.getName()
+-                        + " with gc_grace_seconds = " + HOURS.toSeconds(4));
++                        + " with gc_grace_seconds = " + cassandraGcGraceSeconds);
+             }
+         }
+         logger.info("updating gc_grace_seconds on TWCS/DTCS tables - complete");
+     }
+ 
+     private void updateNeedsRollupGcSeconds() throws Exception {
+         logger.info("updating gc_grace_seconds on \"needs rollup\" tables...");
+-        // reduce from default 10 days to 4 hours
+-        //
+-        // since rollup operations are idempotent, any records resurrected after gc_grace_seconds
+-        // would just create extra work, but not have any other effect
+-        //
+-        // not using gc_grace_seconds of 0 since that disables hinted handoff
+-        // (http://www.uberobert.com/cassandra_gc_grace_disables_hinted_handoff)
+-        //
+-        // it seems any value over max_hint_window_in_ms (which defaults to 3 hours) is good
+-        long gcGraceSeconds = HOURS.toSeconds(4);
+ 
+         if (tableExists("aggregate_needs_rollup_from_child")) {
+             session.updateSchemaWithRetry("alter table aggregate_needs_rollup_from_child with"
+-                    + " gc_grace_seconds = " + gcGraceSeconds);
++                    + " gc_grace_seconds = " + cassandraGcGraceSeconds);
+         }
+         session.updateSchemaWithRetry(
+-                "alter table aggregate_needs_rollup_1 with gc_grace_seconds = " + gcGraceSeconds);
++                "alter table aggregate_needs_rollup_1 with gc_grace_seconds = " + cassandraGcGraceSeconds);
+         session.updateSchemaWithRetry(
+-                "alter table aggregate_needs_rollup_2 with gc_grace_seconds = " + gcGraceSeconds);
++                "alter table aggregate_needs_rollup_2 with gc_grace_seconds = " + cassandraGcGraceSeconds);
+         session.updateSchemaWithRetry(
+-                "alter table aggregate_needs_rollup_3 with gc_grace_seconds = " + gcGraceSeconds);
++                "alter table aggregate_needs_rollup_3 with gc_grace_seconds = " + cassandraGcGraceSeconds);
+         if (tableExists("gauge_needs_rollup_from_child")) {
+             session.updateSchemaWithRetry("alter table gauge_needs_rollup_from_child with"
+-                    + " gc_grace_seconds = " + gcGraceSeconds);
++                    + " gc_grace_seconds = " + cassandraGcGraceSeconds);
+         }
+         session.updateSchemaWithRetry(
+-                "alter table gauge_needs_rollup_1 with gc_grace_seconds = " + gcGraceSeconds);
++                "alter table gauge_needs_rollup_1 with gc_grace_seconds = " + cassandraGcGraceSeconds);
+         session.updateSchemaWithRetry(
+-                "alter table gauge_needs_rollup_2 with gc_grace_seconds = " + gcGraceSeconds);
++                "alter table gauge_needs_rollup_2 with gc_grace_seconds = " + cassandraGcGraceSeconds);
+         session.updateSchemaWithRetry(
+-                "alter table gauge_needs_rollup_3 with gc_grace_seconds = " + gcGraceSeconds);
++                "alter table gauge_needs_rollup_3 with gc_grace_seconds = " + cassandraGcGraceSeconds);
+         session.updateSchemaWithRetry(
+-                "alter table gauge_needs_rollup_4 with gc_grace_seconds = " + gcGraceSeconds);
++                "alter table gauge_needs_rollup_4 with gc_grace_seconds = " + cassandraGcGraceSeconds);
+         logger.info("updating gc_grace_seconds on \"needs rollup\" tables - complete");
+     }
+ 
+     private void updateAgentRollup() throws Exception {
+         if (!tableExists("agent_one")) {
+             // previously failed mid-upgrade prior to updating schema version
+             return;
+         }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: webdriver-tests/src/test/java/org/glowroot/tests/BasicSmokeIT.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -112,24 +112,24 @@
+         GlobalNavbar globalNavbar = globalNavbar();
+ 
+         app.open();
+ 
+         // hitting F5 is just to test 304 responses
+         Utils.getWithWait(driver, Utils.linkText("Response time")).sendKeys(Keys.F5);
+ 
+         waitFor(xpath("//a[@gt-display='All Web Transactions'][contains(., '%')]"));
+-        click(xpath("//button[normalize-space()='By percent of total time']"));
++        click(xpath("//button[normalize-space()='By total time (%)']"));
+         clickLink("By average time");
+         waitFor(xpath("//a[@gt-display='All Web Transactions'][contains(., 'ms')]"));
+         click(xpath("//button[normalize-space()='By average time']"));
+         clickLink("By throughput (per min)");
+         waitFor(xpath("//a[@gt-display='All Web Transactions'][contains(., '/min')]"));
+         click(xpath("//button[normalize-space()='By throughput (per min)']"));
+-        clickLink("By percent of total time");
++        clickLink("By total time (%)");
+         waitFor(xpath("//a[@gt-display='All Web Transactions'][contains(., '%')]"));
+ 
+         clickAcross();
+ 
+         globalNavbar.clickTransactionsLink();
+         clickPartialLinkWithWait("/jdbcservlet");
+         clickAcross();
+     }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -25,20 +25,20 @@
+ 
+ import com.fasterxml.jackson.databind.JsonNode;
+ import com.fasterxml.jackson.databind.ObjectMapper;
+ import com.fasterxml.jackson.databind.node.ArrayNode;
+ import com.google.common.base.Stopwatch;
+ import com.google.common.collect.Sets;
+ import com.machinepublishers.jbrowserdriver.JBrowserDriver;
+ import io.netty.handler.codec.http.QueryStringDecoder;
+-import org.junit.AfterClass;
+-import org.junit.Assume;
+-import org.junit.BeforeClass;
+-import org.junit.Test;
++import org.junit.jupiter.api.AfterAll;
++import org.junit.jupiter.api.Assumptions;
++import org.junit.jupiter.api.BeforeAll;
++import org.junit.jupiter.api.Test;
+ import org.openqa.selenium.JavascriptExecutor;
+ import org.openqa.selenium.Keys;
+ import org.openqa.selenium.StaleElementReferenceException;
+ import org.openqa.selenium.WebElement;
+ import org.openqa.selenium.support.ui.ExpectedConditions;
+ import org.openqa.selenium.support.ui.WebDriverWait;
+ 
+ import org.glowroot.tests.jvm.JvmSidebar;
+@@ -48,17 +48,17 @@
+ import static java.util.concurrent.TimeUnit.HOURS;
+ import static java.util.concurrent.TimeUnit.MILLISECONDS;
+ import static java.util.concurrent.TimeUnit.SECONDS;
+ import static org.openqa.selenium.By.className;
+ import static org.openqa.selenium.By.xpath;
+ 
+ public class BasicSmokeIT extends WebDriverIT {
+ 
+-    @BeforeClass
++    @BeforeAll
+     public static void setUp() throws Exception {
+         String content = httpGet("http://localhost:" + getUiPort()
+                 + "/backend/config/transaction?agent-id=" + agentId);
+         JsonNode responseNode = new ObjectMapper().readTree(content);
+         String version = responseNode.get("config").get("version").asText();
+         httpPost("http://localhost:" + getUiPort()
+                 + "/backend/config/transaction?agent-id=" + agentId,
+                 "{\"slowThresholdMillis\":0,\"profilingIntervalMillis\":10,"
+@@ -96,17 +96,17 @@
+             @Override
+             public Void call() throws Exception {
+                 container.executeNoExpectedTrace(SleepServlet.class);
+                 return null;
+             }
+         });
+     }
+ 
+-    @AfterClass
++    @AfterAll
+     public static void tearDown() throws Exception {
+         container.interruptAppUnderTest();
+     }
+ 
+     @Test
+     public void shouldCheckTransactionPages() throws Exception {
+         App app = app();
+         GlobalNavbar globalNavbar = globalNavbar();
+@@ -425,17 +425,17 @@
+ 
+     @Test
+     public void shouldCheckHealthCheckPage() throws Exception {
+         httpGet("http://localhost:" + getUiPort() + "/health");
+     }
+ 
+     @Test
+     public void shouldCheckCassandraWriteTotals() throws Exception {
+-        Assume.assumeTrue(WebDriverSetup.useCentral);
++        Assumptions.assumeTrue(WebDriverSetup.useCentral);
+         httpGet("http://localhost:" + getUiPort()
+                 + "/backend/admin/cassandra-write-totals?limit=10");
+     }
+ 
+     private void clickAcross() throws InterruptedException {
+         waitFor(xpath("//td[normalize-space()='Breakdown:']"));
+         clickLink("percentiles");
+         waitFor(xpath("//label[normalize-space()='95th percentile:']"));
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

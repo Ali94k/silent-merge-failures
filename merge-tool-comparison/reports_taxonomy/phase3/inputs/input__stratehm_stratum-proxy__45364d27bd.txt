@@ -1,0 +1,1023 @@
+UNIT stratehm_stratum-proxy__45364d27bd
+repo: stratehm_stratum-proxy   merge: 45364d27bd41bec671a6fe0c50bf75f3864fb11e   stratum: B
+files shown: 1 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): src/main/java/strat/mining/stratum/proxy/worker/WorkerConnection.java
+truncation level: T3/cap1/trunc400  (diffs at -U3; merged bodies omitted; hard-fit to the 30k budget: files capped at 1 largest merged-vs-dev diffs, each diff section truncated to 400 lines)
+
+=== FILE 1/1: src/main/java/strat/mining/stratum/proxy/pool/Pool.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -31,8 +31,6 @@
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+-import java.util.Timer;
+-import java.util.TimerTask;
+ import java.util.concurrent.ConcurrentLinkedDeque;
+ import java.util.concurrent.CountDownLatch;
+ import java.util.concurrent.TimeUnit;
+@@ -62,6 +60,8 @@
+ import strat.mining.stratum.proxy.manager.StratumProxyManager;
+ import strat.mining.stratum.proxy.model.Share;
+ import strat.mining.stratum.proxy.utils.HashrateUtils;
++import strat.mining.stratum.proxy.utils.Timer;
++import strat.mining.stratum.proxy.utils.Timer.Task;
+ 
+ import com.google.common.util.concurrent.AtomicDouble;
+ 
+@@ -98,10 +98,10 @@
+ 
+ 	private MiningNotifyNotification currentJob;
+ 
+-	private Timer reconnectTimer;
+-	private Timer notifyTimeoutTimer;
+-	private Timer stabilityTestTimer;
+-	private Timer subscribeResponseTimeoutTimer;
++	private Task reconnectTask;
++	private Task notifyTimeoutTask;
++	private Task stabilityTestTask;
++	private Task subscribeResponseTimeoutTask;
+ 
+ 	private Boolean isExtranonceSubscribeEnabled = false;
+ 
+@@ -195,23 +195,23 @@
+ 	 * Start the timer which check the subscribe response timeout
+ 	 */
+ 	private void startSubscribeTimeoutTimer() {
+-		subscribeResponseTimeoutTimer = new Timer("SubscribeTimemoutTimer-" + getName());
+-		subscribeResponseTimeoutTimer.schedule(new TimerTask() {
++		subscribeResponseTimeoutTask = new Timer.Task() {
+ 			public void run() {
+ 				LOGGER.warn("Subscribe response timeout. Stopping the pool");
+ 				stopPool();
+ 				retryConnect(true);
+ 			}
+-		}, 5000);
++		};
++		Timer.getInstance().schedule(subscribeResponseTimeoutTask, 5000);
+ 	}
+ 
+ 	/**
+ 	 * Stop the timer which check the subscribe response timeout
+ 	 */
+ 	private void stopSubscribeTimeoutTimer() {
+-		if (subscribeResponseTimeoutTimer != null) {
+-			subscribeResponseTimeoutTimer.cancel();
+-			subscribeResponseTimeoutTimer = null;
++		if (subscribeResponseTimeoutTask != null) {
++			subscribeResponseTimeoutTask.cancel();
++			subscribeResponseTimeoutTask = null;
+ 		}
+ 	}
+ 
+@@ -602,21 +602,21 @@
+ 	private void retryConnect(boolean delayFirstRetry) {
+ 		if (connectionRetryDelay > 0) {
+ 			LOGGER.info("Trying reconnect of pool {} in {} seconds.", getName(), delayFirstRetry ? connectionRetryDelay : 0.001);
+-			reconnectTimer = new Timer("ReconnectTimer-" + getName());
+-			reconnectTimer.schedule(new TimerTask() {
++			reconnectTask = new Task() {
+ 				public void run() {
+ 					try {
+ 						LOGGER.info("Trying reconnect of pool {}...", getName());
+ 						startPool(manager);
+-						if (reconnectTimer != null) {
+-							reconnectTimer.cancel();
+-							reconnectTimer = null;
++						if (reconnectTask != null) {
++							reconnectTask.cancel();
++							reconnectTask = null;
+ 						}
+ 					} catch (Exception e) {
+ 						LOGGER.error("Failed to restart the pool {}.", getName(), e);
+ 					}
+ 				}
+-			}, delayFirstRetry ? connectionRetryDelay * 1000 : 1);
++			};
++			Timer.getInstance().schedule(reconnectTask, delayFirstRetry ? connectionRetryDelay * 1000 : 1);
+ 		} else {
+ 			LOGGER.warn("Do not try to reconnect pool {} since --pool-connection-retry-delay is {}.", getName(), connectionRetryDelay);
+ 		}
+@@ -736,13 +736,12 @@
+ 	 */
+ 	private void resetNotifyTimeoutTimer() {
+ 		if (noNotifyTimeout > 0) {
+-			if (notifyTimeoutTimer != null) {
+-				notifyTimeoutTimer.cancel();
+-				notifyTimeoutTimer = null;
+-			}
+-
+-			notifyTimeoutTimer = new Timer("NotifyTimeoutTimer-" + getName());
+-			notifyTimeoutTimer.schedule(new TimerTask() {
++			if (notifyTimeoutTask != null) {
++				notifyTimeoutTask.cancel();
++				notifyTimeoutTask = null;
++			}
++
++			notifyTimeoutTask = new Task() {
+ 				public void run() {
+ 					LOGGER.warn("No mining.notify received from pool {} for {} ms. Stopping the pool...", getName(), noNotifyTimeout);
+ 					// If we have not received notify notification since DEALY,
+@@ -750,7 +749,8 @@
+ 					stopPool();
+ 					retryConnect(false);
+ 				}
+-			}, noNotifyTimeout * 1000);
++			};
++			Timer.getInstance().schedule(notifyTimeoutTask, noNotifyTimeout * 1000);
+ 		}
+ 	}
+ 
+@@ -762,21 +762,21 @@
+ 		if (reconnectStabilityPeriod > 0) {
+ 			if (!isFirstRun) {
+ 				LOGGER.info("Testing stability of pool {} for {} seconds.", getName(), reconnectStabilityPeriod);
+-				if (stabilityTestTimer != null) {
+-					stabilityTestTimer.cancel();
+-					stabilityTestTimer = null;
++				if (stabilityTestTask != null) {
++					stabilityTestTask.cancel();
++					stabilityTestTask = null;
+ 				}
+ 
+-				stabilityTestTimer = new Timer("StabilityTestTimer-" + getName());
+-				stabilityTestTimer.schedule(new TimerTask() {
++				stabilityTestTask = new Task() {
+ 					public void run() {
+ 						setStable();
+-						if (stabilityTestTimer != null) {
+-							stabilityTestTimer.cancel();
+-							stabilityTestTimer = null;
++						if (stabilityTestTask != null) {
++							stabilityTestTask.cancel();
++							stabilityTestTask = null;
+ 						}
+ 					}
+-				}, reconnectStabilityPeriod * 1000);
++				};
++				Timer.getInstance().schedule(stabilityTestTask, reconnectStabilityPeriod * 1000);
+ 			} else {
+ 				LOGGER.debug("Pool {} declared as stable since since first start.", getName());
+ 				setStable();
+@@ -801,24 +801,24 @@
+ 	 * Cancel all active timers
+ 	 */
+ 	private void cancelTimers() {
+-		if (stabilityTestTimer != null) {
+-			stabilityTestTimer.cancel();
+-			stabilityTestTimer = null;
+-		}
+-
+-		if (reconnectTimer != null) {
+-			reconnectTimer.cancel();
+-			reconnectTimer = null;
+-		}
+-
+-		if (notifyTimeoutTimer != null) {
+-			notifyTimeoutTimer.cancel();
+-			notifyTimeoutTimer = null;
+-		}
+-
+-		if (subscribeResponseTimeoutTimer != null) {
+-			subscribeResponseTimeoutTimer.cancel();
+-			subscribeResponseTimeoutTimer = null;
++		if (stabilityTestTask != null) {
++			stabilityTestTask.cancel();
++			stabilityTestTask = null;
++		}
++
++		if (reconnectTask != null) {
++			reconnectTask.cancel();
++			reconnectTask = null;
++		}
++
++		if (notifyTimeoutTask != null) {
++			notifyTimeoutTask.cancel();
++			notifyTimeoutTask = null;
++		}
++
++		if (subscribeResponseTimeoutTask != null) {
++			subscribeResponseTimeoutTask.cancel();
++			subscribeResponseTimeoutTask = null;
+ 		}
+ 	}
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -1,912 +1,911 @@
+-/**
+- * stratum-proxy is a proxy supporting the crypto-currency stratum pool mining
+- * protocol.
+- * Copyright (C) 2014  Stratehm (stratehm@hotmail.com)
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with multipool-stats-backend. If not, see <http://www.gnu.org/licenses/>.
+- */
+-package strat.mining.stratum.proxy.pool;
+-
+-import java.io.IOException;
+-import java.net.InetSocketAddress;
+-import java.net.Socket;
+-import java.net.SocketException;
+-import java.net.URI;
+-import java.net.URISyntaxException;
+-import java.util.ArrayList;
+-import java.util.Collections;
+-import java.util.Date;
+-import java.util.Deque;
+-import java.util.HashMap;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Timer;
+-import java.util.TimerTask;
+-import java.util.concurrent.ConcurrentLinkedDeque;
+-import java.util.concurrent.CountDownLatch;
+-import java.util.concurrent.TimeUnit;
+-
+-import javax.ws.rs.core.UriBuilder;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-import strat.mining.stratum.proxy.callback.ResponseReceivedCallback;
+-import strat.mining.stratum.proxy.constant.Constants;
+-import strat.mining.stratum.proxy.exception.AuthorizationException;
+-import strat.mining.stratum.proxy.exception.PoolStartException;
+-import strat.mining.stratum.proxy.exception.TooManyWorkersException;
+-import strat.mining.stratum.proxy.json.ClientReconnectNotification;
+-import strat.mining.stratum.proxy.json.MiningAuthorizeRequest;
+-import strat.mining.stratum.proxy.json.MiningAuthorizeResponse;
+-import strat.mining.stratum.proxy.json.MiningExtranonceSubscribeRequest;
+-import strat.mining.stratum.proxy.json.MiningExtranonceSubscribeResponse;
+-import strat.mining.stratum.proxy.json.MiningNotifyNotification;
+-import strat.mining.stratum.proxy.json.MiningSetDifficultyNotification;
+-import strat.mining.stratum.proxy.json.MiningSetExtranonceNotification;
+-import strat.mining.stratum.proxy.json.MiningSubmitRequest;
+-import strat.mining.stratum.proxy.json.MiningSubmitResponse;
+-import strat.mining.stratum.proxy.json.MiningSubscribeRequest;
+-import strat.mining.stratum.proxy.json.MiningSubscribeResponse;
+-import strat.mining.stratum.proxy.manager.StratumProxyManager;
+-import strat.mining.stratum.proxy.model.Share;
+-import strat.mining.stratum.proxy.utils.HashrateUtils;
+-
+-import com.google.common.util.concurrent.AtomicDouble;
+-
+-public class Pool implements Comparable<Pool> {
+-
+-	private static final Logger LOGGER = LoggerFactory.getLogger(Pool.class);
+-
+-	private StratumProxyManager manager;
+-
+-	private String name;
+-	private String host;
+-	private URI uri;
+-	private String username;
+-	private String password;
+-
+-	private Double difficulty;
+-	private String extranonce1;
+-	private Integer extranonce2Size;
+-
+-	private Date activeSince;
+-	private boolean isActive;
+-	private boolean isEnabled;
+-	private boolean isStable;
+-	private boolean isFirstRun;
+-	private boolean isAppendWorkerNames;
+-	private boolean isUseWorkerPassword;
+-
+-	private String workerSeparator;
+-
+-	// Contains all available tails in Hexa format.
+-	private Deque<String> tails;
+-
+-	private PoolConnection connection;
+-
+-	private MiningNotifyNotification currentJob;
+-
+-	private Timer reconnectTimer;
+-	private Timer notifyTimeoutTimer;
+-	private Timer stabilityTestTimer;
+-	private Timer subscribeResponseTimeoutTimer;
+-
+-	private Boolean isExtranonceSubscribeEnabled = false;
+-
+-	private Integer numberOfSubmit = 1;
+-
+-	private Integer priority;
+-
+-	private AtomicDouble acceptedDifficulty;
+-	private AtomicDouble rejectedDifficulty;
+-
+-	private Deque<Share> lastAcceptedShares;
+-	private Deque<Share> lastRejectedShares;
+-	// Time of sampling shares to calculate hash rate
+-	private Integer samplingHashratePeriod = Constants.DEFAULT_POOL_HASHRATE_SAMPLING_PERIOD * 1000;
+-
+-	private Integer connectionRetryDelay = Constants.DEFAULT_POOL_CONNECTION_RETRY_DELAY;
+-	private Integer reconnectStabilityPeriod = Constants.DEFAULT_POOL_RECONNECTION_STABILITY_PERIOD;
+-	private Integer noNotifyTimeout = Constants.DEFAULT_NOTIFY_NOTIFICATION_TIMEOUT;
+-
+-	private Boolean isRejectReconnect = false;
+-
+-	// Store the callbacks to call when the pool responds to a submit request.
+-	private Map<Long, ResponseReceivedCallback<MiningSubmitRequest, MiningSubmitResponse>> submitCallbacks;
+-
+-	// Store the callbacks to call when the pool responds to worker authorize
+-	// request.
+-	private Map<Long, ResponseReceivedCallback<MiningAuthorizeRequest, MiningAuthorizeResponse>> authorizeCallbacks;
+-
+-	private List<String> authorizedWorkers;
+-
+-	public Pool(String name, String host, String username, String password) {
+-		super();
+-		this.name = name == null ? host : name;
+-		this.host = host;
+-		this.username = username;
+-		this.password = password;
+-		this.isActive = false;
+-		this.isEnabled = true;
+-		this.isStable = false;
+-		this.isFirstRun = true;
+-
+-		acceptedDifficulty = new AtomicDouble(0);
+-		rejectedDifficulty = new AtomicDouble(0);
+-
+-		this.tails = buildTails();
+-		this.submitCallbacks = Collections.synchronizedMap(new HashMap<Long, ResponseReceivedCallback<MiningSubmitRequest, MiningSubmitResponse>>());
+-		this.authorizeCallbacks = Collections
+-				.synchronizedMap(new HashMap<Long, ResponseReceivedCallback<MiningAuthorizeRequest, MiningAuthorizeResponse>>());
+-		this.lastAcceptedShares = new ConcurrentLinkedDeque<Share>();
+-		this.lastRejectedShares = new ConcurrentLinkedDeque<Share>();
+-		this.authorizedWorkers = Collections.synchronizedList(new ArrayList<String>());
+-	}
+-
+-	public void startPool(StratumProxyManager manager) throws PoolStartException, URISyntaxException, SocketException {
+-		if (manager != null) {
+-			if (!isEnabled) {
+-				throw new PoolStartException("Do not start the pool " + getName() + " since it is disabled.");
+-			}
+-
+-			this.manager = manager;
+-			if (connection == null) {
+-				LOGGER.debug("Starting pool {}...", getName());
+-				uri = new URI("stratum+tcp://" + host);
+-				if (uri.getPort() < 0) {
+-					UriBuilder.fromUri(uri).port(Constants.DEFAULT_POOL_PORT);
+-				}
+-				Socket socket = new Socket();
+-				socket.setKeepAlive(true);
+-				socket.setTcpNoDelay(true);
+-
+-				try {
+-					socket.connect(new InetSocketAddress(uri.getHost(), uri.getPort() > -1 ? uri.getPort() : Constants.DEFAULT_POOL_PORT));
+-					connection = new PoolConnection(this, socket);
+-					connection.startReading();
+-
+-					MiningSubscribeRequest request = new MiningSubscribeRequest();
+-					startSubscribeTimeoutTimer();
+-					connection.sendRequest(request);
+-				} catch (IOException e) {
+-					LOGGER.error("Failed to connect the pool {}.", getName(), e);
+-					stopPool();
+-					retryConnect(true);
+-				}
+-			}
+-		} else {
+-			throw new PoolStartException("Do not start pool " + getName() + " since manager is null.");
+-		}
+-	}
+-
+-	/**
+-	 * Start the timer which check the subscribe response timeout
+-	 */
+-	private void startSubscribeTimeoutTimer() {
+-		subscribeResponseTimeoutTimer = new Timer("SubscribeTimemoutTimer-" + getName());
+-		subscribeResponseTimeoutTimer.schedule(new TimerTask() {
+-			public void run() {
+-				LOGGER.warn("Subscribe response timeout. Stopping the pool");
+-				stopPool();
+-				retryConnect(true);
+-			}
+-		}, 5000);
+-	}
+-
+-	/**
+-	 * Stop the timer which check the subscribe response timeout
+-	 */
+-	private void stopSubscribeTimeoutTimer() {
+-		if (subscribeResponseTimeoutTimer != null) {
+-			subscribeResponseTimeoutTimer.cancel();
+-			subscribeResponseTimeoutTimer = null;
+-		}
+-	}
+-
+-	public void stopPool() {
+-		if (connection != null) {
+-			cancelTimers();
+-			authorizedWorkers.clear();
+-
+-			isActive = false;
+-			isStable = false;
+-			manager.onPoolStateChange(this);
+-			LOGGER.debug("Stopping pool {}...", getName());
+-			connection.close();
+-			connection = null;
+-			LOGGER.info("Pool {} stopped.", getName());
+-		}
+-	}
+-
+-	public String getName() {
+-		return name;
+-	}
+-
+-	public String getHost() {
+-		return host;
+-	}
+-
+-	public URI getUri() {
+-		return uri;
+-	}
+-
+-	public String getUsername() {
+-		return username;
+-	}
+-
+-	public String getPassword() {
+-		return password;
+-	}
+-
+-	public boolean isEnabled() {
+-		return isEnabled;
+-	}
+-
+-	/**
+-	 * Enable/Disable the pool. Throw an exception if cannot enable the pool.
+-	 * 
+-	 * @param isEnabled
+-	 * @throws URISyntaxException
+-	 * @throws SocketException
+-	 * @throws Exception
+        // ... 1426 diff lines elided ...
++				};
++				Timer.getInstance().schedule(stabilityTestTask, reconnectStabilityPeriod * 1000);
++			} else {
++				LOGGER.debug("Pool {} declared as stable since since first start.", getName());
++				setStable();
++			}
++		} else {
++			LOGGER.info("Pool {} declared as stable since no stability test period configured", getName());
++			setStable();
++		}
++	}
++
++	/**
++	 * Mark the pool as stable
++	 */
++	private void setStable() {
++		if (!isStable) {
++			isStable = true;
++			manager.onPoolStable(this);
++		}
++	}
++
++	/**
++	 * Cancel all active timers
++	 */
++	private void cancelTimers() {
++		if (stabilityTestTask != null) {
++			stabilityTestTask.cancel();
++			stabilityTestTask = null;
++		}
++
++		if (reconnectTask != null) {
++			reconnectTask.cancel();
++			reconnectTask = null;
++		}
++
++		if (notifyTimeoutTask != null) {
++			notifyTimeoutTask.cancel();
++			notifyTimeoutTask = null;
++		}
++
++		if (subscribeResponseTimeoutTask != null) {
++			subscribeResponseTimeoutTask.cancel();
++			subscribeResponseTimeoutTask = null;
++		}
++	}
++
++	public double getAcceptedHashesPerSeconds() {
++		return HashrateUtils.getHashrateFromShareList(lastAcceptedShares, samplingHashratePeriod);
++	}
++
++	public double getRejectedHashesPerSeconds() {
++		return HashrateUtils.getHashrateFromShareList(lastRejectedShares, samplingHashratePeriod);
++	}
++
++	/**
++	 * Authorize the given worker on the pool. Throws an exception if the worker
++	 * is not authorized on the pool. This method blocs until the response is
++	 * received from the pool.
++	 * 
++	 * @param workerRequest
++	 * @param callback
++	 */
++	public void authorizeWorker(MiningAuthorizeRequest workerRequest) throws AuthorizationException {
++		if (isAppendWorkerNames) {
++			String finalUserName = username + workerSeparator + workerRequest.getUsername();
++
++			// If the worker is already authorized, do nothing
++			if (authorizedWorkers.contains(finalUserName)) {
++				LOGGER.info("Worker {} already authorized on the pool {}.", finalUserName, getName());
++			} else {
++
++				LOGGER.debug("Authorize worker {} on pool {}.", finalUserName, getName());
++
++				// Create a latch to wait the authorization response.
++				final CountDownLatch responseLatch = new CountDownLatch(1);
++				// Repsonse wrapper used to store the pool response values
++				final MiningAuthorizeResponse poolResponseWrapper = new MiningAuthorizeResponse();
++
++				MiningAuthorizeRequest poolRequest = new MiningAuthorizeRequest();
++				poolRequest.setUsername(finalUserName);
++				poolRequest.setPassword(isUseWorkerPassword ? workerRequest.getPassword() : this.password);
++				// Prepare the callback to call when response is
++				// received.
++				authorizeCallbacks.put(poolRequest.getId(), new ResponseReceivedCallback<MiningAuthorizeRequest, MiningAuthorizeResponse>() {
++					public void onResponseReceived(MiningAuthorizeRequest request, MiningAuthorizeResponse response) {
++						// Recopy values to allow blocked thread to access the
++						// response values.
++						poolResponseWrapper.setId(response.getId());
++						poolResponseWrapper.setResult(response.getResult());
++
++						// Unblock the blocked thread.
++						responseLatch.countDown();
++					}
++				});
++
++				// Send the request.
++				connection.sendRequest(poolRequest);
++				// Wait for the response for 5 seconds max.
++				boolean isTimeout = false;
++				try {
++					isTimeout = !responseLatch.await(5, TimeUnit.SECONDS);
++				} catch (InterruptedException e) {
++					LOGGER.info("Interruption on pool {} during authorization for user {}.", getName(), finalUserName);
++					throw new AuthorizationException("Interruption of authorization of user " + finalUserName + " on pool " + getName(), e);
++				}
++
++				if (isTimeout) {
++					LOGGER.warn("Timeout of worker {} authorization on pool {}.", finalUserName, getName());
++					throw new AuthorizationException("Timeout of worker " + finalUserName + "authorization on pool " + getName());
++				}
++
++				// Check the response values
++				if (poolResponseWrapper.getIsAuthorized() == null || !poolResponseWrapper.getIsAuthorized()) {
++					// If the worker is not authorized, throw an exception.
++					throw new AuthorizationException("Worker " + finalUserName + " is not authorized on pool " + getName() + ". Cause: "
++							+ (poolResponseWrapper.getJsonError() != null ? poolResponseWrapper.getJsonError() : "none."));
++				}
++			}
++		}
++	}
++
++	public void setAppendWorkerNames(boolean isAppendWorkerNames) {
++		this.isAppendWorkerNames = isAppendWorkerNames;
++	}
++
++	public void setUseWorkerPassword(boolean isUseWorkerPassword) {
++		this.isUseWorkerPassword = isUseWorkerPassword;
++	}
++
++	public void setWorkerSeparator(String workerSeparator) {
++		this.workerSeparator = workerSeparator;
++	}
++}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -1,911 +1,911 @@
+-/**
+- * stratum-proxy is a proxy supporting the crypto-currency stratum pool mining
+- * protocol.
+- * Copyright (C) 2014  Stratehm (stratehm@hotmail.com)
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 3 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with multipool-stats-backend. If not, see <http://www.gnu.org/licenses/>.
+- */
+-package strat.mining.stratum.proxy.pool;
+-
+-import java.io.IOException;
+-import java.net.InetSocketAddress;
+-import java.net.Socket;
+-import java.net.SocketException;
+-import java.net.URI;
+-import java.net.URISyntaxException;
+-import java.util.ArrayList;
+-import java.util.Collections;
+-import java.util.Date;
+-import java.util.Deque;
+-import java.util.HashMap;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.concurrent.ConcurrentLinkedDeque;
+-import java.util.concurrent.CountDownLatch;
+-import java.util.concurrent.TimeUnit;
+-
+-import javax.ws.rs.core.UriBuilder;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-import strat.mining.stratum.proxy.callback.ResponseReceivedCallback;
+-import strat.mining.stratum.proxy.constant.Constants;
+-import strat.mining.stratum.proxy.exception.AuthorizationException;
+-import strat.mining.stratum.proxy.exception.PoolStartException;
+-import strat.mining.stratum.proxy.exception.TooManyWorkersException;
+-import strat.mining.stratum.proxy.json.ClientReconnectNotification;
+-import strat.mining.stratum.proxy.json.MiningAuthorizeRequest;
+-import strat.mining.stratum.proxy.json.MiningAuthorizeResponse;
+-import strat.mining.stratum.proxy.json.MiningExtranonceSubscribeRequest;
+-import strat.mining.stratum.proxy.json.MiningExtranonceSubscribeResponse;
+-import strat.mining.stratum.proxy.json.MiningNotifyNotification;
+-import strat.mining.stratum.proxy.json.MiningSetDifficultyNotification;
+-import strat.mining.stratum.proxy.json.MiningSetExtranonceNotification;
+-import strat.mining.stratum.proxy.json.MiningSubmitRequest;
+-import strat.mining.stratum.proxy.json.MiningSubmitResponse;
+-import strat.mining.stratum.proxy.json.MiningSubscribeRequest;
+-import strat.mining.stratum.proxy.json.MiningSubscribeResponse;
+-import strat.mining.stratum.proxy.manager.StratumProxyManager;
+-import strat.mining.stratum.proxy.model.Share;
+-import strat.mining.stratum.proxy.utils.HashrateUtils;
+-import strat.mining.stratum.proxy.utils.Timer;
+-import strat.mining.stratum.proxy.utils.Timer.Task;
+-
+-import com.google.common.util.concurrent.AtomicDouble;
+-
+-public class Pool implements Comparable<Pool> {
+-
+-	private static final Logger LOGGER = LoggerFactory.getLogger(Pool.class);
+-
+-	private StratumProxyManager manager;
+-
+-	private String name;
+-	private String host;
+-	private URI uri;
+-	private String username;
+-	private String password;
+-
+-	private Double difficulty;
+-	private String extranonce1;
+-	private Integer extranonce2Size;
+-
+-	private Date activeSince;
+-	private boolean isActive;
+-	private boolean isEnabled;
+-	private boolean isStable;
+-	private boolean isFirstRun;
+-	private boolean isAppendWorkerNames;
+-	private boolean isUseWorkerPassword;
+-
+-	private String workerSeparator;
+-
+-	// Contains all available tails in Hexa format.
+-	private Deque<String> tails;
+-
+-	private PoolConnection connection;
+-
+-	private MiningNotifyNotification currentJob;
+-
+-	private Task reconnectTask;
+-	private Task notifyTimeoutTask;
+-	private Task stabilityTestTask;
+-	private Task subscribeResponseTimeoutTask;
+-
+-	private Boolean isExtranonceSubscribeEnabled = false;
+-
+-	private Integer numberOfSubmit = 1;
+-
+-	private Integer priority;
+-
+-	private AtomicDouble acceptedDifficulty;
+-	private AtomicDouble rejectedDifficulty;
+-
+-	private Deque<Share> lastAcceptedShares;
+-	private Deque<Share> lastRejectedShares;
+-	// Time of sampling shares to calculate hash rate
+-	private Integer samplingHashratePeriod = Constants.DEFAULT_POOL_HASHRATE_SAMPLING_PERIOD * 1000;
+-
+-	private Integer connectionRetryDelay = Constants.DEFAULT_POOL_CONNECTION_RETRY_DELAY;
+-	private Integer reconnectStabilityPeriod = Constants.DEFAULT_POOL_RECONNECTION_STABILITY_PERIOD;
+-	private Integer noNotifyTimeout = Constants.DEFAULT_NOTIFY_NOTIFICATION_TIMEOUT;
+-
+-	private Boolean isRejectReconnect = false;
+-
+-	// Store the callbacks to call when the pool responds to a submit request.
+-	private Map<Long, ResponseReceivedCallback<MiningSubmitRequest, MiningSubmitResponse>> submitCallbacks;
+-
+-	// Store the callbacks to call when the pool responds to worker authorize
+-	// request.
+-	private Map<Long, ResponseReceivedCallback<MiningAuthorizeRequest, MiningAuthorizeResponse>> authorizeCallbacks;
+-
+-	private List<String> authorizedWorkers;
+-
+-	public Pool(String name, String host, String username, String password) {
+-		super();
+-		this.name = name == null ? host : name;
+-		this.host = host;
+-		this.username = username;
+-		this.password = password;
+-		this.isActive = false;
+-		this.isEnabled = true;
+-		this.isStable = false;
+-		this.isFirstRun = true;
+-
+-		acceptedDifficulty = new AtomicDouble(0);
+-		rejectedDifficulty = new AtomicDouble(0);
+-
+-		this.tails = buildTails();
+-		this.submitCallbacks = Collections.synchronizedMap(new HashMap<Long, ResponseReceivedCallback<MiningSubmitRequest, MiningSubmitResponse>>());
+-		this.authorizeCallbacks = Collections
+-				.synchronizedMap(new HashMap<Long, ResponseReceivedCallback<MiningAuthorizeRequest, MiningAuthorizeResponse>>());
+-		this.lastAcceptedShares = new ConcurrentLinkedDeque<Share>();
+-		this.lastRejectedShares = new ConcurrentLinkedDeque<Share>();
+-		this.authorizedWorkers = Collections.synchronizedList(new ArrayList<String>());
+-	}
+-
+-	public void startPool(StratumProxyManager manager) throws PoolStartException, URISyntaxException, SocketException {
+-		if (manager != null) {
+-			if (!isEnabled) {
+-				throw new PoolStartException("Do not start the pool " + getName() + " since it is disabled.");
+-			}
+-
+-			this.manager = manager;
+-			if (connection == null) {
+-				LOGGER.debug("Starting pool {}...", getName());
+-				uri = new URI("stratum+tcp://" + host);
+-				if (uri.getPort() < 0) {
+-					UriBuilder.fromUri(uri).port(Constants.DEFAULT_POOL_PORT);
+-				}
+-				Socket socket = new Socket();
+-				socket.setKeepAlive(true);
+-				socket.setTcpNoDelay(true);
+-
+-				try {
+-					socket.connect(new InetSocketAddress(uri.getHost(), uri.getPort() > -1 ? uri.getPort() : Constants.DEFAULT_POOL_PORT));
+-					connection = new PoolConnection(this, socket);
+-					connection.startReading();
+-
+-					MiningSubscribeRequest request = new MiningSubscribeRequest();
+-					startSubscribeTimeoutTimer();
+-					connection.sendRequest(request);
+-				} catch (IOException e) {
+-					LOGGER.error("Failed to connect the pool {}.", getName(), e);
+-					stopPool();
+-					retryConnect(true);
+-				}
+-			}
+-		} else {
+-			throw new PoolStartException("Do not start pool " + getName() + " since manager is null.");
+-		}
+-	}
+-
+-	/**
+-	 * Start the timer which check the subscribe response timeout
+-	 */
+-	private void startSubscribeTimeoutTimer() {
+-		subscribeResponseTimeoutTask = new Timer.Task() {
+-			public void run() {
+-				LOGGER.warn("Subscribe response timeout. Stopping the pool");
+-				stopPool();
+-				retryConnect(true);
+-			}
+-		};
+-		Timer.getInstance().schedule(subscribeResponseTimeoutTask, 5000);
+-	}
+-
+-	/**
+-	 * Stop the timer which check the subscribe response timeout
+-	 */
+-	private void stopSubscribeTimeoutTimer() {
+-		if (subscribeResponseTimeoutTask != null) {
+-			subscribeResponseTimeoutTask.cancel();
+-			subscribeResponseTimeoutTask = null;
+-		}
+-	}
+-
+-	public void stopPool() {
+-		if (connection != null) {
+-			cancelTimers();
+-			authorizedWorkers.clear();
+-
+-			isActive = false;
+-			isStable = false;
+-			manager.onPoolStateChange(this);
+-			LOGGER.debug("Stopping pool {}...", getName());
+-			connection.close();
+-			connection = null;
+-			LOGGER.info("Pool {} stopped.", getName());
+-		}
+-	}
+-
+-	public String getName() {
+-		return name;
+-	}
+-
+-	public String getHost() {
+-		return host;
+-	}
+-
+-	public URI getUri() {
+-		return uri;
+-	}
+-
+-	public String getUsername() {
+-		return username;
+-	}
+-
+-	public String getPassword() {
+-		return password;
+-	}
+-
+-	public boolean isEnabled() {
+-		return isEnabled;
+-	}
+-
+-	/**
+-	 * Enable/Disable the pool. Throw an exception if cannot enable the pool.
+-	 * 
+-	 * @param isEnabled
+-	 * @throws URISyntaxException
+-	 * @throws SocketException
+-	 * @throws Exception
+        // ... 1425 diff lines elided ...
++				};
++				Timer.getInstance().schedule(stabilityTestTask, reconnectStabilityPeriod * 1000);
++			} else {
++				LOGGER.debug("Pool {} declared as stable since since first start.", getName());
++				setStable();
++			}
++		} else {
++			LOGGER.info("Pool {} declared as stable since no stability test period configured", getName());
++			setStable();
++		}
++	}
++
++	/**
++	 * Mark the pool as stable
++	 */
++	private void setStable() {
++		if (!isStable) {
++			isStable = true;
++			manager.onPoolStable(this);
++		}
++	}
++
++	/**
++	 * Cancel all active timers
++	 */
++	private void cancelTimers() {
++		if (stabilityTestTask != null) {
++			stabilityTestTask.cancel();
++			stabilityTestTask = null;
++		}
++
++		if (reconnectTask != null) {
++			reconnectTask.cancel();
++			reconnectTask = null;
++		}
++
++		if (notifyTimeoutTask != null) {
++			notifyTimeoutTask.cancel();
++			notifyTimeoutTask = null;
++		}
++
++		if (subscribeResponseTimeoutTask != null) {
++			subscribeResponseTimeoutTask.cancel();
++			subscribeResponseTimeoutTask = null;
++		}
++	}
++
++	public double getAcceptedHashesPerSeconds() {
++		return HashrateUtils.getHashrateFromShareList(lastAcceptedShares, samplingHashratePeriod);
++	}
++
++	public double getRejectedHashesPerSeconds() {
++		return HashrateUtils.getHashrateFromShareList(lastRejectedShares, samplingHashratePeriod);
++	}
++
++	/**
++	 * Authorize the given worker on the pool. Throws an exception if the worker
++	 * is not authorized on the pool. This method blocs until the response is
++	 * received from the pool.
++	 * 
++	 * @param workerRequest
++	 * @param callback
++	 */
++	public void authorizeWorker(MiningAuthorizeRequest workerRequest) throws AuthorizationException {
++		if (isAppendWorkerNames) {
++			String finalUserName = username + workerSeparator + workerRequest.getUsername();
++
++			// If the worker is already authorized, do nothing
++			if (authorizedWorkers.contains(finalUserName)) {
++				LOGGER.info("Worker {} already authorized on the pool {}.", finalUserName, getName());
++			} else {
++
++				LOGGER.debug("Authorize worker {} on pool {}.", finalUserName, getName());
++
++				// Create a latch to wait the authorization response.
++				final CountDownLatch responseLatch = new CountDownLatch(1);
++				// Repsonse wrapper used to store the pool response values
++				final MiningAuthorizeResponse poolResponseWrapper = new MiningAuthorizeResponse();
++
++				MiningAuthorizeRequest poolRequest = new MiningAuthorizeRequest();
++				poolRequest.setUsername(finalUserName);
++				poolRequest.setPassword(isUseWorkerPassword ? workerRequest.getPassword() : this.password);
++				// Prepare the callback to call when response is
++				// received.
++				authorizeCallbacks.put(poolRequest.getId(), new ResponseReceivedCallback<MiningAuthorizeRequest, MiningAuthorizeResponse>() {
++					public void onResponseReceived(MiningAuthorizeRequest request, MiningAuthorizeResponse response) {
++						// Recopy values to allow blocked thread to access the
++						// response values.
++						poolResponseWrapper.setId(response.getId());
++						poolResponseWrapper.setResult(response.getResult());
++
++						// Unblock the blocked thread.
++						responseLatch.countDown();
++					}
++				});
++
++				// Send the request.
++				connection.sendRequest(poolRequest);
++				// Wait for the response for 5 seconds max.
++				boolean isTimeout = false;
++				try {
++					isTimeout = !responseLatch.await(5, TimeUnit.SECONDS);
++				} catch (InterruptedException e) {
++					LOGGER.info("Interruption on pool {} during authorization for user {}.", getName(), finalUserName);
++					throw new AuthorizationException("Interruption of authorization of user " + finalUserName + " on pool " + getName(), e);
++				}
++
++				if (isTimeout) {
++					LOGGER.warn("Timeout of worker {} authorization on pool {}.", finalUserName, getName());
++					throw new AuthorizationException("Timeout of worker " + finalUserName + "authorization on pool " + getName());
++				}
++
++				// Check the response values
++				if (poolResponseWrapper.getIsAuthorized() == null || !poolResponseWrapper.getIsAuthorized()) {
++					// If the worker is not authorized, throw an exception.
++					throw new AuthorizationException("Worker " + finalUserName + " is not authorized on pool " + getName() + ". Cause: "
++							+ (poolResponseWrapper.getJsonError() != null ? poolResponseWrapper.getJsonError() : "none."));
++				}
++			}
++		}
++	}
++
++	public void setAppendWorkerNames(boolean isAppendWorkerNames) {
++		this.isAppendWorkerNames = isAppendWorkerNames;
++	}
++
++	public void setUseWorkerPassword(boolean isUseWorkerPassword) {
++		this.isUseWorkerPassword = isUseWorkerPassword;
++	}
++
++	public void setWorkerSeparator(String workerSeparator) {
++		this.workerSeparator = workerSeparator;
++	}
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

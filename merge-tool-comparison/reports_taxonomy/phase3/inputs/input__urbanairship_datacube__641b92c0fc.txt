@@ -1,0 +1,840 @@
+UNIT urbanairship_datacube__641b92c0fc
+repo: urbanairship_datacube   merge: 641b92c0fc573ce4f284ef08917c0c68bb3eecfa   stratum: B
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/main/java/com/urbanairship/datacube/WriteBuilder.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,23 +1,19 @@
+ /*
+ Copyright 2012 Urban Airship and Contributors
+ */
+ 
+ package com.urbanairship.datacube;
+ 
+ import java.util.Map;
+ 
+-import com.google.common.base.Function;
+ import com.google.common.collect.HashMultimap;
+-import com.google.common.collect.ImmutableSetMultimap;
+-import com.google.common.collect.ListMultimap;
+ import com.google.common.collect.Maps;
+ import com.google.common.collect.Multimap;
+-import com.google.common.collect.Multimaps;
+ import com.google.common.collect.SetMultimap;
+ 
+ public class WriteBuilder {
+     private final Map<Dimension<?>,SetMultimap<BucketType,byte[]>> buckets;
+ 	private Map<RollupFilter,Object> filterAttachments = Maps.newHashMap();
+     
+     public WriteBuilder(DataCube<?> cube) {
+         buckets = Maps.newHashMap();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,65 +1,46 @@
+ /*
+ Copyright 2012 Urban Airship and Contributors
+ */
+ 
+ package com.urbanairship.datacube;
+ 
++import com.google.common.collect.HashMultimap;
++import com.google.common.collect.Maps;
++import com.google.common.collect.Multimap;
++import com.google.common.collect.SetMultimap;
++
+ import java.util.Map;
+ 
+-import com.google.common.base.Function;
+-import com.google.common.collect.HashMultimap;
+-import com.google.common.collect.ImmutableSetMultimap;
+-import com.google.common.collect.ListMultimap;
+-import com.google.common.collect.Maps;
+-import com.google.common.collect.Multimap;
+-import com.google.common.collect.Multimaps;
+-import com.google.common.collect.SetMultimap;
++public class WriteBuilder {
++    private final Map<Dimension<?>, SetMultimap<BucketType, byte[]>> buckets;
+ 
+-public class WriteBuilder {
+-    private final Map<Dimension<?>,SetMultimap<BucketType,byte[]>> buckets;
+-	private Map<RollupFilter,Object> filterAttachments = Maps.newHashMap();
+-    
+-    public WriteBuilder(DataCube<?> cube) {
++    public WriteBuilder() {
+         buckets = Maps.newHashMap();
+     }
+-    
++
+     public <O> WriteBuilder at(Dimension<O> dimension, O coord) {
+-        int expectedBucketLen = dimension.getNumFieldBytes(); 
+         Bucketer<O> bucketer = dimension.getBucketer();
+ 
+-        SetMultimap<BucketType,CSerializable> bucketsAndCoords = bucketer.bucketForWrite(coord);//.serialize();
++        SetMultimap<BucketType, CSerializable> bucketsAndCoords = bucketer.bucketForWrite(coord);
+         buckets.put(dimension, serializeCoords(bucketsAndCoords));
+-            
++
+         return this;
+     }
+-    
+-    /**
+-     * Attach an arbitrary object to this write. This object will be presented to the rollup
+-     * filters, so they can use it to make filtering decisions.
+-     */
+-    public WriteBuilder attachForRollupFilter(RollupFilter rollupFilter, Object attachment) {
+-        filterAttachments.put(rollupFilter, attachment);
+-        return this;
+-    }
+-    
+-    Map<RollupFilter,Object> getRollupFilterAttachments() {
+-        return filterAttachments;
+-    }
+-    
+-    Map<Dimension<?>, SetMultimap<BucketType,byte[]>> getBuckets() {
++
++    Map<Dimension<?>, SetMultimap<BucketType, byte[]>> getBuckets() {
+         return buckets;
+     }
+-    
+-    private static SetMultimap<BucketType,byte[]> serializeCoords(
+-            Multimap<BucketType,CSerializable> inputMap) {
+-        SetMultimap<BucketType,byte[]> outputMap = HashMultimap.create();
+-        for(Map.Entry<BucketType,CSerializable> e: inputMap.entries()) {
++
++    private static SetMultimap<BucketType, byte[]> serializeCoords(
++            Multimap<BucketType, CSerializable> inputMap) {
++        SetMultimap<BucketType, byte[]> outputMap = HashMultimap.create();
++        for (Map.Entry<BucketType, CSerializable> e : inputMap.entries()) {
+             outputMap.put(e.getKey(), e.getValue().serialize());
+         }
+         return outputMap;
+     }
+-    
++
+     public String toString() {
+         return buckets.toString();
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*
+Copyright 2012 Urban Airship and Contributors
+*/
+
+package com.urbanairship.datacube;
+
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.SetMultimap;
+
+import java.util.Map;
+
+public class WriteBuilder {
+    private final Map<Dimension<?>, SetMultimap<BucketType, byte[]>> buckets;
+
+    public WriteBuilder() {
+        buckets = Maps.newHashMap();
+    }
+
+    public <O> WriteBuilder at(Dimension<O> dimension, O coord) {
+        Bucketer<O> bucketer = dimension.getBucketer();
+
+        SetMultimap<BucketType, CSerializable> bucketsAndCoords = bucketer.bucketForWrite(coord);
+        buckets.put(dimension, serializeCoords(bucketsAndCoords));
+
+        return this;
+    }
+
+    Map<Dimension<?>, SetMultimap<BucketType, byte[]>> getBuckets() {
+        return buckets;
+    }
+
+    private static SetMultimap<BucketType, byte[]> serializeCoords(
+            Multimap<BucketType, CSerializable> inputMap) {
+        SetMultimap<BucketType, byte[]> outputMap = HashMultimap.create();
+        for (Map.Entry<BucketType, CSerializable> e : inputMap.entries()) {
+            outputMap.put(e.getKey(), e.getValue().serialize());
+        }
+        return outputMap;
+    }
+
+    public String toString() {
+        return buckets.toString();
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/main/java/com/urbanairship/datacube/dbharnesses/MapDbHarness.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,37 +1,38 @@
+ /*
+ Copyright 2012 Urban Airship and Contributors
+ */
+ 
+ package com.urbanairship.datacube.dbharnesses;
+-
+-import com.google.common.base.Optional;
+-import com.urbanairship.datacube.Address;
+-import com.urbanairship.datacube.Batch;
+-import com.urbanairship.datacube.BoxedByteArray;
+-import com.urbanairship.datacube.DbHarness;
+-import com.urbanairship.datacube.Deserializer;
+-import com.urbanairship.datacube.IdService;
+-import com.urbanairship.datacube.Op;
+-import org.apache.commons.codec.binary.Hex;
+-import org.apache.commons.lang.NotImplementedException;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+ 
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.ConcurrentMap;
+ import java.util.concurrent.ExecutionException;
+ import java.util.concurrent.Future;
+ import java.util.concurrent.TimeUnit;
+ import java.util.concurrent.TimeoutException;
++
++import org.apache.commons.codec.binary.Hex;
++import org.apache.commons.lang.NotImplementedException;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++import com.google.common.base.Optional;
++import com.urbanairship.datacube.Address;
++import com.urbanairship.datacube.Batch;
++import com.urbanairship.datacube.BoxedByteArray;
++import com.urbanairship.datacube.DbHarness;
++import com.urbanairship.datacube.Deserializer;
++import com.urbanairship.datacube.IdService;
++import com.urbanairship.datacube.Op;
+ 
+ /**
+  * For testing, this is is a backing store for a cube that lives in memory. It saves us from 
+  * calling a DB just to test the cube logic.
+  */
+ public class MapDbHarness<T extends Op> implements DbHarness<T> {
+     private final static Logger log = LoggerFactory.getLogger(MapDbHarness.class);
+ 
+@@ -196,17 +197,17 @@
+     public List<Optional<T>> multiGet(List<Address> addresses) throws IOException, InterruptedException {
+         List<Optional<T>> toReturn = new ArrayList<Optional<T>>();
+         for (Address address : addresses) {
+             toReturn.add(get(address));
+         }
+         return toReturn;
+     }
+     
+-    private static class NullFuture implements Future<Object> {
++    public static class NullFuture implements Future<Object> {
+         @Override
+         public boolean cancel(boolean mayInterruptIfRunning) {
+             return false;
+         }
+ 
+         @Override
+         public Object get() throws InterruptedException, ExecutionException {
+             return null;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,211 +1,210 @@
+ /*
+ Copyright 2012 Urban Airship and Contributors
+ */
+ 
+ package com.urbanairship.datacube.dbharnesses;
+ 
+-import com.google.common.base.Optional;
+ import com.urbanairship.datacube.Address;
+ import com.urbanairship.datacube.Batch;
+ import com.urbanairship.datacube.BoxedByteArray;
+ import com.urbanairship.datacube.DbHarness;
+ import com.urbanairship.datacube.Deserializer;
+ import com.urbanairship.datacube.IdService;
+ import com.urbanairship.datacube.Op;
+ import org.apache.commons.codec.binary.Hex;
+-import org.apache.commons.lang.NotImplementedException;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.List;
+ import java.util.Map;
++import java.util.Optional;
+ import java.util.concurrent.ConcurrentMap;
+ import java.util.concurrent.ExecutionException;
+ import java.util.concurrent.Future;
+ import java.util.concurrent.TimeUnit;
+ import java.util.concurrent.TimeoutException;
+ 
+ /**
+- * For testing, this is is a backing store for a cube that lives in memory. It saves us from 
++ * For testing, this is is a backing store for a cube that lives in memory. It saves us from
+  * calling a DB just to test the cube logic.
+  */
+ public class MapDbHarness<T extends Op> implements DbHarness<T> {
+     private final static Logger log = LoggerFactory.getLogger(MapDbHarness.class);
+ 
+     private static final int casRetries = 10;
+     private static final Future<?> nullFuture = new NullFuture();
+-    
+-    private final ConcurrentMap<BoxedByteArray,byte[]> map;
++
++    private final ConcurrentMap<BoxedByteArray, byte[]> map;
+     private final Deserializer<T> deserializer;
+     private final CommitType commitType;
+     private final IdService idService;
+-    
+-    public MapDbHarness(ConcurrentMap<BoxedByteArray,byte[]> map, Deserializer<T> deserializer, 
+-            CommitType commitType, IdService idService) {
++
++    public MapDbHarness(ConcurrentMap<BoxedByteArray, byte[]> map, Deserializer<T> deserializer,
++                        CommitType commitType, IdService idService) {
+         this.map = map;
+         this.deserializer = deserializer;
+         this.commitType = commitType;
+         this.idService = idService;
+-        if(commitType != CommitType.OVERWRITE && commitType != CommitType.READ_COMBINE_CAS) {
+-            throw new IllegalArgumentException("MapDbHarness doesn't support commit type " + 
++        if (commitType != CommitType.OVERWRITE && commitType != CommitType.READ_COMBINE_CAS) {
++            throw new IllegalArgumentException("MapDbHarness doesn't support commit type " +
+                     commitType);
+         }
+     }
+-    
++
+     /**
+      * Actually synchronous and not asyncronous, which is allowed.
+      */
+     @SuppressWarnings("unchecked")
+     @Override
+     public Future<?> runBatchAsync(Batch<T> batch, AfterExecute<T> afterExecute) {
+-        
+-        for(Map.Entry<Address,T> entry: batch.getMap().entrySet()) {
++
++        for (Map.Entry<Address, T> entry : batch.getMap().entrySet()) {
+             Address address = entry.getKey();
+             T opFromBatch = entry.getValue();
+ 
+             BoxedByteArray mapKey;
+             try {
+                 mapKey = new BoxedByteArray(address.toWriteKey(idService));
+             } catch (Exception e) {
+                 throw new RuntimeException(e);
+             }
+-            
+-            if(commitType == CommitType.READ_COMBINE_CAS) {
++
++            if (commitType == CommitType.READ_COMBINE_CAS) {
+                 int casRetriesRemaining = casRetries;
+                 do {
+                     Optional<byte[]> oldBytes;
+                     try {
+                         oldBytes = getRaw(address);
+                     } catch (Exception e) {
+                         throw new RuntimeException(e);
+                     }
+-                    
++
+                     T newOp;
+-                    if(oldBytes.isPresent()) {
++                    if (oldBytes.isPresent()) {
+                         T oldOp = deserializer.fromBytes(oldBytes.get());
+-                        newOp = (T)opFromBatch.add(oldOp);
+-                        if(log.isDebugEnabled()) {
+-                            log.debug("Combined " + oldOp + " and " +  opFromBatch + " into " +
++                        newOp = (T) opFromBatch.add(oldOp);
++                        if (log.isDebugEnabled()) {
++                            log.debug("Combined " + oldOp + " and " + opFromBatch + " into " +
+                                     newOp);
+                         }
+                     } else {
+                         newOp = opFromBatch;
+                     }
+-                    
+-                    if(oldBytes.isPresent()) {
++
++                    if (oldBytes.isPresent()) {
+                         // Compare and swap, if the key is still mapped to the same byte array.
+-                        if(map.replace(mapKey, oldBytes.get(), newOp.serialize())) {
+-                            if(log.isDebugEnabled()) {
+-                                log.debug("Successful CAS overwrite at key " + 
+-                                        Hex.encodeHexString(mapKey.bytes)  + " with " + 
++                        if (map.replace(mapKey, oldBytes.get(), newOp.serialize())) {
++                            if (log.isDebugEnabled()) {
++                                log.debug("Successful CAS overwrite at key " +
++                                        Hex.encodeHexString(mapKey.bytes) + " with " +
+                                         Hex.encodeHexString(newOp.serialize()));
+                             }
+                             break;
+                         }
+                     } else {
+                         // Compare and swap, if the key is still absent from the map.
+-                        if(map.putIfAbsent(mapKey, newOp.serialize()) == null) {
++                        if (map.putIfAbsent(mapKey, newOp.serialize()) == null) {
+                             // null is returned when there was no existing mapping for the 
+                             // given key, which is the success case.
+-                            if(log.isDebugEnabled()) {
+-                                log.debug("Successful CAS insert without existing key for key " + 
+-                                        Hex.encodeHexString(mapKey.bytes) + " with " + 
++                            if (log.isDebugEnabled()) {
++                                log.debug("Successful CAS insert without existing key for key " +
++                                        Hex.encodeHexString(mapKey.bytes) + " with " +
+                                         Hex.encodeHexString(newOp.serialize()));
+                             }
+                             break;
+                         }
+                     }
+                 } while (casRetriesRemaining-- > 0);
+-                if(casRetriesRemaining == -1) {
++                if (casRetriesRemaining == -1) {
+                     RuntimeException e = new RuntimeException("CAS retries exhausted");
+                     afterExecute.afterExecute(e);
+                     throw e;
+                 }
+-            } else if(commitType == CommitType.OVERWRITE) {
++            } else if (commitType == CommitType.OVERWRITE) {
+                 map.put(mapKey, opFromBatch.serialize());
+-                if(log.isDebugEnabled()) {
++                if (log.isDebugEnabled()) {
+                     log.debug("Write of key " + Hex.encodeHexString(mapKey.bytes));
+                 }
+             } else {
+                 throw new AssertionError("Unsupported commit type: " + commitType);
+             }
+         }
+         batch.reset();
+         afterExecute.afterExecute(null); // null throwable => success
+         return nullFuture;
+     }
+ 
+     @Override
+     public Optional<T> get(Address address) throws IOException, InterruptedException {
+         Optional<byte[]> bytes = getRaw(address);
+-        if(bytes.isPresent()) {
++        if (bytes.isPresent()) {
+             return Optional.of(deserializer.fromBytes(bytes.get()));
+         } else {
+-            return Optional.absent();
++            return Optional.empty();
+         }
+     }
+ 
+     @Override
+     public void set(Address c, T op) throws IOException, InterruptedException {
+         BoxedByteArray mapKey;
+         try {
+             mapKey = new BoxedByteArray(c.toWriteKey(idService));
+         } catch (Exception e) {
+             throw new RuntimeException(e);
+         }
+ 
+         map.put(mapKey, op.serialize());
+-        if(log.isDebugEnabled()) {
++        if (log.isDebugEnabled()) {
+             log.debug("Set of key " + Hex.encodeHexString(mapKey.bytes));
+         }
+     }
+ 
+     @Override
+     public void flush() throws InterruptedException {
+         return; // all ops are synchronously applied, nothing to do
+     }
+ 
+     private Optional<byte[]> getRaw(Address address) throws InterruptedException {
+         byte[] mapKey;
+         try {
+             final Optional<byte[]> maybeKey = address.toReadKey(idService);
+             if (maybeKey.isPresent()) {
+                 mapKey = maybeKey.get();
+             } else {
+-                return Optional.absent();
++                return Optional.empty();
+             }
+         } catch (Exception e) {
+             throw new RuntimeException(e);
+         }
+         byte[] bytes = map.get(new BoxedByteArray(mapKey));
+-        if(log.isDebugEnabled()) {
+-            log.debug("getRaw for key " + Hex.encodeHexString(mapKey) + " returned " + 
++        if (log.isDebugEnabled()) {
++            log.debug("getRaw for key " + Hex.encodeHexString(mapKey) + " returned " +
+                     Arrays.toString(bytes));
+         }
+-        if(bytes == null) {
+-            return Optional.absent();
++        if (bytes == null) {
++            return Optional.empty();
+         } else {
+             return Optional.of(bytes);
+         }
+     }
+ 
+     @Override
+     public List<Optional<T>> multiGet(List<Address> addresses) throws IOException, InterruptedException {
+         List<Optional<T>> toReturn = new ArrayList<Optional<T>>();
+         for (Address address : addresses) {
+             toReturn.add(get(address));
+         }
+         return toReturn;
+     }
+-    
++
+     private static class NullFuture implements Future<Object> {
+         @Override
+         public boolean cancel(boolean mayInterruptIfRunning) {
+             return false;
+         }
+ 
+         @Override
+         public Object get() throws InterruptedException, ExecutionException {
+@@ -222,11 +221,11 @@
+         public boolean isCancelled() {
+             return false;
+         }
+ 
+         @Override
+         public boolean isDone() {
+             return true;
+         }
+-        
++
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*
+Copyright 2012 Urban Airship and Contributors
+*/
+
+package com.urbanairship.datacube.dbharnesses;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang.NotImplementedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.google.common.base.Optional;
+import com.urbanairship.datacube.Address;
+import com.urbanairship.datacube.Batch;
+import com.urbanairship.datacube.BoxedByteArray;
+import com.urbanairship.datacube.DbHarness;
+import com.urbanairship.datacube.Deserializer;
+import com.urbanairship.datacube.IdService;
+import com.urbanairship.datacube.Op;
+import java.util.Optional;
+
+/**
+ * For testing, this is is a backing store for a cube that lives in memory. It saves us from
+ * calling a DB just to test the cube logic.
+ */
+public class MapDbHarness<T extends Op> implements DbHarness<T> {
+    private final static Logger log = LoggerFactory.getLogger(MapDbHarness.class);
+
+    private static final int casRetries = 10;
+    private static final Future<?> nullFuture = new NullFuture();
+
+    private final ConcurrentMap<BoxedByteArray, byte[]> map;
+    private final Deserializer<T> deserializer;
+    private final CommitType commitType;
+    private final IdService idService;
+
+    public MapDbHarness(ConcurrentMap<BoxedByteArray, byte[]> map, Deserializer<T> deserializer,
+                        CommitType commitType, IdService idService) {
+        this.map = map;
+        this.deserializer = deserializer;
+        this.commitType = commitType;
+        this.idService = idService;
+        if (commitType != CommitType.OVERWRITE && commitType != CommitType.READ_COMBINE_CAS) {
+            throw new IllegalArgumentException("MapDbHarness doesn't support commit type " +
+                    commitType);
+        }
+    }
+
+    /**
+     * Actually synchronous and not asyncronous, which is allowed.
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public Future<?> runBatchAsync(Batch<T> batch, AfterExecute<T> afterExecute) {
+
+        for (Map.Entry<Address, T> entry : batch.getMap().entrySet()) {
+            Address address = entry.getKey();
+            T opFromBatch = entry.getValue();
+
+            BoxedByteArray mapKey;
+            try {
+                mapKey = new BoxedByteArray(address.toWriteKey(idService));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+            if (commitType == CommitType.READ_COMBINE_CAS) {
+                int casRetriesRemaining = casRetries;
+                do {
+                    Optional<byte[]> oldBytes;
+                    try {
+                        oldBytes = getRaw(address);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    T newOp;
+                    if (oldBytes.isPresent()) {
+                        T oldOp = deserializer.fromBytes(oldBytes.get());
+                        newOp = (T) opFromBatch.add(oldOp);
+                        if (log.isDebugEnabled()) {
+                            log.debug("Combined " + oldOp + " and " + opFromBatch + " into " +
+                                    newOp);
+                        }
+                    } else {
+                        newOp = opFromBatch;
+                    }
+
+                    if (oldBytes.isPresent()) {
+                        // Compare and swap, if the key is still mapped to the same byte array.
+                        if (map.replace(mapKey, oldBytes.get(), newOp.serialize())) {
+                            if (log.isDebugEnabled()) {
+                                log.debug("Successful CAS overwrite at key " +
+                                        Hex.encodeHexString(mapKey.bytes) + " with " +
+                                        Hex.encodeHexString(newOp.serialize()));
+                            }
+                            break;
+                        }
+                    } else {
+                        // Compare and swap, if the key is still absent from the map.
+                        if (map.putIfAbsent(mapKey, newOp.serialize()) == null) {
+                            // null is returned when there was no existing mapping for the 
+                            // given key, which is the success case.
+                            if (log.isDebugEnabled()) {
+                                log.debug("Successful CAS insert without existing key for key " +
+                                        Hex.encodeHexString(mapKey.bytes) + " with " +
+                                        Hex.encodeHexString(newOp.serialize()));
+                            }
+                            break;
+                        }
+                    }
+                } while (casRetriesRemaining-- > 0);
+                if (casRetriesRemaining == -1) {
+                    RuntimeException e = new RuntimeException("CAS retries exhausted");
+                    afterExecute.afterExecute(e);
+                    throw e;
+                }
+            } else if (commitType == CommitType.OVERWRITE) {
+                map.put(mapKey, opFromBatch.serialize());
+                if (log.isDebugEnabled()) {
+                    log.debug("Write of key " + Hex.encodeHexString(mapKey.bytes));
+                }
+            } else {
+                throw new AssertionError("Unsupported commit type: " + commitType);
+            }
+        }
+        batch.reset();
+        afterExecute.afterExecute(null); // null throwable => success
+        return nullFuture;
+    }
+
+    @Override
+    public Optional<T> get(Address address) throws IOException, InterruptedException {
+        Optional<byte[]> bytes = getRaw(address);
+        if (bytes.isPresent()) {
+            return Optional.of(deserializer.fromBytes(bytes.get()));
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public void set(Address c, T op) throws IOException, InterruptedException {
+        BoxedByteArray mapKey;
+        try {
+            mapKey = new BoxedByteArray(c.toWriteKey(idService));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        map.put(mapKey, op.serialize());
+        if (log.isDebugEnabled()) {
+            log.debug("Set of key " + Hex.encodeHexString(mapKey.bytes));
+        }
+    }
+
+    @Override
+    public void flush() throws InterruptedException {
+        return; // all ops are synchronously applied, nothing to do
+    }
+
+    private Optional<byte[]> getRaw(Address address) throws InterruptedException {
+        byte[] mapKey;
+        try {
+            final Optional<byte[]> maybeKey = address.toReadKey(idService);
+            if (maybeKey.isPresent()) {
+                mapKey = maybeKey.get();
+            } else {
+                return Optional.empty();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        byte[] bytes = map.get(new BoxedByteArray(mapKey));
+        if (log.isDebugEnabled()) {
+            log.debug("getRaw for key " + Hex.encodeHexString(mapKey) + " returned " +
+                    Arrays.toString(bytes));
+        }
+        if (bytes == null) {
+            return Optional.empty();
+        } else {
+            return Optional.of(bytes);
+        }
+    }
+
+    @Override
+    public List<Optional<T>> multiGet(List<Address> addresses) throws IOException, InterruptedException {
+        List<Optional<T>> toReturn = new ArrayList<Optional<T>>();
+        for (Address address : addresses) {
+            toReturn.add(get(address));
+        }
+        return toReturn;
+    }
+
+    public static class NullFuture implements Future<Object> {
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+            return false;
+        }
+
+        @Override
+        public Object get() throws InterruptedException, ExecutionException {
+            return null;
+        }
+
+        @Override
+        public Object get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException,
+                TimeoutException {
+            return null;
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+
+        @Override
+        public boolean isDone() {
+            return true;
+        }
+
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,37 +1,36 @@
+ /*
+ Copyright 2012 Urban Airship and Contributors
+ */
+ 
+ package com.urbanairship.datacube.dbharnesses;
+ 
+-import java.io.IOException;
+-import java.util.ArrayList;
+-import java.util.Arrays;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.concurrent.ConcurrentMap;
+-import java.util.concurrent.ExecutionException;
+-import java.util.concurrent.Future;
+-import java.util.concurrent.TimeUnit;
+-import java.util.concurrent.TimeoutException;
+-import org.apache.commons.codec.binary.Hex;
+-import org.apache.commons.lang.NotImplementedException;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-import com.google.common.base.Optional;
+ import com.urbanairship.datacube.Address;
+ import com.urbanairship.datacube.Batch;
+ import com.urbanairship.datacube.BoxedByteArray;
+ import com.urbanairship.datacube.DbHarness;
+ import com.urbanairship.datacube.Deserializer;
+ import com.urbanairship.datacube.IdService;
+ import com.urbanairship.datacube.Op;
++import org.apache.commons.codec.binary.Hex;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++import java.io.IOException;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++import java.util.Map;
+ import java.util.Optional;
++import java.util.concurrent.ConcurrentMap;
++import java.util.concurrent.ExecutionException;
++import java.util.concurrent.Future;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.TimeoutException;
+ 
+ /**
+  * For testing, this is is a backing store for a cube that lives in memory. It saves us from
+  * calling a DB just to test the cube logic.
+  */
+ public class MapDbHarness<T extends Op> implements DbHarness<T> {
+     private final static Logger log = LoggerFactory.getLogger(MapDbHarness.class);
+ 
+@@ -196,17 +195,17 @@
+     public List<Optional<T>> multiGet(List<Address> addresses) throws IOException, InterruptedException {
+         List<Optional<T>> toReturn = new ArrayList<Optional<T>>();
+         for (Address address : addresses) {
+             toReturn.add(get(address));
+         }
+         return toReturn;
+     }
+ 
+-    public static class NullFuture implements Future<Object> {
++    private static class NullFuture implements Future<Object> {
+         @Override
+         public boolean cancel(boolean mayInterruptIfRunning) {
+             return false;
+         }
+ 
+         @Override
+         public Object get() throws InterruptedException, ExecutionException {
+             return null;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package org.apache.commons.lang does not exist
+[RESOLVE] package com.google.common.base does not exist
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

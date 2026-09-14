@@ -1,0 +1,1356 @@
+UNIT apache_roller__1628c3a3c4
+repo: apache_roller   merge: 1628c3a3c4425cb39d2aa5197cd94f817c9e935e   stratum: B
+files shown: 12 of 12 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/12: app/src/main/java/org/apache/roller/planet/business/fetcher/RomeFeedFetcher.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -57,25 +57,27 @@
+     public RomeFeedFetcher() {
+         // no-op
+     }
+     
+     
+     /**
+      * @inheritDoc
+      */
++    @Override
+     public Subscription fetchSubscription(String feedURL) 
+             throws FetcherException {
+         return fetchSubscription(feedURL, null);
+     }
+     
+     
+     /**
+      * @inheritDoc
+      */
++    @Override
+     public Subscription fetchSubscription(String feedURL, Date lastModified) 
+             throws FetcherException {
+         
+         if(feedURL == null) {
+             throw new IllegalArgumentException("feed url cannot be null");
+         }
+         
+         // setup Rome feed fetcher
+@@ -206,32 +208,32 @@
+         } else if (entrydc != null && entrydc.getDate() != null) {
+             // use <dc:date>
+             newEntry.setPubTime(new Timestamp(entrydc.getDate().getTime()));
+         } else {
+             newEntry.setPubTime(newEntry.getUpdateTime());
+         }
+         
+         // get content and unescape if it is 'text/plain'
+-        if (romeEntry.getContents().size() > 0) {
++        if (!romeEntry.getContents().isEmpty()) {
+             SyndContent content= (SyndContent)romeEntry.getContents().get(0);
+             if (content != null && content.getType().equals("text/plain")) {
+                 newEntry.setText(StringEscapeUtils.unescapeHtml4(content.getValue()));
+             } else if (content != null) {
+                 newEntry.setText(content.getValue());
+             }
+         }
+         
+         // no content, try summary
+         if (StringUtils.isBlank(newEntry.getText()) && romeEntry.getDescription() != null)  {
+             newEntry.setText(romeEntry.getDescription().getValue());
+         }
+         
+         // copy categories
+-        if (romeEntry.getCategories().size() > 0) {
++        if (!romeEntry.getCategories().isEmpty()) {
+             List<String> list = new ArrayList<String>();
+             for (Object cat : romeEntry.getCategories()) {
+                 list.add(((SyndCategory) cat).getName());
+             }
+             newEntry.setCategoriesString(list);
+         }
+         
+         return newEntry;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -32,17 +32,17 @@
+ import java.io.File;
+ import java.net.MalformedURLException;
+ import java.net.URL;
+ import java.sql.Timestamp;
+ import java.util.ArrayList;
+ import java.util.Calendar;
+ import java.util.Date;
+ import java.util.List;
+-import org.apache.commons.lang3.StringEscapeUtils;
++import org.apache.commons.text.StringEscapeUtils;
+ import org.apache.commons.lang3.StringUtils;
+ import org.apache.commons.logging.Log;
+ import org.apache.commons.logging.LogFactory;
+ import org.apache.roller.planet.pojos.SubscriptionEntry;
+ import org.apache.roller.planet.pojos.Subscription;
+ import org.apache.roller.weblogger.config.WebloggerConfig;
+ 
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/12: app/src/main/java/org/apache/roller/weblogger/business/plugins/entry/ObfuscateEmailPlugin.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -40,26 +40,30 @@
+             "to me-AT-mail-DOT-com format.  Also &quot;scrambles&quot; mailto: links.";
+     
+     
+     public ObfuscateEmailPlugin() {
+         mLogger.debug("ObfuscateEmailPlugin instantiated.");
+     }
+     
+     
++    @Override
+     public String getName() {
+         return name;
+     }
+     
+     
++    @Override
+     public String getDescription() {
+         return StringEscapeUtils.escapeEcmaScript(description);
+     }
+     
+     
++    @Override
+     public void init(Weblog website) throws WebloggerException {}
+     
+     
++    @Override
+     public String render(WeblogEntry entry, String str) {
+         return RegexUtil.encodeEmail(str);
+     }
+     
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,17 +13,17 @@
+  * See the License for the specific language governing permissions and
+  * limitations under the License.  For additional information regarding
+  * copyright in this work, please see the NOTICE file in the top level
+  * directory of this distribution.
+  */
+ 
+ package org.apache.roller.weblogger.business.plugins.entry;
+ 
+-import org.apache.commons.lang3.StringEscapeUtils;
++import org.apache.commons.text.StringEscapeUtils;
+ import org.apache.commons.logging.Log;
+ import org.apache.commons.logging.LogFactory;
+ import org.apache.roller.weblogger.WebloggerException;
+ import org.apache.roller.weblogger.pojos.WeblogEntry;
+ import org.apache.roller.weblogger.pojos.Weblog;
+ import org.apache.roller.util.RegexUtil;
+ 
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/12: app/src/main/java/org/apache/roller/weblogger/business/plugins/entry/SmileysPlugin.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -56,31 +56,34 @@
+     }
+ 
+     
+     public SmileysPlugin() {
+         log.debug("SmileysPlugin instantiated.");
+     }
+     
+     
++    @Override
+     public String getName() {
+         return name;
+     }
+     
+     
++    @Override
+     public String getDescription() {
+         return StringEscapeUtils.escapeEcmaScript(description);
+     }
+     
+     
+     /*
+      * Convert the SmileyDefs into RegEx patterns and img tags for
+      * later use.  Need an HttpServletRequest though so that we can
+      * get the ServletContext Path.  But only do it once.
+      */
++    @Override
+     public synchronized void init(Weblog website) throws WebloggerException {
+         // don't do this work if Smileys already loaded
+         if (SmileysPlugin.smileyPatterns.length < 1) {
+             String baseURL = WebloggerRuntimeConfig.getAbsoluteContextURL();
+             
+             Pattern[] tempP = new Pattern[SmileysPlugin.smileyDefs.size()];
+             String[] tempS = new String[SmileysPlugin.smileyDefs.size()];
+             log.debug("# smileys: " + smileyDefs.size());
+@@ -103,16 +106,17 @@
+             SmileysPlugin.imageTags = tempS;
+         }
+     }
+     
+     
+     /**
+      * Find occurences of ascii emoticons and turn them into HTML image pointers.
+      */
++    @Override
+     public String render(WeblogEntry entry, String text) {
+         Matcher matcher = null;
+         for (int i=0; i<smileyPatterns.length; i++) {
+             matcher = smileyPatterns[i].matcher(text);
+             text = matcher.replaceAll(imageTags[i]);
+         }
+         return text;
+     }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -17,17 +17,17 @@
+  */
+ 
+ package org.apache.roller.weblogger.business.plugins.entry;
+ 
+ import java.util.Enumeration;
+ import java.util.Properties;
+ import java.util.regex.Matcher;
+ import java.util.regex.Pattern;
+-import org.apache.commons.lang3.StringEscapeUtils;
++import org.apache.commons.text.StringEscapeUtils;
+ import org.apache.commons.logging.Log;
+ import org.apache.commons.logging.LogFactory;
+ import org.apache.roller.weblogger.WebloggerException;
+ import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
+ import org.apache.roller.weblogger.pojos.WeblogEntry;
+ import org.apache.roller.weblogger.pojos.Weblog;
+ 
+ /**
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/12: app/src/main/java/org/apache/roller/weblogger/pojos/WeblogEntry.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -167,57 +167,60 @@
+         this.setCommentDays(other.getCommentDays());
+         this.setRightToLeft(other.getRightToLeft());
+         this.setPinnedToMain(other.getPinnedToMain());
+         this.setLocale(other.getLocale());
+     }
+     
+     //------------------------------------------------------- Good citizenship
+ 
++    @Override
+     public String toString() {
+         StringBuilder buf = new StringBuilder();
+         buf.append("{");
+         buf.append(getId());
+         buf.append(", ").append(this.getAnchor());
+         buf.append(", ").append(this.getTitle());
+         buf.append(", ").append(this.getPubTime());
+         buf.append("}");
+         return buf.toString();
+     }
+ 
++    @Override
+     public boolean equals(Object other) {
+         if (other == this) {
+             return true;
+         }
+         if (!(other instanceof WeblogEntry)) {
+             return false;
+         }
+         WeblogEntry o = (WeblogEntry)other;
+         return new EqualsBuilder()
+             .append(getAnchor(), o.getAnchor()) 
+             .append(getWebsite(), o.getWebsite()) 
+             .isEquals();
+     }
+     
++    @Override
+     public int hashCode() { 
+         return new HashCodeBuilder()
+             .append(getAnchor())
+             .append(getWebsite())
+             .toHashCode();
+     }
+     
+    //------------------------------------------------------ Simple properties
+     
+     public String getId() {
+         return this.id;
+     }
+     
+     public void setId(String id) {
+         // Form bean workaround: empty string is never a valid id
+-        if (id != null && id.trim().length() == 0) {
++        if (id != null && id.isBlank()) {
+             return;
+         }
+         this.id = id;
+     }
+     
+     public WeblogCategory getCategory() {
+         return this.category;
+     }
+@@ -747,42 +750,44 @@
+     public String getPermalink() {
+         return WebloggerFactory.getWeblogger().getUrlStrategy().getWeblogEntryURL(getWebsite(), null, getAnchor(), true);
+     }
+     
+     /**
+      * Returns entry permalink, relative to Roller context.
+      * @deprecated Use getPermalink() instead.
+      */
++    @Deprecated
+     public String getPermaLink() {
+         String lAnchor = this.getAnchor();        
+         try {
+             lAnchor = URLEncoder.encode(getAnchor(), "UTF-8");
+         } catch (UnsupportedEncodingException e) {
+             // go with the "no encoding" version
+         }        
+         return "/" + getWebsite().getHandle() + "/entry/" + lAnchor;
+     }
+     
+     /**
+      * Get relative URL to comments page.
+      * @deprecated Use commentLink() instead
+      */
++    @Deprecated
+     public String getCommentsLink() {
+         return getPermaLink() + "#comments";
+     }
+     
+     /**
+      * Return the Title of this post, or the first 255 characters of the
+      * entry's text.
+      *
+      * @return String
+      */
+     public String getDisplayTitle() {
+-        if ( getTitle()==null || getTitle().trim().equals("") ) {
++        if ( getTitle()==null || getTitle().isBlank() ) {
+             return StringUtils.left(Utilities.removeHTML(getText()), RollerConstants.TEXTWIDTH_255);
+         }
+         return Utilities.removeHTML(getTitle());
+     }
+     
+     /**
+      * Return RSS 09x style description (escaped HTML version of entry text)
+      */
+@@ -980,18 +985,17 @@
+      * prefer summary over content and we include a "Read More" link at the
+      * end of the summary if it exists.  Otherwise, if the readMoreLink is
+      * empty or null then we assume the caller prefers content over summary.
+      */
+     public String displayContent(String readMoreLink) {
+         
+         String displayContent = null;
+         
+-        if(readMoreLink == null || readMoreLink.trim().length() < 1 || 
+-                "nil".equals(readMoreLink)) {
++        if(readMoreLink == null || readMoreLink.isBlank() || "nil".equals(readMoreLink)) {
+             
+             // no readMore link means permalink, so prefer text over summary
+             if(StringUtils.isNotEmpty(this.getText())) {
+                 displayContent = this.getTransformedText();
+             } else {
+                 displayContent = this.getTransformedSummary();
+             }
+         } else {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -32,17 +32,17 @@
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.StringTokenizer;
+ import java.util.TreeSet;
+ 
+-import org.apache.commons.lang3.StringEscapeUtils;
++import org.apache.commons.text.StringEscapeUtils;
+ import org.apache.commons.lang3.StringUtils;
+ import org.apache.commons.lang3.builder.EqualsBuilder;
+ import org.apache.commons.lang3.builder.HashCodeBuilder;
+ import org.apache.commons.logging.Log;
+ import org.apache.commons.logging.LogFactory;
+ import org.apache.roller.util.DateUtil;
+ import org.apache.roller.util.RollerConstants;
+ import org.apache.roller.util.UUIDGenerator;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/12: app/src/main/java/org/apache/roller/weblogger/pojos/wrapper/WeblogWrapper.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -205,16 +205,17 @@
+     }
+     
+     
+     public Boolean getVisible() {
+         return this.pojo.getVisible();
+     }
+ 
+     /* deprecated in Roller 5.1 */
++    @Deprecated
+     public Boolean getEnabled() {
+         return getVisible();
+     }
+ 
+     public Boolean getActive() {
+         return this.pojo.getActive();
+     }
+     
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,17 +13,17 @@
+  * See the License for the specific language governing permissions and
+  * limitations under the License.  For additional information regarding
+  * copyright in this work, please see the NOTICE file in the top level
+  * directory of this distribution.
+  */
+ 
+ package org.apache.roller.weblogger.pojos.wrapper;
+ 
+-import org.apache.commons.lang3.StringEscapeUtils;
++import org.apache.commons.text.StringEscapeUtils;
+ import org.apache.roller.weblogger.WebloggerException;
+ import org.apache.roller.weblogger.business.URLStrategy;
+ import org.apache.roller.weblogger.pojos.TagStat;
+ import org.apache.roller.weblogger.util.HTMLSanitizer;
+ 
+ import java.util.*;
+ import org.apache.roller.weblogger.pojos.ThemeTemplate;
+ import org.apache.roller.weblogger.pojos.ThemeTemplate.ComponentType;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/12: app/src/main/java/org/apache/roller/weblogger/ui/rendering/model/SearchResultsFeedModel.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -74,20 +74,22 @@
+ 	private boolean websiteSpecificSearch = true;
+ 
+ 	private int hits = 0;
+ 	private int offset = 0;
+ 	private int limit = 0;
+ 
+ 	private int entryCount = 0;
+ 
++    @Override
+ 	public String getModelName() {
+ 		return "model";
+ 	}
+ 
++    @Override
+ 	public void init(Map initData) throws WebloggerException {
+ 
+ 		// we expect the init data to contain a weblogRequest object
+ 		WeblogRequest weblogRequest = (WeblogRequest) initData
+ 				.get("parsedRequest");
+ 		if (weblogRequest == null) {
+ 			throw new WebloggerException(
+ 					"expected weblogRequest from init data");
+@@ -217,17 +219,17 @@
+ 				// maybe null if search result returned inactive user
+ 				// or entry's user is not the requested user.
+ 				// but don't return future posts
+ 				if (entry != null && entry.getPubTime().before(now)) {
+ 					results.add(WeblogEntryWrapper.wrap(entry, urlStrategy));
+ 				}
+ 			}
+ 
+-			if (categorySet.size() > 0) {
++			if (!categorySet.isEmpty()) {
+ 				this.categories = categorySet;
+ 			}
+ 		} catch (IOException e) {
+ 			throw new WebloggerException(e);
+ 		}
+ 	}
+ 
+ 	/**
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -21,17 +21,17 @@
+ import java.io.IOException;
+ import java.sql.Timestamp;
+ import java.util.Date;
+ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.TreeSet;
+-import org.apache.commons.lang3.StringEscapeUtils;
++import org.apache.commons.text.StringEscapeUtils;
+ 
+ import org.apache.commons.lang3.StringUtils;
+ import org.apache.lucene.document.Document;
+ import org.apache.lucene.search.ScoreDoc;
+ import org.apache.lucene.search.TopFieldDocs;
+ import org.apache.roller.weblogger.WebloggerException;
+ import org.apache.roller.weblogger.business.URLStrategy;
+ import org.apache.roller.weblogger.business.WeblogEntryManager;
+@@ -235,17 +235,17 @@
+ 	 */
+ 	public WeblogWrapper getWeblog() {
+ 		return WeblogWrapper.wrap(weblog, urlStrategy);
+ 	}
+ 
+ 	public String getTerm() {
+ 		String query =feedRequest.getTerm() ;
+ 		return (query == null) 
+-			? "" : StringEscapeUtils.escapeXml(Utilities.escapeHTML(query));
++			? "" : StringEscapeUtils.escapeXml11(Utilities.escapeHTML(query));
+ 	}
+ 
+ 	public int getHits() {
+ 		return hits;
+ 	}
+ 
+ 	public int getOffset() {
+ 		return offset;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/12: app/src/main/java/org/apache/roller/weblogger/ui/rendering/model/SearchResultsModel.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -221,17 +221,17 @@
+ 				// or entry's user is not the requested user.
+ 				// but don't return future posts
+ 				if (entry != null && entry.getPubTime().before(now)) {
+ 					addEntryToResults(WeblogEntryWrapper.wrap(entry,
+ 							urlStrategy));
+ 				}
+ 			}
+ 
+-			if (categorySet.size() > 0) {
++			if (!categorySet.isEmpty()) {
+ 				this.categories = categorySet;
+ 			}
+ 		} catch (IOException e) {
+ 			throw new WebloggerException(e);
+ 		}
+ 	}
+ 
+ 	private void addEntryToResults(WeblogEntryWrapper entry) {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -22,17 +22,17 @@
+ import java.sql.Timestamp;
+ import java.util.Collections;
+ import java.util.Date;
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.TreeMap;
+ import java.util.TreeSet;
+ 
+-import org.apache.commons.lang3.StringEscapeUtils;
++import org.apache.commons.text.StringEscapeUtils;
+ import org.apache.commons.lang3.StringUtils;
+ import org.apache.lucene.document.Document;
+ import org.apache.lucene.search.ScoreDoc;
+ import org.apache.lucene.search.TopFieldDocs;
+ import org.apache.roller.util.DateUtil;
+ import org.apache.roller.weblogger.WebloggerException;
+ import org.apache.roller.weblogger.business.URLStrategy;
+ import org.apache.roller.weblogger.business.WeblogEntryManager;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 8/12: app/src/main/java/org/apache/roller/weblogger/ui/rendering/model/UtilitiesModel.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -90,22 +90,24 @@
+     private static final Pattern QUOTE_PATTERN = 
+             Pattern.compile("&quot;", Pattern.CASE_INSENSITIVE);
+     
+     private ParsedRequest parsedRequest = null;
+     private Weblog weblog = null;
+     
+     
+     /** Template context name to be used for model */
++    @Override
+     public String getModelName() {
+         return "utils";
+     }
+     
+     
+     /** Init page model based on request */
++    @Override
+     public void init(Map initData) throws WebloggerException {      
+         
+         // we expect the init data to contain a parsedRequest object
+         parsedRequest = (ParsedRequest) initData.get("parsedRequest");
+         if(parsedRequest == null) {
+             throw new WebloggerException("expected parsedRequest from init data");
+         }
+         
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -19,17 +19,17 @@
+ package org.apache.roller.weblogger.ui.rendering.model;
+ 
+ import java.text.SimpleDateFormat;
+ import java.util.Date;
+ import java.util.Map;
+ import java.util.TimeZone;
+ import java.util.regex.Matcher;
+ import java.util.regex.Pattern;
+-import org.apache.commons.lang3.StringEscapeUtils;
++import org.apache.commons.text.StringEscapeUtils;
+ import org.apache.commons.lang3.StringUtils;
+ import org.apache.commons.logging.Log;
+ import org.apache.commons.logging.LogFactory;
+ import org.apache.roller.weblogger.WebloggerException;
+ import org.apache.roller.weblogger.pojos.wrapper.WeblogWrapper;
+ import org.apache.roller.weblogger.ui.rendering.util.WeblogRequest;
+ import org.apache.roller.util.DateUtil;
+ import org.apache.roller.util.RegexUtil;
+@@ -248,17 +248,17 @@
+         return StringEscapeUtils.escapeHtml4(str);
+     }
+     
+     public String unescapeHTML(String str) {
+         return StringEscapeUtils.unescapeHtml4(str);
+     }
+     
+     public String escapeXML(String str) {
+-        return StringEscapeUtils.escapeXml(str);
++        return StringEscapeUtils.escapeXml11(str);
+     }
+     
+     public String unescapeXML(String str) {
+         return StringEscapeUtils.unescapeXml(str);
+     }
+     
+     public String escapeJavaScript(String str) {
+         return StringEscapeUtils.escapeEcmaScript(str);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 9/12: app/src/main/java/org/apache/roller/weblogger/ui/rendering/util/cache/SiteWideCache.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -228,17 +228,17 @@
+                     // ignored
+                 }
+                 
+                 key.append("/").append(cat);
+             }
+             
+             if("tags".equals(pageRequest.getContext())) {
+                 key.append("/tags/");
+-                if(pageRequest.getTags() != null && pageRequest.getTags().size() > 0) {
++                if(pageRequest.getTags() != null && !pageRequest.getTags().isEmpty()) {
+                     Set ordered = new TreeSet(pageRequest.getTags());
+                     String[] tags = (String[]) ordered.toArray(new String[ordered.size()]);
+                     key.append(Utilities.stringArrayToString(tags,"+"));
+                 }
+             }
+         }
+         
+         if(pageRequest.getLocale() != null) {
+@@ -253,17 +253,17 @@
+         // add login state
+         if(pageRequest.getAuthenticUser() != null) {
+             key.append("/user=").append(pageRequest.getAuthenticUser());
+         }
+       
+         key.append("/deviceType=").append(pageRequest.getDeviceType().toString());
+ 
+         // we allow for arbitrary query params for custom pages
+-        if(pageRequest.getCustomParams().size() > 0) {
++        if(!pageRequest.getCustomParams().isEmpty()) {
+             String queryString = paramsToString(pageRequest.getCustomParams());
+             
+             key.append("/qp=").append(queryString);
+         }
+ 
+         return key.toString();
+     }
+     
+@@ -310,105 +310,113 @@
+         if(feedRequest.getLocale() != null) {
+             key.append("/").append(feedRequest.getLocale());
+         }
+         
+         if(feedRequest.isExcerpts()) {
+             key.append("/excerpts");
+         }
+         
+-        if(feedRequest.getTags() != null && feedRequest.getTags().size() > 0) {
++        if(feedRequest.getTags() != null && !feedRequest.getTags().isEmpty()) {
+           String[] tags = new String[feedRequest.getTags().size()];
+           new TreeSet(feedRequest.getTags()).toArray(tags);
+           key.append("/tags/").append(Utilities.stringArrayToString(tags,"+"));
+         }       
+         
+         return key.toString();
+     }
+     
+     
+     /**
+      * A weblog entry has changed.
+      */
++    @Override
+     public void invalidate(WeblogEntry entry) {
+         
+         if (!cacheEnabled) {
+             return;
+         }
+         
+         this.contentCache.clear();
+         this.lastUpdateTime = null;
+     }
+     
+     
+     /**
+      * A weblog has changed.
+      */
++    @Override
+     public void invalidate(Weblog website) {
+         
+         if (!cacheEnabled) {
+             return;
+         }
+         
+         this.contentCache.clear();
+         this.lastUpdateTime = null;
+     }
+     
+     
+     /**
+      * A bookmark has changed.
+      */
++    @Override
+     public void invalidate(WeblogBookmark bookmark) {
+         if(WebloggerRuntimeConfig.isSiteWideWeblog(bookmark.getWebsite().getHandle())) {
+             invalidate(bookmark.getWebsite());
+         }
+     }
+     
+     
+     /**
+      * A folder has changed.
+      */
++    @Override
+     public void invalidate(WeblogBookmarkFolder folder) {
+         if(WebloggerRuntimeConfig.isSiteWideWeblog(folder.getWeblog().getHandle())) {
+             invalidate(folder.getWeblog());
+         }
+     }
+     
+     
+     /**
+      * A comment has changed.
+      */
++    @Override
+     public void invalidate(WeblogEntryComment comment) {
+         if(WebloggerRuntimeConfig.isSiteWideWeblog(comment.getWeblogEntry().getWebsite().getHandle())) {
+             invalidate(comment.getWeblogEntry().getWebsite());
+         }
+     }
+     
+     
+     /**
+      * A user profile has changed.
+      */
++    @Override
+     public void invalidate(User user) {
+         // ignored
+     }
+     
+     
+     /**
+      * A category has changed.
+      */
++    @Override
+     public void invalidate(WeblogCategory category) {
+         if(WebloggerRuntimeConfig.isSiteWideWeblog(category.getWeblog().getHandle())) {
+             invalidate(category.getWeblog());
+         }
+     }
+     
+     
+     /**
+      * A weblog template has changed.
+      */
++    @Override
+     public void invalidate(WeblogTemplate template) {
+         if(WebloggerRuntimeConfig.isSiteWideWeblog(template.getWeblog().getHandle())) {
+             invalidate(template.getWeblog());
+         }
+     }
+     
+     
+     private String paramsToString(Map<String, String[]> map) {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -62,17 +62,17 @@
+     // keep cached content
+     private boolean cacheEnabled = true;
+     private Cache contentCache = null;
+     
+     // keep a cached version of last expired time
+     private ExpiringCacheEntry lastUpdateTime = null;
+ 
+     // reference to our singleton instance
+-    private static SiteWideCache singletonInstance = new SiteWideCache();
++    private static final SiteWideCache singletonInstance = new SiteWideCache();
+     
+     
+     private SiteWideCache() {
+         
+         cacheEnabled = WebloggerConfig.getBooleanProperty(CACHE_ID+".enabled");
+         
+         Map<String, String> cacheProps = new HashMap<String, String>();
+         cacheProps.put("id", CACHE_ID);
+@@ -188,19 +188,19 @@
+      * foo/en
+      * foo/entry_anchor
+      * foo/20051110/en
+      * foo/MyCategory/en/user=myname
+      *
+      */
+     public String generateKey(WeblogPageRequest pageRequest) {
+         
+-        StringBuilder key = new StringBuilder();
+-        
+-        key.append(CACHE_ID).append(":");
++        StringBuilder key = new StringBuilder(128);
++        
++        key.append(CACHE_ID).append(':');
+         key.append("page/");
+         key.append(pageRequest.getWeblogHandle());
+         
+         if(pageRequest.getWeblogAnchor() != null) {
+             String anchor = null;
+             try {
+                 // may contain spaces or other bad chars
+                 anchor = URLEncoder.encode(pageRequest.getWeblogAnchor(), "UTF-8");
+@@ -211,43 +211,43 @@
+             key.append("/entry/").append(anchor);
+         } else {
+             
+             if(pageRequest.getWeblogPageName() != null) {
+                 key.append("/page/").append(pageRequest.getWeblogPageName());
+             }
+             
+             if(pageRequest.getWeblogDate() != null) {
+-                key.append("/").append(pageRequest.getWeblogDate());
++                key.append('/').append(pageRequest.getWeblogDate());
+             }
+             
+             if(pageRequest.getWeblogCategoryName() != null) {
+                 String cat = null;
+                 try {
+                     // may contain spaces or other bad chars
+                     cat = URLEncoder.encode(pageRequest.getWeblogCategoryName(), "UTF-8");
+                 } catch(UnsupportedEncodingException ex) {
+                     // ignored
+                 }
+                 
+-                key.append("/").append(cat);
++                key.append('/').append(cat);
+             }
+             
+             if("tags".equals(pageRequest.getContext())) {
+                 key.append("/tags/");
+                 if(pageRequest.getTags() != null && pageRequest.getTags().size() > 0) {
+                     Set ordered = new TreeSet(pageRequest.getTags());
+                     String[] tags = (String[]) ordered.toArray(new String[ordered.size()]);
+                     key.append(Utilities.stringArrayToString(tags,"+"));
+                 }
+             }
+         }
+         
+         if(pageRequest.getLocale() != null) {
+-            key.append("/").append(pageRequest.getLocale());
++            key.append('/').append(pageRequest.getLocale());
+         }
+         
+         // add page number when applicable
+         if(pageRequest.getWeblogAnchor() == null) {
+             key.append("/page=").append(pageRequest.getPageNum());
+         }
+         
+         // add login state
+@@ -278,42 +278,42 @@
+      *
+      * foo/entries/rss/en
+      * foo/comments/rss/MyCategory/en
+      * foo/entries/atom/en/excerpts
+      *
+      */
+     public String generateKey(WeblogFeedRequest feedRequest) {
+         
+-        StringBuilder key = new StringBuilder();
+-        
+-        key.append(CACHE_ID).append(":");
++        StringBuilder key = new StringBuilder(128);
++        
++        key.append(CACHE_ID).append(':');
+         key.append("feed/");
+         key.append(feedRequest.getWeblogHandle());
+         
+-        key.append("/").append(feedRequest.getType());
+-        key.append("/").append(feedRequest.getFormat());
++        key.append('/').append(feedRequest.getType());
++        key.append('/').append(feedRequest.getFormat());
+         
+         if (feedRequest.getTerm() != null) {
+             key.append("/search/").append(feedRequest.getTerm());
+         }
+         
+         if(feedRequest.getWeblogCategoryName() != null) {
+             String cat = feedRequest.getWeblogCategoryName();
+             try {
+                 cat = URLEncoder.encode(cat, "UTF-8");
+             } catch (UnsupportedEncodingException ex) {
+                 // should never happen, utf-8 is always supported
+             }
+             
+-            key.append("/").append(cat);
++            key.append('/').append(cat);
+         }
+         
+         if(feedRequest.getLocale() != null) {
+-            key.append("/").append(feedRequest.getLocale());
++            key.append('/').append(feedRequest.getLocale());
+         }
+         
+         if(feedRequest.isExcerpts()) {
+             key.append("/excerpts");
+         }
+         
+         if(feedRequest.getTags() != null && feedRequest.getTags().size() > 0) {
+           String[] tags = new String[feedRequest.getTags().size()];
+@@ -416,16 +416,16 @@
+         if (map == null) {
+             return null;
+         }
+         
+         StringBuilder string = new StringBuilder();
+         
+         for (Map.Entry<String, String[]> entry : map.entrySet()) {
+             if(entry.getValue() != null) {
+-                string.append(",").append(entry.getKey()).append("=").append(entry.getValue()[0]);
++                string.append(',').append(entry.getKey()).append('=').append(entry.getValue()[0]);
+             }
+         }
+         
+         return Utilities.toBase64(string.toString().substring(1).getBytes());
+     }
+     
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 10/12: app/src/main/java/org/apache/roller/weblogger/ui/rendering/util/cache/WeblogFeedCache.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -180,17 +180,17 @@
+                 cat = URLEncoder.encode(cat, "UTF-8");
+             } catch (UnsupportedEncodingException ex) {
+                 // should never happen, utf-8 is always supported
+             }
+             
+             key.append("/").append(cat);
+         }
+         
+-        if(feedRequest.getTags() != null && feedRequest.getTags().size() > 0) {
++        if(feedRequest.getTags() != null && !feedRequest.getTags().isEmpty()) {
+           Set ordered = new TreeSet(feedRequest.getTags());
+           String[] tags = (String[]) ordered.toArray(new String[ordered.size()]);  
+           key.append("/tags/").append(Utilities.stringArrayToString(tags,"+"));
+         }        
+         
+         if(feedRequest.getLocale() != null) {
+             key.append("/").append(feedRequest.getLocale());
+         }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -46,17 +46,17 @@
+     // roller config properties that apply to this cache
+     public static final String CACHE_ID = "cache.weblogfeed";
+     
+     // keep cached content
+     private boolean cacheEnabled = true;
+     private Cache contentCache = null;
+     
+     // reference to our singleton instance
+-    private static WeblogFeedCache singletonInstance = new WeblogFeedCache();
++    private static final WeblogFeedCache singletonInstance = new WeblogFeedCache();
+     
+     
+     private WeblogFeedCache() {
+         
+         cacheEnabled = WebloggerConfig.getBooleanProperty(CACHE_ID+".enabled");
+         
+         Map cacheProps = new HashMap();
+         cacheProps.put("id", CACHE_ID);
+@@ -157,47 +157,47 @@
+      *
+      * foo/entries/rss/en
+      * foo/comments/rss/MyCategory/en
+      * foo/entries/atom/en/excerpts
+      *
+      */
+     public String generateKey(WeblogFeedRequest feedRequest) {
+         
+-        StringBuilder key = new StringBuilder();
+-        
+-        key.append(this.CACHE_ID).append(":");
++        StringBuilder key = new StringBuilder(128);
++        
++        key.append(this.CACHE_ID).append(':');
+         key.append(feedRequest.getWeblogHandle());
+         
+-        key.append("/").append(feedRequest.getType());
+-        key.append("/").append(feedRequest.getFormat());
++        key.append('/').append(feedRequest.getType());
++        key.append('/').append(feedRequest.getFormat());
+         
+         if (feedRequest.getTerm() != null) {
+             key.append("/search/").append(feedRequest.getTerm());
+         }
+         
+         if(feedRequest.getWeblogCategoryName() != null) {
+             String cat = feedRequest.getWeblogCategoryName();
+             try {
+                 cat = URLEncoder.encode(cat, "UTF-8");
+             } catch (UnsupportedEncodingException ex) {
+                 // should never happen, utf-8 is always supported
+             }
+             
+-            key.append("/").append(cat);
++            key.append('/').append(cat);
+         }
+         
+         if(feedRequest.getTags() != null && feedRequest.getTags().size() > 0) {
+           Set ordered = new TreeSet(feedRequest.getTags());
+           String[] tags = (String[]) ordered.toArray(new String[ordered.size()]);  
+           key.append("/tags/").append(Utilities.stringArrayToString(tags,"+"));
+         }        
+         
+         if(feedRequest.getLocale() != null) {
+-            key.append("/").append(feedRequest.getLocale());
++            key.append('/').append(feedRequest.getLocale());
+         }
+         
+         if(feedRequest.isExcerpts()) {
+             key.append("/excerpts");
+         }
+         
+         return key.toString();
+     }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 11/12: app/src/main/java/org/apache/roller/weblogger/ui/rendering/util/cache/WeblogPageCache.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -201,17 +201,17 @@
+                     // ignored
+                 }
+                 
+                 key.append("/").append(cat);
+             }
+             
+             if("tags".equals(pageRequest.getContext())) {
+                 key.append("/tags/");
+-                if(pageRequest.getTags() != null && pageRequest.getTags().size() > 0) {
++                if(pageRequest.getTags() != null && !pageRequest.getTags().isEmpty()) {
+                     Set ordered = new TreeSet(pageRequest.getTags());
+                     String[] tags = (String[]) ordered.toArray(new String[ordered.size()]);
+                     key.append(Utilities.stringArrayToString(tags,"+"));
+                 }
+             }
+         }
+         
+         if(pageRequest.getLocale() != null) {
+@@ -226,18 +226,17 @@
+         // add login state
+         if(pageRequest.getAuthenticUser() != null) {
+             key.append("/user=").append(pageRequest.getAuthenticUser());
+         }
+         
+         key.append("/deviceType=").append(pageRequest.getDeviceType().toString());
+         
+         // we allow for arbitrary query params for custom pages
+-        if(pageRequest.getWeblogPageName() != null &&
+-                pageRequest.getCustomParams().size() > 0) {
++        if(pageRequest.getWeblogPageName() != null && !pageRequest.getCustomParams().isEmpty()) {
+             String queryString = paramsToString(pageRequest.getCustomParams());
+             
+             key.append("/qp=").append(queryString);
+         }
+         
+         return key.toString();
+     }
+     
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -46,17 +46,17 @@
+     // roller config properties that apply to this cache
+     public static final String CACHE_ID = "cache.weblogpage";
+     
+     // keep cached content
+     private boolean cacheEnabled = true;
+     private Cache contentCache = null;
+     
+     // reference to our singleton instance
+-    private static WeblogPageCache singletonInstance = new WeblogPageCache();
++    private static final WeblogPageCache singletonInstance = new WeblogPageCache();
+     
+     
+     private WeblogPageCache() {
+         
+         cacheEnabled = WebloggerConfig.getBooleanProperty(CACHE_ID+".enabled");
+         
+         Map cacheProps = new HashMap();
+         cacheProps.put("id", CACHE_ID);
+@@ -161,19 +161,19 @@
+      * foo/en
+      * foo/entry_anchor
+      * foo/20051110/en
+      * foo/MyCategory/en/user=myname
+      *
+      */
+     public String generateKey(WeblogPageRequest pageRequest) {
+         
+-        StringBuilder key = new StringBuilder();
+-        
+-        key.append(this.CACHE_ID).append(":");
++        StringBuilder key = new StringBuilder(128);
++        
++        key.append(this.CACHE_ID).append(':');
+         key.append(pageRequest.getWeblogHandle());
+         
+         if(pageRequest.getWeblogAnchor() != null) {
+             
+             String anchor = null;
+             try {
+                 // may contain spaces or other bad chars
+                 anchor = URLEncoder.encode(pageRequest.getWeblogAnchor(), "UTF-8");
+@@ -184,43 +184,43 @@
+             key.append("/entry/").append(anchor);
+         } else {
+             
+             if(pageRequest.getWeblogPageName() != null) {
+                 key.append("/page/").append(pageRequest.getWeblogPageName());
+             }
+             
+             if(pageRequest.getWeblogDate() != null) {
+-                key.append("/").append(pageRequest.getWeblogDate());
++                key.append('/').append(pageRequest.getWeblogDate());
+             }
+             
+             if(pageRequest.getWeblogCategoryName() != null) {
+                 String cat = null;
+                 try {
+                     // may contain spaces or other bad chars
+                     cat = URLEncoder.encode(pageRequest.getWeblogCategoryName(), "UTF-8");
+                 } catch(UnsupportedEncodingException ex) {
+                     // ignored
+                 }
+                 
+-                key.append("/").append(cat);
++                key.append('/').append(cat);
+             }
+             
+             if("tags".equals(pageRequest.getContext())) {
+                 key.append("/tags/");
+                 if(pageRequest.getTags() != null && pageRequest.getTags().size() > 0) {
+                     Set ordered = new TreeSet(pageRequest.getTags());
+                     String[] tags = (String[]) ordered.toArray(new String[ordered.size()]);
+                     key.append(Utilities.stringArrayToString(tags,"+"));
+                 }
+             }
+         }
+         
+         if(pageRequest.getLocale() != null) {
+-            key.append("/").append(pageRequest.getLocale());
++            key.append('/').append(pageRequest.getLocale());
+         }
+         
+         // add page number when applicable
+         if(pageRequest.getWeblogAnchor() == null) {
+             key.append("/page=").append(pageRequest.getPageNum());
+         }
+         
+         // add login state
+@@ -246,15 +246,15 @@
+         if (map == null) {
+             return null;
+         }
+ 
+         StringBuilder string = new StringBuilder();
+ 
+         for (Map.Entry<String, String[]> entry : map.entrySet()) {
+             if(entry.getKey() != null) {
+-                string.append(",").append(entry.getKey()).append("=").append(entry.getValue()[0]);
++                string.append(',').append(entry.getKey()).append('=').append(entry.getValue()[0]);
+             }
+         }
+ 
+         return Utilities.toBase64(string.toString().substring(1).getBytes());
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 12/12: app/src/main/java/org/apache/roller/weblogger/ui/struts2/util/UIAction.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -75,20 +75,22 @@
+     // the name of the menu this action wants to show, or null for no menu
+     protected String desiredMenu = null;
+     
+     // page title, called by some Tiles JSPs (e.g., tiles-simplepage.jsp)
+     protected String pageTitle = null;
+ 
+     protected String salt = null;
+     
++    @Override
+     public void myPrepare() {
+         // no-op
+     }
+ 	
++    @Override
+ 	public void setRequest(Map<String, Object> map) {
+ 		this.salt = (String) map.get("salt");
+ 	}
+ 
+ 	public String getSalt() {
+ 		return salt;
+ 	}
+ 	
+@@ -97,31 +99,35 @@
+      * See also https://issues.apache.org/jira/browse/ROL-2068
+      * @param salt previous salt
+      */
+     public void setSalt(String salt) {
+         // no-op
+     }
+ 
+     // default action permissions, user is required
++    @Override
+     public boolean isUserRequired() {
+         return true;
+     }
+     
+     
+     // default action permissions, weblog is required
++    @Override
+     public boolean isWeblogRequired() {
+         return true;
+     }
+     
+     // Default is ADMIN for safety, if a subclasser forgets to override this only admins can use.
++    @Override
+     public List<String> requiredWeblogPermissionActions() {
+         return Collections.singletonList(WeblogPermission.ADMIN);
+     }
+ 
++    @Override
+     public List<String> requiredGlobalPermissionActions() {
+         return Collections.singletonList(GlobalPermission.LOGIN);
+     }
+     
+     
+     // convenient way to tell if user being dealt with is an admin
+     public boolean isUserIsAdmin() {
+         try {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -14,17 +14,17 @@
+  * limitations under the License.  For additional information regarding
+  * copyright in this work, please see the NOTICE file in the top level
+  * directory of this distribution.
+  */
+ 
+ package org.apache.roller.weblogger.ui.struts2.util;
+ 
+ import com.opensymphony.xwork2.ActionSupport;
+-import org.apache.commons.lang3.StringEscapeUtils;
++import org.apache.commons.text.StringEscapeUtils;
+ import org.apache.roller.weblogger.business.UserManager;
+ import org.apache.roller.weblogger.business.WebloggerFactory;
+ import org.apache.roller.weblogger.config.WebloggerConfig;
+ import org.apache.roller.weblogger.config.WebloggerRuntimeConfig;
+ import org.apache.roller.weblogger.pojos.GlobalPermission;
+ import org.apache.roller.weblogger.pojos.User;
+ import org.apache.roller.weblogger.pojos.Weblog;
+ import org.apache.roller.weblogger.pojos.WeblogPermission;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,73 @@
+# S-D8 — whole-driver re-pricing, experimental lanes ON (config pair)
+# driver commit 732d8ff (frozen suite); corpus = P1 164 pos / 193 ctl
+# arms differ ONLY by SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS
+# cost unit = per file (Schesch); FP x10, TN/FN x1, CRASH/TIMEOUT x1; hybrid oracle
+
+## Cost-model table — positives (Tests_failed)
+  config              n   TP   FP   TN   FN  CR    cost  cost/n  med_rt
+  driver-auto-off   232    3  171   53    5   0    1768    7.62    76.8
+  driver-auto-on    232    3  148   74    7   0    1561    6.73    85.2
+
+## Cost-model table — controls (Tests_passed)
+  config              n   TP   FP   TN   FN  CR    cost  cost/n  med_rt
+  driver-auto-off   239  223    0   13    3   0      16    0.07    81.3
+  driver-auto-on    239  221    0   15    3   0      18    0.08    89.5
+
+## Cost-model table — POOLED
+  config              n   TP   FP   TN   FN  CR    cost  cost/n  med_rt
+  driver-auto-off   471  226  171   66    8   0    1784    3.79    79.5
+  driver-auto-on    471  224  148   89   10   0    1579    3.35    87.8
+
+## Three-outcome decomposition (per merge, any-file)
+  config            arm merges  accept  textual  semantic  crash
+  driver-auto-off   pos    180     124       45        11      0
+  driver-auto-off   ctl    195     179       15         1      0
+  driver-auto-on    pos    180     103       44        33      0
+  driver-auto-on    ctl    195     177       15         3      0
+
+## Flag delta — per-file movements off -> on (blocked/broken decomposition)
+  pooled weighted cost: off 1784 -> on 1579 (delta -205)
+  clean/accept -> conflict/semantic [FP->FN]: 2
+    [pos] sander2798_enderstone__b515bac1b0__src_org_enderstone_server_pac lanes=ImportPruneUsage
+    [pos] sandergielisse_enderstone__b515bac1b0__src_org_enderstone_server lanes=ImportPruneUsage
+  clean/accept -> conflict/semantic [FP->TN]: 21
+    [pos] atam4j_atam4j__71fcecb071__acceptance-tests_src_test_java_me_ata lanes=ImportPruneUsage
+    [pos] dabsquared_gitlab-plugin__d555b8773d__src_main_java_com_dabsquar lanes=JoernUnresolvedReference
+    [pos] dtrules_dtrules__505c5cbf82__compilerutil_src_main_java_com_dtru lanes=ImportPruneUsage
+    [pos] feroult_yawp__141f79a8e9__src_main_java_endpoint_repository_IdRe lanes=ImportPruneUsage
+    [pos] feroult_yawp__1723236a65__src_main_java_endpoint_actions_Reposit lanes=ImportPruneUsage
+    [pos] google_truth__2e4a23bebb__core_src_test_java_org_truth0_subjects lanes=ImportPruneUsage
+    [pos] gwtbootstrap3_gwtbootstrap3__5c0d1eab79__gwtbootstrap3_src_main_ lanes=JoernUnresolvedReference
+    [pos] javamoney_jsr354-api__6d2356a153__money-api_provider_src_test_ja lanes=ImportPruneUsage
+    [pos] javaparser_javaparser__dc6254f1bf__javaparser-symbol-solver-core lanes=JoernUnresolvedReference
+    [pos] jcabi_jcabi-github__b13d2596ba__src_test_java_com_jcabi_github_R lanes=JoernUnresolvedReference
+    [pos] jenkinsci_credentials-plugin__b9cb5f9d1b__src_test_java_com_clou lanes=ImportPruneUsage
+    [pos] jnr_jnr-unixsocket__467698b6bd__src_main_java_jnr_unixsocket_Nat lanes=ImportPruneUsage
+    [pos] jnr_jnr-unixsocket__f8f34e5634__src_main_java_jnr_unixsocket_Nat lanes=ImportPruneUsage
+    [pos] mikera_vectorz__d93ef1b341__src_test_java_mikera_matrixx_TestMat lanes=ImportPruneUsage
+    [pos] movsim_movsim__6dae25caf7__core_src_main_java_org_movsim_Simulat lanes=ImportPruneUsage
+    [pos] ninjaframework_ninja__94b2365be3__ninja-core_src_main_java_ninja lanes=ImportPruneUsage
+    [pos] segmentio_analytics-java__0d4a7b4e69__analytics_src_test_java_co lanes=ImportPruneUsage
+    [pos] square_javapoet__d019b6f624__src_main_java_com_squareup_javawrit lanes=ImportPruneUsage
+    [pos] tumblr_jumblr__31bd6f8335__src_main_java_com_tumblr_jumblr_excep lanes=ImportPruneUsage
+    [pos] vojtechhabarta_typescript-generator__51835d3c16__typescript-gene lanes=ImportPruneUsage
+    [pos] winder_universal-g-code-sender__c93fec43ee__ugs-core_src_com_wil lanes=ImportPruneUsage
+  clean/accept -> conflict/semantic [TP->TN]: 2
+    [ctl] jgralab_jgralab__d631209030__src_de_uni_koblenz_jgralab_greql2_f lanes=ImportPruneUsage
+    [ctl] yubico_ykneo-openpgp__2766bd7444__test_test_openpgpcardTest_Open lanes=SignatureStaleCall
+
+## Lane fire counts (on-arm, per file with >=1 flag)
+  ImportPruneUsage               20
+  JoernUnresolvedReference       10
+  RM2RenameConflict              10
+  SignatureStaleCall              1
+
+## Latency (FIRST-CLASS — the enabling-decision price; seconds/file)
+  slice                           n  off_med   on_med   d_med  d_mean   d_p90
+  all files (paired)            471     79.5     87.8     8.3     8.3     9.7
+  arm=pos                       232     76.8     85.2     8.5     8.4     9.8
+  arm=ctl                       239     81.3     89.5     8.1     8.1     9.6
+  route=git                     229     79.2     87.3     8.1     8.0     9.6
+  route=mergiraf                242     79.6     88.4     8.5     8.4     9.8
+  on-arm flagged files           37     75.8     84.6     8.7     8.5     9.7
+

@@ -1,0 +1,231 @@
+UNIT jwtk_jjwt__fd52e0ffc2
+repo: jwtk_jjwt   merge: fd52e0ffc2de0989879fd6f6b63e19416db6627c   stratum: B
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: impl/src/main/java/io/jsonwebtoken/impl/io/RuntimeClasspathDeserializerLocator.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -29,16 +29,18 @@
+     }
+ 
+     @SuppressWarnings("WeakerAccess") //to allow testing override
+     protected Deserializer<T> locate() {
+         if (isAvailable("com.fasterxml.jackson.databind.ObjectMapper")) {
+             return Classes.newInstance("io.jsonwebtoken.io.JacksonDeserializer");
+         } else if (isAvailable("org.json.JSONObject")) {
+             return Classes.newInstance("io.jsonwebtoken.io.OrgJsonDeserializer");
++        } else if (isAvailable("com.google.gson.GsonBuilder")) {
++            return Classes.newInstance("io.jsonwebtoken.io.GsonDeSerializer");
+         } else {
+             throw new IllegalStateException("Unable to discover any JSON Deserializer implementations on the classpath.");
+         }
+     }
+ 
+     @SuppressWarnings("WeakerAccess") //to allow testing override
+     protected boolean compareAndSet(Deserializer<T> d) {
+         return DESERIALIZER.compareAndSet(null, d);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -25,19 +25,19 @@
+             }
+         }
+         Assert.state(deserializer != null, "deserializer cannot be null.");
+         return deserializer;
+     }
+ 
+     @SuppressWarnings("WeakerAccess") //to allow testing override
+     protected Deserializer<T> locate() {
+-        if (isAvailable("com.fasterxml.jackson.databind.ObjectMapper")) {
++        if (isAvailable("io.jsonwebtoken.io.JacksonDeserializer")) {
+             return Classes.newInstance("io.jsonwebtoken.io.JacksonDeserializer");
+-        } else if (isAvailable("org.json.JSONObject")) {
++        } else if (isAvailable("io.jsonwebtoken.io.OrgJsonDeserializer")) {
+             return Classes.newInstance("io.jsonwebtoken.io.OrgJsonDeserializer");
+         } else {
+             throw new IllegalStateException("Unable to discover any JSON Deserializer implementations on the classpath.");
+         }
+     }
+ 
+     @SuppressWarnings("WeakerAccess") //to allow testing override
+     protected boolean compareAndSet(Deserializer<T> d) {
+--- MERGED RESULT (mergiraf; full) ---
+package io.jsonwebtoken.impl.io;
+
+import io.jsonwebtoken.io.Deserializer;
+import io.jsonwebtoken.lang.Assert;
+import io.jsonwebtoken.lang.Classes;
+
+import java.util.concurrent.atomic.AtomicReference;
+
+/**
+ * @since 0.10.0
+ */
+public class RuntimeClasspathDeserializerLocator<T> implements InstanceLocator<Deserializer<T>> {
+
+    private static final AtomicReference<Deserializer> DESERIALIZER = new AtomicReference<>();
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Deserializer<T> getInstance() {
+        Deserializer<T> deserializer = DESERIALIZER.get();
+        if (deserializer == null) {
+            deserializer = locate();
+            Assert.state(deserializer != null, "locate() cannot return null.");
+            if (!compareAndSet(deserializer)) {
+                deserializer = DESERIALIZER.get();
+            }
+        }
+        Assert.state(deserializer != null, "deserializer cannot be null.");
+        return deserializer;
+    }
+
+    @SuppressWarnings("WeakerAccess") //to allow testing override
+    protected Deserializer<T> locate() {
+        if (isAvailable("io.jsonwebtoken.io.JacksonDeserializer")) {
+            return Classes.newInstance("io.jsonwebtoken.io.JacksonDeserializer");
+        } else if (isAvailable("io.jsonwebtoken.io.OrgJsonDeserializer")) {
+            return Classes.newInstance("io.jsonwebtoken.io.OrgJsonDeserializer");
+        } else if (isAvailable("com.google.gson.GsonBuilder")) {
+            return Classes.newInstance("io.jsonwebtoken.io.GsonDeSerializer");
+        } else {
+            throw new IllegalStateException("Unable to discover any JSON Deserializer implementations on the classpath.");
+        }
+    }
+
+    @SuppressWarnings("WeakerAccess") //to allow testing override
+    protected boolean compareAndSet(Deserializer<T> d) {
+        return DESERIALIZER.compareAndSet(null, d);
+    }
+
+    @SuppressWarnings("WeakerAccess") //to allow testing override
+    protected boolean isAvailable(String fqcn) {
+        return Classes.isAvailable(fqcn);
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: impl/src/main/java/io/jsonwebtoken/impl/io/RuntimeClasspathSerializerLocator.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -29,16 +29,18 @@
+     }
+ 
+     @SuppressWarnings("WeakerAccess") //to allow testing override
+     protected Serializer<Object> locate() {
+         if (isAvailable("com.fasterxml.jackson.databind.ObjectMapper")) {
+             return Classes.newInstance("io.jsonwebtoken.io.JacksonSerializer");
+         } else if (isAvailable("org.json.JSONObject")) {
+             return Classes.newInstance("io.jsonwebtoken.io.OrgJsonSerializer");
++        } else if (isAvailable("com.google.gson.GsonBuilder")) {
++            return Classes.newInstance("io.jsonwebtoken.io.GsonSerializer");
+         } else {
+             throw new IllegalStateException("Unable to discover any JSON Serializer implementations on the classpath.");
+         }
+     }
+ 
+     @SuppressWarnings("WeakerAccess") //to allow testing override
+     protected boolean compareAndSet(Serializer<Object> s) {
+         return SERIALIZER.compareAndSet(null, s);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -25,19 +25,19 @@
+             }
+         }
+         Assert.state(serializer != null, "serializer cannot be null.");
+         return serializer;
+     }
+ 
+     @SuppressWarnings("WeakerAccess") //to allow testing override
+     protected Serializer<Object> locate() {
+-        if (isAvailable("com.fasterxml.jackson.databind.ObjectMapper")) {
++        if (isAvailable("io.jsonwebtoken.io.JacksonSerializer")) {
+             return Classes.newInstance("io.jsonwebtoken.io.JacksonSerializer");
+-        } else if (isAvailable("org.json.JSONObject")) {
++        } else if (isAvailable("io.jsonwebtoken.io.OrgJsonSerializer")) {
+             return Classes.newInstance("io.jsonwebtoken.io.OrgJsonSerializer");
+         } else {
+             throw new IllegalStateException("Unable to discover any JSON Serializer implementations on the classpath.");
+         }
+     }
+ 
+     @SuppressWarnings("WeakerAccess") //to allow testing override
+     protected boolean compareAndSet(Serializer<Object> s) {
+--- MERGED RESULT (mergiraf; full) ---
+package io.jsonwebtoken.impl.io;
+
+import io.jsonwebtoken.io.Serializer;
+import io.jsonwebtoken.lang.Assert;
+import io.jsonwebtoken.lang.Classes;
+
+import java.util.concurrent.atomic.AtomicReference;
+
+/**
+ * @since 0.10.0
+ */
+public class RuntimeClasspathSerializerLocator implements InstanceLocator<Serializer> {
+
+    private static final AtomicReference<Serializer<Object>> SERIALIZER = new AtomicReference<>();
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Serializer<Object> getInstance() {
+        Serializer<Object> serializer = SERIALIZER.get();
+        if (serializer == null) {
+            serializer = locate();
+            Assert.state(serializer != null, "locate() cannot return null.");
+            if (!compareAndSet(serializer)) {
+                serializer = SERIALIZER.get();
+            }
+        }
+        Assert.state(serializer != null, "serializer cannot be null.");
+        return serializer;
+    }
+
+    @SuppressWarnings("WeakerAccess") //to allow testing override
+    protected Serializer<Object> locate() {
+        if (isAvailable("io.jsonwebtoken.io.JacksonSerializer")) {
+            return Classes.newInstance("io.jsonwebtoken.io.JacksonSerializer");
+        } else if (isAvailable("io.jsonwebtoken.io.OrgJsonSerializer")) {
+            return Classes.newInstance("io.jsonwebtoken.io.OrgJsonSerializer");
+        } else if (isAvailable("com.google.gson.GsonBuilder")) {
+            return Classes.newInstance("io.jsonwebtoken.io.GsonSerializer");
+        } else {
+            throw new IllegalStateException("Unable to discover any JSON Serializer implementations on the classpath.");
+        }
+    }
+
+    @SuppressWarnings("WeakerAccess") //to allow testing override
+    protected boolean compareAndSet(Serializer<Object> s) {
+        return SERIALIZER.compareAndSet(null, s);
+    }
+
+    @SuppressWarnings("WeakerAccess") //to allow testing override
+    protected boolean isAvailable(String fqcn) {
+        return Classes.isAvailable(fqcn);
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

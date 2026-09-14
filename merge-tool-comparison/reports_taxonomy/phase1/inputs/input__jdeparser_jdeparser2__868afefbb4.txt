@@ -1,0 +1,655 @@
+UNIT jdeparser_jdeparser2__868afefbb4
+repo: jdeparser_jdeparser2   merge: 868afefbb4efa5ab31cfdd9130758c2117d44948   stratum: B
+files shown: 25 of 25 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T3/cap12  (diffs at -U3; merged bodies omitted; hard-fit to the 30k budget: files capped at 12 largest merged-vs-dev diffs)
+
+=== FILE 1/25: src/main/java/org/jboss/jdeparser/ImplJSourceFile.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -31,7 +31,7 @@
+  */
+ class ImplJSourceFile extends BasicJCommentable implements JSourceFile {
+     private final ImplJSources sources;
+-    private final Map<String, ReferenceJType> imports = new HashMap<>();
++    private final Map<String, AbstractJType> imports = new HashMap<>();
+     private final Map<String, StaticRefJExpr> staticImports = new HashMap<>();
+     private final ArrayList<ClassFileContent> content = new ArrayList<>();
+     private final String packageName;
+@@ -58,15 +58,15 @@
+                     writer.writeEscaped(packageName);
+                     writer.write($PUNCT.SEMI);
+                     writer.nl();
+-                    final Map<String, ReferenceJType> imports = ImplJSourceFile.this.imports;
++                    final Map<String, AbstractJType> imports = ImplJSourceFile.this.imports;
+                     if (imports != null) {
+-                        final Iterator<ReferenceJType> iterator = imports.values().iterator();
++                        final Iterator<AbstractJType> iterator = imports.values().iterator();
+                         if (iterator.hasNext()) {
+                             writer.nl();
+                             do {
+-                                final ReferenceJType _import = iterator.next();
++                                final AbstractJType _import = iterator.next();
+                                 writer.write($KW.IMPORT);
+-                                writer.writeClass(_import.qualifiedName(writer));
++                                writer.writeClass(_import.qualifiedName());
+                                 writer.write($PUNCT.SEMI);
+                                 writer.nl();
+                             } while (iterator.hasNext());
+@@ -99,41 +99,19 @@
+         return imports.containsKey(name);
+     }
+ 
+-    boolean hasImport(final JType type, final SourceFileWriter writer) {
+-        if (type instanceof ReferenceJType) {
+-            ReferenceJType referenceJType = (ReferenceJType) type;
+-            final String name = referenceJType.simpleName();
+-            if (imports.containsKey(name) && imports.get(name).qualifiedName(writer).equals(referenceJType.qualifiedName(writer))) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+-    boolean hasStaticImport(final String name) {
+-        return staticImports.containsKey(name);
+-    }
+-
+-    boolean hasStaticImport(final JExpr expr, final SourceFileWriter writer) {
+-        if (! (expr instanceof StaticRefJExpr)) return false;
+-        final StaticRefJExpr staticRefJExpr = (StaticRefJExpr) expr;
+-        final String refName = staticRefJExpr.getRefName();
+-        return staticImports.containsKey(refName) && staticImports.get(refName).getType().qualifiedName(writer).equals(staticRefJExpr.getType().qualifiedName(writer));
+-    }
+-
+     public JSourceFile _import(final String type) {
+         return _import(JTypes.typeNamed(type));
+     }
+ 
+     public JSourceFile _import(final JType type) {
+         checkPackage();
+-        if (! (type instanceof ReferenceJType)) {
++        if (! (type instanceof ReferenceJType) && ! (type instanceof NestedJType)) {
+             return this;
+         }
+         if (imports.containsKey(type.simpleName())) {
+             return this;
+         }
+-        imports.put(type.simpleName(), (ReferenceJType) type);
++        imports.put(type.simpleName(), (AbstractJType) type);
+         return this;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -31,7 +31,7 @@
+  */
+ class ImplJSourceFile extends BasicJCommentable implements JSourceFile {
+     private final ImplJSources sources;
+-    private final Map<String, ReferenceJType> imports = new HashMap<>();
++    private final Map<String, AbstractJType> imports = new HashMap<>();
+     private final Map<String, StaticRefJExpr> staticImports = new HashMap<>();
+     private final ArrayList<ClassFileContent> content = new ArrayList<>();
+     private final String packageName;
+@@ -58,15 +58,15 @@
+                     writer.writeEscaped(packageName);
+                     writer.write($PUNCT.SEMI);
+                     writer.nl();
+-                    final Map<String, ReferenceJType> imports = ImplJSourceFile.this.imports;
++                    final Map<String, AbstractJType> imports = ImplJSourceFile.this.imports;
+                     if (imports != null) {
+-                        final Iterator<ReferenceJType> iterator = imports.values().iterator();
++                        final Iterator<AbstractJType> iterator = imports.values().iterator();
+                         if (iterator.hasNext()) {
+                             writer.nl();
+                             do {
+-                                final ReferenceJType _import = iterator.next();
++                                final AbstractJType _import = iterator.next();
+                                 writer.write($KW.IMPORT);
+-                                writer.writeClass(_import.qualifiedName(writer));
++                                writer.writeClass(_import.qualifiedName());
+                                 writer.write($PUNCT.SEMI);
+                                 writer.nl();
+                             } while (iterator.hasNext());
+@@ -99,26 +99,8 @@
+         return imports.containsKey(name);
+     }
+ 
+-    boolean hasImport(final JType type, final SourceFileWriter writer) {
+-        if (type instanceof ReferenceJType) {
+-            ReferenceJType referenceJType = (ReferenceJType) type;
+-            final String name = referenceJType.simpleName();
+-            if (imports.containsKey(name) && imports.get(name).qualifiedName(writer).equals(referenceJType.qualifiedName(writer))) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+     boolean hasStaticImport(final String name) {
+         return staticImports.containsKey(name);
+-    }
+-
+-    boolean hasStaticImport(final JExpr expr, final SourceFileWriter writer) {
+-        if (! (expr instanceof StaticRefJExpr)) return false;
+-        final StaticRefJExpr staticRefJExpr = (StaticRefJExpr) expr;
+-        final String refName = staticRefJExpr.getRefName();
+-        return staticImports.containsKey(refName) && staticImports.get(refName).getType().qualifiedName(writer).equals(staticRefJExpr.getType().qualifiedName(writer));
+     }
+ 
+     public JSourceFile _import(final String type) {
+@@ -127,13 +109,13 @@
+ 
+     public JSourceFile _import(final JType type) {
+         checkPackage();
+-        if (! (type instanceof ReferenceJType)) {
++        if (! (type instanceof ReferenceJType) && ! (type instanceof NestedJType)) {
+             return this;
+         }
+         if (imports.containsKey(type.simpleName())) {
+             return this;
+         }
+-        imports.put(type.simpleName(), (ReferenceJType) type);
++        imports.put(type.simpleName(), (AbstractJType) type);
+         return this;
+     }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -99,6 +99,10 @@
+         return imports.containsKey(name);
+     }
+ 
++    boolean hasStaticImport(final String name) {
++        return staticImports.containsKey(name);
++    }
++
+     public JSourceFile _import(final String type) {
+         return _import(JTypes.typeNamed(type));
+     }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/25: src/main/java/org/jboss/jdeparser/AbstractJCall.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -104,7 +104,7 @@
+     }
+ 
+     public void write(final SourceFileWriter writer) throws IOException {
+-        writer.write(FormatPreferences.Space.BEFORE_PAREN);
++        writer.write(FormatPreferences.Space.BEFORE_PAREN_METHOD_CALL);
+         writer.write($PUNCT.PAREN.OPEN);
+         writer.write(FormatPreferences.Space.WITHIN_PAREN_METHOD_DECLARATION);
+         if (args != null) {
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -104,7 +104,7 @@
+     }
+ 
+     public void write(final SourceFileWriter writer) throws IOException {
+-        writer.write(FormatPreferences.Space.BEFORE_PAREN);
++        writer.write(FormatPreferences.Space.BEFORE_PAREN_METHOD_CALL);
+         writer.write($PUNCT.PAREN.OPEN);
+         writer.write(FormatPreferences.Space.WITHIN_PAREN_METHOD_DECLARATION);
+         if (args != null) {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/25: src/main/java/org/jboss/jdeparser/AbstractJClassDef.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -331,6 +331,9 @@
+     }
+ 
+     public void write(final SourceFileWriter writer) throws IOException {
++        if (enclosingClass != null) {
++            writer.write(FormatPreferences.Space.BEFORE_CLASS);
++        }
+         writeDocComments(writer);
+         writeComments(writer);
+         writeAnnotations(writer, FormatPreferences.Space.AFTER_ANNOTATION);
+@@ -380,7 +383,9 @@
+                 sourceFileWriter.write(ifExt ? $KW.EXTENDS : $KW.IMPLEMENTS);
+                 sourceFileWriter.write(iterator.next());
+                 while (iterator.hasNext()) {
++                    sourceFileWriter.write(FormatPreferences.Space.BEFORE_COMMA);
+                     sourceFileWriter.write($PUNCT.COMMA);
++                    sourceFileWriter.write(FormatPreferences.Space.AFTER_COMMA);
+                     sourceFileWriter.write(iterator.next());
+                 }
+             }
+@@ -397,16 +402,4 @@
+             }
+         }
+     }
+-
+-    public int getModifiers() {
+-        return mods;
+-    }
+-
+-    public boolean hasAllModifiers(final int mods) {
+-        return (this.mods & mods) == mods;
+-    }
+-
+-    public boolean hasAnyModifier(final int mods) {
+-        return (this.mods & mods) != 0;
+-    }
+ }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -380,7 +380,9 @@
+                 sourceFileWriter.write(ifExt ? $KW.EXTENDS : $KW.IMPLEMENTS);
+                 sourceFileWriter.write(iterator.next());
+                 while (iterator.hasNext()) {
++                    sourceFileWriter.write(FormatPreferences.Space.BEFORE_COMMA);
+                     sourceFileWriter.write($PUNCT.COMMA);
++                    sourceFileWriter.write(FormatPreferences.Space.AFTER_COMMA);
+                     sourceFileWriter.write(iterator.next());
+                 }
+             }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/25: src/main/java/org/jboss/jdeparser/AbstractJType.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -40,9 +40,17 @@
+         throw new IllegalArgumentException("Using a JType from a different implementation");
+     }
+ 
+-    String qualifiedName(SourceFileWriter writer) {
++    String qualifiedName() {
+         return simpleName();
+     }
++
++    public abstract int hashCode();
++
++    public final boolean equals(Object other) {
++        return other instanceof AbstractJType && equals((AbstractJType) other);
++    }
++
++    abstract boolean equals(AbstractJType other);
+ 
+     public abstract String simpleName();
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -40,9 +40,17 @@
+         throw new IllegalArgumentException("Using a JType from a different implementation");
+     }
+ 
+-    String qualifiedName(SourceFileWriter writer) {
++    String qualifiedName() {
+         return simpleName();
+     }
++
++    public abstract int hashCode();
++
++    public final boolean equals(Object other) {
++        return other instanceof AbstractJType && equals((AbstractJType) other);
++    }
++
++    abstract boolean equals(AbstractJType other);
+ 
+     public abstract String simpleName();
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/25: src/main/java/org/jboss/jdeparser/ArrayJType.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -44,8 +44,16 @@
+         sourceFileWriter.write($PUNCT.BRACKET.CLOSE);
+     }
+ 
+-    String qualifiedName(final SourceFileWriter writer) {
+-        return elementType.qualifiedName(writer);
++    String qualifiedName() {
++        return elementType.qualifiedName();
++    }
++
++    public int hashCode() {
++        return elementType.hashCode() ^ 0xee55ee55 + 7;
++    }
++
++    boolean equals(final AbstractJType other) {
++        return other instanceof ArrayJType && elementType.equals(((ArrayJType) other).elementType);
+     }
+ 
+     public JExpr _new(final JExpr dim) {
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -44,8 +44,16 @@
+         sourceFileWriter.write($PUNCT.BRACKET.CLOSE);
+     }
+ 
+-    String qualifiedName(final SourceFileWriter writer) {
+-        return elementType.qualifiedName(writer);
++    String qualifiedName() {
++        return elementType.qualifiedName();
++    }
++
++    public int hashCode() {
++        return elementType.hashCode() ^ 0xee55ee55 + 7;
++    }
++
++    boolean equals(final AbstractJType other) {
++        return other instanceof ArrayJType && elementType.equals(((ArrayJType) other).elementType);
+     }
+ 
+     public JExpr _new(final JExpr dim) {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/25: src/main/java/org/jboss/jdeparser/ArrayLookupJExpr.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -32,7 +32,7 @@
+ 
+     ArrayLookupJExpr(final AbstractJExpr expr, final AbstractJExpr idx) {
+         super(Prec.ARRAY_ACCESS);
+-        this.expr = expr.prec() < Prec.ARRAY_ACCESS ? new ParenJExpr(expr) : expr;
++        this.expr = expr.prec() > Prec.ARRAY_ACCESS ? new ParenJExpr(expr) : expr;
+         this.idx = idx;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -32,7 +32,7 @@
+ 
+     ArrayLookupJExpr(final AbstractJExpr expr, final AbstractJExpr idx) {
+         super(Prec.ARRAY_ACCESS);
+-        this.expr = expr.prec() < Prec.ARRAY_ACCESS ? new ParenJExpr(expr) : expr;
++        this.expr = expr.prec() > Prec.ARRAY_ACCESS ? new ParenJExpr(expr) : expr;
+         this.idx = idx;
+     }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/25: src/main/java/org/jboss/jdeparser/BasicJBlock.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -200,7 +200,7 @@
+     }
+ 
+     public JCall call(final JExpr obj, final String name) {
+-        return add(new InstanceJCall(obj, name));
++        return add(new InstanceJCall(AbstractJExpr.of(obj), name));
+     }
+ 
+     public JCall callStatic(final ExecutableElement element) {
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -200,7 +200,7 @@
+     }
+ 
+     public JCall call(final JExpr obj, final String name) {
+-        return add(new InstanceJCall(obj, name));
++        return add(new InstanceJCall(AbstractJExpr.of(obj), name));
+     }
+ 
+     public JCall callStatic(final ExecutableElement element) {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 8/25: src/main/java/org/jboss/jdeparser/CastJExpr.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -32,7 +32,7 @@
+ 
+     CastJExpr(final AbstractJExpr expr, final JType type) {
+         super(Prec.CAST);
+-        this.expr = expr.prec() < Prec.CAST ? new ParenJExpr(expr) : expr;
++        this.expr = expr.prec() > Prec.CAST ? new ParenJExpr(expr) : expr;
+         this.type = type;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -32,7 +32,7 @@
+ 
+     CastJExpr(final AbstractJExpr expr, final JType type) {
+         super(Prec.CAST);
+-        this.expr = expr.prec() < Prec.CAST ? new ParenJExpr(expr) : expr;
++        this.expr = expr.prec() > Prec.CAST ? new ParenJExpr(expr) : expr;
+         this.type = type;
+     }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 9/25: src/main/java/org/jboss/jdeparser/CondJExpr.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -33,9 +33,9 @@
+ 
+     CondJExpr(final AbstractJExpr cond, final AbstractJExpr ifTrue, final AbstractJExpr ifFalse) {
+         super(Prec.COND);
+-        this.cond = cond.prec() < Prec.COND ? new ParenJExpr(cond) : cond;
+-        this.ifTrue = ifTrue.prec() < Prec.COND ? new ParenJExpr(ifTrue) : ifTrue;
+-        this.ifFalse = ifFalse.prec() < Prec.COND ? new ParenJExpr(ifFalse) : ifFalse;
++        this.cond = cond.prec() > Prec.COND ? new ParenJExpr(cond) : cond;
++        this.ifTrue = ifTrue.prec() > Prec.COND ? new ParenJExpr(ifTrue) : ifTrue;
++        this.ifFalse = ifFalse.prec() > Prec.COND ? new ParenJExpr(ifFalse) : ifFalse;
+     }
+ 
+     public void write(final SourceFileWriter writer) throws IOException {
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -33,9 +33,9 @@
+ 
+     CondJExpr(final AbstractJExpr cond, final AbstractJExpr ifTrue, final AbstractJExpr ifFalse) {
+         super(Prec.COND);
+-        this.cond = cond.prec() < Prec.COND ? new ParenJExpr(cond) : cond;
+-        this.ifTrue = ifTrue.prec() < Prec.COND ? new ParenJExpr(ifTrue) : ifTrue;
+-        this.ifFalse = ifFalse.prec() < Prec.COND ? new ParenJExpr(ifFalse) : ifFalse;
++        this.cond = cond.prec() > Prec.COND ? new ParenJExpr(cond) : cond;
++        this.ifTrue = ifTrue.prec() > Prec.COND ? new ParenJExpr(ifTrue) : ifTrue;
++        this.ifFalse = ifFalse.prec() > Prec.COND ? new ParenJExpr(ifFalse) : ifFalse;
+     }
+ 
+     public void write(final SourceFileWriter writer) throws IOException {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 10/25: src/main/java/org/jboss/jdeparser/FieldRefJExpr.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -32,7 +32,7 @@
+ 
+     FieldRefJExpr(final AbstractJExpr expr, final String refName) {
+         super(Prec.MEMBER_ACCESS);
+-        this.expr = expr;
++        this.expr = expr.prec() > prec() ? new ParenJExpr(expr) : expr;
+         this.refName = refName;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -32,7 +32,7 @@
+ 
+     FieldRefJExpr(final AbstractJExpr expr, final String refName) {
+         super(Prec.MEMBER_ACCESS);
+-        this.expr = expr;
++        this.expr = expr.prec() > prec() ? new ParenJExpr(expr) : expr;
+         this.refName = refName;
+     }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 11/25: src/main/java/org/jboss/jdeparser/FormatPreferences.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -127,9 +127,12 @@
+         spaceTypes.put(AFTER_ANNOTATION, SpaceType.NEWLINE);
+         spaceTypes.put(AFTER_PARAM_ANNOTATION, SpaceType.SPACE);
+ 
++        spaceTypes.put(BEFORE_METHOD, SpaceType.NEWLINE);
++        spaceTypes.put(BEFORE_CLASS, SpaceType.NEWLINE);
++
+         DEFAULT_SPACE_TYPES = spaceTypes;
+ 
+-        DEFAULT_OPTS = EnumSet.of(Opt.COMPACT_INIT_ONLY_CLASS);
++        DEFAULT_OPTS = EnumSet.of(Opt.COMPACT_INIT_ONLY_CLASS, Opt.DROP_UNUSED_LABELS);
+ 
+         EnumMap<Wrapping, WrappingMode> wm = new EnumMap<>(Wrapping.class);
+         wm.put(Wrapping.EXCEPTION_LIST, WrappingMode.WRAP_ONLY_IF_LONG);
+@@ -531,6 +534,7 @@
+      */
+     public enum Space {
+         // default for all parens
++        @Deprecated
+         BEFORE_PAREN,
+ 
+         // single-line statements
+@@ -550,6 +554,7 @@
+         BEFORE_PAREN_CAST,
+ 
+         // default for all binary operators
++        @Deprecated
+         AROUND_OPERATORS,
+ 
+         // specific operator categories
+@@ -646,6 +651,10 @@
+         // annotations
+         AFTER_ANNOTATION,
+         AFTER_PARAM_ANNOTATION,
++
++        // members
++        BEFORE_METHOD,
++        BEFORE_CLASS,
+         ;
+     }
+ 
+@@ -712,6 +721,7 @@
+         ENUM_TRAILING_COMMA,
+         ENUM_EMPTY_PARENS,
+         COMPACT_INIT_ONLY_CLASS,
++        DROP_UNUSED_LABELS,
+     }
+ 
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -531,6 +531,7 @@
+      */
+     public enum Space {
+         // default for all parens
++        @Deprecated
+         BEFORE_PAREN,
+ 
+         // single-line statements
+@@ -550,6 +551,7 @@
+         BEFORE_PAREN_CAST,
+ 
+         // default for all binary operators
++        @Deprecated
+         AROUND_OPERATORS,
+ 
+         // specific operator categories
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 12/25: src/main/java/org/jboss/jdeparser/InnerJAnonymousClassDef.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -28,7 +28,7 @@
+ 
+     InnerJAnonymousClassDef(final AbstractJExpr expr, final JType type) {
+         super(type);
+-        this.expr = expr;
++        this.expr = expr.prec() > prec() ? new ParenJExpr(expr) : expr;
+     }
+ 
+     public void write(final SourceFileWriter writer) throws IOException {
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -28,7 +28,7 @@
+ 
+     InnerJAnonymousClassDef(final AbstractJExpr expr, final JType type) {
+         super(type);
+-        this.expr = expr;
++        this.expr = expr.prec() > prec() ? new ParenJExpr(expr) : expr;
+     }
+ 
+     public void write(final SourceFileWriter writer) throws IOException {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== REMAINING 13 FILES (elided at truncation T3; listed by path + merged-vs-dev diffstat) ===
+  src/main/java/org/jboss/jdeparser/InnerNewJCall.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/InstanceJCall.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/JLambdaImpl.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/NarrowedJType.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/NestedJType.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/PrimitiveJType.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/ReferenceJType.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/SourceFileWriter.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/StaticRefJExpr.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/ThisJType.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/Tokens.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/UnaryJExpr.java  (merged-vs-dev +0 -0)
+  src/main/java/org/jboss/jdeparser/WildcardJType.java  (merged-vs-dev +0 -0)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

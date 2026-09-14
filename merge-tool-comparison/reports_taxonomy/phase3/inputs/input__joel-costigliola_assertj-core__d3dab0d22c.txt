@@ -1,0 +1,1342 @@
+UNIT joel-costigliola_assertj-core__d3dab0d22c
+repo: joel-costigliola_assertj-core   merge: d3dab0d22cae3028dd4c73a89a5f8bca1fd21a6d   stratum: B
+files shown: 8 of 8 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/8: src/test/java/org/assertj/core/api/Assertions_assertThat_with_Iterator_Test.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -29,28 +29,28 @@
+ import org.assertj.core.api.IterableAssert.LazyIterable;
+ import org.assertj.core.test.ExpectedException;
+ import org.assertj.core.util.CaseInsensitiveStringComparator;
+ import org.junit.Rule;
+ import org.junit.Test;
+ 
+ /**
+  * Tests for <code>{@link Assertions#assertThat(Iterator)}</code>.
+- * 
++ *
+  * @author Julien Meddah
+  * @author Joel Costigliola
+  * @author Mikhail Mazursky
+  */
+ public class Assertions_assertThat_with_Iterator_Test {
+ 
+   @Rule
+   public ExpectedException thrown = none();
+-  
++
+   private StringIterator stringIterator = new StringIterator();
+-  
++
+   private final class StringIterator implements Iterator<String> {
+     @Override
+     public boolean hasNext() {
+       return true;
+     }
+ 
+     @Override
+     public String next() {
+@@ -58,23 +58,26 @@
+     }
+ 
+     @Override
+     public void remove() {}
+   }
+ 
+   @Test
+   public void should_create_Assert() {
+-    assertThat(assertThat(newLinkedHashSet())).isNotNull();
+-  }
+-
++    AbstractIterableAssert<?, Iterable<? extends Object>, Object, ObjectAssert<Object>> iteratorAssert = assertThat(newLinkedHashSet());
++    assertThat(iteratorAssert).isNotNull();
++  }
++
++  @SuppressWarnings("unchecked")
+   @Test
+   public void should_initialise_actual() {
+     Iterator<String> names = asList("Luke", "Leia").iterator();
+-    assertThat(assertThat(names).actual).containsOnly("Leia", "Luke");
++    Iterable<String> actual = (Iterable<String>) assertThat(names).actual;
++    assertThat(actual).containsOnly("Leia", "Luke");
+   }
+ 
+   @Test
+   public void should_allow_null() {
+     assertThat(assertThat((Iterator<String>) null).actual).isNull();
+   }
+ 
+   @Test
+@@ -103,104 +106,104 @@
+     assertThat(iterator).isInstanceOfAny(Iterator.class, String.class);
+     verifyZeroInteractions(iterator);
+   }
+ 
+   @Test
+   public void isOfAnyClassIn_should_check_the_original_iterator_without_consuming_it() {
+     assertThat(stringIterator).isOfAnyClassIn(Iterator.class, StringIterator.class);
+   }
+-  
++
+   @Test
+   public void isExactlyInstanceOf_should_check_the_original_iterator() {
+     assertThat(new StringIterator()).isExactlyInstanceOf(StringIterator.class);
+   }
+ 
+   @Test
+   public void isNotExactlyInstanceOf_should_check_the_original_iterator() {
+     assertThat(stringIterator).isNotExactlyInstanceOf(Iterator.class);
+     try {
+       assertThat(stringIterator).isNotExactlyInstanceOf(StringIterator.class);
+     } catch (AssertionError e) {
+       // ok
+       return;
+     }
+     failBecauseExpectedAssertionErrorWasNotThrown();
+   }
+-  
++
+   @Test
+   public void isNotInstanceOf_should_check_the_original_iterator() {
+     assertThat(stringIterator).isNotInstanceOf(LazyIterable.class);
+   }
+-  
++
+   @Test
+   public void isNotInstanceOfAny_should_check_the_original_iterator() {
+     assertThat(stringIterator).isNotInstanceOfAny(LazyIterable.class, String.class);
+   }
+-  
++
+   @Test
+   public void isNotOfAnyClassIn_should_check_the_original_iterator() {
+     assertThat(stringIterator).isNotOfAnyClassIn(LazyIterable.class, String.class);
+   }
+-  
++
+   @Test
+   public void isSameAs_should_check_the_original_iterator_without_consuming_it() {
+     Iterator<?> iterator = mock(Iterator.class);
+     assertThat(iterator).isSameAs(iterator);
+     verifyZeroInteractions(iterator);
+   }
+-  
++
+   @Test
+   public void isNotSameAs_should_check_the_original_iterator_without_consuming_it() {
+     Iterator<?> iterator = mock(Iterator.class);
+     try{
+       assertThat(iterator).isNotSameAs(iterator);
+     } catch(AssertionError e){
+       verifyZeroInteractions(iterator);
+       return;
+     }
+     Assertions.fail("Expected assertionError, because assert notSame on same iterator.");
+   }
+-  
++
+   @Test
+   public void iterator_can_be_asserted_twice_even_though_it_can_be_iterated_only_once() {
+     Iterator<String> names = asList("Luke", "Leia").iterator();
+     assertThat(names).containsExactly("Luke", "Leia").containsExactly("Luke", "Leia");
+   }
+-  
++
+   @Test
+   public void startsWith_should_work_with_infinite_iterators() {
+     assertThat(stringIterator).startsWith("", "");
+   }
+-  
++
+   @Test
+   public void should_throw_error_if_sequence_is_null() {
+     thrown.expectNullPointerException(valuesToLookForIsNull());
+     assertThat(stringIterator).startsWith((String[])null);
+   }
+ 
+   @Test
+   public void should_pass_if_actual_and_sequence_are_empty() {
+-    Iterator<?> empty = asList().iterator();
++    Iterator<Object> empty = asList().iterator();
+     assertThat(empty).startsWith(emptyArray());
+   }
+ 
+   @Test
+   public void should_fail_if_sequence_to_look_for_is_empty_and_actual_is_not() {
+     thrown.expect(AssertionError.class);
+-    Iterator<?> names = asList("Luke", "Leia").iterator();
+-    assertThat(names).startsWith(emptyArray());
++    Iterator<String> names = asList("Luke", "Leia").iterator();
++    assertThat(names).startsWith(new String[0]);
+   }
+ 
+   // startsWith tests
+-  
++
+   @Test
+   public void should_fail_if_actual_is_null() {
+     thrown.expectAssertionError(actualIsNull());
+-    Iterator<?> names = null;
++    Iterator<Object> names = null;
+     assertThat(names).startsWith(emptyArray());
+   }
+ 
+   @Test
+   public void should_fail_if_sequence_is_bigger_than_actual() {
+     thrown.expect(AssertionError.class);
+     String[] sequence = { "Luke", "Leia", "Obi-Wan", "Han", "C-3PO", "R2-D2", "Anakin" };
+     Iterator<String> names = asList("Luke", "Leia").iterator();
+@@ -263,10 +266,10 @@
+   }
+ 
+   @Test
+   public void should_pass_if_actual_and_sequence_are_equal_according_to_custom_comparison_strategy() {
+     Iterator<String> names = asList("Luke", "Leia").iterator();
+     String[] sequence = { "LUKE", "lEIA" };
+     assertThat(names).usingElementComparator(CaseInsensitiveStringComparator.instance).startsWith(sequence);
+   }
+-    
++
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -180,49 +180,49 @@
+   @Test
+   public void should_pass_if_actual_and_sequence_are_empty() {
+     Iterator<?> empty = asList().iterator();
+     assertThat(empty).startsWith(emptyArray());
+   }
+ 
+   @Test
+   public void should_fail_if_sequence_to_look_for_is_empty_and_actual_is_not() {
+-    thrown.expect(AssertionError.class);
++    thrown.expectAssertionError();
+     Iterator<?> names = asList("Luke", "Leia").iterator();
+     assertThat(names).startsWith(emptyArray());
+   }
+ 
+   // startsWith tests
+   
+   @Test
+   public void should_fail_if_actual_is_null() {
+     thrown.expectAssertionError(actualIsNull());
+     Iterator<?> names = null;
+     assertThat(names).startsWith(emptyArray());
+   }
+ 
+   @Test
+   public void should_fail_if_sequence_is_bigger_than_actual() {
+-    thrown.expect(AssertionError.class);
++    thrown.expectAssertionError();
+     String[] sequence = { "Luke", "Leia", "Obi-Wan", "Han", "C-3PO", "R2-D2", "Anakin" };
+     Iterator<String> names = asList("Luke", "Leia").iterator();
+     assertThat(names).startsWith(sequence);
+   }
+ 
+   @Test
+   public void should_fail_if_actual_does_not_start_with_sequence() {
+-    thrown.expect(AssertionError.class);
++    thrown.expectAssertionError();
+     String[] sequence = { "Han", "C-3PO" };
+     Iterator<String> names = asList("Luke", "Leia").iterator();
+     assertThat(names).startsWith(sequence);
+   }
+ 
+   @Test
+   public void should_fail_if_actual_starts_with_first_elements_of_sequence_only() {
+-    thrown.expect(AssertionError.class);
++    thrown.expectAssertionError();
+     String[] sequence = { "Luke", "Yoda" };
+     Iterator<String> names = asList("Luke", "Leia").iterator();
+     assertThat(names).startsWith(sequence);
+   }
+ 
+   @Test
+   public void should_pass_if_actual_starts_with_sequence() {
+     Iterator<String> names = asList("Luke", "Leia", "Yoda").iterator();
+@@ -236,25 +236,25 @@
+   }
+ 
+   // ------------------------------------------------------------------------------------------------------------------
+   // tests using a custom comparison strategy
+   // ------------------------------------------------------------------------------------------------------------------
+ 
+   @Test
+   public void should_fail_if_actual_does_not_start_with_sequence_according_to_custom_comparison_strategy() {
+-    thrown.expect(AssertionError.class);
++    thrown.expectAssertionError();
+     Iterator<String> names = asList("Luke", "Leia").iterator();
+     String[] sequence = { "Han", "C-3PO" };
+     assertThat(names).usingElementComparator(CaseInsensitiveStringComparator.instance).startsWith(sequence);
+   }
+ 
+   @Test
+   public void should_fail_if_actual_starts_with_first_elements_of_sequence_only_according_to_custom_comparison_strategy() {
+-    thrown.expect(AssertionError.class);
++    thrown.expectAssertionError();
+     Iterator<String> names = asList("Luke", "Leia").iterator();
+     String[] sequence = { "Luke", "Obi-Wan", "Han" };
+     assertThat(names).usingElementComparator(CaseInsensitiveStringComparator.instance).startsWith(sequence);
+   }
+ 
+   @Test
+   public void should_pass_if_actual_starts_with_sequence_according_to_custom_comparison_strategy() {
+     Iterator<String> names = asList("Luke", "Leia").iterator();
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/8: src/test/java/org/assertj/core/api/iterable/IterableAssert_extracting_Test.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -7,66 +7,78 @@
+  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+  * specific language governing permissions and limitations under the License.
+  *
+  * Copyright 2012-2017 the original author or authors.
+  */
+ package org.assertj.core.api.iterable;
+ 
++import static org.assertj.core.api.Assertions.*;
++import static org.assertj.core.test.ExpectedException.*;
++import static org.assertj.core.util.Lists.*;
++import static org.assertj.core.data.TolkienCharacter.Race.*;
++
++import java.util.ArrayList;
++import java.util.Comparator;
++import java.util.List;
++
+ import org.assertj.core.api.AbstractIterableAssert;
++import org.assertj.core.data.TolkienCharacter;
+ import org.assertj.core.extractor.Extractors;
+ import org.assertj.core.groups.Tuple;
+ import org.assertj.core.test.Employee;
+ import org.assertj.core.test.ExpectedException;
+ import org.assertj.core.test.Name;
+ import org.assertj.core.util.introspection.IntrospectionError;
+ import org.junit.Before;
+ import org.junit.Rule;
+ import org.junit.Test;
+ 
+-import java.util.Comparator;
+-
+-import static org.assertj.core.api.Assertions.assertThat;
+-import static org.assertj.core.api.Assertions.tuple;
+-import static org.assertj.core.test.ExpectedException.none;
+-import static org.assertj.core.util.Lists.newArrayList;
+-
+ /**
+  * Tests for <code>{@link AbstractIterableAssert#extracting(String)}</code> and
+  * <code>{@link AbstractIterableAssert#extracting(String...)}</code>.
+  * 
+  * @author Joel Costigliola
+  * @author Mateusz Haligowski
+  */
+ public class IterableAssert_extracting_Test {
+ 
+   private Employee yoda;
+   private Employee luke;
+   private Iterable<Employee> employees;
++  private final List<TolkienCharacter> fellowshipOfTheRing = new ArrayList<>();
+ 
+   private static final Extractor<Employee, String> firstName = new Extractor<Employee, String>() {
+-    @Override
+-    public String extract(Employee input) {
+-      return input.getName().getFirst();
+-    }
++	@Override
++	public String extract(Employee input) {
++	  return input.getName().getFirst();
++	}
+   };
+-  
++
+   private static final Extractor<Employee, Integer> age = new Extractor<Employee, Integer>() {
+-    @Override
+-    public Integer extract(Employee input) {
+-      return input.getAge();
+-    }
++	@Override
++	public Integer extract(Employee input) {
++	  return input.getAge();
++	}
+   };
+-  
++
+   @Before
+   public void setUp() {
+-    yoda = new Employee(1L, new Name("Yoda"), 800);
+-    luke = new Employee(2L, new Name("Luke", "Skywalker"), 26);
+-    employees = newArrayList(yoda, luke);
++	yoda = new Employee(1L, new Name("Yoda"), 800);
++	luke = new Employee(2L, new Name("Luke", "Skywalker"), 26);
++	employees = newArrayList(yoda, luke);
++	fellowshipOfTheRing.add(TolkienCharacter.of("Frodo", 33, HOBBIT));
++	fellowshipOfTheRing.add(TolkienCharacter.of("Sam", 38, HOBBIT));
++	fellowshipOfTheRing.add(TolkienCharacter.of("Gandalf", 2020, MAIA));
++	fellowshipOfTheRing.add(TolkienCharacter.of("Legolas", 1000, ELF));
++	fellowshipOfTheRing.add(TolkienCharacter.of("Pippin", 28, HOBBIT));
++	fellowshipOfTheRing.add(TolkienCharacter.of("Gimli", 139, DWARF));
++	fellowshipOfTheRing.add(TolkienCharacter.of("Aragorn", 87, MAN));
++	fellowshipOfTheRing.add(TolkienCharacter.of("Boromir", 37, MAN));
+   }
+ 
+   @Rule
+   public ExpectedException thrown = none();
+ 
+   @Test
+   public void should_allow_assertions_on_property_values_extracted_from_given_iterable() {
+     assertThat(employees).extracting("age")
+@@ -134,18 +146,18 @@
+       public int compare(Name o1, Name o2) {
+         return o1.getFirst().compareTo(o2.getFirst());
+       }
+     }).containsOnly(new Name("Yoda"), new Name("Luke", "Skywalker"));
+   }
+ 
+   @Test
+   public void should_throw_error_if_no_property_nor_field_with_given_name_can_be_extracted() {
+-    thrown.expect(IntrospectionError.class);
+-    assertThat(employees).extracting("unknown");
++	thrown.expect(IntrospectionError.class);
++	assertThat(employees).extracting("unknown");
+   }
+ 
+   @Test
+   public void should_allow_assertions_on_multiple_extracted_values_from_given_iterable() {
+     assertThat(employees).extracting("name.first", "age", "id").containsOnly(tuple("Yoda", 800, 1L),
+                                                                              tuple("Luke", 26, 2L));
+   }
+ 
+@@ -153,30 +165,129 @@
+   public void should_throw_error_if_one_property_or_field_can_not_be_extracted() {
+     thrown.expect(IntrospectionError.class);
+     assertThat(employees).extracting("unknown", "age", "id")
+                          .containsOnly(tuple("Yoda", 800, 1L), tuple("Luke", 26, 2L));
+   }
+ 
+   @Test
+   public void should_allow_extracting_single_values_using_extractor() {
+-    assertThat(employees).extracting(firstName).containsOnly("Yoda", "Luke");
+-    assertThat(employees).extracting(age).containsOnly(26, 800);
++	assertThat(employees).extracting(firstName).containsOnly("Yoda", "Luke");
++	assertThat(employees).extracting(age).containsOnly(26, 800);
+   }
+ 
+   @Test
+   public void should_allow_extracting_multiple_values_using_extractor() {
+     assertThat(employees).extracting(new Extractor<Employee, Tuple>() {
+       @Override
+       public Tuple extract(Employee input) {
+         return new Tuple(input.getName().getFirst(), input.getAge(), input.id);
+       }
+     }).containsOnly(tuple("Yoda", 800, 1L), tuple("Luke", 26, 2L));
+   }
+ 
+-  @Test
++ @Test
+   public void should_allow_extracting_by_toString_method() {
+     assertThat(employees).extracting(Extractors.toStringMethod()).containsOnly(
+         "Employee[id=1, name=Name[first='Yoda', last='null'], age=800]",
+         "Employee[id=2, name=Name[first='Luke', last='Skywalker'], age=26]");
+   }
+-  
++    
++  @Test
++  public void should_allow_assertions_by_using_function_extracted_from_given_iterable() throws Exception {
++	assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName)
++	                               .contains("Boromir", "Gandalf", "Frodo")
++	                               .doesNotContain("Sauron", "Elrond");
++  }
++
++  @Test
++  public void should_throw_error_if_function_fails() throws Exception {
++	RuntimeException thrown = new RuntimeException();
++	assertThatThrownBy(() -> assertThat(fellowshipOfTheRing).extracting(e -> {
++	  throw thrown;
++	}).isEqualTo(thrown));
++  }
++
++  @Test
++  public void should_allow_assertions_on_two_extracted_values_from_given_iterable_by_using_a_function() {
++
++	assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName, 
++	                                           TolkienCharacter::getAge)
++	                               .containsOnly(tuple("Frodo", 33),
++	                                             tuple("Sam", 38),
++	                                             tuple("Gandalf", 2020),
++	                                             tuple("Legolas", 1000),
++	                                             tuple("Pippin", 28),
++	                                             tuple("Gimli", 139),
++	                                             tuple("Aragorn", 87),
++	                                             tuple("Boromir", 37));
++  }
++
++  @Test
++  public void should_allow_assertions_on_three_extracted_values_from_given_iterable_by_using_a_function() {
++
++	assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName,
++	                                           TolkienCharacter::getAge,
++	                                           TolkienCharacter::getRace)
++	                               .containsOnly(tuple("Frodo", 33, HOBBIT),
++	                                             tuple("Sam", 38, HOBBIT),
++	                                             tuple("Gandalf", 2020, MAIA),
++	                                             tuple("Legolas", 1000, ELF),
++	                                             tuple("Pippin", 28, HOBBIT),
++	                                             tuple("Gimli", 139, DWARF),
++	                                             tuple("Aragorn", 87, MAN),
++	                                             tuple("Boromir", 37, MAN));
++  }
++
++  @Test
++  public void should_allow_assertions_on_four_extracted_values_from_given_iterable_by_using_a_function() {
++
++	assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName,
++	                                           TolkienCharacter::getAge,
++	                                           TolkienCharacter::getRace,
++	                                           character -> character.name)
++	                               .containsOnly(tuple("Frodo", 33, HOBBIT, "Frodo"),
++	                                             tuple("Sam", 38, HOBBIT, "Sam"),
++	                                             tuple("Gandalf", 2020, MAIA, "Gandalf"),
++	                                             tuple("Legolas", 1000, ELF, "Legolas"),
++	                                             tuple("Pippin", 28, HOBBIT, "Pippin"),
++	                                             tuple("Gimli", 139, DWARF, "Gimli"),
++	                                             tuple("Aragorn", 87, MAN, "Aragorn"),
++	                                             tuple("Boromir", 37, MAN, "Boromir"));
++  }
++
++  @Test
++  public void should_allow_assertions_on_five_extracted_values_from_given_iterable_by_using_a_function() {
++
++	assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName,
++	                                           TolkienCharacter::getAge,
++	                                           TolkienCharacter::getRace,
++	                                           character -> character.name,
++	                                           character -> character.age)
++	                               .containsOnly(tuple("Frodo", 33, HOBBIT, "Frodo", 33),
++	                                             tuple("Sam", 38, HOBBIT, "Sam", 38),
++	                                             tuple("Gandalf", 2020, MAIA, "Gandalf", 2020),
++	                                             tuple("Legolas", 1000, ELF, "Legolas", 1000),
++	                                             tuple("Pippin", 28, HOBBIT, "Pippin", 28),
++	                                             tuple("Gimli", 139, DWARF, "Gimli", 139),
++	                                             tuple("Aragorn", 87, MAN, "Aragorn", 87),
++	                                             tuple("Boromir", 37, MAN, "Boromir", 37));
++  }
++
++  @Test
++  public void should_allow_assertions_on_more_than_five_extracted_values_from_given_iterable_by_using_a_function() {
++
++	assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName,
++	                                           TolkienCharacter::getAge,
++	                                           TolkienCharacter::getRace,
++	                                           character -> character.name,
++	                                           character -> character.age,
++	                                           character -> character.race)
++	                               .containsOnly(tuple("Frodo", 33, HOBBIT, "Frodo", 33, HOBBIT),
++	                                             tuple("Sam", 38, HOBBIT, "Sam", 38, HOBBIT),
++	                                             tuple("Gandalf", 2020, MAIA, "Gandalf", 2020, MAIA),
++	                                             tuple("Legolas", 1000, ELF, "Legolas", 1000, ELF),
++	                                             tuple("Pippin", 28, HOBBIT, "Pippin", 28, HOBBIT),
++	                                             tuple("Gimli", 139, DWARF, "Gimli", 139, DWARF),
++	                                             tuple("Aragorn", 87, MAN, "Aragorn", 87, MAN),
++	                                             tuple("Boromir", 37, MAN, "Boromir", 37, MAN));
++  }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,17 +13,16 @@
+ package org.assertj.core.api.iterable;
+ 
+ import org.assertj.core.api.AbstractIterableAssert;
+ import org.assertj.core.extractor.Extractors;
+ import org.assertj.core.groups.Tuple;
+ import org.assertj.core.test.Employee;
+ import org.assertj.core.test.ExpectedException;
+ import org.assertj.core.test.Name;
+-import org.assertj.core.util.introspection.IntrospectionError;
+ import org.junit.Before;
+ import org.junit.Rule;
+ import org.junit.Test;
+ 
+ import java.util.Comparator;
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.tuple;
+@@ -134,29 +133,29 @@
+       public int compare(Name o1, Name o2) {
+         return o1.getFirst().compareTo(o2.getFirst());
+       }
+     }).containsOnly(new Name("Yoda"), new Name("Luke", "Skywalker"));
+   }
+ 
+   @Test
+   public void should_throw_error_if_no_property_nor_field_with_given_name_can_be_extracted() {
+-    thrown.expect(IntrospectionError.class);
++    thrown.expectIntrospectionError();
+     assertThat(employees).extracting("unknown");
+   }
+ 
+   @Test
+   public void should_allow_assertions_on_multiple_extracted_values_from_given_iterable() {
+     assertThat(employees).extracting("name.first", "age", "id").containsOnly(tuple("Yoda", 800, 1L),
+                                                                              tuple("Luke", 26, 2L));
+   }
+ 
+   @Test
+   public void should_throw_error_if_one_property_or_field_can_not_be_extracted() {
+-    thrown.expect(IntrospectionError.class);
++    thrown.expectIntrospectionError();
+     assertThat(employees).extracting("unknown", "age", "id")
+                          .containsOnly(tuple("Yoda", 800, 1L), tuple("Luke", 26, 2L));
+   }
+ 
+   @Test
+   public void should_allow_extracting_single_values_using_extractor() {
+     assertThat(employees).extracting(firstName).containsOnly("Yoda", "Luke");
+     assertThat(employees).extracting(age).containsOnly(26, 800);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -145,18 +145,18 @@
+       public int compare(Name o1, Name o2) {
+         return o1.getFirst().compareTo(o2.getFirst());
+       }
+     }).containsOnly(new Name("Yoda"), new Name("Luke", "Skywalker"));
+   }
+ 
+   @Test
+   public void should_throw_error_if_no_property_nor_field_with_given_name_can_be_extracted() {
+-	thrown.expectIntrospectionError();
+-	assertThat(employees).extracting("unknown");
++    thrown.expectIntrospectionError();
++    assertThat(employees).extracting("unknown");
+   }
+ 
+   @Test
+   public void should_allow_assertions_on_multiple_extracted_values_from_given_iterable() {
+     assertThat(employees).extracting("name.first", "age", "id").containsOnly(tuple("Yoda", 800, 1L),
+                                                                              tuple("Luke", 26, 2L));
+   }
+ 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/8: src/test/java/org/assertj/core/api/iterable/IterableAssert_filteredOn_Test.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -66,16 +66,22 @@
+   }
+ 
+   @Test
+   public void should_filter_iterator_under_test_on_property_values() {
+     assertThat(employees.iterator()).filteredOn("age", 800).containsOnly(yoda, obiwan);
+   }
+ 
+   @Test
++  public void should_filter_stream_under_test_on_property_values() {
++    assertThat(employees.stream()).filteredOn("age", 800)
++                                  .containsOnly(yoda, obiwan);
++  }
++
++  @Test
+   public void should_filter_iterable_under_test_on_nested_property_values() {
+     assertThat(employees).filteredOn("name.first", "Luke").containsOnly(luke);
+   }
+ 
+   @Test
+   public void should_filter_iterable_under_test_on_nested_mixed_property_and_field_values() {
+     assertThat(employees).filteredOn("name.last", "Vader").isEmpty();
+     assertThat(employees).filteredOn("name.last", "Skywalker").containsOnly(luke);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -16,17 +16,16 @@
+ import static org.assertj.core.api.Assertions.in;
+ import static org.assertj.core.api.Assertions.not;
+ import static org.assertj.core.api.Assertions.setAllowExtractingPrivateFields;
+ import static org.assertj.core.util.Sets.newHashSet;
+ 
+ import java.util.Set;
+ 
+ import org.assertj.core.test.Employee;
+-import org.assertj.core.util.introspection.IntrospectionError;
+ import org.junit.Test;
+ 
+ public class IterableAssert_filteredOn_Test extends IterableAssert_filtered_baseTest {
+ 
+   @Test
+   public void should_filter_iterable_under_test_on_property_values() {
+     assertThat(employees).filteredOn("age", 800).containsOnly(yoda, obiwan);
+   }
+@@ -51,17 +50,17 @@
+   @Test
+   public void should_filter_iterable_under_test_on_private_field_values() {
+     assertThat(employees).filteredOn("city", "New York").containsOnly(yoda, obiwan, luke, noname);
+     assertThat(employees).filteredOn("city", "Paris").isEmpty();
+   }
+ 
+   @Test
+   public void should_fail_if_filter_is_on_private_field_and_reading_private_field_is_disabled() {
+-    thrown.expect(IntrospectionError.class);
++    thrown.expectIntrospectionError();
+     setAllowExtractingPrivateFields(false);
+     try {
+       assertThat(employees).filteredOn("city", "New York").isEmpty();
+     } finally {
+       setAllowExtractingPrivateFields(true);
+     }
+   }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/8: src/test/java/org/assertj/core/api/iterable/IterableAssert_filteredOn_in_Test.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -56,16 +56,22 @@
+   }
+ 
+   @Test
+   public void should_filter_iterator_under_test_on_property_values() {
+     assertThat(employees.iterator()).filteredOn("age", in(800)).containsOnly(yoda, obiwan);
+   }
+ 
+   @Test
++  public void should_filter_stream_under_test_on_property_values() {
++    assertThat(employees.stream()).filteredOn("age", in(800))
++                                  .containsOnly(yoda, obiwan);
++  }
++
++  @Test
+   public void should_filter_iterable_under_test_on_nested_property_values() {
+     assertThat(employees).filteredOn("name.first", in("Luke")).containsOnly(luke);
+   }
+ 
+   @Test
+   public void should_filter_iterable_under_test_on_nested_mixed_property_and_field_values() {
+     assertThat(employees).filteredOn("name.last", in("Vader")).isEmpty();
+     assertThat(employees).filteredOn("name.last", in("Skywalker")).containsOnly(luke);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -11,17 +11,16 @@
+  * Copyright 2012-2017 the original author or authors.
+  */
+ package org.assertj.core.api.iterable;
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.in;
+ import static org.assertj.core.api.Assertions.setAllowExtractingPrivateFields;
+ 
+-import org.assertj.core.util.introspection.IntrospectionError;
+ import org.junit.Test;
+ 
+ public class IterableAssert_filteredOn_in_Test extends IterableAssert_filtered_baseTest {
+ 
+   @Test
+   public void should_apply_in_filter() {
+     assertThat(employees).filteredOn("age", in(800, 26)).containsOnly(yoda, obiwan, luke);
+     assertThat(employees).filteredOn("age", in(800)).containsOnly(yoda, obiwan);
+@@ -41,17 +40,17 @@
+   @Test
+   public void should_filter_iterable_under_test_on_private_field_values() {
+     assertThat(employees).filteredOn("city", in("New York")).containsOnly(yoda, obiwan, luke, noname);
+     assertThat(employees).filteredOn("city", in("Paris")).isEmpty();
+   }
+ 
+   @Test
+   public void should_fail_if_filter_is_on_private_field_and_reading_private_field_is_disabled() {
+-    thrown.expect(IntrospectionError.class);
++    thrown.expectIntrospectionError();
+     setAllowExtractingPrivateFields(false);
+     try {
+       assertThat(employees).filteredOn("city", in("New York")).isEmpty();
+     } finally {
+       setAllowExtractingPrivateFields(true);
+     }
+   }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/8: src/test/java/org/assertj/core/api/iterable/IterableAssert_filteredOn_notIn_Test.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -58,16 +58,22 @@
+   }
+ 
+   @Test
+   public void should_filter_iterator_under_test_on_property_values() {
+     assertThat(employees.iterator()).filteredOn("age", notIn(800)).containsOnly(luke, noname);
+   }
+ 
+   @Test
++  public void should_filter_stream_under_test_on_property_values() {
++    assertThat(employees.stream()).filteredOn("age", notIn(800))
++                                  .containsOnly(luke, noname);
++  }
++
++  @Test
+   public void should_filter_iterable_under_test_on_nested_property_values() {
+     assertThat(employees).filteredOn("name.first", notIn("Luke")).containsOnly(yoda, obiwan, noname);
+   }
+ 
+   @Test
+   public void should_filter_iterable_under_test_on_nested_mixed_property_and_field_values() {
+     assertThat(employees).filteredOn("name.last", notIn("Skywalker")).containsOnly(yoda, obiwan, noname);
+     assertThat(employees).filteredOn("name.last", notIn("Skywalker", null)).isEmpty();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -11,17 +11,16 @@
+  * Copyright 2012-2017 the original author or authors.
+  */
+ package org.assertj.core.api.iterable;
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.notIn;
+ import static org.assertj.core.api.Assertions.setAllowExtractingPrivateFields;
+ 
+-import org.assertj.core.util.introspection.IntrospectionError;
+ import org.junit.Test;
+ 
+ public class IterableAssert_filteredOn_notIn_Test extends IterableAssert_filtered_baseTest {
+ 
+   @Test
+   public void should_apply_notIn_filter() {
+     assertThat(employees).filteredOn("age", notIn(800, 10)).containsOnly(luke);
+     assertThat(employees).filteredOn("age", notIn(800)).containsOnly(luke, noname);
+@@ -43,17 +42,17 @@
+   public void should_filter_iterable_under_test_on_private_field_values() {
+     assertThat(employees).filteredOn("city", notIn("Paris")).containsOnly(yoda, obiwan, luke, noname);
+     assertThat(employees).filteredOn("city", notIn("New York")).isEmpty();
+     assertThat(employees).filteredOn("city", notIn("New York", "Paris")).isEmpty();
+   }
+ 
+   @Test
+   public void should_fail_if_filter_is_on_private_field_and_reading_private_field_is_disabled() {
+-    thrown.expect(IntrospectionError.class);
++    thrown.expectIntrospectionError();
+     setAllowExtractingPrivateFields(false);
+     try {
+       assertThat(employees).filteredOn("city", notIn("New York")).isEmpty();
+     } finally {
+       setAllowExtractingPrivateFields(true);
+     }
+   }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/8: src/test/java/org/assertj/core/api/iterable/IterableAssert_filteredOn_not_Test.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -55,16 +55,22 @@
+   }
+ 
+   @Test
+   public void should_filter_iterator_under_test_on_property_values() {
+     assertThat(employees.iterator()).filteredOn("age", not(800)).containsOnly(luke, noname);
+   }
+ 
+   @Test
++  public void should_filter_stream_under_test_on_property_values() {
++    assertThat(employees.stream()).filteredOn("age", not(800))
++                                  .containsOnly(luke, noname);
++  }
++
++  @Test
+   public void should_filter_iterable_under_test_on_nested_property_values() {
+     assertThat(employees).filteredOn("name.first", not("Luke")).containsOnly(yoda, obiwan, noname);
+   }
+ 
+   @Test
+   public void should_filter_iterable_under_test_on_nested_mixed_property_and_field_values() {
+     assertThat(employees).filteredOn("name.last", not("Vader")).containsOnly(luke, yoda, obiwan, noname);
+     assertThat(employees).filteredOn("name.last", not("Skywalker")).containsOnly(yoda, obiwan, noname);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -11,17 +11,16 @@
+  * Copyright 2012-2017 the original author or authors.
+  */
+ package org.assertj.core.api.iterable;
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.not;
+ import static org.assertj.core.api.Assertions.setAllowExtractingPrivateFields;
+ 
+-import org.assertj.core.util.introspection.IntrospectionError;
+ import org.junit.Test;
+ 
+ public class IterableAssert_filteredOn_not_Test extends IterableAssert_filtered_baseTest {
+ 
+   @Test
+   public void should_apply_not_filter() {
+     assertThat(employees).filteredOn("age", not(800)).containsOnly(luke, noname);
+   }
+@@ -40,17 +39,17 @@
+   @Test
+   public void should_filter_iterable_under_test_on_private_field_values() {
+     assertThat(employees).filteredOn("city", not("New York")).isEmpty();
+     assertThat(employees).filteredOn("city", not("Paris")).containsOnly(yoda, obiwan, luke, noname);
+   }
+ 
+   @Test
+   public void should_fail_if_filter_is_on_private_field_and_reading_private_field_is_disabled() {
+-    thrown.expect(IntrospectionError.class);
++    thrown.expectIntrospectionError();
+     setAllowExtractingPrivateFields(false);
+     try {
+       assertThat(employees).filteredOn("city", not("New York"));
+     } finally {
+       setAllowExtractingPrivateFields(true);
+     }
+   }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/8: src/test/java/org/assertj/core/api/iterable/IterableAssert_flatExtracting_with_multiple_extractors_Test.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -8,16 +8,21 @@
+  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+  * specific language governing permissions and limitations under the License.
+  *
+  * Copyright 2012-2017 the original author or authors.
+  */
+ package org.assertj.core.api.iterable;
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.data.TolkienCharacter.Race.DWARF;
++import static org.assertj.core.data.TolkienCharacter.Race.ELF;
++import static org.assertj.core.data.TolkienCharacter.Race.HOBBIT;
++import static org.assertj.core.data.TolkienCharacter.Race.MAIA;
++import static org.assertj.core.data.TolkienCharacter.Race.MAN;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+ import org.assertj.core.data.TolkienCharacter;
+ import org.assertj.core.test.ExpectedException;
+ import org.junit.Before;
+ import org.junit.Rule;
+@@ -25,47 +30,62 @@
+ 
+ public class IterableAssert_flatExtracting_with_multiple_extractors_Test {
+ 
+   @Rule
+   public ExpectedException thrown = ExpectedException.none();
+ 
+   private final List<TolkienCharacter> fellowshipOfTheRing = new ArrayList<>();
+ 
++  private static final Extractor<TolkienCharacter, String> name = TolkienCharacter::getName;
++
++  private static final Extractor<TolkienCharacter, Integer> age = TolkienCharacter::getAge;
++
+   @Before
+   public void setUp() {
+-    fellowshipOfTheRing.add(TolkienCharacter.of("Frodo", 33, TolkienCharacter.Race.HOBBIT));
+-    fellowshipOfTheRing.add(TolkienCharacter.of("Sam", 38, TolkienCharacter.Race.HOBBIT));
+-    fellowshipOfTheRing.add(TolkienCharacter.of("Gandalf", 2020, TolkienCharacter.Race.MAIA));
+-    fellowshipOfTheRing.add(TolkienCharacter.of("Legolas", 1000, TolkienCharacter.Race.ELF));
+-    fellowshipOfTheRing.add(TolkienCharacter.of("Pippin", 28, TolkienCharacter.Race.HOBBIT));
+-    fellowshipOfTheRing.add(TolkienCharacter.of("Gimli", 139, TolkienCharacter.Race.DWARF));
+-    fellowshipOfTheRing.add(TolkienCharacter.of("Aragorn", 87, TolkienCharacter.Race.MAN));
+-    fellowshipOfTheRing.add(TolkienCharacter.of("Boromir", 37, TolkienCharacter.Race.MAN));
++    fellowshipOfTheRing.add(TolkienCharacter.of("Frodo", 33, HOBBIT));
++    fellowshipOfTheRing.add(TolkienCharacter.of("Sam", 38, HOBBIT));
++    fellowshipOfTheRing.add(TolkienCharacter.of("Gandalf", 2020, MAIA));
++    fellowshipOfTheRing.add(TolkienCharacter.of("Legolas", 1000, ELF));
++    fellowshipOfTheRing.add(TolkienCharacter.of("Pippin", 28, HOBBIT));
++    fellowshipOfTheRing.add(TolkienCharacter.of("Gimli", 139, DWARF));
++    fellowshipOfTheRing.add(TolkienCharacter.of("Aragorn", 87, MAN));
++    fellowshipOfTheRing.add(TolkienCharacter.of("Boromir", 37, MAN));
+   }
+ 
+   @Test
+   public void should_allow_assertions_on_multiple_extracted_values_flattened_in_a_single_list() {
+     assertThat(fellowshipOfTheRing).flatExtracting("age", "name")
+                                    .as("extract ages and names")
+                                    .containsSequence(33, "Frodo", 38, "Sam");
++
++    assertThat(fellowshipOfTheRing).flatExtracting(age, name)
++                                   .as("extract ages and names")
++                                   .contains(33, "Frodo", 38, "Sam");
+   }
+ 
+   @Test
+   public void should_throw_IllegalArgumentException_when_no_fields_or_properties_are_specified() {
+     thrown.expect(IllegalArgumentException.class);
+-    assertThat(fellowshipOfTheRing).flatExtracting();
++    assertThat(fellowshipOfTheRing).flatExtracting(new String[0]);
+   }
+ 
+   @Test
+   public void should_throw_IllegalArgumentException_when_null_fields_or_properties_vararg() {
+     thrown.expect(IllegalArgumentException.class);
+     String[] fields = null;
+     assertThat(fellowshipOfTheRing).flatExtracting(fields);
+   }
+-  
++
+   @Test
+   public void should_throw_IllegalArgumentException_when_extracting_from_null() {
+     thrown.expect(IllegalArgumentException.class);
+     fellowshipOfTheRing.add(null);
+     assertThat(fellowshipOfTheRing).flatExtracting("age", "name");
+   }
++
++  @Test
++  public void should_throw_IllegalArgumentException_when_extracting_from_null_extractors() {
++    thrown.expect(NullPointerException.class);
++    fellowshipOfTheRing.add(null);
++    assertThat(fellowshipOfTheRing).flatExtracting(age, name);
++  }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -46,26 +46,26 @@
+   public void should_allow_assertions_on_multiple_extracted_values_flattened_in_a_single_list() {
+     assertThat(fellowshipOfTheRing).flatExtracting("age", "name")
+                                    .as("extract ages and names")
+                                    .containsSequence(33, "Frodo", 38, "Sam");
+   }
+ 
+   @Test
+   public void should_throw_IllegalArgumentException_when_no_fields_or_properties_are_specified() {
+-    thrown.expect(IllegalArgumentException.class);
++    thrown.expectIllegalArgumentException();
+     assertThat(fellowshipOfTheRing).flatExtracting();
+   }
+ 
+   @Test
+   public void should_throw_IllegalArgumentException_when_null_fields_or_properties_vararg() {
+-    thrown.expect(IllegalArgumentException.class);
++    thrown.expectIllegalArgumentException();
+     String[] fields = null;
+     assertThat(fellowshipOfTheRing).flatExtracting(fields);
+   }
+   
+   @Test
+   public void should_throw_IllegalArgumentException_when_extracting_from_null() {
+-    thrown.expect(IllegalArgumentException.class);
++    thrown.expectIllegalArgumentException();
+     fellowshipOfTheRing.add(null);
+     assertThat(fellowshipOfTheRing).flatExtracting("age", "name");
+   }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 8/8: src/test/java/org/assertj/core/api/objectarray/ObjectArrayAssert_extracting_Test.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -7,50 +7,70 @@
+  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+  * specific language governing permissions and limitations under the License.
+  *
+  * Copyright 2012-2017 the original author or authors.
+  */
+ package org.assertj.core.api.objectarray;
+ 
+-import static org.assertj.core.api.Assertions.*;
+-import static org.assertj.core.test.ExpectedException.*;
+-import static org.assertj.core.util.Arrays.*;
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.tuple;
++import static org.assertj.core.data.TolkienCharacter.Race.DWARF;
++import static org.assertj.core.data.TolkienCharacter.Race.ELF;
++import static org.assertj.core.data.TolkienCharacter.Race.HOBBIT;
++import static org.assertj.core.data.TolkienCharacter.Race.MAIA;
++import static org.assertj.core.data.TolkienCharacter.Race.MAN;
++import static org.assertj.core.test.ExpectedException.none;
++import static org.assertj.core.util.Arrays.array;
++
++import java.util.Arrays;
++import java.util.List;
+ 
+ import org.assertj.core.api.AbstractIterableAssert;
+ import org.assertj.core.api.iterable.Extractor;
++import org.assertj.core.data.TolkienCharacter;
+ import org.assertj.core.test.Employee;
+ import org.assertj.core.test.ExpectedException;
+ import org.assertj.core.test.Name;
+ import org.assertj.core.util.introspection.IntrospectionError;
+-import org.junit.BeforeClass;
++import org.junit.Before;
+ import org.junit.Rule;
+ import org.junit.Test;
+ 
+ /**
+  * Tests for <code>{@link AbstractIterableAssert#extracting(String)}</code>.
+  * 
+  * @author Joel Costigliola
+  * @author Mateusz Haligowski
+  */
+ public class ObjectArrayAssert_extracting_Test {
+ 
+-  private static Employee yoda;
+-  private static Employee luke;
+-  private static Employee[] employees;
++  private Employee yoda;
++  private Employee luke;
++  private Employee[] employees;
++  private TolkienCharacter[] fellowshipOfTheRing;
+ 
+   @Rule
+   public ExpectedException thrown = none();
+ 
+-  @BeforeClass
+-  public static void setUpOnce() {
++  @Before
++  public void setUpOnce() {
+     yoda = new Employee(1L, new Name("Yoda"), 800);
+     luke = new Employee(2L, new Name("Luke", "Skywalker"), 26);
+     employees = array(yoda, luke);
++    fellowshipOfTheRing = new TolkienCharacter[8];
++    fellowshipOfTheRing[0] = TolkienCharacter.of("Frodo", 33, HOBBIT);
++    fellowshipOfTheRing[1] = TolkienCharacter.of("Sam", 38, HOBBIT);
++    fellowshipOfTheRing[2] = TolkienCharacter.of("Gandalf", 2020, MAIA);
++    fellowshipOfTheRing[3] = TolkienCharacter.of("Legolas", 1000, ELF);
++    fellowshipOfTheRing[4] = TolkienCharacter.of("Pippin", 28, HOBBIT);
++    fellowshipOfTheRing[5] = TolkienCharacter.of("Gimli", 139, DWARF);
++    fellowshipOfTheRing[6] = TolkienCharacter.of("Aragorn", 87, MAN);
++    fellowshipOfTheRing[7] = TolkienCharacter.of("Boromir", 37, MAN);
+   }
+ 
+   @Test
+   public void should_allow_assertions_on_property_values_extracted_from_given_iterable() {
+     assertThat(employees).extracting("age").containsOnly(800, 26);
+   }
+ 
+   @Test
+@@ -72,27 +92,130 @@
+   @Test
+   public void should_throw_error_if_no_property_nor_field_with_given_name_can_be_extracted() {
+     thrown.expect(IntrospectionError.class);
+     assertThat(employees).extracting("unknown");
+   }
+ 
+   @Test
+   public void should_allow_assertions_on_multiple_extracted_values_from_given_iterable() {
+-    assertThat(employees).extracting("name.first", "age", "id").containsOnly(tuple("Yoda", 800, 1L), tuple("Luke", 26, 2L));
++    assertThat(employees).extracting("name.first", "age", "id").containsOnly(tuple("Yoda", 800, 1L),
++                                                                             tuple("Luke", 26, 2L));
+   }
+ 
+   @Test
+   public void should_throw_error_if_one_property_or_field_can_not_be_extracted() {
+     thrown.expect(IntrospectionError.class);
+-    assertThat(employees).extracting("unknown", "age", "id").containsOnly(tuple("Yoda", 800, 1L), tuple("Luke", 26, 2L));
++    assertThat(employees).extracting("unknown", "age", "id").containsOnly(tuple("Yoda", 800, 1L),
++                                                                          tuple("Luke", 26, 2L));
+   }
+ 
+   @Test
+   public void should_allow_assertions_on_extractor_assertions_extracted_from_given_array() {
+     assertThat(employees).extracting(new Extractor<Employee, String>() {
+       @Override
+       public String extract(Employee input) {
+         return input.getName().getFirst();
+       }
+     }).containsOnly("Yoda", "Luke");
+   }
++
++  @Test
++  public void should_allow_assertions_on_two_extracted_values_from_given_iterable_by_using_a_function() {
++
++    assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName,
++                                               TolkienCharacter::getAge)
++                                   .containsOnly(tuple("Frodo", 33),
++                                                 tuple("Sam", 38),
++                                                 tuple("Gandalf", 2020),
++                                                 tuple("Legolas", 1000),
++                                                 tuple("Pippin", 28),
++                                                 tuple("Gimli", 139),
++                                                 tuple("Aragorn", 87),
++                                                 tuple("Boromir", 37));
++  }
++
++  @Test
++  public void should_allow_assertions_on_three_extracted_values_from_given_iterable_by_using_a_function() {
++
++    assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName,
++                                               TolkienCharacter::getAge,
++                                               TolkienCharacter::getRace)
++                                   .containsOnly(tuple("Frodo", 33, HOBBIT),
++                                                 tuple("Sam", 38, HOBBIT),
++                                                 tuple("Gandalf", 2020, MAIA),
++                                                 tuple("Legolas", 1000, ELF),
++                                                 tuple("Pippin", 28, HOBBIT),
++                                                 tuple("Gimli", 139, DWARF),
++                                                 tuple("Aragorn", 87, MAN),
++                                                 tuple("Boromir", 37, MAN));
++  }
++
++  @Test
++  public void should_allow_assertions_on_four_extracted_values_from_given_iterable_by_using_a_function() {
++
++    assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName,
++                                               TolkienCharacter::getAge,
++                                               TolkienCharacter::getRace,
++                                               character -> character.name)
++                                   .containsOnly(tuple("Frodo", 33, HOBBIT, "Frodo"),
++                                                 tuple("Sam", 38, HOBBIT, "Sam"),
++                                                 tuple("Gandalf", 2020, MAIA, "Gandalf"),
++                                                 tuple("Legolas", 1000, ELF, "Legolas"),
++                                                 tuple("Pippin", 28, HOBBIT, "Pippin"),
++                                                 tuple("Gimli", 139, DWARF, "Gimli"),
++                                                 tuple("Aragorn", 87, MAN, "Aragorn"),
++                                                 tuple("Boromir", 37, MAN, "Boromir"));
++  }
++
++  @Test
++  public void should_allow_assertions_on_five_extracted_values_from_given_iterable_by_using_a_function() {
++
++    assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName,
++                                               TolkienCharacter::getAge,
++                                               TolkienCharacter::getRace,
++                                               character -> character.name,
++                                               character -> character.age)
++                                   .containsOnly(tuple("Frodo", 33, HOBBIT, "Frodo", 33),
++                                                 tuple("Sam", 38, HOBBIT, "Sam", 38),
++                                                 tuple("Gandalf", 2020, MAIA, "Gandalf", 2020),
++                                                 tuple("Legolas", 1000, ELF, "Legolas", 1000),
++                                                 tuple("Pippin", 28, HOBBIT, "Pippin", 28),
++                                                 tuple("Gimli", 139, DWARF, "Gimli", 139),
++                                                 tuple("Aragorn", 87, MAN, "Aragorn", 87),
++                                                 tuple("Boromir", 37, MAN, "Boromir", 37));
++  }
++
++  @Test
++  public void should_allow_assertions_on_more_than_five_extracted_values_from_given_iterable_by_using_a_function() {
++
++    assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName,
++                                               TolkienCharacter::getAge,
++                                               TolkienCharacter::getRace,
++                                               character -> character.name,
++                                               character -> character.age,
++                                               character -> character.race)
++                                   .containsOnly(tuple("Frodo", 33, HOBBIT, "Frodo", 33, HOBBIT),
++                                                 tuple("Sam", 38, HOBBIT, "Sam", 38, HOBBIT),
++                                                 tuple("Gandalf", 2020, MAIA, "Gandalf", 2020, MAIA),
++                                                 tuple("Legolas", 1000, ELF, "Legolas", 1000, ELF),
++                                                 tuple("Pippin", 28, HOBBIT, "Pippin", 28, HOBBIT),
++                                                 tuple("Gimli", 139, DWARF, "Gimli", 139, DWARF),
++                                                 tuple("Aragorn", 87, MAN, "Aragorn", 87, MAN),
++                                                 tuple("Boromir", 37, MAN, "Boromir", 37, MAN));
++  }
++
++  @Test //https://github.com/joel-costigliola/assertj-core/issues/880
++  public void should_be_able_to_extract_values_returned_from_default_methods_from_given_iterable_elements() {
++    List<Person> people = Arrays.asList(new Person());
++
++    assertThat(people).extracting("name").containsOnly("John Doe");
++  }
++
++  public static class Person implements DefaultName {
++  }
++
++  public static interface DefaultName {
++    default String getName() {
++      return "John Doe";
++    }
++  }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -16,17 +16,16 @@
+ import static org.assertj.core.test.ExpectedException.*;
+ import static org.assertj.core.util.Arrays.*;
+ 
+ import org.assertj.core.api.AbstractIterableAssert;
+ import org.assertj.core.api.iterable.Extractor;
+ import org.assertj.core.test.Employee;
+ import org.assertj.core.test.ExpectedException;
+ import org.assertj.core.test.Name;
+-import org.assertj.core.util.introspection.IntrospectionError;
+ import org.junit.BeforeClass;
+ import org.junit.Rule;
+ import org.junit.Test;
+ 
+ /**
+  * Tests for <code>{@link AbstractIterableAssert#extracting(String)}</code>.
+  * 
+  * @author Joel Costigliola
+@@ -66,28 +65,28 @@
+     // object
+     assertThat(employees).extracting("name").containsOnly(new Name("Yoda"), new Name("Luke", "Skywalker"));
+     // nested property
+     assertThat(employees).extracting("name.first").containsOnly("Yoda", "Luke");
+   }
+ 
+   @Test
+   public void should_throw_error_if_no_property_nor_field_with_given_name_can_be_extracted() {
+-    thrown.expect(IntrospectionError.class);
++    thrown.expectIntrospectionError();
+     assertThat(employees).extracting("unknown");
+   }
+ 
+   @Test
+   public void should_allow_assertions_on_multiple_extracted_values_from_given_iterable() {
+     assertThat(employees).extracting("name.first", "age", "id").containsOnly(tuple("Yoda", 800, 1L), tuple("Luke", 26, 2L));
+   }
+ 
+   @Test
+   public void should_throw_error_if_one_property_or_field_can_not_be_extracted() {
+-    thrown.expect(IntrospectionError.class);
++    thrown.expectIntrospectionError();
+     assertThat(employees).extracting("unknown", "age", "id").containsOnly(tuple("Yoda", 800, 1L), tuple("Luke", 26, 2L));
+   }
+ 
+   @Test
+   public void should_allow_assertions_on_extractor_assertions_extracted_from_given_array() {
+     assertThat(employees).extracting(new Extractor<Employee, String>() {
+       @Override
+       public String extract(Employee input) {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

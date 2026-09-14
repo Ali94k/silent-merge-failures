@@ -1,0 +1,660 @@
+UNIT jenkinsci_coverity-plugin__62bdb6232e
+repo: jenkinsci_coverity-plugin   merge: 62bdb6232eea84510734c8fee133d6568251b0b9   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/main/java/jenkins/plugins/coverity/ws/DefectReader.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -20,16 +20,17 @@
+ import com.coverity.ws.v9.MergedDefectDataObj;
+ import com.coverity.ws.v9.MergedDefectFilterSpecDataObj;
+ import com.coverity.ws.v9.MergedDefectsPageDataObj;
+ import com.coverity.ws.v9.PageSpecDataObj;
+ import com.coverity.ws.v9.SnapshotScopeSpecDataObj;
+ import com.coverity.ws.v9.StreamIdDataObj;
+ 
+ import hudson.Launcher;
++import hudson.Util;
+ import hudson.model.AbstractBuild;
+ import hudson.model.BuildListener;
+ import hudson.model.Hudson;
+ import hudson.model.Result;
+ import hudson.model.TaskListener;
+ import jenkins.model.Jenkins;
+ import jenkins.plugins.coverity.CIMInstance;
+ import jenkins.plugins.coverity.CIMStream;
+@@ -94,17 +95,17 @@
+                         publisher.setUnstableBuild(true);
+ 
+                     }
+ 
+                 } else {
+                     listener.getLogger().println("[Coverity] No defects matched all filters.");
+                 }
+ 
+-                CoverityBuildAction action = new CoverityBuildAction(build, cimStream.getProject(), cimStream.getStream(), cimStream.getInstance(), matchingDefects);
++                CoverityBuildAction action = new CoverityBuildAction(build, cimStream.getProject(), cimStream.getStream(), cimStream.getInstance(), matchingDefects, i);
+                 build.addAction(action);
+ 
+                 String rootUrl = Jenkins.getInstance().getRootUrl();
+                 if(rootUrl != null) {
+                     listener.getLogger().println("Coverity details: " + rootUrl + build.getUrl() + action.getUrlName());
+                 }
+             } catch (IOException e) {
+                 e.printStackTrace(listener.error("[Coverity] An error occurred while fetching defects"));
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -7,16 +7,18 @@
+  *
+  * Contributors:
+  *    Synopsys, Inc - initial implementation and documentation
+  *******************************************************************************/
+ package jenkins.plugins.coverity.ws;
+ 
+ 
+ import java.io.IOException;
++import java.io.PrintStream;
++import java.text.MessageFormat;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+ import com.coverity.ws.v9.CovRemoteServiceException_Exception;
+ import com.coverity.ws.v9.DefectService;
+ import com.coverity.ws.v9.MergedDefectDataObj;
+ import com.coverity.ws.v9.MergedDefectFilterSpecDataObj;
+ import com.coverity.ws.v9.MergedDefectsPageDataObj;
+@@ -60,32 +62,32 @@
+             return false;
+         }
+ 
+         List<CIMStream> cimStreams = publisher.getCimStreams();
+         for(int i = 0; i < cimStreams.size(); i++) {
+             CIMStream cimStream = cimStreams.get(i);
+             CIMInstance cimInstance = publisher.getDescriptor().getInstance(cimStream.getInstance());
+ 
+-            listener.getLogger().println("[Coverity] Fetching defects for stream " + cimStream.getStream());
++            listener.getLogger().println(MessageFormat.format("[Coverity] Fetching defects for stream \"{0}\"", cimStream.getStream()));
+ 
+             List<MergedDefectDataObj> defects = null;
+ 
+             try {
+-                defects = getDefectsForSnapshot(cimInstance, cimStream);
++                defects = getDefectsForSnapshot(cimInstance, cimStream, listener.getLogger());
+ 
+                 List<CoverityDefect> matchingDefects = new ArrayList<>();
+ 
+                 // Loop through all defects create defect objects
+                 for(MergedDefectDataObj defect : defects) {
+                     matchingDefects.add(new CoverityDefect(defect.getCid(), defect.getCheckerName(), defect.getFunctionDisplayName(), defect.getFilePathname()));
+                 }
+ 
+                 if(!matchingDefects.isEmpty()) {
+-                    listener.getLogger().println("[Coverity] Found " + matchingDefects.size() + " defects matching all filters");
++                    listener.getLogger().println(MessageFormat.format("[Coverity] Found {0} defects matching all filters", matchingDefects.size()));
+                     if(publisher.isFailBuild()) {
+                         if(build.getResult().isBetterThan(Result.FAILURE)) {
+                             build.setResult(Result.FAILURE);
+                             return false;
+                         }
+                     }
+ 
+                     // if the user wants to mark the build as unstable when defects are found, then we
+@@ -115,17 +117,17 @@
+                 build.setResult(Result.FAILURE);
+                 return false;
+             }
+         }
+ 
+         return true;
+     }
+ 
+-    private List<MergedDefectDataObj> getDefectsForSnapshot(CIMInstance cim, CIMStream cimStream) throws IOException, CovRemoteServiceException_Exception {
++    private List<MergedDefectDataObj> getDefectsForSnapshot(CIMInstance cim, CIMStream cimStream, PrintStream logger) throws IOException, CovRemoteServiceException_Exception {
+ 
+         List<MergedDefectDataObj> mergeList = new ArrayList<MergedDefectDataObj>();
+ 
+         DefectService ds = cim.getDefectService();
+ 
+         StreamIdDataObj streamId = new StreamIdDataObj();
+         streamId.setName(cimStream.getStream());
+         List<StreamIdDataObj> streamIds = new ArrayList<StreamIdDataObj>();
+@@ -138,16 +140,19 @@
+ 
+         SnapshotScopeSpecDataObj snapshotScope = new SnapshotScopeSpecDataObj();
+         snapshotScope.setShowSelector("last()");
+ 
+         // The loop will pull up to the maximum amount of defect, doing per page size
+         int pageSize = 1000; // Size of page to be pulled
+         int defectSize = 3000; // Maximum amount of defect to pull
+         for(int pageStart = 0; pageStart < defectSize; pageStart += pageSize){
++            if (pageStart >= pageSize)
++                logger.println(MessageFormat.format("[Coverity] Fetching defects for stream \"{0}\" (fetched {1} of {2})", cimStream.getStream(), pageStart, defectSize));
++
+             pageSpec.setPageSize(pageSize);
+             pageSpec.setStartIndex(pageStart);
+             pageSpec.setSortAscending(true);
+             MergedDefectsPageDataObj mergedDefectsForStreams = ds.getMergedDefectsForStreams(streamIds, filter, pageSpec, snapshotScope);
+             defectSize = mergedDefectsForStreams.getTotalNumberOfRecords();
+             mergeList.addAll(mergedDefectsForStreams.getMergedDefects());
+         }
+         return mergeList;
+--- MERGED RESULT (mergiraf; full) ---
+/*******************************************************************************
+ * Copyright (c) 2017 Synopsys, Inc
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *    Synopsys, Inc - initial implementation and documentation
+ *******************************************************************************/
+package jenkins.plugins.coverity.ws;
+
+
+import java.io.IOException;
+import java.io.PrintStream;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.coverity.ws.v9.CovRemoteServiceException_Exception;
+import com.coverity.ws.v9.DefectService;
+import com.coverity.ws.v9.MergedDefectDataObj;
+import com.coverity.ws.v9.MergedDefectFilterSpecDataObj;
+import com.coverity.ws.v9.MergedDefectsPageDataObj;
+import com.coverity.ws.v9.PageSpecDataObj;
+import com.coverity.ws.v9.SnapshotScopeSpecDataObj;
+import com.coverity.ws.v9.StreamIdDataObj;
+
+import hudson.Launcher;
+import hudson.Util;
+import hudson.model.AbstractBuild;
+import hudson.model.BuildListener;
+import hudson.model.Hudson;
+import hudson.model.Result;
+import hudson.model.TaskListener;
+import jenkins.model.Jenkins;
+import jenkins.plugins.coverity.CIMInstance;
+import jenkins.plugins.coverity.CIMStream;
+import jenkins.plugins.coverity.CoverityBuildAction;
+import jenkins.plugins.coverity.CoverityDefect;
+import jenkins.plugins.coverity.CoverityPublisher;
+import jenkins.plugins.coverity.DefectFilters;
+
+/**
+ * Class responsible for reading defects from Coverity after the commit process has been completed. The defects
+ * will be added as a {@link CoverityBuildAction} to the build.
+ */
+public class DefectReader {
+    private AbstractBuild<?, ?> build;
+    private BuildListener listener;
+    private CoverityPublisher publisher;
+
+    public DefectReader(AbstractBuild<?, ?> build, BuildListener listener, CoverityPublisher publisher) {
+        this.build = build;
+        this.listener = listener;
+        this.publisher = publisher;
+    }
+
+    public boolean getLatestDefectsForBuild()
+    {
+        if (publisher.isSkipFetchingDefects()) {
+            // never get any defects when configured to skip fetching defects
+            return false;
+        }
+
+        List<CIMStream> cimStreams = publisher.getCimStreams();
+        for(int i = 0; i < cimStreams.size(); i++) {
+            CIMStream cimStream = cimStreams.get(i);
+            CIMInstance cimInstance = publisher.getDescriptor().getInstance(cimStream.getInstance());
+
+            listener.getLogger().println(MessageFormat.format("[Coverity] Fetching defects for stream \"{0}\"", cimStream.getStream()));
+
+            List<MergedDefectDataObj> defects = null;
+
+            try {
+                defects = getDefectsForSnapshot(cimInstance, cimStream, listener.getLogger());
+
+                List<CoverityDefect> matchingDefects = new ArrayList<>();
+
+                // Loop through all defects create defect objects
+                for(MergedDefectDataObj defect : defects) {
+                    matchingDefects.add(new CoverityDefect(defect.getCid(), defect.getCheckerName(), defect.getFunctionDisplayName(), defect.getFilePathname()));
+                }
+
+                if(!matchingDefects.isEmpty()) {
+                    listener.getLogger().println(MessageFormat.format("[Coverity] Found {0} defects matching all filters", matchingDefects.size()));
+                    if(publisher.isFailBuild()) {
+                        if(build.getResult().isBetterThan(Result.FAILURE)) {
+                            build.setResult(Result.FAILURE);
+                            return false;
+                        }
+                    }
+
+                    // if the user wants to mark the build as unstable when defects are found, then we
+                    // notify the publisher to do so.
+                    if(publisher.isUnstable()){
+                        publisher.setUnstableBuild(true);
+
+                    }
+
+                } else {
+                    listener.getLogger().println("[Coverity] No defects matched all filters.");
+                }
+
+                CoverityBuildAction action = new CoverityBuildAction(build, cimStream.getProject(), cimStream.getStream(), cimStream.getInstance(), matchingDefects, i);
+                build.addAction(action);
+
+                String rootUrl = Jenkins.getInstance().getRootUrl();
+                if(rootUrl != null) {
+                    listener.getLogger().println("Coverity details: " + rootUrl + build.getUrl() + action.getUrlName());
+                }
+            } catch (IOException e) {
+                e.printStackTrace(listener.error("[Coverity] An error occurred while fetching defects"));
+                build.setResult(Result.FAILURE);
+                return false;
+            } catch (CovRemoteServiceException_Exception e) {
+                e.printStackTrace(listener.error("[Coverity] An error occurred while fetching defects"));
+                build.setResult(Result.FAILURE);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private List<MergedDefectDataObj> getDefectsForSnapshot(CIMInstance cim, CIMStream cimStream, PrintStream logger) throws IOException, CovRemoteServiceException_Exception {
+
+        List<MergedDefectDataObj> mergeList = new ArrayList<MergedDefectDataObj>();
+
+        DefectService ds = cim.getDefectService();
+
+        StreamIdDataObj streamId = new StreamIdDataObj();
+        streamId.setName(cimStream.getStream());
+        List<StreamIdDataObj> streamIds = new ArrayList<StreamIdDataObj>();
+        streamIds.add(streamId);
+
+        DefectFilters defectFilters = cimStream.getDefectFilters();
+        MergedDefectFilterSpecDataObj filter = defectFilters != null ?  defectFilters.ToFilterSpecDataObj() : new MergedDefectFilterSpecDataObj();
+
+        PageSpecDataObj pageSpec = new PageSpecDataObj();
+
+        SnapshotScopeSpecDataObj snapshotScope = new SnapshotScopeSpecDataObj();
+        snapshotScope.setShowSelector("last()");
+
+        // The loop will pull up to the maximum amount of defect, doing per page size
+        int pageSize = 1000; // Size of page to be pulled
+        int defectSize = 3000; // Maximum amount of defect to pull
+        for(int pageStart = 0; pageStart < defectSize; pageStart += pageSize){
+            if (pageStart >= pageSize)
+                logger.println(MessageFormat.format("[Coverity] Fetching defects for stream \"{0}\" (fetched {1} of {2})", cimStream.getStream(), pageStart, defectSize));
+
+            pageSpec.setPageSize(pageSize);
+            pageSpec.setStartIndex(pageStart);
+            pageSpec.setSortAscending(true);
+            MergedDefectsPageDataObj mergedDefectsForStreams = ds.getMergedDefectsForStreams(streamIds, filter, pageSpec, snapshotScope);
+            defectSize = mergedDefectsForStreams.getTotalNumberOfRecords();
+            mergeList.addAll(mergedDefectsForStreams.getMergedDefects());
+        }
+        return mergeList;
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/jenkins/plugins/coverity/ws/DefectReaderTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -20,16 +20,17 @@
+ import java.text.ParseException;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.List;
+ 
+ import javax.xml.datatype.DatatypeConfigurationException;
+ 
+ import org.junit.Before;
++import org.junit.Ignore;
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ import org.mockito.ArgumentCaptor;
+ import org.mockito.Mock;
+ import org.powermock.api.mockito.PowerMockito;
+ import org.powermock.core.classloader.annotations.PrepareForTest;
+ import org.powermock.modules.junit4.PowerMockRunner;
+ 
+@@ -110,17 +111,17 @@
+         ArgumentCaptor<CoverityBuildAction> buildAction = ArgumentCaptor.forClass(CoverityBuildAction.class);
+         verify(build).addAction(buildAction.capture());
+         assertEquals(10, buildAction.getValue().getDefects().size());
+ 
+         // verify all expected log messages were written
+         consoleLogger.verifyMessages(
+             "[Coverity] Fetching defects for stream test-stream",
+             "[Coverity] Found 10 defects matching all filters",
+-            "Coverity details: rootUrl/buildUrl/coverity_cim-instance_test-project_test-stream");
++            "Coverity details: rootUrl/buildUrl/coverity_defects");
+     }
+ 
+     @Test
+     public void getLatestDefectsForBuild_withMatchingDefectFilters_addDefectsToBuildAction() throws Descriptor.FormException, ParseException, DatatypeConfigurationException, IOException, CovRemoteServiceException_Exception {
+         when(jenkins.getRootUrl()).thenReturn("rootUrl/");
+         when(build.getUrl()).thenReturn("buildUrl/");
+ 
+         List<CIMStream> cimStreams  = new ArrayList<>();
+@@ -148,11 +149,11 @@
+         ArgumentCaptor<CoverityBuildAction> buildAction = ArgumentCaptor.forClass(CoverityBuildAction.class);
+         verify(build).addAction(buildAction.capture());
+         assertEquals(3, buildAction.getValue().getDefects().size());
+ 
+         // verify all expected log messages were written
+         consoleLogger.verifyMessages(
+             "[Coverity] Fetching defects for stream test-stream",
+             "[Coverity] Found 3 defects matching all filters",
+-            "Coverity details: rootUrl/buildUrl/coverity_cim-instance_test-project_test-stream");
++            "Coverity details: rootUrl/buildUrl/coverity_defects");
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -108,17 +108,17 @@
+ 
+         // assert build action added to build with expected defect count
+         ArgumentCaptor<CoverityBuildAction> buildAction = ArgumentCaptor.forClass(CoverityBuildAction.class);
+         verify(build).addAction(buildAction.capture());
+         assertEquals(10, buildAction.getValue().getDefects().size());
+ 
+         // verify all expected log messages were written
+         consoleLogger.verifyMessages(
+-            "[Coverity] Fetching defects for stream test-stream",
++            "[Coverity] Fetching defects for stream \"test-stream\"",
+             "[Coverity] Found 10 defects matching all filters",
+             "Coverity details: rootUrl/buildUrl/coverity_cim-instance_test-project_test-stream");
+     }
+ 
+     @Test
+     public void getLatestDefectsForBuild_withMatchingDefectFilters_addDefectsToBuildAction() throws Descriptor.FormException, ParseException, DatatypeConfigurationException, IOException, CovRemoteServiceException_Exception {
+         when(jenkins.getRootUrl()).thenReturn("rootUrl/");
+         when(build.getUrl()).thenReturn("buildUrl/");
+@@ -146,13 +146,54 @@
+ 
+         // assert build action added to build with expected defect count
+         ArgumentCaptor<CoverityBuildAction> buildAction = ArgumentCaptor.forClass(CoverityBuildAction.class);
+         verify(build).addAction(buildAction.capture());
+         assertEquals(3, buildAction.getValue().getDefects().size());
+ 
+         // verify all expected log messages were written
+         consoleLogger.verifyMessages(
+-            "[Coverity] Fetching defects for stream test-stream",
++            "[Coverity] Fetching defects for stream \"test-stream\"",
+             "[Coverity] Found 3 defects matching all filters",
+             "Coverity details: rootUrl/buildUrl/coverity_cim-instance_test-project_test-stream");
+     }
++
++    @Test
++    public void getLatestDefectsForBuild_withOverOneThousandMatchingDefects_addDefectsToBuildAction() throws Descriptor.FormException, ParseException, DatatypeConfigurationException, IOException, CovRemoteServiceException_Exception {
++        when(jenkins.getRootUrl()).thenReturn("rootUrl/");
++        when(build.getUrl()).thenReturn("buildUrl/");
++
++        List<CIMStream> cimStreams  = new ArrayList<>();
++        DefectFilters defectFilters = new DefectFilters(
++            Arrays.asList("Undecided"),
++            new ArrayList<>(Arrays.asList("High", "Medium", "Low")),
++            Arrays.asList("Unclassified"),
++            Arrays.asList("Unspecified", "Major", "Moderate", "Minor"),
++            Arrays.asList("Default.Other"),
++            Arrays.asList("TEST_CHECKER"),
++            "2017-01-01");
++        cimStreams.add(new CIMStream(cimInstanceName, "test-project", "test-stream", defectFilters, "stream1", null));
++
++        CoverityPublisher publisher = new CoverityPublisherBuilder().withCimStreams(cimStreams).build();
++
++        defectService.setupMergedDefects(3750);
++
++        DefectReader reader = new DefectReader(build, listener, publisher);
++
++        Boolean result = reader.getLatestDefectsForBuild();
++
++        assertTrue(result);
++
++        // assert build action added to build with expected defect count
++        ArgumentCaptor<CoverityBuildAction> buildAction = ArgumentCaptor.forClass(CoverityBuildAction.class);
++        verify(build).addAction(buildAction.capture());
++        assertEquals(3750, buildAction.getValue().getDefects().size());
++
++        // verify all expected log messages were written
++        consoleLogger.verifyMessages(
++            "[Coverity] Fetching defects for stream \"test-stream\"",
++            "[Coverity] Fetching defects for stream \"test-stream\" (fetched 1,000 of 3,750)",
++            "[Coverity] Fetching defects for stream \"test-stream\" (fetched 2,000 of 3,750)",
++            "[Coverity] Fetching defects for stream \"test-stream\" (fetched 3,000 of 3,750)",
++            "[Coverity] Found 3,750 defects matching all filters",
++            "Coverity details: rootUrl/buildUrl/coverity_cim-instance_test-project_test-stream");
++    }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*******************************************************************************
+ * Copyright (c) 2017 Synopsys, Inc
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *    Synopsys, Inc - initial implementation and documentation
+ *******************************************************************************/
+package jenkins.plugins.coverity.ws;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import javax.xml.datatype.DatatypeConfigurationException;
+
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
+
+import com.coverity.ws.v9.CovRemoteServiceException_Exception;
+
+import hudson.Launcher;
+import hudson.model.AbstractBuild;
+import hudson.model.BuildListener;
+import hudson.model.Descriptor;
+import jenkins.model.Jenkins;
+import jenkins.plugins.coverity.CIMInstance;
+import jenkins.plugins.coverity.CIMStream;
+import jenkins.plugins.coverity.CoverityBuildAction;
+import jenkins.plugins.coverity.CoverityPublisher;
+import jenkins.plugins.coverity.CoverityPublisher.DescriptorImpl;
+import jenkins.plugins.coverity.DefectFilters;
+import jenkins.plugins.coverity.Utils.CoverityPublisherBuilder;
+import jenkins.plugins.coverity.Utils.TestableConsoleLogger;
+import jenkins.plugins.coverity.ws.TestWebServiceFactory.TestDefectService;
+
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(Jenkins.class)
+public class DefectReaderTest {
+    @Mock
+    private Jenkins jenkins;
+
+    @Mock
+    private AbstractBuild<?, ?> build;
+
+    @Mock
+    private BuildListener listener;
+
+    @Mock
+    private DescriptorImpl descriptor;
+
+    private TestableConsoleLogger consoleLogger;
+    private TestDefectService defectService;
+    private static final String cimInstanceName = "cim-instance";
+
+    @Before
+    public void setup() throws IOException {
+        // setup jenkins
+        PowerMockito.mockStatic(Jenkins.class);
+        when(Jenkins.getInstance()).thenReturn(jenkins);
+
+        // setup console logger
+        consoleLogger = new TestableConsoleLogger();
+        when(listener.getLogger()).thenReturn(consoleLogger.getPrintStream());
+
+        // setup global configuration (DescriptorImpl) with TestWebService
+        CIMInstance cimInstance = mock(CIMInstance.class);
+        defectService = (TestDefectService)new TestWebServiceFactory().getDefectService(cimInstance);
+        when(cimInstance.getDefectService()).thenReturn(defectService);
+        when(descriptor.getInstance(cimInstanceName)).thenReturn(cimInstance);
+        when(jenkins.getDescriptorOrDie(CoverityPublisher.class)).thenReturn(descriptor);
+    }
+
+    @Test
+    public void getLatestDefectsForBuild_withNoDefectFilters_addDefectsToBuildAction() throws Descriptor.FormException, ParseException, DatatypeConfigurationException, IOException, CovRemoteServiceException_Exception {
+
+        when(jenkins.getRootUrl()).thenReturn("rootUrl/");
+        when(build.getUrl()).thenReturn("buildUrl/");
+
+        List<CIMStream> cimStreams  = new ArrayList<>();
+        cimStreams.add(new CIMStream(cimInstanceName, "test-project", "test-stream", null, "stream1", null));
+
+        CoverityPublisher publisher = new CoverityPublisherBuilder().withCimStreams(cimStreams).build();
+
+        defectService.setupMergedDefects(10);
+
+        DefectReader reader = new DefectReader(build, listener, publisher);
+
+        Boolean result = reader.getLatestDefectsForBuild();
+
+        assertTrue(result);
+
+        // assert build action added to build with expected defect count
+        ArgumentCaptor<CoverityBuildAction> buildAction = ArgumentCaptor.forClass(CoverityBuildAction.class);
+        verify(build).addAction(buildAction.capture());
+        assertEquals(10, buildAction.getValue().getDefects().size());
+
+        // verify all expected log messages were written
+        consoleLogger.verifyMessages(
+            "[Coverity] Fetching defects for stream \"test-stream\"",
+            "[Coverity] Found 10 defects matching all filters",
+            "Coverity details: rootUrl/buildUrl/coverity_defects");
+    }
+
+    @Test
+    public void getLatestDefectsForBuild_withMatchingDefectFilters_addDefectsToBuildAction() throws Descriptor.FormException, ParseException, DatatypeConfigurationException, IOException, CovRemoteServiceException_Exception {
+        when(jenkins.getRootUrl()).thenReturn("rootUrl/");
+        when(build.getUrl()).thenReturn("buildUrl/");
+
+        List<CIMStream> cimStreams  = new ArrayList<>();
+        DefectFilters defectFilters = new DefectFilters(
+            Arrays.asList("Undecided"),
+            new ArrayList<>(Arrays.asList("High", "Medium", "Low")),
+            Arrays.asList("Unclassified"),
+            Arrays.asList("Unspecified", "Major", "Moderate", "Minor"),
+            Arrays.asList("Default.Other"),
+            Arrays.asList("TEST_CHECKER"),
+            "2017-01-01");
+        cimStreams.add(new CIMStream(cimInstanceName, "test-project", "test-stream", defectFilters, "stream1", null));
+
+        CoverityPublisher publisher = new CoverityPublisherBuilder().withCimStreams(cimStreams).build();
+
+        defectService.setupMergedDefects(3);
+
+        DefectReader reader = new DefectReader(build, listener, publisher);
+
+        Boolean result = reader.getLatestDefectsForBuild();
+
+        assertTrue(result);
+
+        // assert build action added to build with expected defect count
+        ArgumentCaptor<CoverityBuildAction> buildAction = ArgumentCaptor.forClass(CoverityBuildAction.class);
+        verify(build).addAction(buildAction.capture());
+        assertEquals(3, buildAction.getValue().getDefects().size());
+
+        // verify all expected log messages were written
+        consoleLogger.verifyMessages(
+            "[Coverity] Fetching defects for stream \"test-stream\"",
+            "[Coverity] Found 3 defects matching all filters",
+            "Coverity details: rootUrl/buildUrl/coverity_defects");
+    }
+
+    @Test
+    public void getLatestDefectsForBuild_withOverOneThousandMatchingDefects_addDefectsToBuildAction() throws Descriptor.FormException, ParseException, DatatypeConfigurationException, IOException, CovRemoteServiceException_Exception {
+        when(jenkins.getRootUrl()).thenReturn("rootUrl/");
+        when(build.getUrl()).thenReturn("buildUrl/");
+
+        List<CIMStream> cimStreams  = new ArrayList<>();
+        DefectFilters defectFilters = new DefectFilters(
+            Arrays.asList("Undecided"),
+            new ArrayList<>(Arrays.asList("High", "Medium", "Low")),
+            Arrays.asList("Unclassified"),
+            Arrays.asList("Unspecified", "Major", "Moderate", "Minor"),
+            Arrays.asList("Default.Other"),
+            Arrays.asList("TEST_CHECKER"),
+            "2017-01-01");
+        cimStreams.add(new CIMStream(cimInstanceName, "test-project", "test-stream", defectFilters, "stream1", null));
+
+        CoverityPublisher publisher = new CoverityPublisherBuilder().withCimStreams(cimStreams).build();
+
+        defectService.setupMergedDefects(3750);
+
+        DefectReader reader = new DefectReader(build, listener, publisher);
+
+        Boolean result = reader.getLatestDefectsForBuild();
+
+        assertTrue(result);
+
+        // assert build action added to build with expected defect count
+        ArgumentCaptor<CoverityBuildAction> buildAction = ArgumentCaptor.forClass(CoverityBuildAction.class);
+        verify(build).addAction(buildAction.capture());
+        assertEquals(3750, buildAction.getValue().getDefects().size());
+
+        // verify all expected log messages were written
+        consoleLogger.verifyMessages(
+            "[Coverity] Fetching defects for stream \"test-stream\"",
+            "[Coverity] Fetching defects for stream \"test-stream\" (fetched 1,000 of 3,750)",
+            "[Coverity] Fetching defects for stream \"test-stream\" (fetched 2,000 of 3,750)",
+            "[Coverity] Fetching defects for stream \"test-stream\" (fetched 3,000 of 3,750)",
+            "[Coverity] Found 3,750 defects matching all filters",
+            "Coverity details: rootUrl/buildUrl/coverity_cim-instance_test-project_test-stream");
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

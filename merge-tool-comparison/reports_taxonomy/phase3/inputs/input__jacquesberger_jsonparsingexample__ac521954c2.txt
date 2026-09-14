@@ -1,0 +1,218 @@
+UNIT jacquesberger_jsonparsingexample__ac521954c2
+repo: jacquesberger_jsonparsingexample   merge: ac521954c2d20f93d597a8dfbeae1e3f008befda   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/main/java/org/jberger/jsonparsingexample/json/JSON.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -25,22 +25,27 @@
+ 
+     public static void main(String[] args) throws Exception {
+         ArrayList<String> bookTitles = getBookTitles();
+         printToConsole(bookTitles);
+         saveToFiles(bookTitles);        
+     }
+ 
+     private static void saveToFiles(ArrayList<String> bookTitles) throws IOException {
++        JSONArray outputList = initializeBookList(bookTitles);
++        saveAsRawJsonFile(outputList);
++        saveAsIndentedJsonFile(outputList);        
++    }
++
++    private static JSONArray initializeBookList(ArrayList<String> bookTitles) {
+         JSONArray outputList = new JSONArray();
+         for (String title : bookTitles) {
+             outputList.add(title);
+         }
+-        saveAsRawJsonFile(outputList);
+-        saveAsIndentedJsonFile(outputList);        
++        return outputList;        
+     }
+ 
+     private static void saveAsIndentedJsonFile(JSONArray outputList) throws IOException {
+         Utf8File.saveStringIntoFile("json/output-pretty.json", outputList.toString(2));
+     }
+ 
+     private static void saveAsRawJsonFile(JSONArray outputList) throws IOException {
+         Utf8File.saveStringIntoFile("json/output-raw.json", outputList.toString());
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -25,22 +25,22 @@
+ 
+     public static void main(String[] args) throws Exception {
+         ArrayList<String> bookTitles = getBookTitles();
+         printToConsole(bookTitles);
+         saveToFiles(bookTitles);        
+     }
+ 
+     private static void saveToFiles(ArrayList<String> bookTitles) throws IOException {
+-        JSONArray outputList = new JSONArray();
++        JSONArray bookTitleList = new JSONArray();
+         for (String title : bookTitles) {
+-            outputList.add(title);
++            bookTitleList.add(title);
+         }
+-        saveAsRawJsonFile(outputList);
+-        saveAsIndentedJsonFile(outputList);        
++        saveAsRawJsonFile(bookTitleList);
++        saveAsIndentedJsonFile(bookTitleList);        
+     }
+ 
+     private static void saveAsIndentedJsonFile(JSONArray outputList) throws IOException {
+         Utf8File.saveStringIntoFile("json/output-pretty.json", outputList.toString(2));
+     }
+ 
+     private static void saveAsRawJsonFile(JSONArray outputList) throws IOException {
+         Utf8File.saveStringIntoFile("json/output-raw.json", outputList.toString());
+@@ -67,9 +67,9 @@
+     }
+ 
+     private static void addOneBook(JSONArray root, int i, ArrayList<String> bookTitles) {
+         JSONObject document = root.getJSONObject(i);
+         if (document.getString("type").equals("book")) {
+             bookTitles.add(document.getString("title"));
+         }
+     }
+-}+}
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright 2011 Jacques Berger.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.jberger.jsonparsingexample.json;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
+import net.sf.json.JSONSerializer;
+
+public class JSON {
+
+    public static void main(String[] args) throws Exception {
+        ArrayList<String> bookTitles = getBookTitles();
+        printToConsole(bookTitles);
+        saveToFiles(bookTitles);        
+    }
+
+    private static void saveToFiles(ArrayList<String> bookTitles) throws IOException {
+        JSONArray outputList = initializeBookList(bookTitles);
+        saveAsRawJsonFile(bookTitleList);
+        saveAsIndentedJsonFile(bookTitleList);        
+    }
+
+    private static JSONArray initializeBookList(ArrayList<String> bookTitles) {
+        JSONArray bookTitleList = new JSONArray();
+        for (String title : bookTitles) {
+            bookTitleList.add(title);
+        }
+        return outputList;        
+    }
+
+    private static void saveAsIndentedJsonFile(JSONArray outputList) throws IOException {
+        Utf8File.saveStringIntoFile("json/output-pretty.json", outputList.toString(2));
+    }
+
+    private static void saveAsRawJsonFile(JSONArray outputList) throws IOException {
+        Utf8File.saveStringIntoFile("json/output-raw.json", outputList.toString());
+    }
+
+    private static void printToConsole(ArrayList<String> bookTitles) {
+        System.out.println("Voici les livres contenus dans le fichier original :");
+        for (String title : bookTitles) {
+            System.out.println(title);
+        }
+    }
+
+    private static ArrayList<String> getBookTitles() throws IOException {
+        ArrayList<String> bookTitles = new ArrayList<String>();
+        String jsonTxt = Utf8File.loadFileIntoString("json/library.json");
+        JSONArray root = (JSONArray) JSONSerializer.toJSON(jsonTxt);
+        
+        int documentCount = root.size();
+        for (int i = 0; i < documentCount; i++) {
+            addOneBook(root, i, bookTitles);
+        }
+        
+        return bookTitles;
+    }
+
+    private static void addOneBook(JSONArray root, int i, ArrayList<String> bookTitles) {
+        JSONObject document = root.getJSONObject(i);
+        if (document.getString("type").equals("book")) {
+            bookTitles.add(document.getString("title"));
+        }
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -25,27 +25,27 @@
+ 
+     public static void main(String[] args) throws Exception {
+         ArrayList<String> bookTitles = getBookTitles();
+         printToConsole(bookTitles);
+         saveToFiles(bookTitles);        
+     }
+ 
+     private static void saveToFiles(ArrayList<String> bookTitles) throws IOException {
+-        JSONArray outputList = initializeBookList(bookTitles);
++        JSONArray bookTitleList = initializeBookList(bookTitles);
+         saveAsRawJsonFile(bookTitleList);
+         saveAsIndentedJsonFile(bookTitleList);        
+     }
+ 
+     private static JSONArray initializeBookList(ArrayList<String> bookTitles) {
+         JSONArray bookTitleList = new JSONArray();
+         for (String title : bookTitles) {
+             bookTitleList.add(title);
+         }
+-        return outputList;        
++        return bookTitleList;       
+     }
+ 
+     private static void saveAsIndentedJsonFile(JSONArray outputList) throws IOException {
+         Utf8File.saveStringIntoFile("json/output-pretty.json", outputList.toString(2));
+     }
+ 
+     private static void saveAsRawJsonFile(JSONArray outputList) throws IOException {
+         Utf8File.saveStringIntoFile("json/output-raw.json", outputList.toString());
+@@ -72,9 +72,9 @@
+     }
+ 
+     private static void addOneBook(JSONArray root, int i, ArrayList<String> bookTitles) {
+         JSONObject document = root.getJSONObject(i);
+         if (document.getString("type").equals("book")) {
+             bookTitles.add(document.getString("title"));
+         }
+     }
+-}+}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

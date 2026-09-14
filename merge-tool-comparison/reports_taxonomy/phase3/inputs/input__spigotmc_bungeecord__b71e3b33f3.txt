@@ -1,0 +1,2168 @@
+UNIT spigotmc_bungeecord__b71e3b33f3
+repo: spigotmc_bungeecord   merge: b71e3b33f39a741d16a9d372ece7fcc23cafbe92   stratum: B
+files shown: 5 of 5 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/5: chat/src/main/java/net/md_5/bungee/api/chat/ComponentBuilder.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -18,17 +18,17 @@
+  * All methods (excluding {@link #append(String)} and {@link #create()} work on
+  * the last part appended to the builder, so in the example above "Hello " would
+  * be {@link net.md_5.bungee.api.ChatColor#RED} and "World" would be
+  * {@link net.md_5.bungee.api.ChatColor#BLUE} but "!" would be bold and
+  * {@link net.md_5.bungee.api.ChatColor#BLUE} because append copies the previous
+  * part's formatting
+  * </p>
+  */
+-public final class ComponentBuilder
++public class ComponentBuilder
+ {
+ 
+     private BaseComponent current;
+     private final List<BaseComponent> parts = new ArrayList<BaseComponent>();
+ 
+     /**
+      * Creates a ComponentBuilder from the other given ComponentBuilder to clone
+      * it.
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,13 +1,15 @@
+ package net.md_5.bungee.api.chat;
+ 
+ import com.google.common.base.Preconditions;
+ import java.util.ArrayList;
+ import java.util.List;
++import lombok.Getter;
++import lombok.NoArgsConstructor;
+ import net.md_5.bungee.api.ChatColor;
+ 
+ /**
+  * <p>
+  * ComponentBuilder simplifies creating basic messages by allowing the use of a
+  * chainable builder.
+  * </p>
+  * <pre>
+@@ -18,55 +20,120 @@
+  * All methods (excluding {@link #append(String)} and {@link #create()} work on
+  * the last part appended to the builder, so in the example above "Hello " would
+  * be {@link net.md_5.bungee.api.ChatColor#RED} and "World" would be
+  * {@link net.md_5.bungee.api.ChatColor#BLUE} but "!" would be bold and
+  * {@link net.md_5.bungee.api.ChatColor#BLUE} because append copies the previous
+  * part's formatting
+  * </p>
+  */
++@NoArgsConstructor
+ public final class ComponentBuilder
+ {
+ 
+-    private BaseComponent current;
++    /**
++     * The position for the current part to modify. Modified cursors will
++     * automatically reset to the last part after appending new components.
++     * Default value at -1 to assert that the builder has no parts.
++     */
++    @Getter
++    private int cursor = -1;
++    @Getter
+     private final List<BaseComponent> parts = new ArrayList<BaseComponent>();
++    private BaseComponent dummy;
++
++    private ComponentBuilder(BaseComponent[] parts)
++    {
++        for ( BaseComponent baseComponent : parts )
++        {
++            this.parts.add( baseComponent.duplicate() );
++        }
++        resetCursor();
++    }
+ 
+     /**
+      * Creates a ComponentBuilder from the other given ComponentBuilder to clone
+      * it.
+      *
+      * @param original the original for the new ComponentBuilder.
+      */
+     public ComponentBuilder(ComponentBuilder original)
+     {
+-        current = original.current.duplicate();
+-        for ( BaseComponent baseComponent : original.parts )
+-        {
+-            parts.add( baseComponent.duplicate() );
+-        }
++        this( original.parts.toArray( new BaseComponent[ original.parts.size() ] ) );
+     }
+ 
+     /**
+      * Creates a ComponentBuilder with the given text as the first part.
+      *
+      * @param text the first text element
+      */
+     public ComponentBuilder(String text)
+     {
+-        current = new TextComponent( text );
++        this( new TextComponent( text ) );
+     }
+ 
+     /**
+      * Creates a ComponentBuilder with the given component as the first part.
+      *
+      * @param component the first component element
+      */
+     public ComponentBuilder(BaseComponent component)
+     {
+-        current = component.duplicate();
++
++        this( new BaseComponent[]
++        {
++            component
++        } );
++    }
++
++    private BaseComponent getDummy()
++    {
++        if ( dummy == null )
++        {
++            dummy = new BaseComponent()
++            {
++                @Override
++                public BaseComponent duplicate()
++                {
++                    return this;
++                }
++            };
++        }
++        return dummy;
++    }
++
++    /**
++     * Resets the cursor to index of the last element.
++     *
++     * @return this ComponentBuilder for chaining
++     */
++    public ComponentBuilder resetCursor()
++    {
++        cursor = parts.size() - 1;
++        return this;
++    }
++
++    /**
++     * Sets the position of the current component to be modified
++     *
++     * @param pos the cursor position synonymous to an element position for a
++     * list
++     * @return this ComponentBuilder for chaining
++     * @throws IndexOutOfBoundsException if the index is out of range
++     * ({@code index < 0 || index >= size()})
++     */
++    public ComponentBuilder setCursor(int pos) throws IndexOutOfBoundsException
++    {
++        if ( ( this.cursor != pos ) && ( pos < 0 || pos >= parts.size() ) )
++        {
++            throw new IndexOutOfBoundsException( "Cursor out of bounds (expected between 0 + " + ( parts.size() - 1 ) + ")" );
++        }
++
++        this.cursor = pos;
++        return this;
+     }
+ 
+     /**
+      * Appends a component to the builder and makes it the current target for
+      * formatting. The component will have all the formatting from previous
+      * part.
+      *
+      * @param component the component to append
+@@ -83,21 +150,28 @@
+      * previous part.
+      *
+      * @param component the component to append
+      * @param retention the formatting to retain
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder append(BaseComponent component, FormatRetention retention)
+     {
+-        parts.add( current );
+-
+-        BaseComponent previous = current;
+-        current = component.duplicate();
+-        current.copyFormatting( previous, retention, false );
++        BaseComponent previous = ( parts.isEmpty() ) ? null : parts.get( parts.size() - 1 );
++        if ( previous == null )
++        {
++            previous = dummy;
++            dummy = null;
++        }
++        if ( previous != null )
++        {
++            component.copyFormatting( previous, retention, false );
++        }
++        parts.add( component );
++        resetCursor();
+         return this;
+     }
+ 
+     /**
+      * Appends the components to the builder and makes the last element the
+      * current target for formatting. The components will have all the
+      * formatting from previous part.
+      *
+@@ -117,23 +191,19 @@
+      * @param components the components to append
+      * @param retention the formatting to retain
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder append(BaseComponent[] components, FormatRetention retention)
+     {
+         Preconditions.checkArgument( components.length != 0, "No components to append" );
+ 
+-        BaseComponent previous = current;
+         for ( BaseComponent component : components )
+         {
+-            parts.add( current );
+-
+-            current = component.duplicate();
+-            current.copyFormatting( previous, retention, false );
++            append( component, retention );
+         }
+ 
+         return this;
+     }
+ 
+     /**
+      * Appends the text to the builder and makes it the current target for
+      * formatting. The text will have all the formatting from previous part.
+@@ -165,23 +235,17 @@
+      * previous part.
+      *
+      * @param text the text to append
+      * @param retention the formatting to retain
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder append(String text, FormatRetention retention)
+     {
+-        parts.add( current );
+-
+-        BaseComponent old = current;
+-        current = new TextComponent( text );
+-        current.copyFormatting( old, retention, false );
+-
+-        return this;
++        return append( new TextComponent( text ), retention );
+     }
+ 
+     /**
+      * Allows joining additional components to this builder using the given
+      * {@link Joiner} and {@link FormatRetention#ALL}.
+      *
+      * Simply executes the provided joiner on this instance to facilitate a
+      * chain pattern.
+@@ -206,120 +270,158 @@
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder append(Joiner joiner, FormatRetention retention)
+     {
+         return joiner.join( this, retention );
+     }
+ 
+     /**
++     * Remove the component part at the position of given index.
++     *
++     * @param pos the index to remove at
++     * @throws IndexOutOfBoundsException if the index is out of range
++     * ({@code index < 0 || index >= size()})
++     */
++    public void removeComponent(int pos) throws IndexOutOfBoundsException
++    {
++        if ( parts.remove( pos ) != null )
++        {
++            resetCursor();
++        }
++    }
++
++    /**
++     * Gets the component part at the position of given index.
++     *
++     * @param pos the index to find
++     * @return the component
++     * @throws IndexOutOfBoundsException if the index is out of range
++     * ({@code index < 0 || index >= size()})
++     */
++    public BaseComponent getComponent(int pos) throws IndexOutOfBoundsException
++    {
++        return parts.get( pos );
++    }
++
++    /**
++     * Gets the component at the position of the cursor.
++     *
++     * @return the active component or null if builder is empty
++     */
++    public BaseComponent getCurrentComponent()
++    {
++        return ( cursor == -1 ) ? getDummy() : parts.get( cursor );
++    }
++
++    /**
+      * Sets the color of the current part.
+      *
+      * @param color the new color
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder color(ChatColor color)
+     {
+-        current.setColor( color );
++        getCurrentComponent().setColor( color );
+         return this;
+     }
+ 
+     /**
+      * Sets whether the current part is bold.
+      *
+      * @param bold whether this part is bold
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder bold(boolean bold)
+     {
+-        current.setBold( bold );
++        getCurrentComponent().setBold( bold );
+         return this;
+     }
+ 
+     /**
+      * Sets whether the current part is italic.
+      *
+      * @param italic whether this part is italic
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder italic(boolean italic)
+     {
+-        current.setItalic( italic );
++        getCurrentComponent().setItalic( italic );
+         return this;
+     }
+ 
+     /**
+      * Sets whether the current part is underlined.
+      *
+      * @param underlined whether this part is underlined
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder underlined(boolean underlined)
+     {
+-        current.setUnderlined( underlined );
++        getCurrentComponent().setUnderlined( underlined );
+         return this;
+     }
+ 
+     /**
+      * Sets whether the current part is strikethrough.
+      *
+      * @param strikethrough whether this part is strikethrough
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder strikethrough(boolean strikethrough)
+     {
+-        current.setStrikethrough( strikethrough );
++        getCurrentComponent().setStrikethrough( strikethrough );
+         return this;
+     }
+ 
+     /**
+      * Sets whether the current part is obfuscated.
+      *
+      * @param obfuscated whether this part is obfuscated
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder obfuscated(boolean obfuscated)
+     {
+-        current.setObfuscated( obfuscated );
++        getCurrentComponent().setObfuscated( obfuscated );
+         return this;
+     }
+ 
+     /**
+      * Sets the insertion text for the current part.
+      *
+      * @param insertion the insertion text
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder insertion(String insertion)
+     {
+-        current.setInsertion( insertion );
++        getCurrentComponent().setInsertion( insertion );
+         return this;
+     }
+ 
+     /**
+      * Sets the click event for the current part.
+      *
+      * @param clickEvent the click event
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder event(ClickEvent clickEvent)
+     {
+-        current.setClickEvent( clickEvent );
++        getCurrentComponent().setClickEvent( clickEvent );
+         return this;
+     }
+ 
+     /**
+      * Sets the hover event for the current part.
+      *
+      * @param hoverEvent the hover event
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder event(HoverEvent hoverEvent)
+     {
+-        current.setHoverEvent( hoverEvent );
++        getCurrentComponent().setHoverEvent( hoverEvent );
+         return this;
+     }
+ 
+     /**
+      * Sets the current part back to normal settings. Only text is kept.
+      *
+      * @return this ComponentBuilder for chaining
+      */
+@@ -331,34 +433,38 @@
+     /**
+      * Retains only the specified formatting. Text is not modified.
+      *
+      * @param retention the formatting to retain
+      * @return this ComponentBuilder for chaining
+      */
+     public ComponentBuilder retain(FormatRetention retention)
+     {
+-        current.retain( retention );
++        getCurrentComponent().retain( retention );
+         return this;
+     }
+ 
+     /**
+      * Returns the components needed to display the message created by this
+-     * builder.
++     * builder.git
+      *
+      * @return the created components
+      */
+     public BaseComponent[] create()
+     {
+-        BaseComponent[] result = parts.toArray( new BaseComponent[ parts.size() + 1 ] );
+-        result[parts.size()] = current;
+-        return result;
+-    }
+-
+-    public static enum FormatRetention
++        BaseComponent[] cloned = new BaseComponent[ parts.size() ];
++        int i = 0;
++        for ( BaseComponent part : parts )
++        {
++            cloned[i++] = part.duplicate();
++        }
++        return cloned;
++    }
++
++    public enum FormatRetention
+     {
+ 
+         /**
+          * Specify that we do not want to retain anything from the previous
+          * component.
+          */
+         NONE,
+         /**
+--- MERGED RESULT (mergiraf; full) ---
+package net.md_5.bungee.api.chat;
+
+import com.google.common.base.Preconditions;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import net.md_5.bungee.api.ChatColor;
+
+/**
+ * <p>
+ * ComponentBuilder simplifies creating basic messages by allowing the use of a
+ * chainable builder.
+ * </p>
+ * <pre>
+ * new ComponentBuilder("Hello ").color(ChatColor.RED).
+ * append("World").color(ChatColor.BLUE). append("!").bold(true).create();
+ * </pre>
+ * <p>
+ * All methods (excluding {@link #append(String)} and {@link #create()} work on
+ * the last part appended to the builder, so in the example above "Hello " would
+ * be {@link net.md_5.bungee.api.ChatColor#RED} and "World" would be
+ * {@link net.md_5.bungee.api.ChatColor#BLUE} but "!" would be bold and
+ * {@link net.md_5.bungee.api.ChatColor#BLUE} because append copies the previous
+ * part's formatting
+ * </p>
+ */
+@NoArgsConstructor
+public class ComponentBuilder
+{
+
+    /**
+     * The position for the current part to modify. Modified cursors will
+     * automatically reset to the last part after appending new components.
+     * Default value at -1 to assert that the builder has no parts.
+     */
+    @Getter
+    private int cursor = -1;
+    @Getter
+    private final List<BaseComponent> parts = new ArrayList<BaseComponent>();
+    private BaseComponent dummy;
+
+    private ComponentBuilder(BaseComponent[] parts)
+    {
+        for ( BaseComponent baseComponent : parts )
+        {
+            this.parts.add( baseComponent.duplicate() );
+        }
+        resetCursor();
+    }
+
+    /**
+     * Creates a ComponentBuilder from the other given ComponentBuilder to clone
+     * it.
+     *
+     * @param original the original for the new ComponentBuilder.
+     */
+    public ComponentBuilder(ComponentBuilder original)
+    {
+        this( original.parts.toArray( new BaseComponent[ original.parts.size() ] ) );
+    }
+
+    /**
+     * Creates a ComponentBuilder with the given text as the first part.
+     *
+     * @param text the first text element
+     */
+    public ComponentBuilder(String text)
+    {
+        this( new TextComponent( text ) );
+    }
+
+    /**
+     * Creates a ComponentBuilder with the given component as the first part.
+     *
+     * @param component the first component element
+     */
+    public ComponentBuilder(BaseComponent component)
+    {
+
+        this( new BaseComponent[]
+        {
+            component
+        } );
+    }
+
+    private BaseComponent getDummy()
+    {
+        if ( dummy == null )
+        {
+            dummy = new BaseComponent()
+            {
+                @Override
+                public BaseComponent duplicate()
+                {
+                    return this;
+                }
+            };
+        }
+        return dummy;
+    }
+
+    /**
+     * Resets the cursor to index of the last element.
+     *
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder resetCursor()
+    {
+        cursor = parts.size() - 1;
+        return this;
+    }
+
+    /**
+     * Sets the position of the current component to be modified
+     *
+     * @param pos the cursor position synonymous to an element position for a
+     * list
+     * @return this ComponentBuilder for chaining
+     * @throws IndexOutOfBoundsException if the index is out of range
+     * ({@code index < 0 || index >= size()})
+     */
+    public ComponentBuilder setCursor(int pos) throws IndexOutOfBoundsException
+    {
+        if ( ( this.cursor != pos ) && ( pos < 0 || pos >= parts.size() ) )
+        {
+            throw new IndexOutOfBoundsException( "Cursor out of bounds (expected between 0 + " + ( parts.size() - 1 ) + ")" );
+        }
+
+        this.cursor = pos;
+        return this;
+    }
+
+    /**
+     * Appends a component to the builder and makes it the current target for
+     * formatting. The component will have all the formatting from previous
+     * part.
+     *
+     * @param component the component to append
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder append(BaseComponent component)
+    {
+        return append( component, FormatRetention.ALL );
+    }
+
+    /**
+     * Appends a component to the builder and makes it the current target for
+     * formatting. You can specify the amount of formatting retained from
+     * previous part.
+     *
+     * @param component the component to append
+     * @param retention the formatting to retain
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder append(BaseComponent component, FormatRetention retention)
+    {
+        BaseComponent previous = ( parts.isEmpty() ) ? null : parts.get( parts.size() - 1 );
+        if ( previous == null )
+        {
+            previous = dummy;
+            dummy = null;
+        }
+        if ( previous != null )
+        {
+            component.copyFormatting( previous, retention, false );
+        }
+        parts.add( component );
+        resetCursor();
+        return this;
+    }
+
+    /**
+     * Appends the components to the builder and makes the last element the
+     * current target for formatting. The components will have all the
+     * formatting from previous part.
+     *
+     * @param components the components to append
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder append(BaseComponent[] components)
+    {
+        return append( components, FormatRetention.ALL );
+    }
+
+    /**
+     * Appends the components to the builder and makes the last element the
+     * current target for formatting. You can specify the amount of formatting
+     * retained from previous part.
+     *
+     * @param components the components to append
+     * @param retention the formatting to retain
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder append(BaseComponent[] components, FormatRetention retention)
+    {
+        Preconditions.checkArgument( components.length != 0, "No components to append" );
+
+        for ( BaseComponent component : components )
+        {
+            append( component, retention );
+        }
+
+        return this;
+    }
+
+    /**
+     * Appends the text to the builder and makes it the current target for
+     * formatting. The text will have all the formatting from previous part.
+     *
+     * @param text the text to append
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder append(String text)
+    {
+        return append( text, FormatRetention.ALL );
+    }
+
+    /**
+     * Parse text to BaseComponent[] with colors and format, appends the text to
+     * the builder and makes it the current target for formatting. The component
+     * will have all the formatting from previous part.
+     *
+     * @param text the text to append
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder appendLegacy(String text)
+    {
+        return append( TextComponent.fromLegacyText( text ) );
+    }
+
+    /**
+     * Appends the text to the builder and makes it the current target for
+     * formatting. You can specify the amount of formatting retained from
+     * previous part.
+     *
+     * @param text the text to append
+     * @param retention the formatting to retain
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder append(String text, FormatRetention retention)
+    {
+        return append( new TextComponent( text ), retention );
+    }
+
+    /**
+     * Allows joining additional components to this builder using the given
+     * {@link Joiner} and {@link FormatRetention#ALL}.
+     *
+     * Simply executes the provided joiner on this instance to facilitate a
+     * chain pattern.
+     *
+     * @param joiner joiner used for operation
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder append(Joiner joiner)
+    {
+        return joiner.join( this, FormatRetention.ALL );
+    }
+
+    /**
+     * Allows joining additional components to this builder using the given
+     * {@link Joiner}.
+     *
+     * Simply executes the provided joiner on this instance to facilitate a
+     * chain pattern.
+     *
+     * @param joiner joiner used for operation
+     * @param retention the formatting to retain
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder append(Joiner joiner, FormatRetention retention)
+    {
+        return joiner.join( this, retention );
+    }
+
+    /**
+     * Remove the component part at the position of given index.
+     *
+     * @param pos the index to remove at
+     * @throws IndexOutOfBoundsException if the index is out of range
+     * ({@code index < 0 || index >= size()})
+     */
+    public void removeComponent(int pos) throws IndexOutOfBoundsException
+    {
+        if ( parts.remove( pos ) != null )
+        {
+            resetCursor();
+        }
+    }
+
+    /**
+     * Gets the component part at the position of given index.
+     *
+     * @param pos the index to find
+     * @return the component
+     * @throws IndexOutOfBoundsException if the index is out of range
+     * ({@code index < 0 || index >= size()})
+     */
+    public BaseComponent getComponent(int pos) throws IndexOutOfBoundsException
+    {
+        return parts.get( pos );
+    }
+
+    /**
+     * Gets the component at the position of the cursor.
+     *
+     * @return the active component or null if builder is empty
+     */
+    public BaseComponent getCurrentComponent()
+    {
+        return ( cursor == -1 ) ? getDummy() : parts.get( cursor );
+    }
+
+    /**
+     * Sets the color of the current part.
+     *
+     * @param color the new color
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder color(ChatColor color)
+    {
+        getCurrentComponent().setColor( color );
+        return this;
+    }
+
+    /**
+     * Sets whether the current part is bold.
+     *
+     * @param bold whether this part is bold
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder bold(boolean bold)
+    {
+        getCurrentComponent().setBold( bold );
+        return this;
+    }
+
+    /**
+     * Sets whether the current part is italic.
+     *
+     * @param italic whether this part is italic
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder italic(boolean italic)
+    {
+        getCurrentComponent().setItalic( italic );
+        return this;
+    }
+
+    /**
+     * Sets whether the current part is underlined.
+     *
+     * @param underlined whether this part is underlined
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder underlined(boolean underlined)
+    {
+        getCurrentComponent().setUnderlined( underlined );
+        return this;
+    }
+
+    /**
+     * Sets whether the current part is strikethrough.
+     *
+     * @param strikethrough whether this part is strikethrough
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder strikethrough(boolean strikethrough)
+    {
+        getCurrentComponent().setStrikethrough( strikethrough );
+        return this;
+    }
+
+    /**
+     * Sets whether the current part is obfuscated.
+     *
+     * @param obfuscated whether this part is obfuscated
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder obfuscated(boolean obfuscated)
+    {
+        getCurrentComponent().setObfuscated( obfuscated );
+        return this;
+    }
+
+    /**
+     * Sets the insertion text for the current part.
+     *
+     * @param insertion the insertion text
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder insertion(String insertion)
+    {
+        getCurrentComponent().setInsertion( insertion );
+        return this;
+    }
+
+    /**
+     * Sets the click event for the current part.
+     *
+     * @param clickEvent the click event
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder event(ClickEvent clickEvent)
+    {
+        getCurrentComponent().setClickEvent( clickEvent );
+        return this;
+    }
+
+    /**
+     * Sets the hover event for the current part.
+     *
+     * @param hoverEvent the hover event
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder event(HoverEvent hoverEvent)
+    {
+        getCurrentComponent().setHoverEvent( hoverEvent );
+        return this;
+    }
+
+    /**
+     * Sets the current part back to normal settings. Only text is kept.
+     *
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder reset()
+    {
+        return retain( FormatRetention.NONE );
+    }
+
+    /**
+     * Retains only the specified formatting. Text is not modified.
+     *
+     * @param retention the formatting to retain
+     * @return this ComponentBuilder for chaining
+     */
+    public ComponentBuilder retain(FormatRetention retention)
+    {
+        getCurrentComponent().retain( retention );
+        return this;
+    }
+
+    /**
+     * Returns the components needed to display the message created by this
+     * builder.git
+     *
+     * @return the created components
+     */
+    public BaseComponent[] create()
+    {
+        BaseComponent[] cloned = new BaseComponent[ parts.size() ];
+        int i = 0;
+        for ( BaseComponent part : parts )
+        {
+            cloned[i++] = part.duplicate();
+        }
+        return cloned;
+    }
+
+    public enum FormatRetention
+    {
+
+        /**
+         * Specify that we do not want to retain anything from the previous
+         * component.
+         */
+        NONE,
+        /**
+         * Specify that we want the formatting retained from the previous
+         * component.
+         */
+        FORMATTING,
+        /**
+         * Specify that we want the events retained from the previous component.
+         */
+        EVENTS,
+        /**
+         * Specify that we want to retain everything from the previous
+         * component.
+         */
+        ALL
+    }
+
+    /**
+     * Functional interface to join additional components to a ComponentBuilder.
+     */
+    public interface Joiner
+    {
+
+        /**
+         * Joins additional components to the provided {@link ComponentBuilder}
+         * and then returns it to fulfill a chain pattern.
+         *
+         * Retention may be ignored and is to be understood as an optional
+         * recommendation to the Joiner and not as a guarantee to have a
+         * previous component in builder unmodified.
+         *
+         * @param componentBuilder to which to append additional components
+         * @param retention the formatting to possibly retain
+         * @return input componentBuilder for chaining
+         */
+        ComponentBuilder join(ComponentBuilder componentBuilder, FormatRetention retention);
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/5: chat/src/main/java/net/md_5/bungee/api/chat/KeybindComponent.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -7,17 +7,17 @@
+ import lombok.ToString;
+ import net.md_5.bungee.api.ChatColor;
+ 
+ @Getter
+ @Setter
+ @ToString
+ @NoArgsConstructor
+ @EqualsAndHashCode(callSuper = true)
+-public final class KeybindComponent extends BaseComponent
++public class KeybindComponent extends BaseComponent
+ {
+ 
+     /**
+      * The keybind identifier to use.
+      * <br>
+      * Will be replaced with the actual key the client is using.
+      */
+     private String keybind;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,16 +1,15 @@
+ package net.md_5.bungee.api.chat;
+ 
+ import lombok.EqualsAndHashCode;
+ import lombok.Getter;
+ import lombok.NoArgsConstructor;
+ import lombok.Setter;
+ import lombok.ToString;
+-import net.md_5.bungee.api.ChatColor;
+ 
+ @Getter
+ @Setter
+ @ToString
+ @NoArgsConstructor
+ @EqualsAndHashCode(callSuper = true)
+ public final class KeybindComponent extends BaseComponent
+ {
+@@ -55,34 +54,13 @@
+     {
+         builder.append( getKeybind() );
+         super.toPlainText( builder );
+     }
+ 
+     @Override
+     protected void toLegacyText(StringBuilder builder)
+     {
+-        builder.append( getColor() );
+-        if ( isBold() )
+-        {
+-            builder.append( ChatColor.BOLD );
+-        }
+-        if ( isItalic() )
+-        {
+-            builder.append( ChatColor.ITALIC );
+-        }
+-        if ( isUnderlined() )
+-        {
+-            builder.append( ChatColor.UNDERLINE );
+-        }
+-        if ( isStrikethrough() )
+-        {
+-            builder.append( ChatColor.STRIKETHROUGH );
+-        }
+-        if ( isObfuscated() )
+-        {
+-            builder.append( ChatColor.MAGIC );
+-        }
++        addFormat( builder );
+         builder.append( getKeybind() );
+-
+         super.toLegacyText( builder );
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package net.md_5.bungee.api.chat;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+@Getter
+@Setter
+@ToString
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class KeybindComponent extends BaseComponent
+{
+
+    /**
+     * The keybind identifier to use.
+     * <br>
+     * Will be replaced with the actual key the client is using.
+     */
+    private String keybind;
+
+    /**
+     * Creates a keybind component from the original to clone it.
+     *
+     * @param original the original for the new keybind component.
+     */
+    public KeybindComponent(KeybindComponent original)
+    {
+        super( original );
+        setKeybind( original.getKeybind() );
+    }
+
+    /**
+     * Creates a keybind component with the passed internal keybind value.
+     *
+     * @param keybind the keybind value
+     * @see Keybinds
+     */
+    public KeybindComponent(String keybind)
+    {
+        setKeybind( keybind );
+    }
+
+    @Override
+    public BaseComponent duplicate()
+    {
+        return new KeybindComponent( this );
+    }
+
+    @Override
+    protected void toPlainText(StringBuilder builder)
+    {
+        builder.append( getKeybind() );
+        super.toPlainText( builder );
+    }
+
+    @Override
+    protected void toLegacyText(StringBuilder builder)
+    {
+        addFormat( builder );
+        builder.append( getKeybind() );
+        super.toLegacyText( builder );
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/5: chat/src/main/java/net/md_5/bungee/api/chat/TextComponent.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -9,17 +9,17 @@
+ import lombok.Getter;
+ import lombok.Setter;
+ import net.md_5.bungee.api.ChatColor;
+ 
+ @Getter
+ @Setter
+ @AllArgsConstructor
+ @EqualsAndHashCode(callSuper = true)
+-public final class TextComponent extends BaseComponent
++public class TextComponent extends BaseComponent
+ {
+ 
+     private static final Pattern url = Pattern.compile( "^(?:(https?)://)?([-\\w_\\.]{2,}\\.[a-z]{2,4})(/\\S*)?$" );
+ 
+     /**
+      * Converts the old formatting system that used
+      * {@link net.md_5.bungee.api.ChatColor#COLOR_CHAR} into the new json based
+      * system.
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -167,17 +167,21 @@
+     /**
+      * Creates a TextComponent with blank text and the extras set to the passed
+      * array
+      *
+      * @param extras the extras to set
+      */
+     public TextComponent(BaseComponent... extras)
+     {
+-        setText( "" );
++        this();
++        if ( extras.length == 0 )
++        {
++            return;
++        }
+         setExtra( new ArrayList<BaseComponent>( Arrays.asList( extras ) ) );
+     }
+ 
+     /**
+      * Creates a duplicate of this TextComponent.
+      *
+      * @return the duplicate of this TextComponent.
+      */
+@@ -192,37 +196,17 @@
+     {
+         builder.append( text );
+         super.toPlainText( builder );
+     }
+ 
+     @Override
+     protected void toLegacyText(StringBuilder builder)
+     {
+-        builder.append( getColor() );
+-        if ( isBold() )
+-        {
+-            builder.append( ChatColor.BOLD );
+-        }
+-        if ( isItalic() )
+-        {
+-            builder.append( ChatColor.ITALIC );
+-        }
+-        if ( isUnderlined() )
+-        {
+-            builder.append( ChatColor.UNDERLINE );
+-        }
+-        if ( isStrikethrough() )
+-        {
+-            builder.append( ChatColor.STRIKETHROUGH );
+-        }
+-        if ( isObfuscated() )
+-        {
+-            builder.append( ChatColor.MAGIC );
+-        }
++        addFormat( builder );
+         builder.append( text );
+         super.toLegacyText( builder );
+     }
+ 
+     @Override
+     public String toString()
+     {
+         return String.format( "TextComponent{text=%s, %s}", text, super.toString() );
+--- MERGED RESULT (mergiraf; full) ---
+package net.md_5.bungee.api.chat;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import net.md_5.bungee.api.ChatColor;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class TextComponent extends BaseComponent
+{
+
+    private static final Pattern url = Pattern.compile( "^(?:(https?)://)?([-\\w_\\.]{2,}\\.[a-z]{2,4})(/\\S*)?$" );
+
+    /**
+     * Converts the old formatting system that used
+     * {@link net.md_5.bungee.api.ChatColor#COLOR_CHAR} into the new json based
+     * system.
+     *
+     * @param message the text to convert
+     * @return the components needed to print the message to the client
+     */
+    public static BaseComponent[] fromLegacyText(String message)
+    {
+        return fromLegacyText( message, ChatColor.WHITE );
+    }
+
+    /**
+     * Converts the old formatting system that used
+     * {@link net.md_5.bungee.api.ChatColor#COLOR_CHAR} into the new json based
+     * system.
+     *
+     * @param message the text to convert
+     * @param defaultColor color to use when no formatting is to be applied
+     * (i.e. after ChatColor.RESET).
+     * @return the components needed to print the message to the client
+     */
+    public static BaseComponent[] fromLegacyText(String message, ChatColor defaultColor)
+    {
+        ArrayList<BaseComponent> components = new ArrayList<BaseComponent>();
+        StringBuilder builder = new StringBuilder();
+        TextComponent component = new TextComponent();
+        Matcher matcher = url.matcher( message );
+
+        for ( int i = 0; i < message.length(); i++ )
+        {
+            char c = message.charAt( i );
+            if ( c == ChatColor.COLOR_CHAR )
+            {
+                if ( ++i >= message.length() )
+                {
+                    break;
+                }
+                c = message.charAt( i );
+                if ( c >= 'A' && c <= 'Z' )
+                {
+                    c += 32;
+                }
+                ChatColor format = ChatColor.getByChar( c );
+                if ( format == null )
+                {
+                    continue;
+                }
+                if ( builder.length() > 0 )
+                {
+                    TextComponent old = component;
+                    component = new TextComponent( old );
+                    old.setText( builder.toString() );
+                    builder = new StringBuilder();
+                    components.add( old );
+                }
+                switch ( format )
+                {
+                    case BOLD:
+                        component.setBold( true );
+                        break;
+                    case ITALIC:
+                        component.setItalic( true );
+                        break;
+                    case UNDERLINE:
+                        component.setUnderlined( true );
+                        break;
+                    case STRIKETHROUGH:
+                        component.setStrikethrough( true );
+                        break;
+                    case MAGIC:
+                        component.setObfuscated( true );
+                        break;
+                    case RESET:
+                        format = defaultColor;
+                    default:
+                        component = new TextComponent();
+                        component.setColor( format );
+                        break;
+                }
+                continue;
+            }
+            int pos = message.indexOf( ' ', i );
+            if ( pos == -1 )
+            {
+                pos = message.length();
+            }
+            if ( matcher.region( i, pos ).find() )
+            { //Web link handling
+
+                if ( builder.length() > 0 )
+                {
+                    TextComponent old = component;
+                    component = new TextComponent( old );
+                    old.setText( builder.toString() );
+                    builder = new StringBuilder();
+                    components.add( old );
+                }
+
+                TextComponent old = component;
+                component = new TextComponent( old );
+                String urlString = message.substring( i, pos );
+                component.setText( urlString );
+                component.setClickEvent( new ClickEvent( ClickEvent.Action.OPEN_URL,
+                        urlString.startsWith( "http" ) ? urlString : "http://" + urlString ) );
+                components.add( component );
+                i += pos - i - 1;
+                component = old;
+                continue;
+            }
+            builder.append( c );
+        }
+
+        component.setText( builder.toString() );
+        components.add( component );
+
+        return components.toArray( new BaseComponent[ components.size() ] );
+    }
+
+    /**
+     * The text of the component that will be displayed to the client
+     */
+    private String text;
+
+    /**
+     * Creates a TextComponent with blank text.
+     */
+    public TextComponent()
+    {
+        this.text = "";
+    }
+
+    /**
+     * Creates a TextComponent with formatting and text from the passed
+     * component
+     *
+     * @param textComponent the component to copy from
+     */
+    public TextComponent(TextComponent textComponent)
+    {
+        super( textComponent );
+        setText( textComponent.getText() );
+    }
+
+    /**
+     * Creates a TextComponent with blank text and the extras set to the passed
+     * array
+     *
+     * @param extras the extras to set
+     */
+    public TextComponent(BaseComponent... extras)
+    {
+        this();
+        if ( extras.length == 0 )
+        {
+            return;
+        }
+        setExtra( new ArrayList<BaseComponent>( Arrays.asList( extras ) ) );
+    }
+
+    /**
+     * Creates a duplicate of this TextComponent.
+     *
+     * @return the duplicate of this TextComponent.
+     */
+    @Override
+    public BaseComponent duplicate()
+    {
+        return new TextComponent( this );
+    }
+
+    @Override
+    protected void toPlainText(StringBuilder builder)
+    {
+        builder.append( text );
+        super.toPlainText( builder );
+    }
+
+    @Override
+    protected void toLegacyText(StringBuilder builder)
+    {
+        addFormat( builder );
+        builder.append( text );
+        super.toLegacyText( builder );
+    }
+
+    @Override
+    public String toString()
+    {
+        return String.format( "TextComponent{text=%s, %s}", text, super.toString() );
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/5: chat/src/main/java/net/md_5/bungee/api/chat/TranslatableComponent.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -12,17 +12,17 @@
+ import net.md_5.bungee.api.ChatColor;
+ import net.md_5.bungee.chat.TranslationRegistry;
+ 
+ @Getter
+ @Setter
+ @ToString
+ @NoArgsConstructor
+ @EqualsAndHashCode(callSuper = true)
+-public final class TranslatableComponent extends BaseComponent
++public class TranslatableComponent extends BaseComponent
+ {
+ 
+     private final Pattern format = Pattern.compile( "%(?:(\\d+)\\$)?([A-Za-z%]|$)" );
+ 
+     /**
+      * The key into the Minecraft locale files to use for the translation. The
+      * text depends on the client's locale setting. The console is always en_US
+      */
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -4,17 +4,16 @@
+ import java.util.List;
+ import java.util.regex.Matcher;
+ import java.util.regex.Pattern;
+ import lombok.EqualsAndHashCode;
+ import lombok.Getter;
+ import lombok.NoArgsConstructor;
+ import lombok.Setter;
+ import lombok.ToString;
+-import net.md_5.bungee.api.ChatColor;
+ import net.md_5.bungee.chat.TranslationRegistry;
+ 
+ @Getter
+ @Setter
+ @ToString
+ @NoArgsConstructor
+ @EqualsAndHashCode(callSuper = true)
+ public final class TranslatableComponent extends BaseComponent
+@@ -51,22 +50,22 @@
+             }
+             setWith( temp );
+         }
+     }
+ 
+     /**
+      * Creates a translatable component with the passed substitutions
+      *
+-     * @see #translate
+-     * @see #setWith(java.util.List)
+      * @param translate the translation key
+      * @param with the {@link java.lang.String}s and
+      * {@link net.md_5.bungee.api.chat.BaseComponent}s to use into the
+      * translation
++     * @see #translate
++     * @see #setWith(java.util.List)
+      */
+     public TranslatableComponent(String translate, Object... with)
+     {
+         setTranslate( translate );
+         if ( with != null && with.length != 0 )
+         {
+             List<BaseComponent> temp = new ArrayList<BaseComponent>();
+             for ( Object w : with )
+@@ -134,108 +133,74 @@
+         }
+         component.parent = this;
+         with.add( component );
+     }
+ 
+     @Override
+     protected void toPlainText(StringBuilder builder)
+     {
++        convert( builder, false );
++        super.toPlainText( builder );
++    }
++
++    @Override
++    protected void toLegacyText(StringBuilder builder)
++    {
++        convert( builder, true );
++        super.toLegacyText( builder );
++    }
++
++    private void convert(StringBuilder builder, boolean applyFormat)
++    {
+         String trans = TranslationRegistry.INSTANCE.translate( translate );
+ 
+         Matcher matcher = format.matcher( trans );
+         int position = 0;
+         int i = 0;
+         while ( matcher.find( position ) )
+         {
+             int pos = matcher.start();
+             if ( pos != position )
+             {
++                if ( applyFormat )
++                {
++                    addFormat( builder );
++                }
+                 builder.append( trans.substring( position, pos ) );
+             }
+             position = matcher.end();
+ 
+             String formatCode = matcher.group( 2 );
+             switch ( formatCode.charAt( 0 ) )
+             {
+                 case 's':
+                 case 'd':
+                     String withIndex = matcher.group( 1 );
+-                    with.get( withIndex != null ? Integer.parseInt( withIndex ) - 1 : i++ ).toPlainText( builder );
++
++                    BaseComponent withComponent = with.get( withIndex != null ? Integer.parseInt( withIndex ) - 1 : i++ );
++                    if ( applyFormat )
++                    {
++                        withComponent.toLegacyText( builder );
++                    } else
++                    {
++                        withComponent.toPlainText( builder );
++                    }
+                     break;
+                 case '%':
++                    if ( applyFormat )
++                    {
++                        addFormat( builder );
++                    }
+                     builder.append( '%' );
+                     break;
+             }
+         }
+         if ( trans.length() != position )
+         {
++            if ( applyFormat )
++            {
++                addFormat( builder );
++            }
+             builder.append( trans.substring( position, trans.length() ) );
+         }
+-
+-        super.toPlainText( builder );
+-    }
+-
+-    @Override
+-    protected void toLegacyText(StringBuilder builder)
+-    {
+-        String trans = TranslationRegistry.INSTANCE.translate( translate );
+-
+-        Matcher matcher = format.matcher( trans );
+-        int position = 0;
+-        int i = 0;
+-        while ( matcher.find( position ) )
+-        {
+-            int pos = matcher.start();
+-            if ( pos != position )
+-            {
+-                addFormat( builder );
+-                builder.append( trans.substring( position, pos ) );
+-            }
+-            position = matcher.end();
+-
+-            String formatCode = matcher.group( 2 );
+-            switch ( formatCode.charAt( 0 ) )
+-            {
+-                case 's':
+-                case 'd':
+-                    String withIndex = matcher.group( 1 );
+-                    with.get( withIndex != null ? Integer.parseInt( withIndex ) - 1 : i++ ).toLegacyText( builder );
+-                    break;
+-                case '%':
+-                    addFormat( builder );
+-                    builder.append( '%' );
+-                    break;
+-            }
+-        }
+-        if ( trans.length() != position )
+-        {
+-            addFormat( builder );
+-            builder.append( trans.substring( position, trans.length() ) );
+-        }
+-        super.toLegacyText( builder );
+-    }
+-
+-    private void addFormat(StringBuilder builder)
+-    {
+-        builder.append( getColor() );
+-        if ( isBold() )
+-        {
+-            builder.append( ChatColor.BOLD );
+-        }
+-        if ( isItalic() )
+-        {
+-            builder.append( ChatColor.ITALIC );
+-        }
+-        if ( isUnderlined() )
+-        {
+-            builder.append( ChatColor.UNDERLINE );
+-        }
+-        if ( isStrikethrough() )
+-        {
+-            builder.append( ChatColor.STRIKETHROUGH );
+-        }
+-        if ( isObfuscated() )
+-        {
+-            builder.append( ChatColor.MAGIC );
+-        }
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package net.md_5.bungee.api.chat;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+import net.md_5.bungee.chat.TranslationRegistry;
+
+@Getter
+@Setter
+@ToString
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class TranslatableComponent extends BaseComponent
+{
+
+    private final Pattern format = Pattern.compile( "%(?:(\\d+)\\$)?([A-Za-z%]|$)" );
+
+    /**
+     * The key into the Minecraft locale files to use for the translation. The
+     * text depends on the client's locale setting. The console is always en_US
+     */
+    private String translate;
+    /**
+     * The components to substitute into the translation
+     */
+    private List<BaseComponent> with;
+
+    /**
+     * Creates a translatable component from the original to clone it.
+     *
+     * @param original the original for the new translatable component.
+     */
+    public TranslatableComponent(TranslatableComponent original)
+    {
+        super( original );
+        setTranslate( original.getTranslate() );
+
+        if ( original.getWith() != null )
+        {
+            List<BaseComponent> temp = new ArrayList<BaseComponent>();
+            for ( BaseComponent baseComponent : original.getWith() )
+            {
+                temp.add( baseComponent.duplicate() );
+            }
+            setWith( temp );
+        }
+    }
+
+    /**
+     * Creates a translatable component with the passed substitutions
+     *
+     * @param translate the translation key
+     * @param with the {@link java.lang.String}s and
+     * {@link net.md_5.bungee.api.chat.BaseComponent}s to use into the
+     * translation
+     * @see #translate
+     * @see #setWith(java.util.List)
+     */
+    public TranslatableComponent(String translate, Object... with)
+    {
+        setTranslate( translate );
+        if ( with != null && with.length != 0 )
+        {
+            List<BaseComponent> temp = new ArrayList<BaseComponent>();
+            for ( Object w : with )
+            {
+                if ( w instanceof BaseComponent )
+                {
+                    temp.add( (BaseComponent) w );
+                } else
+                {
+                    temp.add( new TextComponent( String.valueOf( w ) ) );
+                }
+            }
+            setWith( temp );
+        }
+    }
+
+    /**
+     * Creates a duplicate of this TranslatableComponent.
+     *
+     * @return the duplicate of this TranslatableComponent.
+     */
+    @Override
+    public BaseComponent duplicate()
+    {
+        return new TranslatableComponent( this );
+    }
+
+    /**
+     * Sets the translation substitutions to be used in this component. Removes
+     * any previously set substitutions
+     *
+     * @param components the components to substitute
+     */
+    public void setWith(List<BaseComponent> components)
+    {
+        for ( BaseComponent component : components )
+        {
+            component.parent = this;
+        }
+        with = components;
+    }
+
+    /**
+     * Adds a text substitution to the component. The text will inherit this
+     * component's formatting
+     *
+     * @param text the text to substitute
+     */
+    public void addWith(String text)
+    {
+        addWith( new TextComponent( text ) );
+    }
+
+    /**
+     * Adds a component substitution to the component. The text will inherit
+     * this component's formatting
+     *
+     * @param component the component to substitute
+     */
+    public void addWith(BaseComponent component)
+    {
+        if ( with == null )
+        {
+            with = new ArrayList<BaseComponent>();
+        }
+        component.parent = this;
+        with.add( component );
+    }
+
+    @Override
+    protected void toPlainText(StringBuilder builder)
+    {
+        convert( builder, false );
+        super.toPlainText( builder );
+    }
+
+    @Override
+    protected void toLegacyText(StringBuilder builder)
+    {
+        convert( builder, true );
+        super.toLegacyText( builder );
+    }
+
+    private void convert(StringBuilder builder, boolean applyFormat)
+    {
+        String trans = TranslationRegistry.INSTANCE.translate( translate );
+
+        Matcher matcher = format.matcher( trans );
+        int position = 0;
+        int i = 0;
+        while ( matcher.find( position ) )
+        {
+            int pos = matcher.start();
+            if ( pos != position )
+            {
+                if ( applyFormat )
+                {
+                    addFormat( builder );
+                }
+                builder.append( trans.substring( position, pos ) );
+            }
+            position = matcher.end();
+
+            String formatCode = matcher.group( 2 );
+            switch ( formatCode.charAt( 0 ) )
+            {
+                case 's':
+                case 'd':
+                    String withIndex = matcher.group( 1 );
+
+                    BaseComponent withComponent = with.get( withIndex != null ? Integer.parseInt( withIndex ) - 1 : i++ );
+                    if ( applyFormat )
+                    {
+                        withComponent.toLegacyText( builder );
+                    } else
+                    {
+                        withComponent.toPlainText( builder );
+                    }
+                    break;
+                case '%':
+                    if ( applyFormat )
+                    {
+                        addFormat( builder );
+                    }
+                    builder.append( '%' );
+                    break;
+            }
+        }
+        if ( trans.length() != position )
+        {
+            if ( applyFormat )
+            {
+                addFormat( builder );
+            }
+            builder.append( trans.substring( position, trans.length() ) );
+        }
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/5: proxy/src/main/java/net/md_5/bungee/conf/Configuration.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,28 +1,28 @@
+ package net.md_5.bungee.conf;
+ 
+ import com.google.common.base.Preconditions;
+-import gnu.trove.map.TMap;
+ import java.io.File;
+ import java.io.IOException;
+ import java.util.Arrays;
+ import java.util.Collection;
++import java.util.Collections;
+ import java.util.Map;
++import java.util.TreeMap;
+ import java.util.UUID;
+ import java.util.logging.Level;
+ import javax.imageio.ImageIO;
+ import lombok.Getter;
+ import net.md_5.bungee.api.Favicon;
+ import net.md_5.bungee.api.ProxyConfig;
+ import net.md_5.bungee.api.ProxyServer;
+ import net.md_5.bungee.api.config.ConfigurationAdapter;
+ import net.md_5.bungee.api.config.ListenerInfo;
+ import net.md_5.bungee.api.config.ServerInfo;
+-import net.md_5.bungee.util.CaseInsensitiveMap;
+ import net.md_5.bungee.util.CaseInsensitiveSet;
+ 
+ /**
+  * Core configuration for the proxy.
+  */
+ @Getter
+ public class Configuration implements ProxyConfig
+ {
+@@ -37,17 +37,17 @@
+     private String uuid = UUID.randomUUID().toString();
+     /**
+      * Set of all listeners.
+      */
+     private Collection<ListenerInfo> listeners;
+     /**
+      * Set of all servers.
+      */
+-    private TMap<String, ServerInfo> servers;
++    private Map<String, ServerInfo> servers;
+     /**
+      * Should we check minecraft.net auth.
+      */
+     private boolean onlineMode = true;
+     /**
+      * Whether we log proxy commands to the proxy log
+      */
+     private boolean logCommands;
+@@ -97,17 +97,18 @@
+ 
+         Preconditions.checkArgument( listeners != null && !listeners.isEmpty(), "No listeners defined." );
+ 
+         Map<String, ServerInfo> newServers = adapter.getServers();
+         Preconditions.checkArgument( newServers != null && !newServers.isEmpty(), "No servers defined" );
+ 
+         if ( servers == null )
+         {
+-            servers = new CaseInsensitiveMap<>( newServers );
++            servers = Collections.synchronizedMap( new TreeMap<String, ServerInfo>( String.CASE_INSENSITIVE_ORDER ) );
++            servers.putAll( newServers );
+         } else
+         {
+             for ( ServerInfo oldServer : servers.values() )
+             {
+                 // Don't allow servers to be removed
+                 Preconditions.checkArgument( newServers.containsKey( oldServer.getName() ), "Server %s removed on reload!", oldServer.getName() );
+             }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -47,18 +47,21 @@
+      * Should we check minecraft.net auth.
+      */
+     private boolean onlineMode = true;
+     /**
+      * Whether we log proxy commands to the proxy log
+      */
+     private boolean logCommands;
+     private boolean logPings = true;
++    private int remotePingCache = -1;
+     private int playerLimit = -1;
+     private Collection<String> disabledCommands;
++    private int serverConnectTimeout = 5000;
++    private int remotePingTimeout = 5000;
+     private int throttle = 4000;
+     private int throttleLimit = 3;
+     private boolean ipForward;
+     private Favicon favicon;
+     private int compressionThreshold = 256;
+     private boolean preventProxyConnections;
+     private boolean forgeSupport;
+ 
+@@ -80,17 +83,20 @@
+         }
+ 
+         listeners = adapter.getListeners();
+         timeout = adapter.getInt( "timeout", timeout );
+         uuid = adapter.getString( "stats", uuid );
+         onlineMode = adapter.getBoolean( "online_mode", onlineMode );
+         logCommands = adapter.getBoolean( "log_commands", logCommands );
+         logPings = adapter.getBoolean( "log_pings", logPings );
++        remotePingCache = adapter.getInt( "remote_ping_cache", remotePingCache );
+         playerLimit = adapter.getInt( "player_limit", playerLimit );
++        serverConnectTimeout = adapter.getInt( "server_connect_timeout", serverConnectTimeout );
++        remotePingTimeout = adapter.getInt( "remote_ping_timeout", remotePingTimeout );
+         throttle = adapter.getInt( "connection_throttle", throttle );
+         throttleLimit = adapter.getInt( "connection_throttle_limit", throttleLimit );
+         ipForward = adapter.getBoolean( "ip_forward", ipForward );
+         compressionThreshold = adapter.getInt( "network_compression_threshold", compressionThreshold );
+         preventProxyConnections = adapter.getBoolean( "prevent_proxy_connections", preventProxyConnections );
+         forgeSupport = adapter.getBoolean( "forge_support", forgeSupport );
+ 
+         disabledCommands = new CaseInsensitiveSet( (Collection<String>) adapter.getList( "disabled_commands", Arrays.asList( "disabledcommandhere" ) ) );
+--- MERGED RESULT (mergiraf; full) ---
+package net.md_5.bungee.conf;
+
+import com.google.common.base.Preconditions;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.logging.Level;
+import javax.imageio.ImageIO;
+import lombok.Getter;
+import net.md_5.bungee.api.Favicon;
+import net.md_5.bungee.api.ProxyConfig;
+import net.md_5.bungee.api.ProxyServer;
+import net.md_5.bungee.api.config.ConfigurationAdapter;
+import net.md_5.bungee.api.config.ListenerInfo;
+import net.md_5.bungee.api.config.ServerInfo;
+import net.md_5.bungee.util.CaseInsensitiveSet;
+
+/**
+ * Core configuration for the proxy.
+ */
+@Getter
+public class Configuration implements ProxyConfig
+{
+
+    /**
+     * Time before users are disconnected due to no network activity.
+     */
+    private int timeout = 30000;
+    /**
+     * UUID used for metrics.
+     */
+    private String uuid = UUID.randomUUID().toString();
+    /**
+     * Set of all listeners.
+     */
+    private Collection<ListenerInfo> listeners;
+    /**
+     * Set of all servers.
+     */
+    private Map<String, ServerInfo> servers;
+    /**
+     * Should we check minecraft.net auth.
+     */
+    private boolean onlineMode = true;
+    /**
+     * Whether we log proxy commands to the proxy log
+     */
+    private boolean logCommands;
+    private boolean logPings = true;
+    private int remotePingCache = -1;
+    private int playerLimit = -1;
+    private Collection<String> disabledCommands;
+    private int serverConnectTimeout = 5000;
+    private int remotePingTimeout = 5000;
+    private int throttle = 4000;
+    private int throttleLimit = 3;
+    private boolean ipForward;
+    private Favicon favicon;
+    private int compressionThreshold = 256;
+    private boolean preventProxyConnections;
+    private boolean forgeSupport;
+
+    public void load()
+    {
+        ConfigurationAdapter adapter = ProxyServer.getInstance().getConfigurationAdapter();
+        adapter.load();
+
+        File fav = new File( "server-icon.png" );
+        if ( fav.exists() )
+        {
+            try
+            {
+                favicon = Favicon.create( ImageIO.read( fav ) );
+            } catch ( IOException | IllegalArgumentException ex )
+            {
+                ProxyServer.getInstance().getLogger().log( Level.WARNING, "Could not load server icon", ex );
+            }
+        }
+
+        listeners = adapter.getListeners();
+        timeout = adapter.getInt( "timeout", timeout );
+        uuid = adapter.getString( "stats", uuid );
+        onlineMode = adapter.getBoolean( "online_mode", onlineMode );
+        logCommands = adapter.getBoolean( "log_commands", logCommands );
+        logPings = adapter.getBoolean( "log_pings", logPings );
+        remotePingCache = adapter.getInt( "remote_ping_cache", remotePingCache );
+        playerLimit = adapter.getInt( "player_limit", playerLimit );
+        serverConnectTimeout = adapter.getInt( "server_connect_timeout", serverConnectTimeout );
+        remotePingTimeout = adapter.getInt( "remote_ping_timeout", remotePingTimeout );
+        throttle = adapter.getInt( "connection_throttle", throttle );
+        throttleLimit = adapter.getInt( "connection_throttle_limit", throttleLimit );
+        ipForward = adapter.getBoolean( "ip_forward", ipForward );
+        compressionThreshold = adapter.getInt( "network_compression_threshold", compressionThreshold );
+        preventProxyConnections = adapter.getBoolean( "prevent_proxy_connections", preventProxyConnections );
+        forgeSupport = adapter.getBoolean( "forge_support", forgeSupport );
+
+        disabledCommands = new CaseInsensitiveSet( (Collection<String>) adapter.getList( "disabled_commands", Arrays.asList( "disabledcommandhere" ) ) );
+
+        Preconditions.checkArgument( listeners != null && !listeners.isEmpty(), "No listeners defined." );
+
+        Map<String, ServerInfo> newServers = adapter.getServers();
+        Preconditions.checkArgument( newServers != null && !newServers.isEmpty(), "No servers defined" );
+
+        if ( servers == null )
+        {
+            servers = Collections.synchronizedMap( new TreeMap<String, ServerInfo>( String.CASE_INSENSITIVE_ORDER ) );
+            servers.putAll( newServers );
+        } else
+        {
+            for ( ServerInfo oldServer : servers.values() )
+            {
+                // Don't allow servers to be removed
+                Preconditions.checkArgument( newServers.containsKey( oldServer.getName() ), "Server %s removed on reload!", oldServer.getName() );
+            }
+
+            // Add new servers
+            for ( Map.Entry<String, ServerInfo> newServer : newServers.entrySet() )
+            {
+                if ( !servers.containsValue( newServer.getValue() ) )
+                {
+                    servers.put( newServer.getKey(), newServer.getValue() );
+                }
+            }
+        }
+
+        for ( ListenerInfo listener : listeners )
+        {
+            for ( int i = 0; i < listener.getServerPriority().size(); i++ )
+            {
+                String server = listener.getServerPriority().get( i );
+                Preconditions.checkArgument( servers.containsKey( server ), "Server %s (priority %s) is not defined", server, i );
+            }
+            for ( String server : listener.getForcedHosts().values() )
+            {
+                if ( !servers.containsKey( server ) )
+                {
+                    ProxyServer.getInstance().getLogger().log( Level.WARNING, "Forced host server {0} is not defined", server );
+                }
+            }
+        }
+    }
+
+    @Override
+    @Deprecated
+    public String getFavicon()
+    {
+        return getFaviconObject().getEncoded();
+    }
+
+    @Override
+    public Favicon getFaviconObject()
+    {
+        return favicon;
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

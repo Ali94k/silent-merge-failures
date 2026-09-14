@@ -1,0 +1,81 @@
+UNIT ignorance77_transformiceapi__9a65b8374f
+repo: ignorance77_transformiceapi   merge: 9a65b8374fff0fea24c5be16c94b999c57c18955   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/main/java/ee/ignorance/transformiceapi/processors/MouseDeathProcessor.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -7,13 +7,13 @@
+ 
+ 
+ public class MouseDeathProcessor extends CommandProcessor{
+ 
+     @Override
+     public void process(AbstractResponse command, PlayerImpl player) {
+     	MouseDeathResponse response = (MouseDeathResponse) command;
+     	player.notifyListeners(new MouseDeathEvent(response.getMouseID(),
+-                player.getMouseByID(response.getMouseID()).getName()));
++                player.getMouseById(response.getMouseID()).getName()));
+     }
+ 
+ 
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -6,14 +6,15 @@
+ import ee.ignorance.transformiceapi.protocol.server.MouseDeathResponse;
+ 
+ 
+ public class MouseDeathProcessor extends CommandProcessor{
+ 
+     @Override
+     public void process(AbstractResponse command, PlayerImpl player) {
+     	MouseDeathResponse response = (MouseDeathResponse) command;
++        player.getMouseByID(response.getMouseID()).setDead(true);
+     	player.notifyListeners(new MouseDeathEvent(response.getMouseID(),
+                 player.getMouseByID(response.getMouseID()).getName()));
+     }
+ 
+ 
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package ee.ignorance.transformiceapi.processors;
+
+import ee.ignorance.transformiceapi.PlayerImpl;
+import ee.ignorance.transformiceapi.event.MouseDeathEvent;
+import ee.ignorance.transformiceapi.protocol.server.AbstractResponse;
+import ee.ignorance.transformiceapi.protocol.server.MouseDeathResponse;
+
+
+public class MouseDeathProcessor extends CommandProcessor{
+
+    @Override
+    public void process(AbstractResponse command, PlayerImpl player) {
+    	MouseDeathResponse response = (MouseDeathResponse) command;
+        player.getMouseByID(response.getMouseID()).setDead(true);
+    	player.notifyListeners(new MouseDeathEvent(response.getMouseID(),
+                player.getMouseById(response.getMouseID()).getName()));
+    }
+
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

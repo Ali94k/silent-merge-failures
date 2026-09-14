@@ -1,0 +1,1091 @@
+UNIT softinstigate_restheart__dc14776b02
+repo: softinstigate_restheart   merge: dc14776b0222b57177f126d05bb5a5a9c87a6469   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: graphql/src/main/java/org/restheart/graphql/GraphQLAppDeserializer.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -19,16 +19,17 @@
+  * =========================LICENSE_END==================================
+  */
+ package org.restheart.graphql;
+ 
+ import org.bson.BsonDocument;
+ import org.bson.BsonInvalidOperationException;
+ import org.bson.BsonValue;
+ import org.restheart.graphql.models.*;
++import org.restheart.utils.BsonUtils;
+ import org.restheart.utils.JsonUtils;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+ 
+ public class GraphQLAppDeserializer {
+ 
+     public static final GraphQLApp fromBsonDocument(BsonDocument appDef) throws GraphQLIllegalAppDefinitionException {
+@@ -56,17 +57,17 @@
+                 throw new GraphQLIllegalAppDefinitionException(
+                         "'Schema' field must be a 'STRING' but was " + appDef.get("descriptor").getBsonType()
+                 );
+             }
+         }
+ 
+         if(appDef.containsKey("mappings")){
+             if (appDef.get("mappings").isDocument()){
+-                mappingsMap = getMappings(JsonUtils.unescapeKeys(appDef.getDocument("mappings")).asDocument());
++                mappingsMap = getMappings(BsonUtils.unescapeKeys(appDef.getDocument("mappings")).asDocument());
+             }
+             else{
+                 throw new GraphQLIllegalAppDefinitionException(
+                         "'Mappings' field must be a 'DOCUMENT' but was " + appDef.get("mappings").getBsonType()
+                 );
+             }
+         }
+ 
+@@ -86,38 +87,47 @@
+ 
+     }
+ 
+     private static AppDescriptor getAppDescriptor(BsonDocument doc) throws GraphQLIllegalAppDefinitionException {
+ 
+         try{
+             BsonDocument descriptor = doc.getDocument("descriptor");
+ 
+-            AppDescriptor.Builder descBuilder = AppDescriptor.newBuilder()
+-                    .appName(descriptor.getString("name").getValue())
+-                    .description(descriptor.getString("description").getValue());
+-
+-            if (descriptor.containsKey("uri") && descriptor.get("uri").isString()) {
++            AppDescriptor.Builder descBuilder = AppDescriptor.newBuilder();
++
++            if (descriptor.containsKey("name")){
++                descBuilder.appName(descriptor.getString("name").getValue());
++            }
++
++            if (descriptor.containsKey("uri")) {
+ 
+                 descBuilder.uri(descriptor.getString("uri").getValue());
+-            } else {
++            } else if (descriptor.containsKey("name")){
+                 descBuilder.uri(descriptor.getString("name").getValue());
+             }
+ 
+-            if (descriptor.containsKey("enabled") && descriptor.get("enabled").isBoolean()) {
++            if (descriptor.containsKey("description")){
++                descBuilder.description(descriptor.getString("description").getValue());
++            }
++            else {
++                descBuilder.description("");
++            }
++
++            if (descriptor.containsKey("enabled")) {
+ 
+                 descBuilder.enabled(descriptor.getBoolean("enabled").getValue());
+             } else {
+                 descBuilder.enabled(true);
+             }
+ 
+             return descBuilder.build();
+ 
+-        }catch (BsonInvalidOperationException bsonEx){
+-            throw new GraphQLIllegalAppDefinitionException("Error with app descriptor. " + bsonEx.getMessage());
++        }catch (BsonInvalidOperationException | IllegalStateException e){
++            throw new GraphQLIllegalAppDefinitionException("Error with app descriptor. " + e.getMessage());
+         }
+     }
+ 
+     private static Map<String, TypeMapping> getMappings(BsonDocument doc) throws GraphQLIllegalAppDefinitionException {
+ 
+         Map<String, TypeMapping> mappingMap = new HashMap<>();
+ 
+         for (String type: doc.keySet()){
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -19,17 +19,17 @@
+  * =========================LICENSE_END==================================
+  */
+ package org.restheart.graphql;
+ 
+ import org.bson.BsonDocument;
+ import org.bson.BsonInvalidOperationException;
+ import org.bson.BsonValue;
+ import org.restheart.graphql.models.*;
+-import org.restheart.utils.JsonUtils;
++import org.restheart.utils.BsonUtils;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+ 
+ public class GraphQLAppDeserializer {
+ 
+     public static final GraphQLApp fromBsonDocument(BsonDocument appDef) throws GraphQLIllegalAppDefinitionException {
+ 
+@@ -56,17 +56,17 @@
+                 throw new GraphQLIllegalAppDefinitionException(
+                         "'Schema' field must be a 'STRING' but was " + appDef.get("descriptor").getBsonType()
+                 );
+             }
+         }
+ 
+         if(appDef.containsKey("mappings")){
+             if (appDef.get("mappings").isDocument()){
+-                mappingsMap = getMappings(JsonUtils.unescapeKeys(appDef.getDocument("mappings")).asDocument());
++                mappingsMap = getMappings(BsonUtils.unescapeKeys(appDef.getDocument("mappings")).asDocument());
+             }
+             else{
+                 throw new GraphQLIllegalAppDefinitionException(
+                         "'Mappings' field must be a 'DOCUMENT' but was " + appDef.get("mappings").getBsonType()
+                 );
+             }
+         }
+ 
+--- MERGED RESULT (mergiraf; full) ---
+/*-
+ * ========================LICENSE_START=================================
+ * restheart-graphql
+ * %%
+ * Copyright (C) 2020 - 2021 SoftInstigate
+ * %%
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * =========================LICENSE_END==================================
+ */
+package org.restheart.graphql;
+
+import org.bson.BsonDocument;
+import org.bson.BsonInvalidOperationException;
+import org.bson.BsonValue;
+import org.restheart.graphql.models.*;
+import org.restheart.utils.BsonUtils;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class GraphQLAppDeserializer {
+
+    public static final GraphQLApp fromBsonDocument(BsonDocument appDef) throws GraphQLIllegalAppDefinitionException {
+
+        AppDescriptor descriptor = null;
+        String schema = null;
+        Map<String, TypeMapping> mappingsMap = null;
+
+        if( appDef.containsKey("descriptor")){
+            if (appDef.get("descriptor").isDocument()){
+                descriptor = getAppDescriptor(appDef);
+            }
+            else{
+                throw new GraphQLIllegalAppDefinitionException(
+                        "'Descriptor' field must be a 'DOCUMENT' but was " + appDef.get("descriptor").getBsonType()
+                );
+            }
+        }
+
+        if (appDef.containsKey("schema")){
+            if (appDef.get("schema").isString()){
+                schema = appDef.getString("schema").getValue();
+            }
+            else{
+                throw new GraphQLIllegalAppDefinitionException(
+                        "'Schema' field must be a 'STRING' but was " + appDef.get("descriptor").getBsonType()
+                );
+            }
+        }
+
+        if(appDef.containsKey("mappings")){
+            if (appDef.get("mappings").isDocument()){
+                mappingsMap = getMappings(BsonUtils.unescapeKeys(appDef.getDocument("mappings")).asDocument());
+            }
+            else{
+                throw new GraphQLIllegalAppDefinitionException(
+                        "'Mappings' field must be a 'DOCUMENT' but was " + appDef.get("mappings").getBsonType()
+                );
+            }
+        }
+
+        try{
+            return GraphQLApp.newBuilder()
+                    .appDescriptor(descriptor)
+                    .schema(schema)
+                    .mappings(mappingsMap)
+                    .build();
+
+        } catch (IllegalStateException | IllegalArgumentException e){
+            throw  new GraphQLIllegalAppDefinitionException(
+                    e.getMessage()
+            );
+        }
+
+
+    }
+
+    private static AppDescriptor getAppDescriptor(BsonDocument doc) throws GraphQLIllegalAppDefinitionException {
+
+        try{
+            BsonDocument descriptor = doc.getDocument("descriptor");
+
+            AppDescriptor.Builder descBuilder = AppDescriptor.newBuilder();
+
+            if (descriptor.containsKey("name")){
+                descBuilder.appName(descriptor.getString("name").getValue());
+            }
+
+            if (descriptor.containsKey("uri")) {
+
+                descBuilder.uri(descriptor.getString("uri").getValue());
+            } else if (descriptor.containsKey("name")){
+                descBuilder.uri(descriptor.getString("name").getValue());
+            }
+
+            if (descriptor.containsKey("description")){
+                descBuilder.description(descriptor.getString("description").getValue());
+            }
+            else {
+                descBuilder.description("");
+            }
+
+            if (descriptor.containsKey("enabled")) {
+
+                descBuilder.enabled(descriptor.getBoolean("enabled").getValue());
+            } else {
+                descBuilder.enabled(true);
+            }
+
+            return descBuilder.build();
+
+        }catch (BsonInvalidOperationException | IllegalStateException e){
+            throw new GraphQLIllegalAppDefinitionException("Error with app descriptor. " + e.getMessage());
+        }
+    }
+
+    private static Map<String, TypeMapping> getMappings(BsonDocument doc) throws GraphQLIllegalAppDefinitionException {
+
+        Map<String, TypeMapping> mappingMap = new HashMap<>();
+
+        for (String type: doc.keySet()){
+            if(doc.get(type).isDocument()){
+                Map<String, FieldMapping> typeMappings = new HashMap<>();
+
+                BsonDocument typeDoc = doc.getDocument(type);
+
+                for (String field: typeDoc.keySet()){
+
+                    BsonValue fieldMapping = typeDoc.get(field);
+
+                    switch (fieldMapping.getBsonType()){
+                        case STRING:
+                            typeMappings.put(field, new FieldRenaming(field, fieldMapping.asString().getValue()));
+                            break;
+                        case DOCUMENT:{
+                            BsonDocument fieldMappingDoc = fieldMapping.asDocument();
+                            QueryMapping.Builder queryMappingBuilder = QueryMapping.newBuilder();
+
+                            queryMappingBuilder.fieldName(field);
+
+                            if (fieldMappingDoc.containsKey("db")){
+                                if(fieldMappingDoc.get("db").isString()){
+                                    queryMappingBuilder.db(fieldMappingDoc.getString("db").getValue());
+                                }
+                                else {
+                                    throwIllegalDefinitionException(field, type, "db", "'STRING'", fieldMappingDoc.get("db"));
+
+                                }
+                            }
+                            else {
+                                throw new NullPointerException(
+                                        "Error with field '" + field + "' of type '" + type + "'. 'db' could not be null."
+                                );
+                            }
+
+                            if(fieldMappingDoc.containsKey("collection")){
+                                if(fieldMappingDoc.get("collection").isString()){
+                                    queryMappingBuilder.collection(fieldMappingDoc.getString("collection").getValue());
+                                }
+                                else {
+                                    throwIllegalDefinitionException(field, type, "collection", "'STRING'", fieldMappingDoc.get("collection"));
+                                }
+                            }
+                            else{
+                                throw new NullPointerException(
+                                        "Error with field '" + field +"' of type '"+ type + "'. 'collection' could not be null."
+                                );
+                            }
+
+                            if(fieldMappingDoc.containsKey("find")){
+                                if(fieldMappingDoc.get("find").isDocument()){
+                                    queryMappingBuilder.find(fieldMappingDoc.getDocument("find"));
+                                }
+                                else {
+                                    throwIllegalDefinitionException(field, type, "find", "DOCUMENT", fieldMappingDoc.get("find"));
+                                }
+                            }
+
+                            if(fieldMappingDoc.containsKey("sort")){
+                                if(fieldMappingDoc.get("sort").isDocument()){
+                                    queryMappingBuilder.sort(fieldMappingDoc.getDocument("sort"));
+
+                                }
+                                else {
+                                    throwIllegalDefinitionException(field, type, "sort", "DOCUMENT", fieldMappingDoc.get("sort"));
+                                }
+                            }
+
+                            if(fieldMappingDoc.containsKey("limit")){
+                                if(fieldMappingDoc.get("limit").isDocument()){
+                                    queryMappingBuilder.limit(fieldMappingDoc.getDocument("limit"));
+                                }
+                                else if(fieldMappingDoc.get("limit").isNumber()){
+                                    queryMappingBuilder.limit(fieldMappingDoc.getNumber("limit"));
+                                }
+                                else {
+                                    throwIllegalDefinitionException(field, type, "limit", "DOCUMENT", fieldMappingDoc.get("limit"));
+                                }
+                            }
+
+                            if (fieldMappingDoc.containsKey("skip")){
+                                if (fieldMappingDoc.get("skip").isDocument()){
+                                    queryMappingBuilder.skip(fieldMappingDoc.getDocument("skip"));
+                                }
+                                else if(fieldMappingDoc.get("skip").isNumber()){
+                                    queryMappingBuilder.limit(fieldMappingDoc.getNumber("skip"));
+                                }
+                                else {
+                                    throwIllegalDefinitionException(field, type, "skip", "DOCUMENT", fieldMappingDoc.get("skip"));
+                                }
+                            }
+
+                            if (fieldMappingDoc.containsKey("dataLoader")){
+                                if (fieldMappingDoc.get("dataLoader").isDocument()){
+                                    BsonDocument settings = fieldMappingDoc.getDocument("dataLoader");
+                                    DataLoaderSettings.Builder dataLoaderBuilder = DataLoaderSettings.newBuilder();
+
+                                    if (settings.containsKey("batching") && settings.get("batching").isBoolean()){
+                                        dataLoaderBuilder.batching(settings.getBoolean("batching").getValue());
+                                        if (settings.containsKey("maxBatchSize") && settings.get("maxBatchSize").isNumber()){
+                                            dataLoaderBuilder.max_batch_size(settings.getNumber("maxBatchSize").intValue());
+                                        }
+                                    }
+
+                                    if (settings.containsKey("caching") && settings.get("caching").isBoolean()){
+                                        dataLoaderBuilder.caching(settings.getBoolean("caching").getValue());
+                                    }
+
+                                    queryMappingBuilder.DataLoaderSettings(dataLoaderBuilder.build());
+                                }
+                                else {
+                                    throwIllegalDefinitionException(field, type, "dataLoader", "DOCUMENT", fieldMappingDoc.get("dataLoader"));
+                                }
+
+                            }
+
+
+
+                            typeMappings.put(field, queryMappingBuilder.build());
+                            break;
+                        }
+                        default:
+                            throw  new GraphQLIllegalAppDefinitionException(
+                                    "Error with mappings of type: '" + type
+                                            + "'. A field mapping must be of type 'STRING' but was "
+                                            + fieldMapping.getBsonType());
+                    }
+
+                }
+                TypeMapping typeMapping = new ObjectMapping(type, typeMappings);
+                mappingMap.put(type, typeMapping);
+            }
+            else {
+                throw new GraphQLIllegalAppDefinitionException(
+                        "Error with mappings of type: '" + type + "'. Type mappings must be of type 'DOCUMENT' but was "
+                                + doc.get(type).getBsonType()
+                );
+            }
+
+        }
+
+        return mappingMap;
+
+    }
+
+    private static void throwIllegalDefinitionException(String field, String type, String arg ,String typeExpected, BsonValue value) throws GraphQLIllegalAppDefinitionException {
+
+        throw new GraphQLIllegalAppDefinitionException(
+                "Error with field '" + field +"' of type '"+ type +
+                        "'. The field '" + arg + "' must be a '" + typeExpected + "' but was '" + value.getBsonType() + "'."
+        );
+
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -20,17 +20,16 @@
+  */
+ package org.restheart.graphql;
+ 
+ import org.bson.BsonDocument;
+ import org.bson.BsonInvalidOperationException;
+ import org.bson.BsonValue;
+ import org.restheart.graphql.models.*;
+ import org.restheart.utils.BsonUtils;
+-
+ import java.util.HashMap;
+ import java.util.Map;
+ 
+ public class GraphQLAppDeserializer {
+ 
+     public static final GraphQLApp fromBsonDocument(BsonDocument appDef) throws GraphQLIllegalAppDefinitionException {
+ 
+         AppDescriptor descriptor = null;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: graphql/src/main/java/org/restheart/graphql/GraphQLService.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -60,34 +60,37 @@
+                 description = "Service that handles GraphQL requests",
+                 secure = true,
+                 enabledByDefault = true,
+                 defaultURI = "/graphql")
+ 
+ public class GraphQLService implements Service<GraphQLRequest, MongoResponse> {
+     public static final String DEFAULT_APP_DEF_DB = "restheart";
+     public static final String DEFAULT_APP_DEF_COLLECTION = "gqlapps";
++    public static final Boolean DEFAULT_VERBOSE = false;
+ 
+ 
+ 
+     private static final Logger LOGGER = LoggerFactory.getLogger(GraphQLService.class);
+ 
+     private GraphQL gql;
+     private MongoClient mongoClient = null;
+     private String db = DEFAULT_APP_DEF_DB;
+     private String collection = DEFAULT_APP_DEF_COLLECTION;
++    private Boolean verbose = DEFAULT_VERBOSE;
+ 
+     @InjectConfiguration
+     public void initConf(Map<String, Object> args) throws ConfigurationException, NoSuchFieldException, IllegalAccessException {
+         CoercingUtils.replaceBuiltInCoercing();
+ 
+         if (args != null) {
+             try {
+                 this.db = ConfigurablePlugin.argValue(args, "db");
+                 this.collection = ConfigurablePlugin.argValue(args, "collection");
++                this.verbose = ConfigurablePlugin.argValue(args, "verbose");
+             } catch(ConfigurationException ex) {
+                 // nothing to do, using default values
+             }
+         }
+ 
+         if(mongoClient != null){
+             QueryBatchLoader.setMongoClient(mongoClient);
+             GraphQLDataFetcher.setMongoClient(mongoClient);
+@@ -122,20 +125,34 @@
+                 .query(request.getQuery())
+                 .dataLoaderRegistry(dataLoaderRegistry);
+ 
+         inputBuilder.operationName(request.getOperationName());
+         if (request.hasVariables()){
+             inputBuilder.variables((new Gson()).fromJson(request.getVariables(), Map.class));
+         }
+ 
+-        this.gql = GraphQL.newGraphQL(graphQLApp.getExecutableSchema()).build();
++        DataLoaderDispatcherInstrumentationOptions dispatcherInstrumentationOptions
++                = DataLoaderDispatcherInstrumentationOptions.newOptions();
++
++        if(this.verbose){
++            dispatcherInstrumentationOptions = dispatcherInstrumentationOptions.includeStatistics(true);
++        }
++
++        DataLoaderDispatcherInstrumentation dispatcherInstrumentation
++                = new DataLoaderDispatcherInstrumentation(dispatcherInstrumentationOptions);
++
++        this.gql = GraphQL.newGraphQL(graphQLApp.getExecutableSchema())
++                .instrumentation(dispatcherInstrumentation).build();
+ 
+         var result = this.gql.execute(inputBuilder.build());
+-        logDataLoadersStatistics(dataLoaderRegistry);
++
++        if(this.verbose){
++            logDataLoadersStatistics(dataLoaderRegistry);
++        }
+ 
+         if (!result.getErrors().isEmpty()){
+             response.setInError(400, "Bad Request");
+         }
+         response.setContent(BsonUtils.toBsonDocument(result.toSpecification()));
+     }
+ 
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -19,18 +19,16 @@
+  * =========================LICENSE_END==================================
+  */
+ package org.restheart.graphql;
+ 
+ import com.google.gson.Gson;
+ import com.mongodb.MongoClient;
+ import graphql.ExecutionInput;
+ import graphql.GraphQL;
+-import graphql.execution.instrumentation.dataloader.DataLoaderDispatcherInstrumentation;
+-import graphql.execution.instrumentation.dataloader.DataLoaderDispatcherInstrumentationOptions;
+ import io.undertow.server.HttpServerExchange;
+ import org.bson.BsonValue;
+ import org.dataloader.DataLoader;
+ import org.dataloader.DataLoaderRegistry;
+ import org.restheart.ConfigurationException;
+ import org.restheart.exchange.BadRequestException;
+ import org.restheart.exchange.ExchangeKeys;
+ import org.restheart.exchange.MongoResponse;
+@@ -41,17 +39,16 @@
+ import org.restheart.graphql.exchange.GraphQLRequest;
+ import org.restheart.graphql.models.GraphQLApp;
+ import org.restheart.graphql.models.QueryMapping;
+ import org.restheart.graphql.models.TypeMapping;
+ import org.restheart.graphql.scalars.bsonCoercing.CoercingUtils;
+ import org.restheart.plugins.*;
+ import org.restheart.utils.HttpStatus;
+ import org.restheart.utils.BsonUtils;
+-import org.restheart.utils.JsonUtils;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ import java.util.Arrays;
+ import java.util.Map;
+ import java.util.function.Consumer;
+ import java.util.function.Function;
+ 
+--- MERGED RESULT (mergiraf; full) ---
+/*-
+ * ========================LICENSE_START=================================
+ * restheart-graphql
+ * %%
+ * Copyright (C) 2020 - 2021 SoftInstigate
+ * %%
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * =========================LICENSE_END==================================
+ */
+package org.restheart.graphql;
+
+import com.google.gson.Gson;
+import com.mongodb.MongoClient;
+import graphql.ExecutionInput;
+import graphql.GraphQL;
+import io.undertow.server.HttpServerExchange;
+import org.bson.BsonValue;
+import org.dataloader.DataLoader;
+import org.dataloader.DataLoaderRegistry;
+import org.restheart.ConfigurationException;
+import org.restheart.exchange.BadRequestException;
+import org.restheart.exchange.ExchangeKeys;
+import org.restheart.exchange.MongoResponse;
+import org.restheart.graphql.cache.AppDefinitionLoader;
+import org.restheart.graphql.cache.AppDefinitionLoadingCache;
+import org.restheart.graphql.datafetchers.GraphQLDataFetcher;
+import org.restheart.graphql.dataloaders.QueryBatchLoader;
+import org.restheart.graphql.exchange.GraphQLRequest;
+import org.restheart.graphql.models.GraphQLApp;
+import org.restheart.graphql.models.QueryMapping;
+import org.restheart.graphql.models.TypeMapping;
+import org.restheart.graphql.scalars.bsonCoercing.CoercingUtils;
+import org.restheart.plugins.*;
+import org.restheart.utils.HttpStatus;
+import org.restheart.utils.BsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+
+@RegisterPlugin(name= "graphql",
+                description = "Service that handles GraphQL requests",
+                secure = true,
+                enabledByDefault = true,
+                defaultURI = "/graphql")
+
+public class GraphQLService implements Service<GraphQLRequest, MongoResponse> {
+    public static final String DEFAULT_APP_DEF_DB = "restheart";
+    public static final String DEFAULT_APP_DEF_COLLECTION = "gqlapps";
+    public static final Boolean DEFAULT_VERBOSE = false;
+
+
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(GraphQLService.class);
+
+    private GraphQL gql;
+    private MongoClient mongoClient = null;
+    private String db = DEFAULT_APP_DEF_DB;
+    private String collection = DEFAULT_APP_DEF_COLLECTION;
+    private Boolean verbose = DEFAULT_VERBOSE;
+
+    @InjectConfiguration
+    public void initConf(Map<String, Object> args) throws ConfigurationException, NoSuchFieldException, IllegalAccessException {
+        CoercingUtils.replaceBuiltInCoercing();
+
+        if (args != null) {
+            try {
+                this.db = ConfigurablePlugin.argValue(args, "db");
+                this.collection = ConfigurablePlugin.argValue(args, "collection");
+                this.verbose = ConfigurablePlugin.argValue(args, "verbose");
+            } catch(ConfigurationException ex) {
+                // nothing to do, using default values
+            }
+        }
+
+        if(mongoClient != null){
+            QueryBatchLoader.setMongoClient(mongoClient);
+            GraphQLDataFetcher.setMongoClient(mongoClient);
+            AppDefinitionLoader.setup(db, collection, mongoClient);
+        }
+    }
+
+    @InjectMongoClient
+    public void initMongoClient(MongoClient mClient){
+        this.mongoClient = mClient;
+        if (db!= null && collection != null){
+            QueryBatchLoader.setMongoClient(mongoClient);
+            GraphQLDataFetcher.setMongoClient(mongoClient);
+            AppDefinitionLoader.setup(db, collection, mongoClient);
+        }
+    }
+
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void handle(GraphQLRequest request, MongoResponse response) throws Exception {
+        if (request.isOptions()) {
+            handleOptions(request);
+            return;
+        }
+
+        GraphQLApp graphQLApp = request.getAppDefinition();
+
+        DataLoaderRegistry dataLoaderRegistry = setDataloaderRegistry(graphQLApp.getMappings());
+
+        ExecutionInput.Builder inputBuilder = ExecutionInput.newExecutionInput()
+                .query(request.getQuery())
+                .dataLoaderRegistry(dataLoaderRegistry);
+
+        inputBuilder.operationName(request.getOperationName());
+        if (request.hasVariables()){
+            inputBuilder.variables((new Gson()).fromJson(request.getVariables(), Map.class));
+        }
+
+        DataLoaderDispatcherInstrumentationOptions dispatcherInstrumentationOptions
+                = DataLoaderDispatcherInstrumentationOptions.newOptions();
+
+        if(this.verbose){
+            dispatcherInstrumentationOptions = dispatcherInstrumentationOptions.includeStatistics(true);
+        }
+
+        DataLoaderDispatcherInstrumentation dispatcherInstrumentation
+                = new DataLoaderDispatcherInstrumentation(dispatcherInstrumentationOptions);
+
+        this.gql = GraphQL.newGraphQL(graphQLApp.getExecutableSchema())
+                .instrumentation(dispatcherInstrumentation).build();
+
+        var result = this.gql.execute(inputBuilder.build());
+
+        if(this.verbose){
+            logDataLoadersStatistics(dataLoaderRegistry);
+        }
+
+        if (!result.getErrors().isEmpty()){
+            response.setInError(400, "Bad Request");
+        }
+        response.setContent(BsonUtils.toBsonDocument(result.toSpecification()));
+    }
+
+
+    private void logDataLoadersStatistics(DataLoaderRegistry dataLoaderRegistry){
+        LOGGER.debug("##### DATALOADERS STATISTICS #####");
+        dataLoaderRegistry.getKeys().forEach(key -> {
+            LOGGER.debug(key.toUpperCase() + ": " + dataLoaderRegistry.getDataLoader(key).getStatistics());
+        });
+        LOGGER.debug("##################################");
+    }
+
+    private DataLoaderRegistry setDataloaderRegistry(Map<String, TypeMapping> mappings){
+
+        DataLoaderRegistry dataLoaderRegistry = new DataLoaderRegistry();
+
+        mappings.forEach((type, typeMapping) -> {
+            typeMapping.getFieldMappingMap().forEach((field, fieldMapping) -> {
+                if (fieldMapping instanceof QueryMapping){
+                    DataLoader<BsonValue, BsonValue> dataLoader = ((QueryMapping) fieldMapping).getDataloader();
+                    if (dataLoader != null){
+                        dataLoaderRegistry.register(type + "_" + field, dataLoader);
+                    }
+                }
+            } );
+        });
+
+        return dataLoaderRegistry;
+
+    }
+
+
+    @Override
+    public Consumer<HttpServerExchange> requestInitializer() {
+        return e -> {
+            try {
+                if (e.getRequestMethod().equalToString(ExchangeKeys.METHOD.POST.name())
+                    || e.getRequestMethod().equalToString(ExchangeKeys.METHOD.OPTIONS.name())){
+                    var cache = AppDefinitionLoadingCache.getInstance();
+                    String[] splitPath = e.getRequestPath().split("/");
+                    var appUri = String.join("/", Arrays.copyOfRange(splitPath, 2, splitPath.length));
+                    var appDef = cache.get(appUri);
+                    GraphQLRequest.init(e, appUri, appDef);
+                } else {
+                    throw new BadRequestException(HttpStatus.SC_METHOD_NOT_ALLOWED);
+                }
+            } catch (GraphQLAppDefNotFoundException notFoundException){
+                LOGGER.error(notFoundException.getMessage());
+                throw new BadRequestException(HttpStatus.SC_NOT_FOUND);
+            } catch (GraphQLIllegalAppDefinitionException illegalException){
+                LOGGER.error(illegalException.getMessage());
+                throw new BadRequestException(illegalException.getMessage(), HttpStatus.SC_BAD_REQUEST);
+            }
+        };
+    }
+
+    @Override
+    public Consumer<HttpServerExchange> responseInitializer() {
+        return e -> MongoResponse.init(e);
+    }
+
+    @Override
+    public Function<HttpServerExchange, GraphQLRequest> request() {
+        return e -> GraphQLRequest.of(e);
+    }
+
+    @Override
+    public Function<HttpServerExchange, MongoResponse> response() {
+        return e -> MongoResponse.of(e);
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: graphql/src/main/java/org/restheart/graphql/models/GraphQLApp.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -108,51 +108,55 @@
+         public Builder mappings(Map<String, TypeMapping> mappings){
+             this.mappings = mappings;
+             return this;
+         }
+ 
+         public GraphQLApp build() throws IllegalStateException {
+ 
+             if (this.descriptor == null){
+-                throw new IllegalStateException("App descriptor must be not null!");
++                throw new IllegalStateException("app descriptor must be not null!");
+             }
+ 
+             if (this.schema == null){
+-                throw new IllegalStateException("App schema must be not null");
++                throw new IllegalStateException("app schema must be not null");
+             }
++
++            if (this.mappings == null ){
++                throw new IllegalStateException("app mappings must be not null");
++            }
++            else if(!this.mappings.containsKey("Query")){
++                throw new IllegalStateException("mappings for type Query are mandatory");
++            }
++
+ 
+             String schemaWithBsonScalars = BsonScalars.getBsonScalarHeader() + this.schema;
+ 
+             try{
+ 
+                 TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(schemaWithBsonScalars);
+ 
+                 RuntimeWiring.Builder RWBuilder = RuntimeWiring.newRuntimeWiring();
+                 Map<String, GraphQLScalarType> bsonScalars = BsonScalars.getBsonScalars();
+ 
+                 bsonScalars.forEach(((s, graphQLScalarType) -> {
+                     RWBuilder.scalar(graphQLScalarType);
+                 }));
+ 
+-                if(mappings != null){
+-
+-                    this.mappings.forEach(((type, typeMapping) ->
+-                            RWBuilder.type(typeMapping.getTypeWiring(typeRegistry))
+-                    ));
+-
+-                }
++                this.mappings.forEach(((type, typeMapping) ->
++                        RWBuilder.type(typeMapping.getTypeWiring(typeRegistry))
++                ));
+ 
+                 RuntimeWiring runtimeWiring = RWBuilder.build();
+ 
+                 SchemaGenerator schemaGenerator = new SchemaGenerator();
+ 
+                 GraphQLSchema execSchema =  schemaGenerator.makeExecutableSchema(typeRegistry, runtimeWiring);
+ 
+                 return new GraphQLApp(this.descriptor, this.schema, this.mappings, execSchema);
+ 
+             } catch (SchemaProblem schemaProblem){
+-                throw new IllegalArgumentException("Given String is not a valid GraphQL schema");
++                throw new IllegalArgumentException("given String is not a valid GraphQL schema");
+             }
+         }
+ 
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -22,21 +22,18 @@
+ 
+ import graphql.schema.GraphQLScalarType;
+ import graphql.schema.GraphQLSchema;
+ import graphql.schema.idl.RuntimeWiring;
+ import graphql.schema.idl.SchemaGenerator;
+ import graphql.schema.idl.SchemaParser;
+ import graphql.schema.idl.TypeDefinitionRegistry;
+ import graphql.schema.idl.errors.SchemaProblem;
+-import org.bson.BsonValue;
+-import org.dataloader.DataLoader;
+ import org.restheart.graphql.scalars.BsonScalars;
+ 
+-import java.util.HashMap;
+ import java.util.Map;
+ 
+ public class GraphQLApp {
+ 
+     private AppDescriptor descriptor;
+     private String schema;
+     private Map<String, TypeMapping> mappings;
+     private GraphQLSchema executableSchema;
+@@ -85,18 +82,16 @@
+     public void setExecutableSchema(GraphQLSchema executableSchema) {
+         this.executableSchema = executableSchema;
+     }
+ 
+     public static class Builder{
+         private AppDescriptor descriptor;
+         private String schema;
+         private Map<String, TypeMapping> mappings;
+-        private GraphQLSchema executableSchema;
+-
+ 
+         private Builder(){}
+ 
+         public Builder appDescriptor(AppDescriptor descriptor){
+             this.descriptor = descriptor;
+             return this;
+         }
+ 
+--- MERGED RESULT (mergiraf; full) ---
+/*-
+ * ========================LICENSE_START=================================
+ * restheart-graphql
+ * %%
+ * Copyright (C) 2020 - 2021 SoftInstigate
+ * %%
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * =========================LICENSE_END==================================
+ */
+package org.restheart.graphql.models;
+
+import graphql.schema.GraphQLScalarType;
+import graphql.schema.GraphQLSchema;
+import graphql.schema.idl.RuntimeWiring;
+import graphql.schema.idl.SchemaGenerator;
+import graphql.schema.idl.SchemaParser;
+import graphql.schema.idl.TypeDefinitionRegistry;
+import graphql.schema.idl.errors.SchemaProblem;
+import org.restheart.graphql.scalars.BsonScalars;
+
+import java.util.Map;
+
+public class GraphQLApp {
+
+    private AppDescriptor descriptor;
+    private String schema;
+    private Map<String, TypeMapping> mappings;
+    private GraphQLSchema executableSchema;
+
+    public static Builder newBuilder(){
+        return new Builder();
+    }
+
+    public GraphQLApp(){}
+
+    public GraphQLApp(AppDescriptor descriptor, String schema, Map<String, TypeMapping> mappings, GraphQLSchema executableSchema) {
+        this.descriptor = descriptor;
+        this.schema = schema;
+        this.mappings = mappings;
+        this.executableSchema = executableSchema;
+    }
+
+    public AppDescriptor getDescriptor() {
+        return descriptor;
+    }
+
+    public void setDescriptor(AppDescriptor descriptor) {
+        this.descriptor = descriptor;
+    }
+
+    public String getSchema() {
+        return schema;
+    }
+
+    public void setSchema(String schema) {
+        this.schema = schema;
+    }
+
+    public Map<String, TypeMapping> getMappings() {
+        return mappings;
+    }
+
+    public void setMappings(Map<String, TypeMapping> mappings) {
+        this.mappings = mappings;
+    }
+
+    public GraphQLSchema getExecutableSchema() {
+        return executableSchema;
+    }
+
+    public void setExecutableSchema(GraphQLSchema executableSchema) {
+        this.executableSchema = executableSchema;
+    }
+
+    public static class Builder{
+        private AppDescriptor descriptor;
+        private String schema;
+        private Map<String, TypeMapping> mappings;
+
+        private Builder(){}
+
+        public Builder appDescriptor(AppDescriptor descriptor){
+            this.descriptor = descriptor;
+            return this;
+        }
+
+        public Builder schema(String schema){
+            this.schema = schema;
+            return this;
+        }
+
+        public Builder mappings(Map<String, TypeMapping> mappings){
+            this.mappings = mappings;
+            return this;
+        }
+
+        public GraphQLApp build() throws IllegalStateException {
+
+            if (this.descriptor == null){
+                throw new IllegalStateException("app descriptor must be not null!");
+            }
+
+            if (this.schema == null){
+                throw new IllegalStateException("app schema must be not null");
+            }
+
+            if (this.mappings == null ){
+                throw new IllegalStateException("app mappings must be not null");
+            }
+            else if(!this.mappings.containsKey("Query")){
+                throw new IllegalStateException("mappings for type Query are mandatory");
+            }
+
+
+            String schemaWithBsonScalars = BsonScalars.getBsonScalarHeader() + this.schema;
+
+            try{
+
+                TypeDefinitionRegistry typeRegistry = new SchemaParser().parse(schemaWithBsonScalars);
+
+                RuntimeWiring.Builder RWBuilder = RuntimeWiring.newRuntimeWiring();
+                Map<String, GraphQLScalarType> bsonScalars = BsonScalars.getBsonScalars();
+
+                bsonScalars.forEach(((s, graphQLScalarType) -> {
+                    RWBuilder.scalar(graphQLScalarType);
+                }));
+
+                this.mappings.forEach(((type, typeMapping) ->
+                        RWBuilder.type(typeMapping.getTypeWiring(typeRegistry))
+                ));
+
+                RuntimeWiring runtimeWiring = RWBuilder.build();
+
+                SchemaGenerator schemaGenerator = new SchemaGenerator();
+
+                GraphQLSchema execSchema =  schemaGenerator.makeExecutableSchema(typeRegistry, runtimeWiring);
+
+                return new GraphQLApp(this.descriptor, this.schema, this.mappings, execSchema);
+
+            } catch (SchemaProblem schemaProblem){
+                throw new IllegalArgumentException("given String is not a valid GraphQL schema");
+            }
+        }
+
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

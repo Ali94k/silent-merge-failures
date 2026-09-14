@@ -1,0 +1,41 @@
+# Detection-validation pilot — Stage A (v1 detectors, driver commit 2eed882)
+# spec: outputs/p1-detection-validation-plan.md §4–§5
+
+## positives (mergiraf=Tests_failed) — R2 (detection rate)
+  merges materialized      : 30  (36 files)
+  files MERGE_DIVERGED     : 7  {'conflict': 7}
+  merges all-files-diverged: 5 (leave the sample — granularity finding)
+  merges scored            : 25
+  blocked                  : 2/25 = 0.080 [0.022, 0.250]
+    via detector FLAG      : 2
+    via fail-closed only   : 0
+
+## controls (mergiraf=Tests_passed) — R1 (block rate on good merges)
+  merges materialized      : 30  (35 files)
+  files MERGE_DIVERGED     : 0  
+  merges all-files-diverged: 0 (leave the sample — granularity finding)
+  merges scored            : 30
+  blocked                  : 0/30 = 0.000 [0.000, 0.114]
+    via detector FLAG      : 0
+    via fail-closed only   : 0
+
+## Per-detector breakdown (clean-merged files only)
+  detector                      FLAG  UNANALYZ  CLEAN  mean_rt_s  median_rt_s
+  JoernDataFlowInterference        0         0     64       19.4         18.7
+  JoernUnresolvedReference         2         0     62       18.4         18.0
+  JoernInfiniteLoop                0         0     64       18.6         18.1
+  JoernInvalidLoopBounds           0         0     64        6.4          6.2
+  RM2RenameConflict                1         0     63        6.4          5.7
+
+## G0 calibration
+  median per-merge runtime : 68s (abort threshold 1200s)
+  UNANALYZABLE file frac   : 0/64 = 0.00 (abort threshold 0.3)
+
+## FLAGged files — adjudicate every one, written rationale (plan §4.6): 2
+  [pos] erudika_para__a9e67cc8b3__para-server_src_main_java_com_erudika_para_aop_IndexAndCacheAspect.java
+      JoernUnresolvedReference L109: Unresolved identifier 'm' in method 'invoke': referenced in the merged file but resolvable in neither parent — likely a 
+      RM2RenameConflict L109: Stale reference to renamed variable/field: 'm' (renamed to 'method') still referenced at this line but no longer declare
+  [pos] jacquesberger_jsonparsingexample__ac521954c2__src_main_java_org_jberger_jsonparsingexample_json_JSON.java
+      JoernUnresolvedReference L34: Unresolved identifier 'bookTitleList' in method 'saveToFiles': referenced in the merged file but resolvable in neither p
+      JoernUnresolvedReference L43: Unresolved identifier 'outputList' in method 'initializeBookList': referenced in the merged file but resolvable in neith
+

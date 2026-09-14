@@ -1,0 +1,934 @@
+UNIT masterthought_cucumber-reporting__d1ecdc4a98
+repo: masterthought_cucumber-reporting   merge: d1ecdc4a98381ce7e0be07dfc83eaa13e8e7f618   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: src/test/java/net/masterthought/cucumber/ReportGenerator.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -18,17 +18,17 @@
+     public final static String JSON_DIRECTORY = "json/";
+ 
+     protected static final String SAMPLE_JSON = "sample.json";
+     public static final String SIMPLE_JSON = "simple.json";
+     protected static final String EMPTY_JSON = "empty.json";
+     protected static final String INVALID_JSON = "invalid.json";
+     protected static final String INVALID_REPORT_JSON = "invalid-report.json";
+ 
+-    protected static final File TRENDS_FILE = new File(pathToTestFile("cucumber-trends.json"));
++    protected static final File TRENDS_FILE = new File(pathToSampleFile("cucumber-trends.json"));
+ 
+     private final File reportDirectory;
+ 
+     protected Configuration configuration;
+     private final String projectName = "test cucumberProject";
+     protected final List<String> jsonReports = new ArrayList<>();
+     protected ReportResult reportResult;
+ 
+@@ -60,20 +60,20 @@
+         // may be already created so don't overwrite it
+         if (configuration == null) {
+             configuration = new Configuration(reportDirectory, projectName);
+         }
+         createEmbeddingsDirectory();
+     }
+ 
+     public static String reportFromResource(String jsonReport) {
+-        return pathToTestFile(JSON_DIRECTORY + jsonReport);
++        return pathToSampleFile(JSON_DIRECTORY + jsonReport);
+     }
+ 
+-    protected static String pathToTestFile(String fileName) {
++    protected static String pathToSampleFile(String fileName) {
+         try {
+             URL path = ReportGenerator.class.getClassLoader().getResource(fileName);
+             return new File(path.toURI()).getAbsolutePath();
+         } catch (URISyntaxException e) {
+             throw new ValidationException(e);
+         }
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,16 +13,17 @@
+ /**
+  * @author Damian Szczepanik (damianszczepanik@github)
+  */
+ public abstract class ReportGenerator {
+ 
+     public final static String JSON_DIRECTORY = "json/";
+ 
+     protected static final String SAMPLE_JSON = "sample.json";
++    protected static final String COMPLEX_JSON = "complex.json";
+     public static final String SIMPLE_JSON = "simple.json";
+     protected static final String EMPTY_JSON = "empty.json";
+     protected static final String INVALID_JSON = "invalid.json";
+     protected static final String INVALID_REPORT_JSON = "invalid-report.json";
+ 
+     protected static final File TRENDS_FILE = new File(pathToTestFile("cucumber-trends.json"));
+ 
+     private final File reportDirectory;
+--- MERGED RESULT (mergiraf; full) ---
+package net.masterthought.cucumber;
+
+import java.io.File;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
+import net.masterthought.cucumber.json.Feature;
+import net.masterthought.cucumber.json.support.StepObject;
+import net.masterthought.cucumber.json.support.TagObject;
+
+/**
+ * @author Damian Szczepanik (damianszczepanik@github)
+ */
+public abstract class ReportGenerator {
+
+    public final static String JSON_DIRECTORY = "json/";
+
+    protected static final String SAMPLE_JSON = "sample.json";
+    protected static final String COMPLEX_JSON = "complex.json";
+    public static final String SIMPLE_JSON = "simple.json";
+    protected static final String EMPTY_JSON = "empty.json";
+    protected static final String INVALID_JSON = "invalid.json";
+    protected static final String INVALID_REPORT_JSON = "invalid-report.json";
+
+    protected static final File TRENDS_FILE = new File(pathToSampleFile("cucumber-trends.json"));
+
+    private final File reportDirectory;
+
+    protected Configuration configuration;
+    private final String projectName = "test cucumberProject";
+    protected final List<String> jsonReports = new ArrayList<>();
+    protected ReportResult reportResult;
+
+    protected List<Feature> features;
+    protected List<TagObject> tags;
+    protected List<StepObject> steps;
+
+    public ReportGenerator() {
+        try {
+            // points to target/test-classes output
+            reportDirectory = new File(ReportGenerator.class.getClassLoader().getResource("").toURI());
+        } catch (URISyntaxException e) {
+            throw new ValidationException(e);
+        }
+    }
+
+    protected void setUpWithJson(String... jsonFiles) {
+        initWithJSon(jsonFiles);
+
+        createReport();
+    }
+
+    protected void initWithJSon(String... jsonFiles) {
+        if (jsonFiles != null) {
+            for (String jsonFile : jsonFiles)
+                jsonReports.add(reportFromResource(jsonFile));
+        }
+
+        // may be already created so don't overwrite it
+        if (configuration == null) {
+            configuration = new Configuration(reportDirectory, projectName);
+        }
+        createEmbeddingsDirectory();
+    }
+
+    public static String reportFromResource(String jsonReport) {
+        return pathToSampleFile(JSON_DIRECTORY + jsonReport);
+    }
+
+    protected static String pathToSampleFile(String fileName) {
+        try {
+            URL path = ReportGenerator.class.getClassLoader().getResource(fileName);
+            return new File(path.toURI()).getAbsolutePath();
+        } catch (URISyntaxException e) {
+            throw new ValidationException(e);
+        }
+    }
+
+    private void createReport() {
+        ReportParser reportParser = new ReportParser(configuration);
+
+        List<Feature> featuresFromJson = reportParser.parseJsonFiles(jsonReports);
+        reportResult = new ReportResult(featuresFromJson);
+
+        features = reportResult.getAllFeatures();
+        tags = reportResult.getAllTags();
+        steps = reportResult.getAllSteps();
+    }
+
+    private void createEmbeddingsDirectory() {
+        configuration.getEmbeddingDirectory().mkdirs();
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/test/java/net/masterthought/cucumber/generators/integrations/FeatureReportPageIntegrationTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -206,38 +206,38 @@
+         page = new FeatureReportPage(reportResult, configuration, feature);
+ 
+         // when
+         page.generatePage();
+ 
+         // then
+         DocumentAssertion document = documentFrom(page.getWebPage());
+ 
+-        Output outputElement = features.get(1).getElements()[0].getSteps()[7].getOutput();
++        Output[] outputElements = features.get(1).getElements()[0].getSteps()[7].getOutputs();
+         OutputAssertion output = document.getFeature().getElements()[0].getStepsSection().getSteps()[7].getOutput();
+-        output.hasMessages(outputElement.getMessages());
++        output.hasMessages(getMessages(outputElements));
+     }
+ 
+     @Test
+     public void generatePage_OnSingleArray_generatesOutput() {
+ 
+         // given
+         setUpWithJson(SAMPLE_JSON);
+         final Feature feature = features.get(1);
+         page = new FeatureReportPage(reportResult, configuration, feature);
+ 
+         // when
+         page.generatePage();
+ 
+         // then
+         DocumentAssertion document = documentFrom(page.getWebPage());
+ 
+-        Output outputElement = features.get(1).getElements()[0].getSteps()[8].getOutput();
++        Output[] outputElements = features.get(1).getElements()[0].getSteps()[8].getOutputs();
+         OutputAssertion output = document.getFeature().getElements()[0].getStepsSection().getSteps()[8].getOutput();
+-        output.hasMessages(outputElement.getMessages());
++        output.hasMessages(getMessages(outputElements));
+     }
+ 
+     @Test
+     public void generatePage_generatesArguments() {
+ 
+         // given
+         setUpWithJson(SAMPLE_JSON);
+         final Feature feature = features.get(0);
+@@ -301,17 +301,17 @@
+ 
+         Embedding[] embeddings = feature.getElements()[0].getSteps()[5].getEmbeddings();
+ 
+         assertThat(embeddingsElement).hasSameSizeAs(embeddings);
+         embeddingsElement[0].hasImageContent(embeddings[0]);
+         asserEmbeddingFileExist(embeddings[0]);
+         embeddingsElement[2].hasTextContent(embeddings[2].getData());
+         asserEmbeddingFileExist(embeddings[2]);
+-        embeddingsElement[3].hasTextContent(embeddings[3].getData());
++        embeddingsElement[3].hasSrcDocContent(embeddings[3].getData());
+         asserEmbeddingFileExist(embeddings[3]);
+     }
+ 
+     @Test
+     public void generatePage_OnRubyFormat_ForAfterHook_generatesEmbedding() {
+ 
+         // given
+         setUpWithJson(SAMPLE_JSON);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -62,18 +62,18 @@
+ 
+         // when
+         page.generatePage();
+ 
+         // then
+         DocumentAssertion document = documentFrom(page.getWebPage());
+         TableRowAssertion bodyRow = document.getReport().getTableStats().getBodyRow();
+ 
+-        bodyRow.hasExactValues(feature.getName(), "10", "0", "0", "0", "0", "10", "1", "0", "1", "1m 39s 263ms", "Passed");
+-        bodyRow.hasExactCSSClasses("tagname", "passed", "", "", "", "", "total", "passed", "", "total", "duration", "passed");
++        bodyRow.hasExactValues(feature.getName(), "10", "0", "0", "0", "0", "10", "1", "0", "0", "0", "1", "1m 39s 263ms", "Passed");
++        bodyRow.hasExactCSSClasses("tagname", "passed", "", "", "", "", "total", "passed", "", "", "", "total", "duration", "passed");
+     }
+ 
+     @Test
+     public void generatePage_generatesFeatureDetails() {
+ 
+         // given
+         setUpWithJson(SAMPLE_JSON);
+         final Feature feature = features.get(0);
+--- MERGED RESULT (mergiraf; full) ---
+package net.masterthought.cucumber.generators.integrations;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.File;
+
+import org.junit.Test;
+
+import net.masterthought.cucumber.generators.FeatureReportPage;
+import net.masterthought.cucumber.generators.integrations.helpers.BriefAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.DocumentAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.ElementAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.EmbeddingAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.FeatureAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.HookAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.HooksAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.OutputAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.StepAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.StepsAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.TableAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.TableRowAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.TagAssertion;
+import net.masterthought.cucumber.json.Element;
+import net.masterthought.cucumber.json.Embedding;
+import net.masterthought.cucumber.json.Feature;
+import net.masterthought.cucumber.json.Hook;
+import net.masterthought.cucumber.json.Output;
+import net.masterthought.cucumber.json.Row;
+import net.masterthought.cucumber.json.Step;
+
+/**
+ * @author Damian Szczepanik (damianszczepanik@github)
+ */
+public class FeatureReportPageIntegrationTest extends PageTest {
+
+    @Test
+    public void generatePage_generatesTitle() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(0);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+        final String titleValue = String.format("Cucumber Reports  - Feature: %s", feature.getName());
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+        String title = document.getHead().getTitle();
+
+        assertThat(title).isEqualTo(titleValue);
+    }
+
+    @Test
+    public void generatePage_generatesStatsTableBody() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(0);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+        TableRowAssertion bodyRow = document.getReport().getTableStats().getBodyRow();
+
+        bodyRow.hasExactValues(feature.getName(), "10", "0", "0", "0", "0", "10", "1", "0", "0", "0", "1", "1m 39s 263ms", "Passed");
+        bodyRow.hasExactCSSClasses("tagname", "passed", "", "", "", "", "total", "passed", "", "", "", "total", "duration", "passed");
+    }
+
+    @Test
+    public void generatePage_generatesFeatureDetails() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(0);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+        FeatureAssertion featureDetails = document.getFeature();
+
+        BriefAssertion brief = featureDetails.getBrief();
+        assertThat(brief.getName()).isEqualTo(feature.getName());
+        brief.hasStatus(feature.getStatus());
+
+        TagAssertion[] tags = featureDetails.getTags();
+        assertThat(tags).hasSize(1);
+        tags[0].getLink().hasLabelAndAddress("@featureTag", "report-tag_featureTag.html");
+
+        assertThat(featureDetails.getDescription()).isEqualTo(feature.getDescription());
+    }
+
+    @Test
+    public void generatePage_generatesScenarioDetails() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(0);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+
+        ElementAssertion[] elements = document.getFeature().getElements();
+        assertThat(elements).hasSize(feature.getElements().length);
+
+        ElementAssertion firstElement = elements[1];
+        Element scenario = feature.getElements()[1];
+
+        TagAssertion[] tags = firstElement.getTags();
+        assertThat(tags).hasSize(scenario.getTags().length);
+        for (int i = 0; i < tags.length; i++) {
+            tags[i].getLink().hasLabelAndAddress(scenario.getTags()[i].getName(), scenario.getTags()[i].getFileName());
+        }
+
+        BriefAssertion brief = firstElement.getBrief();
+        assertThat(brief.getKeyword()).isEqualTo(scenario.getKeyword());
+        assertThat(brief.getName()).isEqualTo(scenario.getName());
+        brief.hasStatus(scenario.getStatus());
+
+        assertThat(firstElement.getDescription()).isEqualTo(scenario.getDescription());
+    }
+
+    @Test
+    public void generatePage_generatesHooks() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(1);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+
+        ElementAssertion secondElement = document.getFeature().getElements()[0];
+
+        Element element = feature.getElements()[0];
+
+        HooksAssertion beforeHooks = secondElement.getBefore();
+        HookAssertion[] before = beforeHooks.getHooks();
+        assertThat(before).hasSize(element.getBefore().length);
+        validateHook(before, element.getBefore(), "Before");
+        BriefAssertion beforeBrief = beforeHooks.getBrief();
+        beforeBrief.hasStatus(element.getBeforeStatus());
+
+        HooksAssertion afterHooks = secondElement.getAfter();
+        HookAssertion[] after = afterHooks.getHooks();
+        assertThat(after).hasSize(element.getAfter().length);
+        validateHook(after, element.getAfter(), "After");
+        BriefAssertion afterBrief = afterHooks.getBrief();
+        afterBrief.hasStatus(element.getAfterStatus());
+    }
+
+    @Test
+    public void generatePage_generatesSteps() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(1);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+
+        ElementAssertion secondElement = document.getFeature().getElements()[0];
+        Element element = feature.getElements()[0];
+
+        StepsAssertion stepsSection = secondElement.getStepsSection();
+        stepsSection.getBrief().hasStatus(element.getStepsStatus());
+        StepAssertion[] steps = stepsSection.getSteps();
+        assertThat(steps).hasSameSizeAs(element.getSteps());
+
+        for (int i = 0; i < steps.length; i++) {
+            BriefAssertion brief = steps[i].getBrief();
+            Step step = element.getSteps()[i];
+
+            brief.hasStatus(step.getResult().getStatus());
+            assertThat(brief.getKeyword()).isEqualTo(step.getKeyword());
+            assertThat(brief.getName()).isEqualTo(step.getName());
+            brief.hasDuration(step.getDuration());
+        }
+    }
+
+    @Test
+    public void generatePage_OnBiDimentionalArray_generatesOutput() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(1);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+
+        Output[] outputElements = features.get(1).getElements()[0].getSteps()[7].getOutputs();
+        OutputAssertion output = document.getFeature().getElements()[0].getStepsSection().getSteps()[7].getOutput();
+        output.hasMessages(getMessages(outputElements));
+    }
+
+    @Test
+    public void generatePage_OnSingleArray_generatesOutput() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(1);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+
+        Output[] outputElements = features.get(1).getElements()[0].getSteps()[8].getOutputs();
+        OutputAssertion output = document.getFeature().getElements()[0].getStepsSection().getSteps()[8].getOutput();
+        output.hasMessages(getMessages(outputElements));
+    }
+
+    @Test
+    public void generatePage_generatesArguments() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(0);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+
+        StepAssertion stepElement = document.getFeature().getElements()[0].getStepsSection().getSteps()[2];
+        TableAssertion argTable = stepElement.getArgumentsTable();
+
+        Step step = feature.getElements()[0].getSteps()[1];
+
+        for (int r = 0; r < step.getRows().length; r++) {
+            Row row = step.getRows()[r];
+            TableRowAssertion rowElement = argTable.getBodyRows()[r];
+
+            assertThat(rowElement.getCellsValues()).isEqualTo(row.getCells());
+        }
+    }
+
+    @Test
+    public void generatePage_generatesDocString() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(0);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+
+        StepAssertion stepElement = document.getFeature().getElements()[0].getStepsSection().getSteps()[1];
+        Step step = feature.getElements()[0].getSteps()[1];
+
+        stepElement.getDocString().hasDocString(step.getDocString());
+    }
+
+    @Test
+    public void generatePage_generatesEmbedding() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(1);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+
+        StepAssertion stepElement = document.getFeature().getElements()[0].getStepsSection().getSteps()[5];
+        EmbeddingAssertion[] embeddingsElement = stepElement.getEmbedding();
+
+        Embedding[] embeddings = feature.getElements()[0].getSteps()[5].getEmbeddings();
+
+        assertThat(embeddingsElement).hasSameSizeAs(embeddings);
+        embeddingsElement[0].hasImageContent(embeddings[0]);
+        asserEmbeddingFileExist(embeddings[0]);
+        embeddingsElement[2].hasTextContent(embeddings[2].getData());
+        asserEmbeddingFileExist(embeddings[2]);
+        embeddingsElement[3].hasSrcDocContent(embeddings[3].getData());
+        asserEmbeddingFileExist(embeddings[3]);
+    }
+
+    @Test
+    public void generatePage_OnRubyFormat_ForAfterHook_generatesEmbedding() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        final Feature feature = features.get(1);
+        page = new FeatureReportPage(reportResult, configuration, feature);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+
+        EmbeddingAssertion[] embeddingsElement = document.getFeature().getElements()[0].getAfter().getHooks()[0].getEmbedding();
+
+        Embedding[] embeddings = feature.getElements()[0].getAfter()[0].getEmbeddings();
+
+        assertThat(embeddingsElement).hasSameSizeAs(embeddings);
+        embeddingsElement[0].hasImageContent(embeddings[0]);
+        asserEmbeddingFileExist(embeddings[0]);
+    }
+
+    private static void validateHook(HookAssertion[] elements, Hook[] hooks, String hookName) {
+        for (int i = 0; i < elements.length; i++) {
+            BriefAssertion brief = elements[i].getBrief();
+            assertThat(brief.getKeyword()).isEqualTo(hookName);
+            brief.hasStatus(hooks[i].getResult().getStatus());
+
+            if (hooks[i].getMatch() != null) {
+                assertThat(brief.getName()).isEqualTo(hooks[i].getMatch().getLocation());
+            }
+            if (hooks[i].getResult() != null) {
+                brief.hasDuration(hooks[i].getResult().getDuration());
+                if (hooks[i].getResult().getErrorMessage() != null) {
+                    assertThat(elements[i].getErrorMessage()).contains(hooks[i].getResult().getErrorMessage());
+                }
+            }
+        }
+    }
+
+    private void asserEmbeddingFileExist(Embedding embedding) {
+        File file = new File(configuration.getEmbeddingDirectory(), embedding.getFileName());
+        assertThat(file).exists();
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/test/java/net/masterthought/cucumber/generators/integrations/FeaturesOverviewPageIntegrationTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -135,17 +135,17 @@
+         TableRowAssertion[] bodyRows = document.getReport().getTableStats().getBodyRows();
+ 
+         assertThat(bodyRows).hasSize(2);
+ 
+         TableRowAssertion firstRow = bodyRows[0];
+         firstRow.hasExactValues("1st feature", "10", "0", "0", "0", "0", "10", "1", "0", "1", "1m 39s 263ms", "Passed");
+         firstRow.hasExactCSSClasses("tagname", "passed", "", "", "", "", "total", "passed", "", "total", "duration", "passed");
+         firstRow.hasExactDataValues("", "", "", "", "", "", "", "", "", "", "99263122889", "");
+-        firstRow.getReportLink().hasLabelAndAddress("1st feature", "report-feature_net-masterthought-example-s--ATM-local-feature.html");
++        firstRow.getReportLink().hasLabelAndAddress("1st feature", "report-feature_net-masterthought-example-s--ATM--u6771-u4EAC-feature.html");
+ 
+         TableRowAssertion secondRow = bodyRows[1];
+         secondRow.hasExactValues("Second feature", "5", "1", "2", "1", "2", "11", "1", "1", "2", "092ms", "Failed");
+         secondRow.hasExactCSSClasses("tagname", "passed", "failed", "skipped", "pending", "undefined", "total", "passed", "failed", "total", "duration", "failed");
+         secondRow.hasExactDataValues("", "", "", "", "", "", "", "", "", "", "92610000", "");
+         secondRow.getReportLink().hasLabelAndAddress("Second feature", "report-feature_net-masterthought-example-ATMK-feature.html");
+     }
+ 
+@@ -161,11 +161,10 @@
+ 
+         // then
+         DocumentAssertion document = documentFrom(page.getWebPage());
+         TableRowAssertion[] footerRows = document.getReport().getTableStats().getAllFooterRows();
+ 
+         assertThat(footerRows).hasSize(2);
+         footerRows[0].hasExactValues("2", "15", "1", "2", "1", "2", "21", "2", "1", "3", "1m 39s 355ms", "");
+         footerRows[1].hasExactValues("", "71.43%", "4.76%", "9.52%", "4.76%", "9.52%", "", "66.67%", "33.33%", "", "", "50.00%");
+-
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -112,17 +112,17 @@
+ 
+         assertThat(headerRows).hasSize(2);
+ 
+         TableRowAssertion firstRow = headerRows[0];
+         firstRow.hasExactValues("", "Steps", "Scenarios", "Features");
+ 
+         TableRowAssertion secondRow = headerRows[1];
+         secondRow.hasExactValues("Feature", "Passed", "Failed", "Skipped", "Pending", "Undefined", "Total",
+-                "Passed", "Failed", "Total", "Duration", "Status");
++                "Passed", "Failed", "Pending", "Undefined", "Total", "Duration", "Status");
+     }
+ 
+     @Test
+     public void generatePage_generatesStatsTableBody() {
+ 
+         // given
+         setUpWithJson(SAMPLE_JSON);
+         page = new FeaturesOverviewPage(reportResult, configuration);
+@@ -132,25 +132,25 @@
+ 
+         // then
+         DocumentAssertion document = documentFrom(page.getWebPage());
+         TableRowAssertion[] bodyRows = document.getReport().getTableStats().getBodyRows();
+ 
+         assertThat(bodyRows).hasSize(2);
+ 
+         TableRowAssertion firstRow = bodyRows[0];
+-        firstRow.hasExactValues("1st feature", "10", "0", "0", "0", "0", "10", "1", "0", "1", "1m 39s 263ms", "Passed");
+-        firstRow.hasExactCSSClasses("tagname", "passed", "", "", "", "", "total", "passed", "", "total", "duration", "passed");
+-        firstRow.hasExactDataValues("", "", "", "", "", "", "", "", "", "", "99263122889", "");
++        firstRow.hasExactValues("1st feature", "10", "0", "0", "0", "0", "10", "1", "0", "0", "0", "1", "1m 39s 263ms", "Passed");
++        firstRow.hasExactCSSClasses("tagname", "passed", "", "", "", "", "total", "passed", "", "", "", "total", "duration", "passed");
++        firstRow.hasExactDataValues("", "", "", "", "", "", "", "", "", "", "", "", "99263122889", "");
+         firstRow.getReportLink().hasLabelAndAddress("1st feature", "report-feature_net-masterthought-example-s--ATM-local-feature.html");
+ 
+         TableRowAssertion secondRow = bodyRows[1];
+-        secondRow.hasExactValues("Second feature", "5", "1", "2", "1", "2", "11", "1", "1", "2", "092ms", "Failed");
+-        secondRow.hasExactCSSClasses("tagname", "passed", "failed", "skipped", "pending", "undefined", "total", "passed", "failed", "total", "duration", "failed");
+-        secondRow.hasExactDataValues("", "", "", "", "", "", "", "", "", "", "92610000", "");
++        secondRow.hasExactValues("Second feature", "5", "1", "2", "1", "2", "11", "1", "1", "0", "0", "2", "092ms", "Failed");
++        secondRow.hasExactCSSClasses("tagname", "passed", "failed", "skipped", "pending", "undefined", "total", "passed", "failed", "", "", "total", "duration", "failed");
++        secondRow.hasExactDataValues("", "", "", "", "", "", "", "", "", "", "", "", "92610000", "");
+         secondRow.getReportLink().hasLabelAndAddress("Second feature", "report-feature_net-masterthought-example-ATMK-feature.html");
+     }
+ 
+     @Test
+     public void generatePage_generatesStatsTableFooter() {
+ 
+         // given
+         setUpWithJson(SAMPLE_JSON);
+@@ -159,13 +159,13 @@
+         // when
+         page.generatePage();
+ 
+         // then
+         DocumentAssertion document = documentFrom(page.getWebPage());
+         TableRowAssertion[] footerRows = document.getReport().getTableStats().getAllFooterRows();
+ 
+         assertThat(footerRows).hasSize(2);
+-        footerRows[0].hasExactValues("2", "15", "1", "2", "1", "2", "21", "2", "1", "3", "1m 39s 355ms", "");
+-        footerRows[1].hasExactValues("", "71.43%", "4.76%", "9.52%", "4.76%", "9.52%", "", "66.67%", "33.33%", "", "", "50.00%");
++        footerRows[0].hasExactValues("2", "15", "1", "2", "1", "2", "21", "2", "1", "0", "0", "3", "1m 39s 355ms", "");
++        footerRows[1].hasExactValues("", "71.43%", "4.76%", "9.52%", "4.76%", "9.52%", "", "66.67%", "33.33%", "0.00%", "0.00%", "", "", "50.00%");
+ 
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package net.masterthought.cucumber.generators.integrations;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.Test;
+
+import net.masterthought.cucumber.generators.FeaturesOverviewPage;
+import net.masterthought.cucumber.generators.integrations.helpers.DocumentAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.LeadAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.TableRowAssertion;
+import net.masterthought.cucumber.generators.integrations.helpers.WebAssertion;
+
+/**
+ * @author Damian Szczepanik (damianszczepanik@github)
+ */
+public class FeaturesOverviewPageIntegrationTest extends PageTest {
+
+    @Test
+    public void generatePage_generatesTitle() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        configuration.setRunWithJenkins(true);
+        configuration.setBuildNumber("1");
+        page = new FeaturesOverviewPage(reportResult, configuration);
+        final String titleValue = String.format("Cucumber Reports (no %s) - Features Overview",
+                configuration.getBuildNumber());
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+        String title = document.getHead().getTitle();
+
+        assertThat(title).isEqualTo(titleValue);
+    }
+
+    @Test
+    public void generatePage_generatesLead() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        page = new FeaturesOverviewPage(reportResult, configuration);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+        LeadAssertion lead = document.getLead();
+
+        assertThat(lead.getHeader()).isEqualTo("Features Statistics");
+        assertThat(lead.getDescription()).isEqualTo("The following graphs show passing and failing statistics for features");
+    }
+
+    @Test
+    public void generatePage_generatesClassifications() {
+
+        // given
+        final String[] names = {"Platform", "Browser", "Branch"};
+        final String[] values = {"Win", "Opera", "master"};
+        setUpWithJson(SAMPLE_JSON);
+        for (int i = 0; i < names.length; i++) {
+            configuration.addClassifications(names[i], values[i]);
+        }
+        page = new FeaturesOverviewPage(reportResult, configuration);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+        TableRowAssertion[] classifications = document.getClassifications();
+
+        assertThat(classifications).hasSize(names.length);
+        for (int i = 0; i < names.length; i++) {
+            String[] cells = classifications[i].getCellsValues();
+            assertThat(cells).containsExactly(names[i], values[i]);
+        }
+    }
+
+    @Test
+    public void generatePage_generatesCharts() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        page = new FeaturesOverviewPage(reportResult, configuration);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+
+        assertThat(document.byId("charts", WebAssertion.class)).isNotNull();
+    }
+
+    @Test
+    public void generatePage_generatesStatsTableHeader() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        page = new FeaturesOverviewPage(reportResult, configuration);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+        TableRowAssertion[] headerRows = document.getReport().getTableStats().getHeaderRows();
+
+        assertThat(headerRows).hasSize(2);
+
+        TableRowAssertion firstRow = headerRows[0];
+        firstRow.hasExactValues("", "Steps", "Scenarios", "Features");
+
+        TableRowAssertion secondRow = headerRows[1];
+        secondRow.hasExactValues("Feature", "Passed", "Failed", "Skipped", "Pending", "Undefined", "Total",
+                "Passed", "Failed", "Pending", "Undefined", "Total", "Duration", "Status");
+    }
+
+    @Test
+    public void generatePage_generatesStatsTableBody() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        page = new FeaturesOverviewPage(reportResult, configuration);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+        TableRowAssertion[] bodyRows = document.getReport().getTableStats().getBodyRows();
+
+        assertThat(bodyRows).hasSize(2);
+
+        TableRowAssertion firstRow = bodyRows[0];
+        firstRow.hasExactValues("1st feature", "10", "0", "0", "0", "0", "10", "1", "0", "0", "0", "1", "1m 39s 263ms", "Passed");
+        firstRow.hasExactCSSClasses("tagname", "passed", "", "", "", "", "total", "passed", "", "", "", "total", "duration", "passed");
+        firstRow.hasExactDataValues("", "", "", "", "", "", "", "", "", "", "", "", "99263122889", "");
+        firstRow.getReportLink().hasLabelAndAddress("1st feature", "report-feature_net-masterthought-example-s--ATM--u6771-u4EAC-feature.html");
+
+        TableRowAssertion secondRow = bodyRows[1];
+        secondRow.hasExactValues("Second feature", "5", "1", "2", "1", "2", "11", "1", "1", "0", "0", "2", "092ms", "Failed");
+        secondRow.hasExactCSSClasses("tagname", "passed", "failed", "skipped", "pending", "undefined", "total", "passed", "failed", "", "", "total", "duration", "failed");
+        secondRow.hasExactDataValues("", "", "", "", "", "", "", "", "", "", "", "", "92610000", "");
+        secondRow.getReportLink().hasLabelAndAddress("Second feature", "report-feature_net-masterthought-example-ATMK-feature.html");
+    }
+
+    @Test
+    public void generatePage_generatesStatsTableFooter() {
+
+        // given
+        setUpWithJson(SAMPLE_JSON);
+        page = new FeaturesOverviewPage(reportResult, configuration);
+
+        // when
+        page.generatePage();
+
+        // then
+        DocumentAssertion document = documentFrom(page.getWebPage());
+        TableRowAssertion[] footerRows = document.getReport().getTableStats().getAllFooterRows();
+
+        assertThat(footerRows).hasSize(2);
+        footerRows[0].hasExactValues("2", "15", "1", "2", "1", "2", "21", "2", "1", "0", "0", "3", "1m 39s 355ms", "");
+        footerRows[1].hasExactValues("", "71.43%", "4.76%", "9.52%", "4.76%", "9.52%", "", "66.67%", "33.33%", "0.00%", "0.00%", "", "", "50.00%");
+
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -161,11 +161,10 @@
+ 
+         // then
+         DocumentAssertion document = documentFrom(page.getWebPage());
+         TableRowAssertion[] footerRows = document.getReport().getTableStats().getAllFooterRows();
+ 
+         assertThat(footerRows).hasSize(2);
+         footerRows[0].hasExactValues("2", "15", "1", "2", "1", "2", "21", "2", "1", "0", "0", "3", "1m 39s 355ms", "");
+         footerRows[1].hasExactValues("", "71.43%", "4.76%", "9.52%", "4.76%", "9.52%", "", "66.67%", "33.33%", "0.00%", "0.00%", "", "", "50.00%");
+-
+     }
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

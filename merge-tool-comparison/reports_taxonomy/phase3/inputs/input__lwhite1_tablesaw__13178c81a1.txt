@@ -1,0 +1,835 @@
+UNIT lwhite1_tablesaw__13178c81a1
+repo: lwhite1_tablesaw   merge: 13178c81a1ba18fc39b7280dc40919f4208650fa   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: core/src/main/java/tech/tablesaw/api/DateTimeColumn.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -9,37 +9,17 @@
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ 
+ package tech.tablesaw.api;
+ 
+-import static tech.tablesaw.api.ColumnType.LOCAL_DATE_TIME;
+-
+-import java.nio.ByteBuffer;
+-import java.sql.Timestamp;
+-import java.time.LocalDateTime;
+-import java.time.ZoneOffset;
+-import java.time.format.DateTimeFormatter;
+-import java.util.ArrayList;
+-import java.util.Arrays;
+-import java.util.Comparator;
+-import java.util.HashSet;
+-import java.util.Iterator;
+-import java.util.List;
+-import java.util.Set;
+-import java.util.function.Consumer;
+-import java.util.function.Function;
+-import java.util.function.Predicate;
+-import java.util.function.Supplier;
+-
+ import com.google.common.base.Preconditions;
+-
+ import it.unimi.dsi.fastutil.ints.IntComparator;
+ import it.unimi.dsi.fastutil.longs.LongArrayList;
+ import it.unimi.dsi.fastutil.longs.LongArrays;
+ import it.unimi.dsi.fastutil.longs.LongComparator;
+ import it.unimi.dsi.fastutil.longs.LongIterator;
+ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+ import it.unimi.dsi.fastutil.longs.LongSet;
+ import tech.tablesaw.columns.AbstractColumn;
+@@ -49,25 +29,43 @@
+ import tech.tablesaw.columns.datetimes.DateTimeColumnType;
+ import tech.tablesaw.columns.datetimes.DateTimeFillers;
+ import tech.tablesaw.columns.datetimes.DateTimeFilters;
+ import tech.tablesaw.columns.datetimes.DateTimeMapFunctions;
+ import tech.tablesaw.columns.datetimes.PackedLocalDateTime;
+ import tech.tablesaw.selection.Selection;
+ import tech.tablesaw.sorting.comparators.DescendingLongComparator;
+ 
++import java.nio.ByteBuffer;
++import java.sql.Timestamp;
++import java.time.LocalDateTime;
++import java.time.ZoneOffset;
++import java.time.format.DateTimeFormatter;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.Comparator;
++import java.util.HashSet;
++import java.util.Iterator;
++import java.util.List;
++import java.util.Set;
++import java.util.function.Consumer;
++import java.util.function.Function;
++import java.util.function.Predicate;
++import java.util.function.Supplier;
++
++import static tech.tablesaw.api.ColumnType.LOCAL_DATE_TIME;
++import static tech.tablesaw.columns.datetimes.DateTimeColumnType.missingValueIndicator;
++
+ /**
+  * A column in a table that contains long-integer encoded (packed) local date-time values
+  */
+ public class DateTimeColumn extends AbstractColumn<LocalDateTime>
+     implements DateTimeMapFunctions, DateTimeFilters, DateTimeFillers<DateTimeColumn>,
+         CategoricalColumn<LocalDateTime> {
+ 
+-    public static final long MISSING_VALUE = DateTimeColumnType.missingValueIndicator();
+-
+     private final LongComparator reverseLongComparator = DescendingLongComparator.instance();
+ 
+     private LongArrayList data;
+ 
+     private final IntComparator comparator = (r1, r2) -> {
+         long f1 = getPackedDateTime(r1);
+         long f2 = getPackedDateTime(r2);
+         return Long.compare(f1, f2);
+@@ -104,17 +102,17 @@
+         DateTimeColumn column = new DateTimeColumn(name, new LongArrayList(data.length));
+         for (LocalDateTime date : data) {
+             column.append(date);
+         }
+         return column;
+     }
+ 
+     public static boolean valueIsMissing(long value) {
+-        return MISSING_VALUE == value;
++        return missingValueIndicator() == value;
+     }
+ 
+     @Override
+     public boolean isMissing(int rowNumber) {
+         return valueIsMissing(getLongInternal(rowNumber));
+     }
+ 
+     @Override
+@@ -172,17 +170,17 @@
+     @Override
+     public DateTimeColumn lag(int n) {
+         int srcPos = n >= 0 ? 0 : 0 - n;
+         long[] dest = new long[size()];
+         int destPos = n <= 0 ? 0 : n;
+         int length = n >= 0 ? size() - n : size() + n;
+ 
+         for (int i = 0; i < size(); i++) {
+-            dest[i] = MISSING_VALUE;
++            dest[i] = missingValueIndicator();
+         }
+ 
+         System.arraycopy(data.toLongArray(), srcPos, dest, destPos, length);
+ 
+         DateTimeColumn copy = emptyCopy(size());
+         copy.data = new LongArrayList(dest);
+         copy.setName(name() + " lag(" + n + ")");
+         return copy;
+@@ -198,17 +196,17 @@
+         return appendObj(parser.parse(stringValue));
+     }
+ 
+     public DateTimeColumn append(LocalDateTime dateTime) {
+         if (dateTime != null) {
+             final long dt = PackedLocalDateTime.pack(dateTime);
+             appendInternal(dt);
+         } else {
+-            appendInternal(MISSING_VALUE);
++            appendInternal(missingValueIndicator());
+         }
+         return this;
+     }
+ 
+     @Override
+     public DateTimeColumn appendObj(Object obj) {
+         if (obj == null) {
+             return appendMissing();
+@@ -364,17 +362,17 @@
+ 
+     /**
+      * Returns the count of missing values in this column
+      */
+     @Override
+     public int countMissing() {
+         int count = 0;
+         for (int i = 0; i < size(); i++) {
+-            if (getPackedDateTime(i) == MISSING_VALUE) {
++            if (getPackedDateTime(i) == missingValueIndicator()) {
+                 count++;
+             }
+         }
+         return count;
+     }
+ 
+     /**
+      * Returns an array where each entry is the difference, measured in seconds,
+@@ -459,44 +457,44 @@
+     public LocalDateTime max() {
+         long max;
+         if (!isEmpty()) {
+             max = getPackedDateTime(0);
+         } else {
+             return null;
+         }
+         for (long aData : data) {
+-            if (MISSING_VALUE != aData) {
++            if (missingValueIndicator() != aData) {
+                 max = (max > aData) ? max : aData;
+             }
+         }
+ 
+-        if (MISSING_VALUE == max) {
++        if (missingValueIndicator() == max) {
+             return null;
+         }
+         return PackedLocalDateTime.asLocalDateTime(max);
+     }
+ 
+     @Override
+     public DateTimeColumn appendMissing() {
+-        appendInternal(MISSING_VALUE);
++        appendInternal(missingValueIndicator());
+         return this;
+     }
+ 
+     @Override
+     public LocalDateTime min() {
+         long min;
+ 
+         if (!isEmpty()) {
+             min = getPackedDateTime(0);
+         } else {
+             return null;
+         }
+         for (long aData : data) {
+-            if (MISSING_VALUE != aData) {
++            if (missingValueIndicator() != aData) {
+                 min = (min < aData) ? min : aData;
+             }
+         }
+         if (Integer.MIN_VALUE == min) {
+             return null;
+         }
+         return PackedLocalDateTime.asLocalDateTime(min);
+     }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -661,17 +661,17 @@
+     @Override
+     public DateTimeColumn fillWith(Supplier<LocalDateTime> supplier) {
+         int[] r = new int[1];
+         fillWith(size(), supplier, date -> set(r[0]++, date));
+         return this;
+     }
+ 
+     @Override
+-    public Object[] asObjectArray() {
++    public LocalDateTime[] asObjectArray() {
+         final LocalDateTime[] output = new LocalDateTime[data.size()];
+         for (int i = 0; i < data.size(); i++) {
+             output[i] = get(i);
+         }
+         return output;
+     }
+ 
+     @Override
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package tech.tablesaw.api;
+
+import com.google.common.base.Preconditions;
+import it.unimi.dsi.fastutil.ints.IntComparator;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongArrays;
+import it.unimi.dsi.fastutil.longs.LongComparator;
+import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
+import tech.tablesaw.columns.AbstractColumn;
+import tech.tablesaw.columns.AbstractParser;
+import tech.tablesaw.columns.Column;
+import tech.tablesaw.columns.datetimes.DateTimeColumnFormatter;
+import tech.tablesaw.columns.datetimes.DateTimeColumnType;
+import tech.tablesaw.columns.datetimes.DateTimeFillers;
+import tech.tablesaw.columns.datetimes.DateTimeFilters;
+import tech.tablesaw.columns.datetimes.DateTimeMapFunctions;
+import tech.tablesaw.columns.datetimes.PackedLocalDateTime;
+import tech.tablesaw.selection.Selection;
+import tech.tablesaw.sorting.comparators.DescendingLongComparator;
+
+import java.nio.ByteBuffer;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+
+import static tech.tablesaw.api.ColumnType.LOCAL_DATE_TIME;
+import static tech.tablesaw.columns.datetimes.DateTimeColumnType.missingValueIndicator;
+
+/**
+ * A column in a table that contains long-integer encoded (packed) local date-time values
+ */
+public class DateTimeColumn extends AbstractColumn<LocalDateTime>
+    implements DateTimeMapFunctions, DateTimeFilters, DateTimeFillers<DateTimeColumn>,
+        CategoricalColumn<LocalDateTime> {
+
+    private final LongComparator reverseLongComparator = DescendingLongComparator.instance();
+
+    private LongArrayList data;
+
+    private final IntComparator comparator = (r1, r2) -> {
+        long f1 = getPackedDateTime(r1);
+        long f2 = getPackedDateTime(r2);
+        return Long.compare(f1, f2);
+    };
+
+    private DateTimeColumnFormatter printFormatter = new DateTimeColumnFormatter();
+
+    private DateTimeColumn(String name, LongArrayList data) {
+        super(LOCAL_DATE_TIME, name);
+        this.data = data;
+    }
+
+    public static DateTimeColumn create(String name) {
+        return  new DateTimeColumn(name, new LongArrayList(DEFAULT_ARRAY_SIZE));
+    }
+
+    public static DateTimeColumn create(String name, int initialSize) {
+        DateTimeColumn column = new DateTimeColumn(name, new LongArrayList(initialSize));
+        for (int i = 0; i < initialSize; i++) {
+            column.appendMissing();
+        }
+        return column;
+    }
+
+    public static DateTimeColumn create(String name, List<LocalDateTime> data) {
+        DateTimeColumn column = new DateTimeColumn(name, new LongArrayList(data.size()));
+        for (LocalDateTime date : data) {
+            column.append(date);
+        }
+        return column;
+    }
+
+    public static DateTimeColumn create(String name, LocalDateTime[] data) {
+        DateTimeColumn column = new DateTimeColumn(name, new LongArrayList(data.length));
+        for (LocalDateTime date : data) {
+            column.append(date);
+        }
+        return column;
+    }
+
+    public static boolean valueIsMissing(long value) {
+        return missingValueIndicator() == value;
+    }
+
+    @Override
+    public boolean isMissing(int rowNumber) {
+        return valueIsMissing(getLongInternal(rowNumber));
+    }
+
+    @Override
+    public DateTimeColumn subset(final int[] rows) {
+        final DateTimeColumn c = this.emptyCopy();
+        for (final int row : rows) {
+            c.appendInternal(getLongInternal(row));
+        }
+        return c;
+    }
+
+    @Override
+    public DateTimeColumn removeMissing() {
+        DateTimeColumn noMissing = emptyCopy();
+        LongIterator iterator = longIterator();
+        while(iterator.hasNext()) {
+            long i = iterator.nextLong();
+            if (!valueIsMissing(i)) {
+                noMissing.appendInternal(i);
+            }
+        }
+        return noMissing;
+    }
+
+    public boolean contains(LocalDateTime dateTime) {
+        long dt = PackedLocalDateTime.pack(dateTime);
+        return data().contains(dt);
+    }
+
+    @Override
+    public Column<LocalDateTime> setMissing(int i) {
+        return set(i, DateTimeColumnType.missingValueIndicator());
+    }
+
+    public DateTimeColumn where(Selection selection) {
+        return subset(selection.toArray());
+    }
+
+    public void setPrintFormatter(DateTimeFormatter dateTimeFormatter, String missingValueString) {
+        Preconditions.checkNotNull(dateTimeFormatter);
+        Preconditions.checkNotNull(missingValueString);
+        this.printFormatter = new DateTimeColumnFormatter(dateTimeFormatter, missingValueString);
+    }
+
+    public void setPrintFormatter(DateTimeFormatter dateTimeFormatter) {
+        Preconditions.checkNotNull(dateTimeFormatter);
+        this.printFormatter = new DateTimeColumnFormatter(dateTimeFormatter);
+    }
+
+    public void setPrintFormatter(DateTimeColumnFormatter formatter) {
+        Preconditions.checkNotNull(formatter);
+        this.printFormatter = formatter;
+    }
+
+    @Override
+    public DateTimeColumn lag(int n) {
+        int srcPos = n >= 0 ? 0 : 0 - n;
+        long[] dest = new long[size()];
+        int destPos = n <= 0 ? 0 : n;
+        int length = n >= 0 ? size() - n : size() + n;
+
+        for (int i = 0; i < size(); i++) {
+            dest[i] = missingValueIndicator();
+        }
+
+        System.arraycopy(data.toLongArray(), srcPos, dest, destPos, length);
+
+        DateTimeColumn copy = emptyCopy(size());
+        copy.data = new LongArrayList(dest);
+        copy.setName(name() + " lag(" + n + ")");
+        return copy;
+    }
+
+    @Override
+    public DateTimeColumn appendCell(String stringValue) {
+        return appendInternal(PackedLocalDateTime.pack(DateTimeColumnType.DEFAULT_PARSER.parse(stringValue)));
+    }
+
+    @Override
+    public DateTimeColumn appendCell(String stringValue, AbstractParser<?> parser) {
+        return appendObj(parser.parse(stringValue));
+    }
+
+    public DateTimeColumn append(LocalDateTime dateTime) {
+        if (dateTime != null) {
+            final long dt = PackedLocalDateTime.pack(dateTime);
+            appendInternal(dt);
+        } else {
+            appendInternal(missingValueIndicator());
+        }
+        return this;
+    }
+
+    @Override
+    public DateTimeColumn appendObj(Object obj) {
+        if (obj == null) {
+            return appendMissing();
+        }
+        if (obj instanceof LocalDateTime) {
+            return append((LocalDateTime) obj);
+        }
+        if (obj instanceof Timestamp ){
+            Timestamp timestamp = (Timestamp) obj;
+            return append(timestamp.toLocalDateTime());
+        }
+        throw new IllegalArgumentException("Cannot append " + obj.getClass().getName() + " to DateTimeColumn");
+    }
+
+    public int size() {
+        return data.size();
+    }
+
+    public LongArrayList data() {
+        return data;
+    }
+
+    public DateTimeColumn appendInternal(long dateTime) {
+        data.add(dateTime);
+        return this;
+    }
+
+    @Override
+    public String getString(int row) {
+        return printFormatter.format(getPackedDateTime(row));
+    }
+
+    @Override
+    public String getUnformattedString(int row) {
+        return PackedLocalDateTime.toString(getPackedDateTime(row));
+        // ... 3 lines elided ...
+    public DateTimeColumn emptyCopy() {
+        // ... 6 lines elided ...
+    public DateTimeColumn emptyCopy(int rowSize) {
+        // ... 6 lines elided ...
+    public DateTimeColumn copy() {
+        // ... 6 lines elided ...
+    public void clear() {
+        // ... 4 lines elided ...
+    public void sortAscending() {
+        // ... 4 lines elided ...
+    public void sortDescending() {
+        // ... 4 lines elided ...
+    public Table summary() {
+        // ... 22 lines elided ...
+    public int countUnique() {
+        // ... 8 lines elided ...
+    public DateTimeColumn unique() {
+        // ... 11 lines elided ...
+    public boolean isEmpty() {
+        // ... 1 lines elided ...
+    }
+
+    public long getLongInternal(int index) {
+        return data.getLong(index);
+    }
+
+    protected long getPackedDateTime(int index) {
+        return getLongInternal(index);
+    }
+
+    public LocalDateTime get(int index) {
+        return PackedLocalDateTime.asLocalDateTime(getPackedDateTime(index));
+    }
+
+    @Override
+    public IntComparator rowComparator() {
+        return comparator;
+    }
+
+    /**
+     * Conditionally update this column, replacing current values with newValue for all rows where the current value
+     * matches the selection criteria
+     * <p>
+     * Example:
+     * myColumn.set(myColumn.valueIsMissing(), LocalDateTime.now()); // no more missing values
+     */
+    public DateTimeColumn set(Selection rowSelection, LocalDateTime newValue) {
+        for (int row : rowSelection) {
+            set(row, newValue);
+        }
+        return this;
+    }
+
+    /**
+     * Returns the count of missing values in this column
+     */
+    @Override
+    public int countMissing() {
+        int count = 0;
+        for (int i = 0; i < size(); i++) {
+            if (getPackedDateTime(i) == missingValueIndicator()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Returns an array where each entry is the difference, measured in seconds,
+     * between the LocalDateTime and midnight, January 1, 1970 UTC.
+     *
+     * If a value is missing, Long.MIN_VALUE is used
+     */
+    public long[] asEpochSecondArray() {
+        return asEpochSecondArray(ZoneOffset.UTC);
+    }
+
+    /**
+     * Returns the seconds from epoch for each value as an array based on the given offset
+     *
+     * If a value is missing, Long.MIN_VALUE is used
+     */
+    public long[] asEpochSecondArray(ZoneOffset offset) {
+        long[] output = new long[data.size()];
+        for (int i = 0; i < data.size(); i++) {
+            LocalDateTime dateTime = PackedLocalDateTime.asLocalDateTime(data.getLong(i));
+            if (dateTime == null) {
+                output[i] = Long.MIN_VALUE;
+            } else {
+                output[i] = dateTime.toEpochSecond(offset);
+            }
+        }
+        return output;
+    }
+
+    /**
+     * Returns an array where each entry is the difference, measured in milliseconds,
+     * between the LocalDateTime and midnight, January 1, 1970 UTC.
+     *
+     * If a missing value is encountered, Long.MIN_VALUE is inserted in the array
+     */
+    public long[] asEpochMillisArray() {
+        // ... 9 lines elided ...
+    public long[] asEpochMillisArray(ZoneOffset offset) {
+        // ... 3 lines elided ...
+            if (dateTime == null) {
+                output[i] = Long.MIN_VALUE;
+            } else {
+                output[i] = dateTime.toInstant(offset).toEpochMilli();
+            }
+        }
+        return output;
+    }
+
+    @Override
+    public DateTimeColumn append(Column<LocalDateTime> column) {
+        Preconditions.checkArgument(column.type() == this.type());
+        DateTimeColumn dateTimeColumn = (DateTimeColumn) column;
+        final int size = dateTimeColumn.size();
+        for (int i = 0; i < size; i++) {
+            append(dateTimeColumn.get(i));
+        }
+        return this;
+    }
+
+    @Override
+    public DateTimeColumn append(Column<LocalDateTime> column, int row) {
+        Preconditions.checkArgument(column.type() == this.type());
+        return appendInternal(((DateTimeColumn) column).getLongInternal(row));
+    }
+
+    @Override
+    public DateTimeColumn set(int row, Column<LocalDateTime> column, int sourceRow) {
+        Preconditions.checkArgument(column.type() == this.type());
+        return set(row, ((DateTimeColumn) column).getLongInternal(sourceRow));
+    }
+
+    public LocalDateTime max() {
+        long max;
+        if (!isEmpty()) {
+            max = getPackedDateTime(0);
+        } else {
+            return null;
+        }
+        for (long aData : data) {
+            if (missingValueIndicator() != aData) {
+                max = (max > aData) ? max : aData;
+            }
+        }
+
+        if (missingValueIndicator() == max) {
+            return null;
+        }
+        return PackedLocalDateTime.asLocalDateTime(max);
+    }
+
+    @Override
+    public DateTimeColumn appendMissing() {
+        appendInternal(missingValueIndicator());
+        return this;
+    }
+
+    @Override
+    public LocalDateTime min() {
+        long min;
+
+        if (!isEmpty()) {
+            min = getPackedDateTime(0);
+        } else {
+            return null;
+        }
+        for (long aData : data) {
+            if (missingValueIndicator() != aData) {
+                min = (min < aData) ? min : aData;
+            }
+        }
+        if (Integer.MIN_VALUE == min) {
+            return null;
+        }
+        return PackedLocalDateTime.asLocalDateTime(min);
+    }
+
+    public DateTimeColumn set(int index, long value) {
+        data.set(index, value);
+        return this;
+    }
+
+    @Override
+    public DateTimeColumn set(int index, LocalDateTime value) {
+        data.set(index, PackedLocalDateTime.pack(value));
+        return this;
+    }
+
+    /**
+     * Returns the largest ("top") n values in the column
+     *
+     * @param n The maximum number of records to return. The actual number will be smaller if n is greater than the
+     *          number of observations in the column
+     * @return A list, possibly empty, of the largest observations
+     */
+    public List<LocalDateTime> top(int n) {
+        List<LocalDateTime> top = new ArrayList<>();
+        long[] values = data.toLongArray();
+        LongArrays.parallelQuickSort(values, DescendingLongComparator.instance());
+        for (int i = 0; i < n && i < values.length; i++) {
+            top.add(PackedLocalDateTime.asLocalDateTime(values[i]));
+        }
+        return top;
+    }
+
+    /**
+     * Returns the smallest ("bottom") n values in the column
+     *
+        // ... 4 lines elided ...
+    public List<LocalDateTime> bottom(int n) {
+        // ... 9 lines elided ...
+    public LongIterator longIterator() {
+        // ... 3 lines elided ...
+    public Set<LocalDateTime> asSet() {
+        // ... 8 lines elided ...
+    public int byteSize() {
+        // ... 7 lines elided ...
+    public byte[] asBytes(int rowNumber) {
+        // ... 3 lines elided ...
+    public double getDouble(int i) {
+        // ... 3 lines elided ...
+    public double[] asDoubleArray() {
+        // ... 13 lines elided ...
+    public Iterator<LocalDateTime> iterator() {
+        // ... 6 lines elided ...
+            public boolean hasNext() {
+        // ... 4 lines elided ...
+            public LocalDateTime next() {
+        // ... 7 lines elided ...
+    private DateTimeColumn fillWith(int count, Iterator<LocalDateTime> iterator, Consumer<LocalDateTime> acceptor) {
+        // ... 10 lines elided ...
+    public DateTimeColumn fillWith(Iterator<LocalDateTime> iterator) {
+        // ... 5 lines elided ...
+    private DateTimeColumn fillWith(int count, Iterable<LocalDateTime> iterable, Consumer<LocalDateTime> acceptor) {
+        Iterator<LocalDateTime> iterator = null;
+        for (int r = 0; r < count; r++) {
+            if (iterator == null || (!iterator.hasNext())) {
+                iterator = iterable.iterator();
+                if (!iterator.hasNext()) {
+                    break;
+                }
+            }
+            acceptor.accept(iterator.next());
+        }
+        return this;
+    }
+
+    @Override
+    public DateTimeColumn fillWith(Iterable<LocalDateTime> iterable) {
+        int[] r = new int[1];
+        fillWith(size(), iterable, date -> set(r[0]++, date));
+        return this;
+    }
+
+    private DateTimeColumn fillWith(int count, Supplier<LocalDateTime> supplier, Consumer<LocalDateTime> acceptor) {
+        for (int r = 0; r < count; r++) {
+            try {
+                acceptor.accept(supplier.get());
+            } catch (Exception e) {
+                break;
+            }
+        }
+        return this;
+    }
+
+    @Override
+    public DateTimeColumn fillWith(Supplier<LocalDateTime> supplier) {
+        int[] r = new int[1];
+        fillWith(size(), supplier, date -> set(r[0]++, date));
+        return this;
+    }
+
+    @Override
+    public LocalDateTime[] asObjectArray() {
+        final LocalDateTime[] output = new LocalDateTime[data.size()];
+        for (int i = 0; i < data.size(); i++) {
+            output[i] = get(i);
+        }
+        return output;
+    }
+
+    @Override
+    public int compare(LocalDateTime o1, LocalDateTime o2) {
+        return o1.compareTo(o2);
+    }
+
+    @Override
+    public DateTimeColumn setName(String name) {
+        return (DateTimeColumn) super.setName(name);
+    }
+
+    @Override
+    public DateTimeColumn filter(Predicate<? super LocalDateTime> test) {
+        return (DateTimeColumn) super.filter(test);
+    }
+
+    @Override
+    public DateTimeColumn sorted(Comparator<? super LocalDateTime> comp) {
+        return (DateTimeColumn) super.sorted(comp);
+    }
+
+    @Override
+    public DateTimeColumn map(Function<? super LocalDateTime, ? extends LocalDateTime> fun) {
+        return (DateTimeColumn) super.map(fun);
+    }
+
+    @Override
+    public DateTimeColumn min(Column<LocalDateTime> other) {
+        return (DateTimeColumn) super.min(other);
+    }
+
+    @Override
+    public DateTimeColumn max(Column<LocalDateTime> other) {
+        return (DateTimeColumn) super.max(other);
+        // ... 3 lines elided ...
+    public DateTimeColumn set(Selection condition, Column<LocalDateTime> other) {
+        // ... 4 lines elided ...
+    public DateTimeColumn first(int numRows) {
+        // ... 4 lines elided ...
+    public DateTimeColumn last(int numRows) {
+        // ... 4 lines elided ...
+    public DateTimeColumn inRange(int start, int end) {
+        // ... 4 lines elided ...
+    public DateTimeColumn sampleN(int n) {
+        // ... 4 lines elided ...
+    public DateTimeColumn sampleX(double proportion) {
+        // ... 3 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

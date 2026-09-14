@@ -1,0 +1,600 @@
+UNIT lukas-krecan_jsonunit__3cb3260c4b
+repo: lukas-krecan_jsonunit   merge: 3cb3260c4b9d6f45b33057991ecbd07523fc67d0   stratum: B
+files shown: 3 of 4 intersecting Java files
+dropped (textual-conflict, not silent — excluded): json-unit-core/src/main/java/net/javacrumbs/jsonunit/core/Configuration.java
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/3: json-unit-assertj/src/main/java/net/javacrumbs/jsonunit/assertj/JsonAssert.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -11,16 +11,17 @@
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package net.javacrumbs.jsonunit.assertj;
+ 
+ import net.javacrumbs.jsonunit.core.Configuration;
++import net.javacrumbs.jsonunit.core.ConfigurationWhen;
+ import net.javacrumbs.jsonunit.core.Option;
+ import net.javacrumbs.jsonunit.core.internal.Diff;
+ import net.javacrumbs.jsonunit.core.internal.JsonUtils;
+ import net.javacrumbs.jsonunit.core.internal.Node;
+ import net.javacrumbs.jsonunit.core.internal.Options;
+ import net.javacrumbs.jsonunit.core.internal.Path;
+ import net.javacrumbs.jsonunit.core.internal.matchers.InternalMatcher;
+ import net.javacrumbs.jsonunit.core.listener.DifferenceListener;
+@@ -270,16 +271,26 @@
+         /**
+          * Adds comparison options.
+          */
+         public ConfigurableJsonAssert when(Option first, Option... other) {
+             return withConfiguration(c -> c.when(first, other));
+         }
+ 
+         /**
++         * Adds path specific options.
++         *
++         * @see Configuration#when(ConfigurationWhen.WhenObject, Object...)
++         */
++        @SafeVarargs
++        public final <T> ConfigurableJsonAssert when(ConfigurationWhen.WhenObject<T> object, T... actions) {
++            return withConfiguration(c -> c.when(object, actions));
++        }
++
++        /**
+          * Sets comparison options.
+          *
+          * @param options
+          * @return
+          */
+         public ConfigurableJsonAssert withOptions(Options options) {
+             return withConfiguration(c -> c.withOptions(options));
+         }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -47,16 +47,17 @@
+ import static net.javacrumbs.jsonunit.core.internal.JsonUtils.getNode;
+ import static net.javacrumbs.jsonunit.core.internal.JsonUtils.getPathPrefix;
+ import static net.javacrumbs.jsonunit.core.internal.Node.NodeType.ARRAY;
+ import static net.javacrumbs.jsonunit.core.internal.Node.NodeType.BOOLEAN;
+ import static net.javacrumbs.jsonunit.core.internal.Node.NodeType.NULL;
+ import static net.javacrumbs.jsonunit.core.internal.Node.NodeType.NUMBER;
+ import static net.javacrumbs.jsonunit.core.internal.Node.NodeType.OBJECT;
+ import static net.javacrumbs.jsonunit.core.internal.Node.NodeType.STRING;
++import static net.javacrumbs.jsonunit.jsonpath.InternalJsonPathUtils.resolveJsonPathsToBeIgnored;
+ import static org.assertj.core.util.Strings.isNullOrEmpty;
+ 
+ public class JsonAssert extends AbstractAssert<JsonAssert, Object> {
+     final Path path;
+     final Configuration configuration;
+     private final InternalMatcher internalMatcher;
+ 
+     JsonAssert(Path path, Configuration configuration, Object actual) {
+@@ -289,17 +290,22 @@
+          *
+          * <code>
+          *     assertThatJson(...)
+          *             .withConfiguration(c -&gt; c.withMatcher("positive", greaterThan(valueOf(0)))
+          *             ....
+          * </code>
+          */
+         public ConfigurableJsonAssert withConfiguration(Function<Configuration, Configuration> configurationFunction) {
+-            return new ConfigurableJsonAssert(path, configurationFunction.apply(configuration), actual);
++            Configuration newConfiguration = configurationFunction.apply(configuration);
++
++            if (configuration.getPathsToBeIgnored() != newConfiguration.getPathsToBeIgnored()) {
++                newConfiguration = resolveJsonPathsToBeIgnored(originalActual, newConfiguration);
++            }
++            return new ConfigurableJsonAssert(path, newConfiguration, actual);
+         }
+ 
+         /**
+          * Sets numerical comparison tolerance.
+          *
+          * @param tolerance
+          * @return
+          */
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: tests/test-base/src/main/java/net/javacrumbs/jsonunit/test/base/AbstractAssertJTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -26,19 +26,20 @@
+ 
+ import static java.math.BigDecimal.valueOf;
+ import static java.util.Arrays.asList;
+ import static java.util.Collections.singletonList;
+ import static java.util.Collections.singletonMap;
+ import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
+ import static net.javacrumbs.jsonunit.assertj.JsonAssertions.json;
+ import static net.javacrumbs.jsonunit.assertj.JsonAssertions.value;
+-import static net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER;
+-import static net.javacrumbs.jsonunit.core.Option.IGNORING_EXTRA_FIELDS;
+-import static net.javacrumbs.jsonunit.core.Option.TREATING_NULL_AS_ABSENT;
++import static net.javacrumbs.jsonunit.core.ConfigurationWhen.*;
++import static net.javacrumbs.jsonunit.core.ConfigurationWhen.paths;
++import static net.javacrumbs.jsonunit.core.Option.*;
++import static net.javacrumbs.jsonunit.core.Option.IGNORING_VALUES;
+ import static net.javacrumbs.jsonunit.core.internal.JsonUtils.jsonSource;
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+ import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.assertj.core.api.Assertions.entry;
+ import static org.hamcrest.Matchers.greaterThan;
+ 
+ public abstract class AbstractAssertJTest {
+@@ -1183,16 +1184,132 @@
+         assertThatJson(json).inPath("$.myNode.inner").isNumber().isEqualByComparingTo("123");
+     }
+ 
+     @Test
+     void shouldUseInPathInAnd() {
+         ConfigurableJsonAssert json = assertThatJson("{\"key1\":\"foo\",\"key2\":\"bar\"}");
+         json.inPath("key1").isEqualTo("foo");
+         json.inPath("key2").isEqualTo("bar");
++    }
++
++    @Test
++    void shouldIgnoreArrayOrderInSpecificPath() {
++        assertThatJson("{\"obj\":{\"a\": [1, 2], \"b\": [3, 4]}}")
++            .when(path("obj.a"), then(IGNORING_ARRAY_ORDER))
++            .isEqualTo("{\"obj\":{\"a\": [2, 1], \"b\": [3, 4]}}");
++    }
++
++    @Test
++    void shouldNotIgnoreArrayOrderWhenNotSpecified() {
++        assertThatJson("{\"obj\":{\"a\": [1, 2], \"b\": [3, 4]}}")
++            .when(path("obj.a"), then(IGNORING_ARRAY_ORDER))
++            .isNotEqualTo("{\"obj\":{\"a\": [2, 1], \"b\": [4, 3]}}");
++    }
++
++    @Test
++    void shouldExcludeIgnoringArrayOrderFromPath() {
++        assertThatJson("[{\"b\":[4,5,6]},{\"b\":[1,2,3]}]")
++            .when(IGNORING_ARRAY_ORDER)
++            .when(path("[*].b"), thenNot(IGNORING_ARRAY_ORDER))
++            .isEqualTo("[{\"b\":[1,2,3]},{\"b\":[4,5,6]}]");
++    }
++
++    @Test
++    void shouldExcludeIgnoringArrayOrderFromPathAndIgnoreInRoot() {
++        assertThatJson("[{\"b\":[4,5,6]},{\"b\":[1,2,3]},{\"b\":[7,8,9]}]")
++            .when(rootPath(), then(IGNORING_ARRAY_ORDER, IGNORING_EXTRA_ARRAY_ITEMS))
++            .when(path("[*].b"), thenNot(IGNORING_ARRAY_ORDER))
++            .isEqualTo("[{\"b\":[1,2,3]},{\"b\":[4,5,6]}]");
++    }
++
++    @Test
++    void shouldIgnoreArrayOrderEverywhereButTheFirstElement() {
++        assertThatThrownBy(() -> assertThatJson("[{\"b\":[1,3,2]},{\"b\":[5,4,6]},{\"b\":[8,7,9]}]")
++            .when(path("[*].b"), then(IGNORING_ARRAY_ORDER)).when(path("[0].b"), thenNot(IGNORING_ARRAY_ORDER))
++            .isEqualTo("[{\"b\":[1,2,3]},{\"b\":[4,5,6]},{\"b\":[7,8,9]}]"))
++            .hasMessage("JSON documents are different:\n" +
++                "Different value found in node \"[0].b[1]\", expected: <2> but was: <3>.\n" +
++                "Different value found in node \"[0].b[2]\", expected: <3> but was: <2>.\n");
++    }
++
++    @Test
++    void shouldIgnoreArrayOrderInSeveralSpecificPaths() {
++        assertThatJson("[{\"b\":[3,1,2],\"c\":[-2,-3,-1]},{\"b\":[6,5,4],\"c\":[-5,-4,-6]}]")
++            .when(paths("[*].b", "[*].c"), then(IGNORING_ARRAY_ORDER))
++            .isEqualTo("[{\"b\":[1,2,3],\"c\":[-1,-2,-3]},{\"b\":[4,5,6],\"c\":[-4,-5,-6]}]");
++    }
++
++    @Test
++    void shouldTreatNullAsAbsentInSpecificPath() {
++        assertThatJson("{\"a\":1,\"b\":null}")
++            .when(path("b"), then(TREATING_NULL_AS_ABSENT))
++            .isEqualTo("{\"a\":1}");
++    }
++
++    @Test
++    void shouldNotTreatNullAsAbsentWhenNotSpecified() {
++        assertThatThrownBy(() ->
++            assertThatJson("{\"a\":1,\"b\":null,\"c\":null}")
++                .when(path("b"), then(TREATING_NULL_AS_ABSENT))
++                .isEqualTo("{\"a\":1}"))
++            .hasMessage("JSON documents are different:\n" +
++                "Different keys found in node \"\", extra: \"c\", expected: <{\"a\":1}> but was: <{\"a\":1,\"b\":null,\"c\":null}>\n");
++    }
++
++    @Test
++    void shouldIgnoreExtraFieldsInSpecificPath() {
++        assertThatJson("{\"a\":{\"a1\":1,\"a2\":2}}")
++            .when(path("a"), then(IGNORING_EXTRA_FIELDS))
++            .isEqualTo("{\"a\":{\"a1\":1}}");
++    }
++
++    @Test
++    void shouldNotIgnoreExtraFieldsWhenNotSpecified() {
++        assertThatThrownBy(() ->
++            assertThatJson("{\"a\":{\"a1\":1,\"a2\":2},\"b\":{\"b1\":1,\"b2\":2}}")
++                .when(path("a"), then(IGNORING_EXTRA_FIELDS))
++                .isEqualTo("{\"a\":{\"a1\":1},\"b\":{\"b1\":1}}"))
++            .hasMessage("JSON documents are different:\n" +
++                "Different keys found in node \"b\", extra: \"b.b2\", expected: <{\"b1\":1}> but was: <{\"b1\":1,\"b2\":2}>\n");
++    }
++
++    @Test
++    void shouldIgnoreExtraArrayItemsInSpecificPath() {
++        assertThatJson("{\"a\":[1,2,3]}")
++            .when(path("a"), then(IGNORING_EXTRA_ARRAY_ITEMS))
++            .isEqualTo("{\"a\":[1,2]}");
++    }
++
++    @Test
++    void shouldNotIgnoreExtraArrayItemsWhenNotSpecified() {
++        assertThatThrownBy(() ->
++            assertThatJson("{\"a\":[1,2,3],\"b\":[1,2,3]}")
++                .when(path("a"), then(IGNORING_EXTRA_ARRAY_ITEMS))
++                .isEqualTo("{\"a\":[1,2],\"b\":[1,2]}"))
++            .hasMessage("JSON documents are different:\n" +
++                "Array \"b\" has different length, expected: <2> but was: <3>.\n" +
++                "Array \"b\" has different content. Extra values: [3], expected: <[1,2]> but was: <[1,2,3]>\n");
++    }
++
++    @Test
++    void shouldIgnoreValuesInSpecificPath() {
++        assertThatJson("{\"a\":2,\"b\":\"string2\"}")
++            .when(paths("a", "b"), then(IGNORING_VALUES))
++            .isEqualTo("{\"a\":1,\"b\":\"string\"}");
++    }
++
++    @Test
++    void shouldNotIgnoreValuesWhenNotSpecified() {
++        assertThatThrownBy(() ->
++            assertThatJson("{\"a\":2,\"b\":\"string2\",\"c\":3}")
++                .when(paths("a", "b"), then(IGNORING_VALUES))
++                .isEqualTo("{\"a\":1,\"b\":\"string\",\"c\":2}"))
++            .hasMessage("JSON documents are different:\n" +
++                "Different value found in node \"c\", expected: <2> but was: <3>.\n");
+     }
+ 
+     private static final String json = "{\n" +
+         "    \"store\": {\n" +
+         "        \"book\": [\n" +
+         "            {\n" +
+         "                \"category\": \"reference\",\n" +
+         "                \"author\": \"Nigel Rees\",\n" +
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1040,16 +1040,81 @@
+                 "Different value found in node \"$.store.book[0].price\", expected: <8.96> but was: <8.95>.\n");
+     }
+ 
+     @Test
+     void jsonPathWithIgnoredPaths() {
+         assertThatJson(json)
+             .withConfiguration(c -> c.whenIgnoringPaths("$.store.book[*].price"))
+             .inPath("$.store.book[0]")
++            .isEqualTo(
++                "            {\n" +
++                    "                \"category\": \"reference\",\n" +
++                    "                \"author\": \"Nigel Rees\",\n" +
++                    "                \"title\": \"Sayings of the Century\",\n" +
++                    "                \"price\": 999\n" +
++                    "            }"
++            );
++    }
++
++    @Test
++    void ignoredJsonPaths() {
++        assertThatJson("{\n" +
++            "     \"category\": \"reference\",\n" +
++            "     \"author\": \"Nigel Rees\",\n" +
++            "     \"title\": \"Sayings of the Century\",\n" +
++            "     \"price\": 1111\n" +
++            "}")
++            .withConfiguration(c -> c.whenIgnoringPaths("$..price"))
++            .isEqualTo(
++                "            {\n" +
++                    "                \"category\": \"reference\",\n" +
++                    "                \"author\": \"Nigel Rees\",\n" +
++                    "                \"title\": \"Sayings of the Century\",\n" +
++                    "                \"price\": 999\n" +
++                    "            }"
++            );
++    }
++
++    @Test
++    void jsonPathWithIgnoredNonexistentPaths() {
++        assertThatJson(json)
++            .withConfiguration(c -> c.whenIgnoringPaths("$.rubbish"))
++            .inPath("$.store.book[0]")
++            .isEqualTo(
++                "            {\n" +
++                    "                \"category\": \"reference\",\n" +
++                    "                \"author\": \"Nigel Rees\",\n" +
++                    "                \"title\": \"Sayings of the Century\",\n" +
++                    "                \"price\": 8.95\n" +
++                    "            }"
++            );
++    }
++
++    @Test
++    void jsonPathWithIgnoredPathsDeep() {
++        assertThatJson(json)
++            .whenIgnoringPaths("$..price")
++            .withTolerance(0.01)
++            .inPath("$.store.book[0]")
++            .isEqualTo(
++                "            {\n" +
++                    "                \"category\": \"reference\",\n" +
++                    "                \"author\": \"Nigel Rees\",\n" +
++                    "                \"title\": \"Sayings of the Century\",\n" +
++                    "                \"price\": 999\n" +
++                    "            }"
++            );
++    }
++
++    @Test
++    void jsonPathWithIgnoredPathsDeepBracketNotation() {
++        assertThatJson(json)
++            .whenIgnoringPaths("$..price")
++            .inPath("$['store']['book'][0]")
+             .isEqualTo(
+                 "            {\n" +
+                     "                \"category\": \"reference\",\n" +
+                     "                \"author\": \"Nigel Rees\",\n" +
+                     "                \"title\": \"Sayings of the Century\",\n" +
+                     "                \"price\": 999\n" +
+                     "            }"
+             );
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: tests/test-base/src/main/java/net/javacrumbs/jsonunit/test/base/AbstractJsonAssertTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -25,29 +25,18 @@
+ 
+ import java.io.IOException;
+ import java.io.StringReader;
+ import java.math.BigDecimal;
+ 
+ import static java.math.BigDecimal.ZERO;
+ import static java.math.BigDecimal.valueOf;
+ import static java.util.Collections.singletonMap;
+-import static net.javacrumbs.jsonunit.JsonAssert.assertJsonEquals;
+-import static net.javacrumbs.jsonunit.JsonAssert.assertJsonNodeAbsent;
+-import static net.javacrumbs.jsonunit.JsonAssert.assertJsonNodePresent;
+-import static net.javacrumbs.jsonunit.JsonAssert.assertJsonNotEquals;
+-import static net.javacrumbs.jsonunit.JsonAssert.assertJsonPartEquals;
+-import static net.javacrumbs.jsonunit.JsonAssert.assertJsonPartNotEquals;
+-import static net.javacrumbs.jsonunit.JsonAssert.assertJsonPartStructureEquals;
+-import static net.javacrumbs.jsonunit.JsonAssert.assertJsonStructureEquals;
+-import static net.javacrumbs.jsonunit.JsonAssert.setOptions;
+-import static net.javacrumbs.jsonunit.JsonAssert.setTolerance;
+-import static net.javacrumbs.jsonunit.JsonAssert.when;
+-import static net.javacrumbs.jsonunit.JsonAssert.whenIgnoringPaths;
+-import static net.javacrumbs.jsonunit.JsonAssert.withMatcher;
++import static net.javacrumbs.jsonunit.JsonAssert.*;
++import static net.javacrumbs.jsonunit.core.ConfigurationWhen.*;
+ import static net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER;
+ import static net.javacrumbs.jsonunit.core.Option.IGNORING_EXTRA_ARRAY_ITEMS;
+ import static net.javacrumbs.jsonunit.core.Option.IGNORING_EXTRA_FIELDS;
+ import static net.javacrumbs.jsonunit.core.Option.IGNORING_VALUES;
+ import static net.javacrumbs.jsonunit.core.Option.TREATING_NULL_AS_ABSENT;
+ import static net.javacrumbs.jsonunit.core.internal.JsonUtils.jsonSource;
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.assertThatThrownBy;
+@@ -1040,16 +1029,21 @@
+ 
+ 
+     @Test
+     void pathShouldBeIgnoredForDifferentValue() {
+         assertJsonEquals("{\"root\":{\"test\":1, \"ignored\": 2}}", "{\"root\":{\"test\":1, \"ignored\": 1}}", JsonAssert.whenIgnoringPaths("root.ignored"));
+     }
+ 
+     @Test
++    void pathShouldBeIgnoredForDifferentValueWithWhen() {
++        assertJsonEquals("{\"root\":{\"test\":1, \"ignored\": 2}}", "{\"root\":{\"test\":1, \"ignored\": 1}}", JsonAssert.when(path("root.ignored"), thenIgnore()));
++    }
++
++    @Test
+     void arrayWildcardForPathIgnoring() {
+         assertJsonEquals("[{\"a\":1, \"b\":0},{\"a\":2, \"b\":0}]", "[{\"a\":1, \"b\":2},{\"a\":2, \"b\":3}]", JsonAssert.whenIgnoringPaths("[*].b"));
+     }
+ 
+     @Test
+     void arrayWildcardForPathIgnoringArrayOrder() {
+         assertJsonEquals("[{\"a\":1, \"b\":0},{\"a\":2, \"b\":0}]", "[{\"a\":2, \"b\":2},{\"a\":1, \"b\":3}]", JsonAssert.whenIgnoringPaths("[*].b").when(IGNORING_ARRAY_ORDER));
+     }
+@@ -1214,14 +1208,126 @@
+                 "but was: <[1,8,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,5,9,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5]>\n");
+     }
+ 
+     @Test
+     void shouldUseRightValuesWhenComparingArrays() {
+         assertJsonEquals("[\"${json-unit.ignore}\",\"${json-unit.ignore}\",2]", "[1,2,1]", when(IGNORING_ARRAY_ORDER));
+     }
+ 
++    @Test
++    void shouldIgnoreArrayOrderInSpecificPath() {
++        assertJsonEquals("[{\"b\":[1,2,3]},{\"b\":[4,5,6]}]", "[{\"b\":[2,1,3]},{\"b\":[6,4,5]}]",
++            when(path("[*].b"), then(IGNORING_ARRAY_ORDER)));
++    }
++
++    @Test
++    void shouldNotIgnoreArrayOrderWhenNotSpecified() {
++        assertThatThrownBy(() -> assertJsonEquals(
++            "[{\"b\":[1,2,3]},{\"b\":[4,5,6]}]",
++            "[{\"b\":[6,4,5]},{\"b\":[2,1,3]}]",
++            when(path("[*].b"), then(IGNORING_ARRAY_ORDER))))
++            .hasMessage("JSON documents are different:\n" +
++                "Array \"[0].b\" has different content. Missing values: [1, 2, 3], extra values: [6, 4, 5], expected: <[1,2,3]> but was: <[6,4,5]>\n" +
++                "Array \"[1].b\" has different content. Missing values: [4, 5, 6], extra values: [2, 1, 3], expected: <[4,5,6]> but was: <[2,1,3]>\n");
++    }
++
++    @Test
++    void shouldExcludeIgnoringArrayOrderFromPath() {
++        assertJsonEquals("[{\"b\":[1,2,3]},{\"b\":[4,5,6]}]", "[{\"b\":[4,5,6]},{\"b\":[1,2,3]}]",
++            when(IGNORING_ARRAY_ORDER).when(path("[*].b"), thenNot(IGNORING_ARRAY_ORDER)));
++    }
++
++    @Test
++    void shouldExcludeIgnoringArrayOrderFromPathAndIgnoreInRoot() {
++        assertJsonEquals("[{\"b\":[1,2,3]},{\"b\":[4,5,6]}]", "[{\"b\":[4,5,6]},{\"b\":[1,2,3]}]",
++            when(rootPath(), then(IGNORING_ARRAY_ORDER)).when(path("[*].b"), thenNot(IGNORING_ARRAY_ORDER)));
++    }
++
++    @Test
++    void shouldIgnoreArrayOrderEverywhereButTheFirstElement() {
++        assertThatThrownBy(() -> assertJsonEquals(
++            "[{\"b\":[1,2,3]},{\"b\":[4,5,6]},{\"b\":[7,8,9]}]",
++            "[{\"b\":[1,3,2]},{\"b\":[5,4,6]},{\"b\":[8,7,9]}]",
++            when(path("[*].b"), then(IGNORING_ARRAY_ORDER)).when(path("[0].b"), thenNot(IGNORING_ARRAY_ORDER))))
++            .hasMessage("JSON documents are different:\n" +
++                "Different value found in node \"[0].b[1]\", expected: <2> but was: <3>.\n" +
++                "Different value found in node \"[0].b[2]\", expected: <3> but was: <2>.\n");
++    }
++
++    @Test
++    void shouldIgnoreArrayOrderInSeveralSpecificPaths() {
++        assertJsonEquals(
++            "[{\"b\":[1,2,3],\"c\":[-1,-2,-3]},{\"b\":[4,5,6],\"c\":[-4,-5,-6]}]",
++            "[{\"b\":[3,1,2],\"c\":[-2,-3,-1]},{\"b\":[6,5,4],\"c\":[-5,-4,-6]}]",
++            when(paths("[*].b", "[*].c"), then(IGNORING_ARRAY_ORDER)));
++    }
++
++    @Test
++    void shouldTreatNullAsAbsentInSpecificPath() {
++        assertJsonEquals("{\"a\":1}", "{\"a\":1,\"b\":null}",
++            when(path("b"), then(TREATING_NULL_AS_ABSENT)));
++    }
++
++    @Test
++    void shouldNotTreatNullAsAbsentWhenNotSpecified() {
++        assertThatThrownBy(() -> assertJsonEquals("{\"a\":1}", "{\"a\":1,\"b\":null,\"c\":null}",
++            when(path("b"), then(TREATING_NULL_AS_ABSENT))))
++            .hasMessage("JSON documents are different:\n" +
++                "Different keys found in node \"\", extra: \"c\", expected: <{\"a\":1}> but was: <{\"a\":1,\"b\":null,\"c\":null}>\n");
++    }
++
++    @Test
++    void shouldIgnoreExtraFieldsInSpecificPath() {
++        assertJsonEquals("{\"a\":{\"a1\":1}}", "{\"a\":{\"a1\":1,\"a2\":2}}",
++            when(path("a"), then(IGNORING_EXTRA_FIELDS)));
++    }
++
++    @Test
++    void shouldNotIgnoreExtraFieldsWhenNotSpecified() {
++        assertThatThrownBy(() -> assertJsonEquals(
++            "{\"a\":{\"a1\":1},\"b\":{\"b1\":1}}",
++            "{\"a\":{\"a1\":1,\"a2\":2},\"b\":{\"b1\":1,\"b2\":2}}",
++            when(path("a"), then(IGNORING_EXTRA_FIELDS))))
++            .hasMessage("JSON documents are different:\n" +
++                "Different keys found in node \"b\", extra: \"b.b2\", expected: <{\"b1\":1}> but was: <{\"b1\":1,\"b2\":2}>\n");
++    }
++
++    @Test
++    void shouldIgnoreExtraArrayItemsInSpecificPath() {
++        assertJsonEquals("{\"a\":[1,2]}", "{\"a\":[1,2,3]}",
++            when(path("a"), then(IGNORING_EXTRA_ARRAY_ITEMS)));
++    }
++
++    @Test
++    void shouldNotIgnoreExtraArrayItemsWhenNotSpecified() {
++        assertThatThrownBy(() -> assertJsonEquals(
++            "{\"a\":[1,2],\"b\":[1,2]}",
++            "{\"a\":[1,2,3],\"b\":[1,2,3]}",
++            when(path("a"), then(IGNORING_EXTRA_ARRAY_ITEMS))))
++            .hasMessage("JSON documents are different:\n" +
++                "Array \"b\" has different length, expected: <2> but was: <3>.\n" +
++                "Array \"b\" has different content. Extra values: [3], expected: <[1,2]> but was: <[1,2,3]>\n");
++    }
++
++    @Test
++    void shouldIgnoreValuesInSpecificPath() {
++        assertJsonEquals("{\"a\":1,\"b\":\"string\"}",
++            "{\"a\":2,\"b\":\"string2\"}",
++            when(paths("a", "b"), then(IGNORING_VALUES)));
++    }
++
++    @Test
++    void shouldNotIgnoreValuesWhenNotSpecified() {
++        assertThatThrownBy(() -> assertJsonEquals(
++            "{\"a\":1,\"b\":\"string\",\"c\":2}",
++            "{\"a\":2,\"b\":\"string2\",\"c\":3}",
++            when(paths("a", "b"), then(IGNORING_VALUES))))
++            .hasMessage("JSON documents are different:\n" +
++                "Different value found in node \"c\", expected: <2> but was: <3>.\n");
++    }
++
+     protected abstract Object readValue(String value);
+ 
+ 
+ 
+ 
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -44,16 +44,17 @@
+ import static net.javacrumbs.jsonunit.JsonAssert.whenIgnoringPaths;
+ import static net.javacrumbs.jsonunit.JsonAssert.withMatcher;
+ import static net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER;
+ import static net.javacrumbs.jsonunit.core.Option.IGNORING_EXTRA_ARRAY_ITEMS;
+ import static net.javacrumbs.jsonunit.core.Option.IGNORING_EXTRA_FIELDS;
+ import static net.javacrumbs.jsonunit.core.Option.IGNORING_VALUES;
+ import static net.javacrumbs.jsonunit.core.Option.TREATING_NULL_AS_ABSENT;
+ import static net.javacrumbs.jsonunit.core.internal.JsonUtils.jsonSource;
++import static net.javacrumbs.jsonunit.jsonpath.JsonPathAdapter.inPath;
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.assertj.core.extractor.Extractors.toStringMethod;
+ import static org.hamcrest.Matchers.empty;
+ import static org.hamcrest.Matchers.greaterThan;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ 
+ public abstract class AbstractJsonAssertTest {
+@@ -1050,16 +1051,21 @@
+     }
+ 
+     @Test
+     void arrayWildcardForPathIgnoringArrayOrder() {
+         assertJsonEquals("[{\"a\":1, \"b\":0},{\"a\":2, \"b\":0}]", "[{\"a\":2, \"b\":2},{\"a\":1, \"b\":3}]", JsonAssert.whenIgnoringPaths("[*].b").when(IGNORING_ARRAY_ORDER));
+     }
+ 
+     @Test
++    void inPathShouldWork() {
++        assertJsonEquals("[1]", inPath("{\"root\":{\"test\":1, \"ignored\": 2}}", "$..test"));
++    }
++
++    @Test
+     void arrayWildcardShouldWorkWhenIgnoringArrayOrder() {
+         String expected = "{\n" +
+             "  \"calendars\": [\n" +
+             "    {\n" +
+             "      \"dates\": [\n" +
+             "        {\n" +
+             "          \"id\": \"date-8c9c9ffa58fee47b47c2c1eb511c4e6c\",\n" +
+             "          \"type\": \"NOTIFICATION\",\n" +
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

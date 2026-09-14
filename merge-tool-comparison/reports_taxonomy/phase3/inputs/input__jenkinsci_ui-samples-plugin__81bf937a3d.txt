@@ -1,0 +1,338 @@
+UNIT jenkinsci_ui-samples-plugin__81bf937a3d
+repo: jenkinsci_ui-samples-plugin   merge: 81bf937a3df70590fc0bd9863fa042fca33b6373   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/main/java/io/jenkins/plugins/designlibrary/Root.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,17 +1,25 @@
+ package io.jenkins.plugins.designlibrary;
+ 
+ import hudson.Extension;
+ import hudson.model.RootAction;
++import hudson.util.HttpResponses;
++import jenkins.model.Jenkins;
+ import jenkins.model.ModelObjectWithContextMenu;
++import net.sf.json.JSONArray;
++import org.jenkins.ui.icon.IconSet;
++import org.kohsuke.stapler.HttpResponse;
++import org.kohsuke.stapler.Stapler;
+ import org.kohsuke.stapler.StaplerRequest;
+ import org.kohsuke.stapler.StaplerResponse;
+ 
++import java.util.Collections;
+ import java.util.List;
++import java.util.stream.Collectors;
+ 
+ /**
+  * Entry point to all the UI samples.
+  * 
+  * @author Kohsuke Kawaguchi
+  */
+ @Extension
+ public class Root implements RootAction, ModelObjectWithContextMenu {
+@@ -31,16 +39,95 @@
+         for (UISample ui : getAll()) {
+             String urlName = ui.getUrlName();
+             if (urlName != null && urlName.equals(name))
+                 return ui;
+         }
+         return null;
+     }
+ 
++    public static class SearchResult {
++        private String icon;
++        private String title;
++        private String description;
++        private String url;
++        private List<SearchResult> children;
++
++        public SearchResult() {
++        }
++
++        public SearchResult(String title, String description, String url) {
++            this.title = title;
++            this.description = description;
++            this.url = url;
++        }
++
++        public String getIcon() {
++            return icon;
++        }
++
++        public void setIcon(String icon) {
++            this.icon = icon;
++        }
++
++        public String getTitle() {
++            return title;
++        }
++
++        public void setTitle(String title) {
++            this.title = title;
++        }
++
++        public String getUrl() {
++            return url;
++        }
++
++        public void setUrl(String url) {
++            this.url = url;
++        }
++
++        public String getDescription() {
++            return description;
++        }
++
++        public void setDescription(String description) {
++            this.description = description;
++        }
++
++        public List<SearchResult> getChildren() {
++            return children;
++        }
++
++        public void setChildren(List<SearchResult> children) {
++            this.children = children;
++        }
++    }
++
++    public HttpResponse doSearch() {
++        final StaplerRequest request = Stapler.getCurrentRequest();
++        final String query = request.getParameter("query");
++
++        List<SearchResult> searchResults = getAll().stream()
++                .filter(sample -> sample.getDisplayName().toLowerCase().contains(query.toLowerCase()))
++                .limit(5)
++                .map(sample -> {
++            SearchResult searchResult = new SearchResult();
++            searchResult.setIcon(IconSet.getSymbol(sample.getIconFileName().substring(7),
++                    "", "", "", "design-library", ""));
++            searchResult.setTitle(sample.getDisplayName());
++            searchResult.setUrl(Jenkins.get().getRootUrl() + "design-library/" + sample.getUrlName());
++            searchResult.setChildren(Collections.singletonList(
++                    new SearchResult("Tropic Morning News", "Hello world", "")));
++            return searchResult;
++        })
++                .collect(Collectors.toList());
++
++        return HttpResponses.okJSON(JSONArray.fromObject(searchResults));
++    }
++
+     public List<UISample> getAll() {
+         return UISample.getAll();
+     }
+ 
+     public ContextMenu doContextMenu(StaplerRequest request, StaplerResponse response) {
+         return null;
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,25 +1,22 @@
+ package io.jenkins.plugins.designlibrary;
+ 
+ import hudson.Extension;
+ import hudson.model.RootAction;
+-import jenkins.model.ModelObjectWithContextMenu;
+-import org.kohsuke.stapler.StaplerRequest;
+-import org.kohsuke.stapler.StaplerResponse;
+ 
+ import java.util.List;
+ 
+ /**
+  * Entry point to all the UI samples.
+  * 
+  * @author Kohsuke Kawaguchi
+  */
+ @Extension
+-public class Root implements RootAction, ModelObjectWithContextMenu {
++public class Root implements RootAction {
+     public String getIconFileName() {
+         return "symbol-design-library plugin-design-library";
+     }
+ 
+     public String getDisplayName() {
+         return "Design Library";
+     }
+ 
+@@ -34,13 +31,9 @@
+                 return ui;
+         }
+         return null;
+     }
+ 
+     public List<UISample> getAll() {
+         return UISample.getAll();
+     }
+-
+-    public ContextMenu doContextMenu(StaplerRequest request, StaplerResponse response) {
+-        return null;
+-    }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package io.jenkins.plugins.designlibrary;
+
+import hudson.Extension;
+import hudson.model.RootAction;
+import hudson.util.HttpResponses;
+import jenkins.model.Jenkins;
+import net.sf.json.JSONArray;
+import org.jenkins.ui.icon.IconSet;
+import org.kohsuke.stapler.HttpResponse;
+import org.kohsuke.stapler.Stapler;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Entry point to all the UI samples.
+ * 
+ * @author Kohsuke Kawaguchi
+ */
+@Extension
+public class Root implements RootAction {
+    public String getIconFileName() {
+        return "symbol-design-library plugin-design-library";
+    }
+
+    public String getDisplayName() {
+        return "Design Library";
+    }
+
+    public String getUrlName() {
+        return "design-library";
+    }
+
+    public UISample getDynamic(String name) {
+        for (UISample ui : getAll()) {
+            String urlName = ui.getUrlName();
+            if (urlName != null && urlName.equals(name))
+                return ui;
+        }
+        return null;
+    }
+
+    public static class SearchResult {
+        private String icon;
+        private String title;
+        private String description;
+        private String url;
+        private List<SearchResult> children;
+
+        public SearchResult() {
+        }
+
+        public SearchResult(String title, String description, String url) {
+            this.title = title;
+            this.description = description;
+            this.url = url;
+        }
+
+        public String getIcon() {
+            return icon;
+        }
+
+        public void setIcon(String icon) {
+            this.icon = icon;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public void setUrl(String url) {
+            this.url = url;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
+
+        public List<SearchResult> getChildren() {
+            return children;
+        }
+
+        public void setChildren(List<SearchResult> children) {
+            this.children = children;
+        }
+    }
+
+    public HttpResponse doSearch() {
+        final StaplerRequest request = Stapler.getCurrentRequest();
+        final String query = request.getParameter("query");
+
+        List<SearchResult> searchResults = getAll().stream()
+                .filter(sample -> sample.getDisplayName().toLowerCase().contains(query.toLowerCase()))
+                .limit(5)
+                .map(sample -> {
+            SearchResult searchResult = new SearchResult();
+            searchResult.setIcon(IconSet.getSymbol(sample.getIconFileName().substring(7),
+                    "", "", "", "design-library", ""));
+            searchResult.setTitle(sample.getDisplayName());
+            searchResult.setUrl(Jenkins.get().getRootUrl() + "design-library/" + sample.getUrlName());
+            searchResult.setChildren(Collections.singletonList(
+                    new SearchResult("Tropic Morning News", "Hello world", "")));
+            return searchResult;
+        })
+                .collect(Collectors.toList());
+
+        return HttpResponses.okJSON(JSONArray.fromObject(searchResults));
+    }
+
+    public List<UISample> getAll() {
+        return UISample.getAll();
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -3,16 +3,17 @@
+ import hudson.Extension;
+ import hudson.model.RootAction;
+ import hudson.util.HttpResponses;
+ import jenkins.model.Jenkins;
+ import net.sf.json.JSONArray;
+ import org.jenkins.ui.icon.IconSet;
+ import org.kohsuke.stapler.HttpResponse;
+ import org.kohsuke.stapler.Stapler;
++import org.kohsuke.stapler.StaplerRequest;
+ 
+ import java.util.Collections;
+ import java.util.List;
+ import java.util.stream.Collectors;
+ 
+ /**
+  * Entry point to all the UI samples.
+  * 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

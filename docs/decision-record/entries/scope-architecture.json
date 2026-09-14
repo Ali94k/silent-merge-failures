@@ -1,0 +1,1383 @@
+{
+  "entries": [
+    {
+      "slug": "java-only-seven-category-scope",
+      "title": "Dataset and framework are Java-only, fixed at seven semantic-conflict categories",
+      "date_from": "2026-04-16",
+      "date_to": "2026-05-19",
+      "decision": "The evaluation dataset is fixed at 7 named categories of semantic merge conflict, all in Java; test cases and merge scenarios are Java-only. The comparison framework keeps hardcoding `.java` (ISSUES.md #12) and deliberately does not exploit Mergiraf's 25+ language support, leaving multi-language extension to a future cycle; work that would make the driver's language-dispatch axis genuinely load-bearing (a multi-language refactoring detector, or a non-Java sub-method specialist) is also out of scope. The 7-category taxonomy was later reframed as the historical design taxonomy \u2014 see seven-categories-historical-taxonomy-recoded.",
+      "rationale_recorded": true,
+      "rationale": "No reason is recorded for the Java-only boundary itself or for the 7 categories. The only reason recorded on this axis is for not pursuing multi-language work: under the RM2-only toolchain the language guard is inert, and making it load-bearing would need a multi-language refactoring detector or a non-Java sub-method specialist \u2014 both declared out of scope.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the boundary held to the end \u2014 ISSUES.md #12 still tracks the hardcoded .java extension as accepted scope, no multi-language work exists anywhere, the language axis was demoted to a defensive guard (adopted), and every corpus and detector is Java-only.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-16",
+        "preA:pre-mergiraf-integration-recon-13",
+        "preA:pre-spork-driver-integration-02"
+      ],
+      "evidence": [
+        {
+          "text": "**Java focus**: Test cases and merge scenarios are in Java",
+          "line": 876,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "Making the axis load-bearing would need a multi-language refactoring detector",
+          "line": 32,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        },
+        {
+          "text": "Mergiraf's broader support (25+ languages) is something to take advantage of in a future multi-language extension, not now.",
+          "line": 192,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/ISSUES.md #12",
+        "docs/plans/spork-driver-integration.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "mandatory-differential-semantic-verification",
+      "title": "Semantic verification is mandatory and applied differentially across the merge triple",
+      "date_from": "2026-04-16",
+      "date_to": "2026-06-11",
+      "decision": "Joern CPG analysis is a required stage of every merge run, not an optional or deferred step: the merged result is always analysed before accept/reject. After the 2026-06 pilot, the technique is stated more precisely and made a conformance rule \u2014 apply standard static analysis differentially across the merge triple and flag only merge-induced deltas \u2014 which every new detector must follow.",
+      "rationale_recorded": true,
+      "rationale": "Semantic conflicts (stale reads, infinite loops, scope capture, control-flow interference) can only be detected by dataflow and control-flow analysis on the merged result; no amount of structural merging or refactoring detection substitutes for analysing how the merged code actually behaves. The differential framing was argued from the detector record: every deployable detector became so only after merge-induced filtering against both parents, while every single-version analysis drowned in inherited fields, deliberate idioms or parser artifacts, and every detector that skipped the filter (v1 InfiniteLoop, the dropped type lane) died of false positives.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): both halves are the shipped design \u2014 core/driver.py:70-101 runs the analysis stage unconditionally on every merge before accept/reject (fail-safe reject on strategy crash), and the differential merge-induced-only conformance rule is the standard every lane follows (the five defaults and all three experimental lanes are differential; ISSUES.md #31 records the widening as 'resolution differentials', and the D2 lane header states 'differential 3-way, merge-induced only').",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-04",
+        "b:bfc672b4-23"
+      ],
+      "evidence": [
+        {
+          "text": "No amount of structural merging or refactoring detection can substitute for analyzing how the merged code actually behaves.",
+          "line": 206,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "\"Apply standard static analysis differentially across the merge triple, flag only merge-induced deltas\" is the exportable idea, independent of any category.",
+          "line": 465,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "strategies/joern_strategies/"
+      ],
+      "actors": "unclear",
+      "actors_note": "The 2026-04-16 plan statement carries no attribution; the 2026-06-11 restatement of the same discipline as the project's exportable technique is Claude's, in a review Ali did not visibly ratify. Recorded as unclear rather than taking a majority.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "python-plugin-host-architecture",
+      "title": "Driver stays a Python plugin host invoking external tools by subprocess",
+      "date_from": "2026-04-16",
+      "date_to": null,
+      "decision": "The driver remains Python and invokes all external analysis/merge tools (Java RefactoringMiner and RefMerge, Rust Mergiraf, Scala/Java Joern) through subprocess calls rather than in-process APIs or a single-language reimplementation. All new analysis capability is added as `MergeStrategy` subclasses discovered by the plugin loader, with strategy selection moving from hardcoding in driver.py to config/strategies.yaml; and the plugin interface changes from `analyze(file_path, base_content)` to `analyze(context: MergeContext)`, where MergeContext carries base/ours/theirs/merged paths, per-branch RM-ASTDiff refactoring lists and the merge backend used.",
+      "rationale_recorded": true,
+      "rationale": "Strategies need merge context \u2014 refactoring metadata and branch information \u2014 in addition to the merged file; RefactoringConflictStrategy, for example, operates on refactoring metadata rather than on the merged file itself. No reason is recorded for the Python/subprocess choice or for the plugin-loader rule.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the shipped architecture \u2014 core/plugin_loader.py discovers MergeStrategy subclasses under strategies/, config/strategies.yaml drives enablement (adopted sibling), all external tools (Joern, RM2, Mergiraf, Spork, Weave) are subprocess/Docker invocations, and the driver never left Python.",
+      "supersedes": [
+        "core/interfaces.py MergeStrategy.analyze(file_path, base_content)",
+        "hardcoded strategy selection in driver.py"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-09",
+        "preA:pre-architecture-refmerge-23",
+        "preA:pre-architecture-refmerge-24"
+      ],
+      "evidence": [
+        {
+          "text": "The `MergeStrategy` interface is extended to receive merge context (refactoring metadata, branch information) in addition to the merged file:",
+          "line": 210,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "**Plugin architecture**: All new analysis tools are added as `MergeStrategy` subclasses",
+          "line": 874,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "**Language**: Python driver, calling Java/Scala/Rust tools via subprocess",
+          "line": 872,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        }
+      ],
+      "artifacts": [
+        "core/interfaces.py",
+        "config/strategies.yaml",
+        "core/plugin_loader.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "no-llm-in-analysis",
+      "title": "Ban LLM-based approaches; classic program analysis only",
+      "date_from": "2026-04-16",
+      "date_to": null,
+      "decision": "The research must use classic program-analysis techniques only; no LLM-based approaches are permitted in the driver or its strategies.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): held in the pipeline \u2014 no LLM appears anywhere in the driver or its strategies (all seven lanes are deterministic static analysis), reaffirmed 2026-07-15 by the adopted no-LLM-detector-lane decision. The instrument-side uses (labeling, coding) sit outside the analysis pipeline under the drafts-not-oracles discipline, with the one pipeline-adjacent use recorded as an explicit carve-out \u2014 the boundary the S10z contradiction-resolution documents.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-07"
+      ],
+      "evidence": [
+        {
+          "text": "**No LLM approaches**: Research must use classic program analysis techniques only",
+          "line": 873,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "phase-decomposition-one-pr-per-phase",
+      "title": "Decompose work into small independently testable phases, one PR each",
+      "date_from": "2026-04-16",
+      "date_to": "2026-04-22",
+      "decision": "Work is decomposed into numbered phases, one PR per phase, each adding one capability and independently testable, with results compared against the previous phase over the same 7 conflict categories: the pipeline as Step 0 (baseline) \u2192 Step 1 (Mergiraf) \u2192 Step 2 (RM-ASTDiff + RefMerge) \u2192 Step 3 (full Joern strategy suite); Mergiraf integration as six phases via Schesch upstream's adapter, with P3 resolving ISSUES.md #2 before headline numbers and a new M3.5 separating implementation from decision; RM2 integration as five phases (scenario tagger resolving ISSUES.md #3, Method Rename detector taking coverage 2/7 \u2192 3/7, conditional pipeline gate). Within RM2 the splits follow dependency rather than convenience: R4a ships the runtime classifier and `language_of` as importable components touching no driver or backend file, with driver activation held to R4b, and R3 is sequenced as an independent phase depending only on R0.",
+      "rationale_recorded": true,
+      "rationale": "Each step must be independently testable before proceeding, and every step's results are compared to the previous step on the same categories. Splitting Phase 3 into decide (P3) and implement (M3.5) was needed because otherwise acceptance would only mark ISSUES.md #2 decided-pending-implementation rather than resolved. R4a exists separately from R4b because the W5 and S2 plans need to import a *runtime* classifier, whereas the R1 offline tagger writes scenario JSON for merge-tool-comparison only and is not callable at merge time. R3 stays standalone because it only needs the merged file and the base, works whether or not the dispatch flip exists, and coupling it would gate a 1-day deliverable on a multi-day prerequisite \u2014 R3 is verification-side, R4a/R4b are merging-side.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-13",
+        "preA:pre-commits-06",
+        "preA:pre-commits-11",
+        "preA:pre-commits-08",
+        "preA:pre-rm2-integration-24",
+        "preA:pre-rm2-integration-30"
+      ],
+      "evidence": [
+        {
+          "text": "Each step adds one major capability. Each step is independently testable. Results from each step are compared against the previous step using the same 7 conflict categories.",
+          "line": 370,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "Coupling them would gate a 1-day deliverable on a multi-day prerequisite. R3 is verification-side; R4a/R4b are merging-side; the architectural split is principled.",
+          "line": 435,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "New M3.5 (mergiraf): implementation phase for the ISSUES.md #2 fix.",
+          "line": 113,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "5cee722",
+        "77d988a",
+        "b990a52",
+        "docs/plans/mergiraf-integration.md",
+        "docs/plans/rm2-integration.md",
+        "semantic_merge_driver/core/refactoring_classifier.py",
+        "semantic_merge_driver/core/language_detect.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "mvp-first-ship-dispatch-before-validation",
+      "title": "MVP-first: ship end-to-end dispatch with two backends before empirical validation",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-04",
+      "decision": "Stage \u03b5 is reordered so the MVP track ships the dispatch mechanism end-to-end with two backends (git-merge-file + Mergiraf) first \u2014 R0+M0, then R4a with Phase 6-lite in parallel, then R4b with the default flip \u2014 deferring the empirical validation/extension track (M1\u2013M5, R1\u2013R2, W5/S2/S3) until after. As a consequence Phase 6 of the Mergiraf plan is split: Phase 6-lite delivers the `MergeBackend` ABC plus the git and Mergiraf backends inside the MVP track, before Phases 1\u20135 finish, and Phase 6-validate afterwards confirms or refutes the backend choice against Phase 4 numbers. Each is one PR.",
+      "rationale_recorded": true,
+      "rationale": "Stated as an MVP-first directive: ship the dispatch mechanism end-to-end with two backends first, then validate empirically and extend. A non-split Phase 6 would either gate on M2\u2013M5 evidence and delay the MVP by ~3\u20134 days, or ship the driver promotion with no evidence and lose the empirical-justification story; the split ships the mechanism early and does the evaluation honestly afterwards, applying evidence discipline retroactively.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): executed \u2014 Phase 6-lite shipped the MergeBackend ABC + git/mergiraf backends before the validation track (3fef834, with the honest-caveat message), R4a+R4b followed, and execution-sequence.md records '\u03b5 MVP track complete (R0 + M0 + M6-lite + R4a + R4b done \u2014 end-to-end auto-mode dispatch shipping)' with M1-M5/R1-R2 deferred exactly as this reordering prescribed.",
+      "supersedes": [
+        "earlier stage-\u03b5 ordering that gathered evidence before shipping dispatch",
+        "pre-2026-05-04 draft gating all of Phase 6 on Phase 4 evidence"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-13",
+        "preA:pre-mergiraf-integration-18",
+        "preA:pre-tool-evaluation-findings-12"
+      ],
+      "evidence": [
+        {
+          "text": "Order updated 2026-05-04 to reflect the **MVP-first directive**: ship the dispatch mechanism end-to-end with two backends first (git + Mergiraf), then validate empirically and extend.",
+          "line": 93,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        },
+        {
+          "text": "The split lets us have both: ship the mechanism early (option a's UX without its delay), then do the evaluation honestly (option b's evidence without its premature commitment).",
+          "line": 281,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/execution-sequence.md \u00a72.\u03b5",
+        "docs/plans/mergiraf-integration.md",
+        "docs/plans/rm2-integration.md"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the MVP-first directive is attributed to Ali (execution-sequence.md), the Phase-6 split is Claude's drafting in the findings and Mergiraf plans, and one source carries no attribution. Recorded as joint because the directive was Ali's and the phase restructuring was the response to it.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "path-a-local-adapter-over-upstream-framework",
+      "title": "Take Path A: a local Mergiraf adapter, not Schesch's upstream harness",
+      "date_from": "2026-04-21",
+      "date_to": "2026-05-11",
+      "decision": "Mergiraf is added to the existing `merge-tool-comparison/` framework as a local ~80-line adapter mirroring `spork.py` (one adapter, one `tools.yaml` row, three tests, Mergiraf pinned at 0.4.0, invoked through the Git merge-driver convention with a temp git repo), with the comparator left textual and ISSUES.md #2 tracked under M3/\u03b3. Reimplementing, forking, vendoring or syncing benedikt-schesch/AST-Merging-Evaluation is ruled out, as is building out the refactoring-detection branch in this plan; project-test-suite ground truth is out of scope for Path A (3a kept as maximalist fallback). The M0 phase that produced this decision was read-only inspection using an untracked depth-50 scratch clone in /tmp, changing no code or config in the repo.",
+      "rationale_recorded": true,
+      "rationale": "Ali has live investment in the current framework's plumbing (Click CLI, caching, adapter ABC) plus the thesis extensions \u2014 the Joern strategy axis, the R0 RM2 wrapper, the dataset loader \u2014 none of which exist upstream and all of which Path B obsoletes; the minimal patch of one adapter is cheap and reversible while a full sync is expensive and irreversible. Path B costs an 84 GB test cache plus Maven, three JDKs and GraalVM, would kill our CLI, plugin loader and Docker runner, does not compose with the semantic_merge_driver/Joern track, and has known Apple Silicon + GraalVM + JDK8 problems with stacking QEMU slowdown; it would burn the cycle on framework replacement rather than on the contribution, which the MVP-first directive forbids. Test-suite ground truth stays reachable later via M3 option 3a.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-05",
+        "preB:pre-mergiraf-integration-09",
+        "preA:pre-mergiraf-integration-04",
+        "preA:pre-mergiraf-integration-recon-01",
+        "preA:pre-mergiraf-integration-recon-02",
+        "preB:pre-mergiraf-integration-recon-17",
+        "preA:pre-commits-28"
+      ],
+      "evidence": [
+        {
+          "text": "84 GB cache + Maven + 3 JDKs + GraalVM. Massive install.",
+          "line": 121,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        },
+        {
+          "text": "The minimal patch \u2014 add one adapter \u2014 is cheap and reversible; a full sync is expensive and irreversible.",
+          "line": 283,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "Not reimplementing or forking Schesch's full upstream framework.",
+          "line": 45,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "c1034c0",
+        "merge-tool-comparison/src/tools/mergiraf.py",
+        "docs/plans/mergiraf-integration-recon.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "mergiraf-fifth-tool-rm2-not-a-tool",
+      "title": "Add Mergiraf as a fifth comparison tool ungated; keep RM2 out of the tools table",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-09",
+      "decision": "Proceed immediately, with no gate, on a Mergiraf adapter in `merge-tool-comparison/` alongside git merge-file, JDime, Spork and Mastery, using the same `MergeTool` adapter contract. When R0's RM2 artifacts are surfaced in the repo layout, the \"Tools under evaluation\" table is left unchanged.",
+      "rationale_recorded": true,
+      "rationale": "Mergiraf is expected to produce cleaner numbers than JDime (96% crash rate, partly intrinsic per Schesch) and Spork/Mastery (suspect FP inflation per ISSUES #2), because its fallback-to-conflict-markers behaviour makes conflict detection textually explicit. RM2 stays out of the table because it is reconnaissance for the upcoming integration, not a comparison tool.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-tool-evaluation-findings-01",
+        "preA:pre-commits-26"
+      ],
+      "evidence": [
+        {
+          "text": "Likely to produce cleaner numbers than JDime (which has a 96% crash rate \u2014 partly intrinsic per Schesch)",
+          "line": 39,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        },
+        {
+          "text": "\"Tools under evaluation\" table left unchanged \u2014 RM2 is reconnaissance",
+          "line": 316,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "cc55735",
+        "docs/plans/mergiraf-integration.md",
+        "merge-tool-comparison/README.md",
+        "merge-tool-comparison/src/tools/"
+      ],
+      "actors": "claude",
+      "actors_note": "The ungated recommendation is Claude's in tool-evaluation-findings.md; the commit that left the tools table unchanged carries no attribution. Recorded as claude because that is the only attribution the record gives.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "weave-integration-scope-and-non-goals",
+      "title": "Add Weave as a sixth tool; no fork, no exclusive backend, MCP out of scope",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "Weave is added as a sixth tool in `merge-tool-comparison/` alongside Mergiraf rather than stopping the framework at five. Of the three tools in the RefactoringMiner-output-mapping PDF not yet in project plans, SemanticMerge is skipped as proprietary and RePatch as wrong-dataset; only Weave is taken forward. Explicit non-goals: reimplementing or forking Weave, adopting Weave as the exclusive merge backend, expanding Joern strategy coverage, and integrating Weave's `weave-mcp` server into any runtime pipeline \u2014 MCP gets only a ~5-line epilogue in ARCHITECTURE.md, and any AI-agent empirical question becomes a separate plan.",
+      "rationale_recorded": true,
+      "rationale": "Mergiraf and Weave occupy different granularity slots (entity vs AST-subtree), which is exactly the axis thesis contribution #2 is about: integrating only Mergiraf leaves the PDF's taxonomy claim untested, whereas integrating both lets it be confirmed or refuted \u2014 either result is publishable, a single-tool integration is not. The plan serves contribution (2) by adding a distinct granularity on the merge axis, leaving contribution (1) Joern/CPG detection untouched. MCP is adjacent rather than core because the thesis is about composing merge and analysis tools, not multi-agent coordination, so its value is positioning rather than extra experiments.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): enacted within its non-goals \u2014 Weave is the sixth comparator tool (src/tools/weave.py + config/tools.yaml, e334cb3) and a selectable driver backend, never forked, never exclusive, MCP untouched; SemanticMerge and RePatch appear nowhere.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-weave-integration-10",
+        "preA:pre-weave-integration-09",
+        "preA:pre-weave-integration-11",
+        "preA:pre-weave-integration-12"
+      ],
+      "evidence": [
+        {
+          "text": "Either result is publishable; a single-tool integration is not.",
+          "line": 264,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        },
+        {
+          "text": "Because the thesis is about composing merge and analysis tools, not about multi-agent coordination.",
+          "line": 272,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        },
+        {
+          "text": "**SemanticMerge** (proprietary \u2014 skip), **RePatch** (wrong dataset \u2014 skip)",
+          "line": 51,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/",
+        "ARCHITECTURE.md",
+        "~/Downloads/RefactoringMiner Output Merge Tool Mapping.pdf"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "refactoring-aware-merging-track-excluded",
+      "title": "Keep the refactoring-aware merging track out of scope: RefMerge, IntelliMerge, RM-ASTDiff",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-06",
+      "decision": "No refactoring-aware merger is built or integrated in this cycle. RefMerge integration is ruled out until three stated conditions hold and RefMerge/IntelliMerge stay gated in tool-evaluation-findings.md \u00a75, so the router dispatches only among Weave, Spork, Mergiraf and git-merge-file; IntelliMerge is skipped outright, revisited only if RefMerge integration fails. Plain RM2 is used for the classifier and detector, with RM-ASTDiff a non-goal unless R0 reconnaissance shows plain RM2 insufficient, and no upgrade to RM2 3.0 / RM-ASTDiff is attempted. Semantic strategy coverage beyond conflict category #6 is likewise out of scope, and no complete detector diff between RM 2.4.0 and 3.0.13 will be run \u2014 the recorded diffs are limited to what surfaced on the 10 F-harness scenarios.",
+      "rationale_recorded": true,
+      "rationale": "For the gate use case (\"refactoring yes/no, which types\") plain RM2 suffices; RM-ASTDiff is only needed if a downstream merger such as RefMerge or IntelliMerge consumes the AST-diff output, which is out of scope. IntelliMerge is strictly inferior to RefMerge per the literature. Naming these absences guards against scope creep at R4b, which is a default-flip phase only, so their absence from the router is deliberate rather than accidental. The version-diff data is a byproduct of the R0 F-harness run rather than a dedicated study, so a full diff on the Schesch set is out of scope. tool-evaluation-findings.md is the governing rationale document for the cycle exclusions.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-07",
+        "preA:pre-execution-sequence-24",
+        "preA:pre-rm2-integration-17",
+        "preA:pre-tool-evaluation-findings-07",
+        "preA:pre-rm2-integration-16",
+        "preA:pre-rm2-vs-rm3-differences-08"
+      ],
+      "evidence": [
+        {
+          "text": "For the gate use case (\"refactoring yes/no, which types\") plain RM2 suffices. RM-ASTDiff is only needed if a downstream *merger* (RefMerge/IntelliMerge) consumes the AST-diff output \u2014 which is out of scope here.",
+          "line": 132,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "**Not doing this cycle** (per [`tool-evaluation-findings.md`](tool-evaluation-findings.md)): RefMerge integration; strategy coverage beyond category #6; RM2 3.0 / RM-ASTDiff upgrade.",
+          "line": 112,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        },
+        {
+          "text": "Full detector-diff between the two versions on the Schesch full set is out of scope; the data above is the F-harness byproduct.",
+          "line": 159,
+          "file": "2026-05-06_pre-rm2-vs-rm3-differences.txt"
+        }
+      ],
+      "artifacts": [
+        "c5c96c3",
+        "docs/plans/tool-evaluation-findings.md",
+        "docs/plans/tool-evaluation-findings.md \u00a75",
+        "docs/plans/rm2-recon-samples/fharness-10.json"
+      ],
+      "actors": "unclear",
+      "actors_note": "One source attributes the IntelliMerge skip to Claude's findings document; the other five carry no attribution. Recorded as unclear rather than generalising one source's attribution to the whole exclusion.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "taint-analysis-dropped-until-next-mention",
+      "title": "Drop taint analysis from the plan until it is raised again",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "Taint analysis is omitted from the plan-triad sequence entirely and removed from the stage list, per Ali's decision of 2026-04-21; it is revisited only if he raises it again.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-01"
+      ],
+      "evidence": [
+        {
+          "text": "Taint analysis \u2014 per user decision 2026-04-21, omit until next mention. Dropped from sequence.",
+          "line": 21,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/execution-sequence.md"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "empty-merger-slot-no-dispatcher-diamond",
+      "title": "Leave the merger slot empty and the dispatcher diamond undrawn until a second merger",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "In the minimal viable composition, RM 2.0's output bypasses the merger entirely: it does not gate which merger runs but flows forward as metadata into post-merge Joern analysis. The `yes \u2192 [refactoring-aware merger]` slot in the target pipeline stays empty and the dispatcher diamond is deliberately omitted from the diagram; the diamond is drawn only once a second merger is empirically justified.",
+      "rationale_recorded": true,
+      "rationale": "The diamond has only one destination, so drawing it would be cosmetic; an empty slot in the diagram is not a bug but the design honestly reflecting where evidence has not yet justified added complexity.",
+      "status": "superseded",
+      "status_note": "S12 (2026-07-26): overtaken \u2014 R4b subsequently built the real dispatcher (the 4-backend cluster-keyed map, backends-routing D-049), which the evidence then collapsed to NONE\u2192git/else\u2192Mergiraf (D-076); RM2 output does gate the merge step in the shipped driver. The aspirational diagram in initial architecture.md meanwhile still shows its own decision diamond (:12) and is superseded as a description of reality by the as-built sq.md ruling. Cross-cutting superseders, so superseded_by stays null.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-tool-evaluation-findings-08",
+        "preB:pre-tool-evaluation-findings-10"
+      ],
+      "evidence": [
+        {
+          "text": "An empty slot in the diagram is not a bug \u2014 it's the design honestly reflecting where evidence has not yet justified added complexity.",
+          "line": 215,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        },
+        {
+          "text": "The dispatcher diamond from the target architecture is **deliberately absent** because it only has one destination.",
+          "line": 251,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/initial architecture.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "dispatch-is-multi-layer-not-backend-routing",
+      "title": "Redefine case-based dispatch as multi-layer, not merge-backend routing",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "The pre-2026-04-21 framing that treated thesis contribution #2 (case-based dispatch) as primarily about routing between merge backends is withdrawn as too narrow. Dispatch is instead defined at every abstraction layer where a classification informs a downstream decision: pre-merge (RM 2.0 classification), merge (currently case-agnostic), post-merge (Joern strategies enabled, parameterised or selected per RM classification). Corollary: RM 2.0 is not vestigial metadata pending RefMerge but the pre-merge abstraction-reduction layer in its own right.",
+      "rationale_recorded": true,
+      "rationale": "Contribution #2 is enacted at the analysis layer even when the merge layer has only one destination; and without RM 2.0 there is no *case* to dispatch on at the pre-merge abstraction level.",
+      "status": "superseded",
+      "status_note": "S12 (2026-07-26): narrowed again by the later reframe this entry's own note anticipated \u2014 the driver was restated as a verification gate (adopted, 2026-05-11), and the post-flip reality (routing collapsed, value in the detection layer) matches that framing, not the multi-layer-dispatch one.",
+      "supersedes": [
+        "earlier framing of case-based dispatch as merge-backend routing (framing prior to 2026-04-21)"
+      ],
+      "superseded_by": "driver-is-research-instrument-verification-gate",
+      "sources": [
+        "preA:pre-tool-evaluation-findings-09"
+      ],
+      "evidence": [
+        {
+          "text": "An earlier framing (prior to 2026-04-21) treated \"case-based dispatch\" as primarily about routing between merge backends. That framing is too narrow.",
+          "line": 303,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        },
+        {
+          "text": "The corollary: RM 2.0 is **not** vestigial metadata pending RefMerge. It is the pre-merge abstraction-reduction layer of the thesis, with or without RefMerge.",
+          "line": 311,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "driver-is-research-instrument-verification-gate",
+      "title": "The driver is a proof-of-concept verification gate, not a smarter merger or a service",
+      "date_from": "2026-05-11",
+      "date_to": "2026-07-18",
+      "decision": "The driver's architecture is stated as commodity text merge (Mergiraf backbone) plus a differential verification layer plus a fail-closed gate \u2014 a semantic-conflict detection layer downstream of Mergiraf \u2014 dropping the \"intelligence in the middle\". Success on the constructive side is defined as demonstrating a mechanism: extending Git's two outcomes (clean / textual conflict) with a third, \"semantic conflict\", surfaced via exit-1, with the demonstrated contribution stated as the NONE\u2192git fast-path plus the verification layer and explicitly not quality-improving routing. The docs disclaim industry-grade ambition: the deliverable is a proof-of-concept to prove or disprove the composition hypothesis, and running the driver live as a CI/PR merge gate is a separate productionization track and Future Work \u2014 AWS use is scoped to speeding up and legitimising the evaluation only.",
+      "rationale_recorded": true,
+      "rationale": "Mergiraf's captured outcomes on n=5971 (57.9% tests passed, 5.6% tests failed, 36.5% merge failed) give a 5.6% silent-error rate, which justifies a semantic-conflict detection layer downstream of Mergiraf. The evidence then hollowed out the middle layer twice \u2014 routing collapsed to NONE\u2192git, else\u2192Mergiraf \u2014 so the driver's value is measured entirely by R1/R2, which the harness measures. Since no tool beats Mergiraf, the aim that a composed pipeline improves merging over any single tool cannot be shown, so the claim narrows to the mechanism and the verification layer. And the docs frame the driver as a research instrument, so a live merge gate would be a heavier, separate project.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-29",
+        "a:bfc672b4-23",
+        "a:dc3bc182-sub-sub-agent-a74c7a-04",
+        "a:dc3bc182-sub-sub-agent-a74c7a-09",
+        "a:fb0fa5c5-09"
+      ],
+      "evidence": [
+        {
+          "text": "The driver's identity shifts from \"a smarter merger\" to \"a verifier that sits on top of any merger\"",
+          "line": 475,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "THREATS states this outright: \"the driver's demonstrated contribution is the NONE\u2192git fast-path + verification layer, **not** quality-improving routing.\"",
+          "line": 54,
+          "file": "2026-07-18_dc3bc182_sub-agent-a74c7a.txt"
+        },
+        {
+          "text": "heavier, and the docs frame the driver as a *research instrument*, so that's Future Work, not thesis-core.",
+          "line": 441,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "c1034c0",
+        "auto_backend._route()",
+        "THREATS_TO_VALIDITY.md",
+        "STATUS.md",
+        "README.md",
+        "ARCHITECTURE.md"
+      ],
+      "actors": "claude",
+      "actors_note": "Sources disagree: the 2026-05-11 commit and the 2026-07-18 doc audit carry no attribution, while the June reframing and the AWS scoping are Claude's. Recorded as claude because the reframing argument is his throughout; the documents that record it do not attribute.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "four-tier-scope-menu-with-tier-a-floor",
+      "title": "Define four scope tiers A\u2013D for the RM2 cycle, lean Tier D, hard floor Tier A",
+      "date_from": "2026-05-05",
+      "date_to": null,
+      "decision": "Enumerate exactly four stopping points for the RM2 integration cycle \u2014 A: MVP (R0+M0 \u2192 R4a\u2016M6-lite \u2192 R4b, ~3d); B: A+R3 (~4d); C: B+R1\u2192R2 (~5d); D: C + one specialized routing elif + M1\u2013M5 + 6-validate (~7\u20139d) \u2014 each of which ships the named phases, declares the cycle done and defers the rest. Tier D is the current lean with Tier C as fall-back if the calendar tightens, and Tier A is the hard floor: no smaller scope is an acceptable stopping point.",
+      "rationale_recorded": true,
+      "rationale": "The plan files define every phase and execution-sequence.md orders them, but neither pins how much of the integration ships in this cycle; each tier is framed as a coherent stopping point. Tier D has the highest defensibility for thesis purposes because it ships the complete contribution-#2 story \u2014 case-based dispatch with evidence backing one specific routing claim \u2014 rather than stopping at a built-but-unvalidated mechanism. Below Tier A the cycle has shipped no end-to-end deliverable and is not a coherent stopping point.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "backends-only-cycle-supersedes-tier-menu",
+      "sources": [
+        "preA:pre-scope-tier-options-01",
+        "preA:pre-scope-tier-options-02",
+        "preA:pre-scope-tier-options-03"
+      ],
+      "evidence": [
+        {
+          "text": "Each tier is a coherent stopping point: ship the named phases, declare the cycle done, defer the rest to a future cycle.",
+          "line": 58,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        },
+        {
+          "text": "**Most likely: Tier D \u2014 Full single-elif.** Highest defensibility for thesis purposes;",
+          "line": 135,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        },
+        {
+          "text": "**Hard floor:** Tier A \u2014 the MVP. Below this the cycle has shipped no end-to-end deliverable and isn't a coherent stopping point.",
+          "line": 139,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/scope-tier-options.md",
+        "docs/plans/execution-sequence.md"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "tier-pin-deferred-until-recon-lands",
+      "title": "Defer the scope-tier pin until R0 and M0 recon land",
+      "date_from": "2026-05-05",
+      "date_to": null,
+      "decision": "The tier decision is deferred until R0 + M0 reconnaissance has landed and per-phase costs are clearer; R0 and M0 proceed without waiting for it. The three open tier questions \u2014 whether recon blockers force a downgrade, which routing elif lands first if both are supported, and whether to downgrade to Tier C if R2 supports neither routing claim \u2014 are left unresolved to be settled as evidence accumulates.",
+      "rationale_recorded": true,
+      "rationale": "R0 and M0 outputs (RM2 version pin, JSON schema, F-harness recall delta, Mergiraf version pin, Path A vs B) are useful at every tier and so do not block on the pin, and the specific per-phase costs are only clear afterwards. On the open questions the instruction is explicit: resolve as evidence accumulates, do not pre-commit.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-20",
+        "preA:pre-scope-tier-options-06",
+        "preA:pre-scope-tier-options-08"
+      ],
+      "evidence": [
+        {
+          "text": "The pin happens after **R0 + M0 recon** lands and the specific per-phase costs are clearer.",
+          "line": 143,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        },
+        {
+          "text": "R0 + M0 do not block on this decision \u2014 their outputs (RM2 version pin, JSON schema, F-harness recall delta, Mergiraf version pin, Path A vs B for Mergiraf) are useful at every tier.",
+          "line": 145,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        },
+        {
+          "text": "Resolve these as evidence accumulates; do not pre-commit.",
+          "line": 164,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        }
+      ],
+      "artifacts": [
+        "5ad4822",
+        "docs/plans/scope-tier-options.md"
+      ],
+      "actors": "ali",
+      "actors_note": "The two plan-document sources attribute the deferral to Ali; the commit that recorded it carries no attribution. Recorded as ali on the strength of the plan text.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "deadline-contingency-cut-list",
+      "title": "Pre-agree a cut list if under two weeks remain before the deadline",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "If under two weeks of runway remain, the sequence is cut to \u03b1 + \u03b2 + \u03b3 + M1 + R1 + R3 + M5 only, skipping full-scale M4.",
+      "rationale_recorded": true,
+      "rationale": "The sequence as written assumes roughly 3\u20134 weeks of available time, so the thesis deadline is an open dependency that would force a reduced scope.",
+      "status": "open",
+      "status_note": "The runway question is never resolved anywhere in this slice \u2014 no source records which branch was taken. Check STATUS.md and the git log for whether M4 ran at full scale, and docs/plans/execution-sequence.md \u00a75 for any later amendment.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-25"
+      ],
+      "evidence": [
+        {
+          "text": "1. Thesis deadline \u2014 this sequence assumes ~3-4 weeks available. If <2 weeks, cut to \u03b1 + \u03b2 + \u03b3 + M1 + R1 + R3 + M5 only; skip M4 full-scale.",
+          "line": 143,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/execution-sequence.md \u00a75"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "comparator-closure-ladder-deferred",
+      "title": "Defer the comparator closure ladder: 3a rejected on cost, 3h/3i and Tiers D\u2013F deferred",
+      "date_from": "2026-05-14",
+      "date_to": "2026-05-16",
+      "decision": "Options 3b (AST-aware normalize), 3h (multi-criteria reporting) and 3i (upstream Mergiraf citation) are deferred out of M3.5 to a post-tool-integration TODO tracked in the plans, with 3h and 3i split into separate plans; test-suite ground truth (3a) is rejected for now. The successive comparator tiers are named as the deferred routes to full closure of ISSUES.md #2 rather than started: Tier D's broader transforms, then Tier E (`+`/`*` same-op strip with type inference, long-array whitespace normalisation, hex literal case), then Tier F for the residual categories declared out of Tier E scope \u2014 multi-declarator split, FQN outside `java.lang`, numeric underscore strip and redundant `abstract` on an interface \u2014 with neither Tier F nor 3a in scope at all.",
+      "rationale_recorded": true,
+      "rationale": "3i is doc-only and can land any time; 3b is the principled fix and 3h is additive on top of it, only becoming informative once 3b adds the AST-equivalent column; all three become more valuable once the full tool comparison ships so the headline can be reported under multiple criteria at once. 3a is days of build-infra and far larger, rejected per the \u00a73 cost analysis in mergiraf-integration.md. The residual Tier F categories need non-trivial AST rewriting with ambiguous direction (multi-declarator), resolution against the active import set (FQN) or modifier-list editing (redundant `abstract`), and the numeric underscore strip \u2014 recoverable with a small text-level transform \u2014 is deferred for scope discipline. The 3b/3h/3i deferral was per Ali's direction of 2026-05-14.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-64",
+        "preA:pre-comparator-3b-ast-normalize-19",
+        "preA:pre-comparator-3b-ast-normalize-28",
+        "preA:pre-comparator-3d-extended-ast-transforms-23",
+        "preA:pre-comparator-3e-tier-e-transforms-05",
+        "preA:pre-stage-gamma-fp-diagnostic-25"
+      ],
+      "evidence": [
+        {
+          "text": "**Option 3a** (test-suite ground truth). Far larger; rejected per \u00a73 cost analysis in `mergiraf-integration.md`.",
+          "line": 413,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "Recoverable with a small text-level transform; deferred for scope discipline.",
+          "line": 64,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        },
+        {
+          "text": "Both remain deferred. The post-3b Tier C numbers are committed in `reports/results.csv` as the current honest interim state.",
+          "line": 280,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        }
+      ],
+      "artifacts": [
+        "caf33e2",
+        "docs/plans/mergiraf-integration.md",
+        "docs/plans/comparator-3b-ast-normalize.md",
+        "docs/plans/comparator-3e-tier-e-transforms.md",
+        "merge-tool-comparison/ISSUES.md #2"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the 3b/3h/3i deferral is recorded as 'per user direction' (Ali), one tier plan attributes its deferral list to Claude, and three carry no attribution. Recorded as joint because Claude drafted the option ladder and Ali picked what was deferred.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "driver-primary-comparator-tracks-its-backends",
+      "title": "Driver is the primary deliverable; comparator tracks its backends and must not touch it",
+      "date_from": "2026-05-14",
+      "date_to": "2026-05-20",
+      "decision": "Standing rule recorded in CLAUDE.md and noted in STATUS.md: the empirical merge-tool comparator and the semantic merge driver focus on the same tool set, with the driver as the primary deliverable \u2014 the comparison exists to justify the driver's routing. The boundary is enforced in both directions: comparator-side work must not touch driver runtime (the 3b AST normalize is comparator-only, adds no tree_sitter dependency to semantic_merge_driver, and never becomes a merge strategy or runs inside the driver; the R1\u2192R2 work touches only merge-tool-comparison/, leaving the driver runtime, auto_backend.py and the merge backends alone), and driver-side stages must not modify merge-tool-comparison runtime code or published report numbers.",
+      "rationale_recorded": true,
+      "rationale": "Ali's scope steer was that the comparator and the driver should focus on the same tools with the driver as the main focus; the restatement Claude recorded and Ali accepted was that the comparator should benchmark the driver's backends because the driver is the primary deliverable. On the other side, 3b is comparator-only so the driver's existing fail-closed strategies and backend-dispatch logic are unaffected. No reason is recorded for the R1/R2 confinement beyond the instruction itself.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-05",
+        "a:20b53f98-02",
+        "preA:pre-comparator-3b-ast-normalize-18",
+        "preB:pre-execution-sequence-23"
+      ],
+      "evidence": [
+        {
+          "text": "note that merge tool comparator and semantic merge drive should focus on same tool. Main focus is merge driver",
+          "line": 578,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "AST normalize does NOT become a strategy / does NOT run inside the driver.",
+          "line": 414,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "- Empirical side only (merge-tool-comparison/). Do NOT touch",
+          "line": 71,
+          "file": "2026-05-18_20b53f98.txt"
+        }
+      ],
+      "artifacts": [
+        "CLAUDE.md",
+        "STATUS.md",
+        "merge-tool-comparison/",
+        "semantic_merge_driver/"
+      ],
+      "actors": "ali",
+      "actors_note": "Two sources attribute the boundary to Ali (the standing rule and the R1/R2 fence were his instructions); the plan-sourced 3b constraint carries no attribution. Recorded as ali rather than unclear because the standing rule is quoted in his words.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "rm2-gated-on-method-rename-strategy",
+      "title": "Integrate RM 2.0 only if the Method Rename Joern strategy is built with it",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "RefactoringMiner 2.0 integration into `semantic_merge_driver` is conditional on committing to build the Method Rename Joern strategy (category #6) alongside it, in the same unit of work.",
+      "rationale_recorded": true,
+      "rationale": "RM 2.0 alone yields only scenario tagging (D5) plus future-proofing \u2014 a weak case for adding a JVM dependency, integration surface and failure modes. RM 2.0 together with the Method Rename strategy raises category coverage 2/7 \u2192 3/7 and unlocks uses D1\u2013D6, a strong case. The strategy alone (pure CPG, no RM) detects symptom without intent and is less reliable. Further RM-cluster-driven strategies are then built incrementally, only after Method Rename has validated the pattern.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the condition was honoured \u2014 RM2 integration came with the category-#6 lane in the same arc: strategies/rm2_strategies/rename_conflict.py (RM2RenameConflictStrategy) exists and is the family the record's detection mass lives in.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-tool-evaluation-findings-04",
+        "preA:pre-tool-evaluation-findings-14"
+      ],
+      "evidence": [
+        {
+          "text": "Integrate RM 2.0 **only if** you commit to building the **Method Rename Joern strategy (category #6)** alongside it.",
+          "line": 159,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        },
+        {
+          "text": "RM 2.0 alone (no new strategy) \u2192 functional payoff is scenario tagging (D5) and future-proofing \u2192 weak case.",
+          "line": 161,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/rm2-integration.md",
+        "semantic_merge_driver/"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "mergiraf-plus-post-processing-out-of-scope",
+      "title": "Keep mergiraf_plus post-processing out of scope; P5 stays optional",
+      "date_from": "2026-05-11",
+      "date_to": "2026-07-03",
+      "decision": "The `mergiraf_plus` variant (Mergiraf output post-processed with the Plume-lib merging pipeline) is out of scope for the integration cycle and flagged for a future \"post-processing\" track, despite upstream showing 57.9%\u219260.6% Tests_passed and 36.5%\u219233.8% Merge_failed. In the endgame it remains optional as P5: implement `mergiraf_plus` and run only the cheap stage-1 bare-level check, escalating to a ~12 h driver-level AWS arm only if stage 1's numbers are striking.",
+      "rationale_recorded": true,
+      "rationale": "No reason is recorded for the 2026-05-11 exclusion beyond the scope call itself. In 2026-07 the argument given is that the thesis stands complete without it and the Schesch-table evidence alone is citable as Future Work; the honest ORT pre-pass also raises a real design question, since Schesch's number is whole-merge-level while the driver is file-level and uses git merge-file, which is not ORT.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the scoping held \u2014 no mergiraf_plus adapter exists (src/tools/ has exactly git_merge_file/jdime/mastery/mergiraf/spork/weave), no stage-1 numbers were ever produced, and P5 was never exercised.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-recon-12",
+        "a:fb0fa5c5-48"
+      ],
+      "evidence": [
+        {
+          "text": "Out of scope this cycle but worth flagging in a future \"post-processing\" track.",
+          "line": 191,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        },
+        {
+          "text": "**My honest take:** it's genuinely optional. The thesis stands complete without it; the Schesch-table evidence alone is citable as Future Work",
+          "line": 2270,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "src/scripts/merge_tools/mergiraf_plus.sh"
+      ],
+      "actors": "claude",
+      "actors_note": "The 2026-05-11 recon exclusion carries no attribution; the 2026-07-03 optional-P5 position is Claude's. Recorded as claude for the position that governs, with the earlier source unattributed.",
+      "corroboration": "both",
+      "provenance": "mixed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "shared-cpg-fallback-not-needed",
+      "title": "Skip the shared-CPG rework after the pilot came in far under the abort threshold",
+      "date_from": "2026-06-11",
+      "date_to": null,
+      "decision": "Because the pilot measured a 34 s/merge median against a 1200 s G0 abort threshold with 0/64 UNANALYZABLE files, the shared-CPG rework planned as a feasibility fallback is not needed for Stage C, which is projected at ~3\u20134 h.",
+      "rationale_recorded": true,
+      "rationale": "Measured runtime and analyzability made the plan's feared 12\u201330 h compute cost wrong, so the fallback's motivating risk was empirically absent.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-01"
+      ],
+      "evidence": [
+        {
+          "text": "The plan's fear of 12\u201330 h compute for the full evaluation was wrong \u2014 Stage C will take ~3\u20134 h. No shared-CPG rework needed.",
+          "line": 101,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_detection/pilot/FINDINGS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "formal-descope-of-unbuilt-pipeline-arms",
+      "title": "Formally descope IntelliMerge, GumTree and SafeMerge/Z3 as evidence-based removals",
+      "date_from": "2026-06-11",
+      "date_to": "2026-07-18",
+      "decision": "The unbuilt half of the target pipeline \u2014 IntelliMerge-class refactoring-aware/structured specialist backends, GumTree edit-script overlap, SafeMerge/Z3 verification \u2014 is formally descoped to Future Work rather than left as an implied promise, with a 'target vs delivered' table in ARCHITECTURE.md or the thesis naming each dropped component and its one-line rationale. Claude did not edit `initial architecture.md`; revising it is Ali's call, recommended post-Stage-C as an \"evolved by measurement\" narrative with each removal citing its refutation.",
+      "rationale_recorded": true,
+      "rationale": "Specialist arms were refuted, IntelliMerge was contraindicated in the recon, and category detectors are low-yield, so descoping is an evidence-based decision rather than an admission of incompleteness. The shipped pipeline is narrower but defensible; left undocumented the gap reads as an implied promise, whereas the table turns a perceived gap into a scoping decision. `initial architecture.md` is the authoritative target per CLAUDE.md, so Claude does not edit it.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-26",
+        "a:ce56e78d-04",
+        "a:dc3bc182-sub-sub-agent-a74c7a-03"
+      ],
+      "evidence": [
+        {
+          "text": "says: don't build them \u2014 descoping is now an evidence-based decision, not an admission of incompleteness",
+          "line": 486,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "The pipeline that ships is *narrower but defensible* \u2014 it just needs to be stated as a deliberate de-scope, not left as an implied promise.",
+          "line": 29,
+          "file": "2026-06-24_ce56e78d.txt"
+        },
+        {
+          "text": "GumTree and SafeMerge/Z3 were formally descoped to Future Work.",
+          "line": 47,
+          "file": "2026-07-18_dc3bc182_sub-agent-a74c7a.txt"
+        }
+      ],
+      "artifacts": [
+        "ARCHITECTURE.md",
+        "semantic_merge_driver/initial architecture.md",
+        "STATUS.md",
+        "CLAUDE.md"
+      ],
+      "actors": "claude",
+      "actors_note": "The 2026-06 and 2026-06-24 recommendations are Claude's; the 2026-07-18 audit source reports the descope as done without attribution. Recorded as claude, noting the record explicitly reserves the revision of initial architecture.md to Ali.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "safemerge-poc-gated-behind-priority-moves",
+      "title": "Gate any SafeMerge/Z3 proof-of-concept behind the three higher-priority moves",
+      "date_from": "2026-06-24",
+      "date_to": null,
+      "decision": "A minimal SafeMerge/Z3 proof-of-concept on one category is to be considered only after the routing flip, the P2 closeout and the target-vs-delivered table are done.",
+      "rationale_recorded": true,
+      "rationale": "Its only value is letting the thesis show the verification arm was attempted rather than only specified, which does not outweigh the higher-priority moves.",
+      "status": "superseded",
+      "status_note": "S12 (2026-07-26): no proof-of-concept was ever built (no Z3 artifact anywhere); SafeMerge/Z3 was formally descoped to Future Work by the adopted removal decision, which replaces this conditional.",
+      "supersedes": [],
+      "superseded_by": "formal-descope-of-unbuilt-pipeline-arms",
+      "sources": [
+        "a:ce56e78d-08"
+      ],
+      "evidence": [
+        {
+          "text": "purely so the thesis can show the verification arm was attempted rather than only specified \u2014 but only if moves 1\u20133 are done first.",
+          "line": 49,
+          "file": "2026-06-24_ce56e78d.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "endgame-roadmap-sequencing-p2-p3-p4",
+      "title": "Sequence the endgame: P2 next, then P3 code, overnight compute, then P4 desk work",
+      "date_from": "2026-06-24",
+      "date_to": "2026-07-02",
+      "decision": "The remaining roadmap is sequenced with P2 \u2014 the whole-driver end-to-end run across auto/mergiraf/git on the cost model \u2014 as the immediate next work item, with P3+P6 issue-closure and P4 reporting queued behind it. P3 and P4 are not run as two parallel sessions: P3's code lands first (cache-key fix \u2192 flip \u2192 tests \u2192 docs), the optional post-flip re-run is kicked off as unattended compute, and P4's reporting work is done during or after it.",
+      "rationale_recorded": true,
+      "rationale": "The three-outcome model is the thesis's central pitch and had never been scored end-to-end on a corpus; it reuses the P1 harness, so it is the highest-leverage remaining gap and gives the defence its missing second leg. P3 and P4 have no logical dependency either way, but both edit STATUS.md and ISSUES.md \u2014 trivial in one session, conflict-prone across parallel worktrees \u2014 so the natural parallelism is compute vs desk work, and for a half-day P3 the merge-the-docs tax would eat the saving.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:fb0fa5c5-01",
+        "a:fb0fa5c5-30"
+      ],
+      "evidence": [
+        {
+          "text": "This is now the highest-leverage gap",
+          "line": 36,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "**The natural parallelism isn't two sessions \u2014 it's compute vs. desk work:**",
+          "line": 1541,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/project-review-future-directions-2026-06-10.md",
+        "STATUS.md",
+        "ISSUES.md"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the P2-next pick is recorded as joint (Claude ranked the gap, Ali said to plan for P2), the P3/P4 ordering is Claude's. Recorded as joint on that basis.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "empirical-claim-bounded-and-limitations-cited",
+      "title": "Bound the empirical claim: file-level tagging only, routing soundness and #26 as limits",
+      "date_from": "2026-05-18",
+      "date_to": "2026-07-03",
+      "decision": "R1's tagger extracts only base\u2192ours and base\u2192theirs at file level; the resolution axis and project-level extraction are dropped, which removes the planned file-vs-project recall-delta finding from R2. What \"tested end to end\" covers is delineated accordingly: cluster classification of the 50 real scenarios is done via the tagger, but AutoBackend *routing* over those 50 is verified only on synthetic fixtures, with real-data routing soundness (S3/W3, Wilson CIs) deferred by design to Phase 2. The RM2 file-vs-project recall delta (#26) and the Phase-2b static-semantic-merge per-category oracle stay undone and are cited as documented limitations; neither blocks the defence.",
+      "rationale_recorded": true,
+      "rationale": "Only ours/theirs file-level is on the categorization path, and the expensive part of Path D is project-level (git-worktree over ~2 GB clones), so the single dispatch-faithful axis is the methodologically cleanest. Phase 2 routing soundness is deferred by design rather than missing by oversight \u2014 STATUS.md records that synthetic full-arm fixtures verify every cluster routes correctly while results.csv measures each tool run standalone, not the driver's decision, and THREATS flags real-data routing soundness as unmeasured. For the undone items: the base-rate finding gutted Phase-2b's urgency, since #3 conflicts occur ~never in the wild so even a perfect #3 detector would have caught 0 additional real failures; and post-flip a misclassification only flips git\u2194Mergiraf, both of which P2 measured, collapsing #26's misrouting cost to one sentence of methodological honesty.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "rm2-integration.md R1 spec of 3 RM2 runs per scenario (ours, theirs, resolution)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:20b53f98-09",
+        "a:e1df1610-02",
+        "a:fb0fa5c5-42"
+      ],
+      "evidence": [
+        {
+          "text": "The scope decision to drop `resolution`+project-level (your call, correctly flagged at the time) kills it",
+          "line": 253,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "Phase 2 routing-soundness is **deferred by design**, not missing by oversight.",
+          "line": 77,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "the base-rate finding gutted its urgency \u2014 since #3 conflicts occur ~never in the wild, even a *perfect* #3 detector would have caught 0 additional real failures in our corpus.",
+          "line": 2284,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/rm2_tag.py",
+        "docs/plans/rm2-integration-recon.md",
+        "STATUS.md",
+        "THREATS_TO_VALIDITY.md",
+        "ISSUES.md #26"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the file-level scope cut is recorded as joint and explicitly 'your call' (Ali's), while the delineation of the end-to-end claim and the cite-as-limitation calls are Claude's. Recorded as joint.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "ssm-dockerization-oracle-retired",
+      "title": "Retire the SSM Dockerization and heavy oracle build",
+      "date_from": "2026-07-04",
+      "date_to": null,
+      "decision": "The planned static-semantic-merge (SSM/s3m) Dockerization and heavy oracle build recorded in the old memory file is retired and will not be built.",
+      "rationale_recorded": true,
+      "rationale": "The dataset turned out to ship labels *and* source quadruples, so the heavy oracle build was never needed.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "SSM-Dockerization plan recorded in the memory file"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:8740dbd3-09"
+      ],
+      "evidence": [
+        {
+          "text": "the SSM-Dockerization plan from the old memory is retired \u2014 the dataset turned out to ship labels *and* source quadruples, so the heavy oracle build was never needed.",
+          "line": 416,
+          "file": "2026-07-03_8740dbd3.txt"
+        }
+      ],
+      "artifacts": [
+        "research/outputs/Dockerfile.s3m"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "per-session-scope-fences",
+      "title": "Fence each session's scope explicitly, with artifacts-only handoff between sessions",
+      "date_from": "2026-06-20",
+      "date_to": "2026-07-17",
+      "decision": "Every work session runs under an explicit scope with named exclusions and hands off to the next only through committed artifacts. Recorded instances: S1 builds the data pipeline and passes G0 but does not run the Phase-1 production labeling batch (S2's job); S3 Phase-2 consolidation is a fresh session on committed artifacts and is not started unprompted; the 2026-06-20 fold-back is limited to promoting hit_adjudications.md, recomputing R2 by label and updating STATUS/THREATS row 14 and ISSUES #29, excluding the post-fix detector run and the \u00a74.7 miss list; the spec batch runs only over the 48 attributed derivation units in the four target categories, with no detector code and no held-out/eval-control access; D1 deliberately does not look at method arity or signatures (D2/S-D3) and does not touch existing lanes' guards, including the known Joern both-parents-guard self-defeat (S-D4); and the S-D5 battery exercises only the detection lanes via the driver's analyze() call shape, leaving the git-merge-driver entry point, backend routing, Spork/Weave backends, crash-fallback chain and plugin/config wiring to the optional S-D8 re-pricing.",
+      "rationale_recorded": true,
+      "rationale": "The scopes are argued from the protocol: the handoff is committed artifacts only, which keeps the derivation/held-out firewall intact; each excluded item is assigned to a named later session (arity to D2/S-D3, existing lanes to S-D4, whole-driver behaviour to the S-D8 re-pricing per plan \u00a71) rather than dropped.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:92a3e464-02",
+        "a:788e483b-10",
+        "a:0e14484d-06",
+        "a:f0d70a59-20",
+        "a:2e726dc0-05",
+        "a:506d875b-06"
+      ],
+      "evidence": [
+        {
+          "text": "Per the protocol that's a fresh session \u2014 the handoff is committed artifacts only, so it's ready whenever you want to start it. I won't kick it off unprompted.",
+          "line": 351,
+          "file": "2026-07-09_788e483b.txt"
+        },
+        {
+          "text": "Two deliberate non-overlaps with future sessions: D1 does not look at method arity or signatures (that's D2/S-D3), and it didn't touch the existing lanes' guards",
+          "line": 184,
+          "file": "2026-07-16_f0d70a59.txt"
+        },
+        {
+          "text": "deliberately out of this cycle's scope (plan \u00a71)",
+          "line": 247,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [
+        "ISSUES #30",
+        "ISSUES #31",
+        "merge-tool-comparison/ISSUES.md",
+        "outputs/detector-cycle-plan.md",
+        "specs/raw_results.json",
+        "core/driver.py"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: three scopes were set by Ali in kickoff prompts and three were stated by Claude in-session as deliberate exclusions. Recorded as joint because the pattern is Ali fencing the session and Claude reporting and extending the fence, not one party alone.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "seven-categories-historical-taxonomy-recoded",
+      "title": "Recode the taxonomy inductively; the four-family view is a hypothesis, not a frame",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-10",
+      "decision": "The existing 7 categories (ResearchSummary.xml) remain the historical design taxonomy; the new codebook must carry an old\u2192new mapping table, and the regrouped four-family view (state / control-flow / data-flow / name-binding, plus residual) is recorded only as a candidate structure to test against the data, not imposed on it. The Phase-2 codebook categorizes only the 60 attributed derivation units; the 105 escape-hatch units are reported as a first-class \"not-cleanly-merge-attributable\" stratum in FINDINGS, no categories may be invented for them, and the draft preamble must say so.",
+      "rationale_recorded": true,
+      "rationale": "The candidate structure is to be tested against the data rather than imposed on it, preserving the inductive character of the coding; and per the G1(iii) carry-forward ruling the escape-hatch units are not cleanly merge-attributable, so they are reported as their own stratum rather than forced into mechanism categories. When tested, the four-family view was rejected as the primary scheme because it would lump 75% of the data into one family.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:cfe6365a-09",
+        "a:6296f4f6-03",
+        "a:6296f4f6-08"
+      ],
+      "evidence": [
+        {
+          "text": "candidate structure to test against the data, not to impose on it.",
+          "line": 59,
+          "file": "2026-07-08_cfe6365a.txt"
+        },
+        {
+          "text": "CARRY-FORWARD (G1 iii): the codebook covers the 60 attributed units;",
+          "line": 39,
+          "file": "2026-07-10_6296f4f6.txt"
+        }
+      ],
+      "artifacts": [
+        "ResearchSummary.xml",
+        "reports_taxonomy/phase2/codebook_draft.md"
+      ],
+      "actors": "ali",
+      "actors_note": "Both primary sources are Ali's rulings; the cited also-source recording the four-family rejection is Claude's finding within that frame.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "oss-comparators-consult-not-port",
+      "title": "Bound the open-source comparison to consultation; position the class as pre-compile",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "The open-source practice comparison (Error Prone, PMD, SpotBugs, IntelliJ) is bounded to consulting docs and source: nothing is ported and no new runtime dependencies are added, and the review is timeboxed \u2014 a review pass, not a rewrite \u2014 with the comparators consulted and the parity/divergence outcomes recorded in the ISSUES #31 close-out. The comparison also fixes the detector's position: the stale-reference-to-removed-declaration defect class is framed as inherently merge-time/pre-compile, so the detector's niche is between merge and build.",
+      "rationale_recorded": true,
+      "rationale": "Parity findings justified existing choices: Error Prone leaves method references unmatched, matching our exclusion; PMD's UnusedPrivateMethod FP history shows arity-only matching fails under overloading, which the declared-arities union plus varargs guard address; SpotBugs analyses only compiled .class files, whose input has by construction passed javac name resolution, so a reference to a removed or renamed declaration is a compile error that can never reach its analysis stage. Error Prone and SpotBugs both sit strictly after resolution/compilation, corroborating that stale-reference defects are a pre-compile, merge-time class no mainstream analyzer owns.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-02",
+        "a:acf7e1d0-13",
+        "a:82dd479f-sub-sub-agent-aadfd1-03"
+      ],
+      "evidence": [
+        {
+          "text": "consult, don't port; no new runtime dependencies.",
+          "line": 41,
+          "file": "2026-07-16_82dd479f.txt"
+        },
+        {
+          "text": "Error Prone and SpotBugs sit strictly *after* resolution/compilation, so they corroborate that stale-reference defects are a pre-compile, merge-time class no mainstream analyzer owns",
+          "line": 62,
+          "file": "2026-07-16_82dd479f_sub-agent-aadfd1.txt"
+        }
+      ],
+      "artifacts": [
+        "ISSUES #31 close-out",
+        "https://spotbugs.readthedocs.io/en/stable/introduction.html"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the consult-don't-port bound is Ali's kickoff constraint, while the comparator findings and the pre-compile positioning are Claude's. Recorded as joint.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "sd7-sd8-greenlit-enabling-decision-reserved",
+      "title": "Green-light S-D7 and S-D8; the default-enabling decision stays with Ali",
+      "date_from": "2026-07-22",
+      "date_to": null,
+      "decision": "Both follow-on cycles are green-lit and their kickoff prompts instantiated verbatim in the ISSUES #31 close-out as paste-and-go prompts, inheriting the 732d8ff freeze and carrying the sharding and budget lessons: S-D7 (blend-safe Stage-C before/after) and S-D8 (whole-driver re-pricing with lanes ON). S-D8 delivers the cost table, blocked/broken decomposition and the detection-latency delta as a first-class result, but the decision whether to enable the experimental detectors by default is explicitly excluded from that session and reserved for Ali afterwards, weighing \u2212205 cost against +8.3 s/file.",
+      "rationale_recorded": true,
+      "rationale": "The plan's \u00a78 stubs anticipate exactly these two follow-ons, and committing the prompts makes them survive the session. The latency rise IS the enabling-decision price, so it must be measured; the enabling decision itself is Ali's to make with the numbers.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-23",
+        "a:68c24033-16"
+      ],
+      "evidence": [
+        {
+          "text": "Both green-lit. Recording the decision + instantiating the two kickoff prompts in the ISSUES close-out (the \u00a78 stubs anticipate exactly this)",
+          "line": 722,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "**Per the kickoff, the default-enabling decision itself is yours** \u2014 the numbers to weigh are \u2212205 cost against +8.3 s/file. STOP.",
+          "line": 293,
+          "file": "2026-07-22_68c24033.txt"
+        }
+      ],
+      "artifacts": [
+        "ISSUES.md",
+        "outputs/detector-cycle-plan.md \u00a78",
+        "merge-tool-comparison/reports_detectors/FINDINGS.md"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "as-built-sq-md-over-target-architecture",
+      "title": "Treat core/sq.md as the as-built architecture; audit from primary sources, not the README",
+      "date_from": "2026-07-18",
+      "date_to": null,
+      "decision": "Architecture audits of semantic_merge_driver/ read the primary sources directly \u2014 'initial architecture.md', core/driver.py, core/backends/*, strategies/*, ResearchSummary.xml, core/sq.md \u2014 and must not rely on the top-level repo README as evidence for the pipeline design or implementation state. Where the two pipeline diagrams disagree, core/sq.md is taken as the accurate description of the system (Git \u2192 driver.py \u2192 AutoBackend default \u2192 RM2 classifier \u2192 Mergiraf \u2192 plugin loader \u2192 strategies \u2192 Joern \u2192 exit 0/1), and 'initial architecture.md' is treated as the target/aspirational design describing a system largely not built.",
+      "rationale_recorded": true,
+      "rationale": "sq.md documents the as-built flow while initial architecture.md describes the target; the two diagrams disagree and sq.md is the one that matches the code. No reason is recorded for excluding the README beyond the instruction itself.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:dc3bc182-sub-agent-a7bb0f-01",
+        "a:dc3bc182-sub-agent-a7bb0f-03"
+      ],
+      "evidence": [
+        {
+          "text": "Do NOT rely on the top-level repo README; go to primary sources:",
+          "line": 3,
+          "file": "2026-07-18_dc3bc182_sub-agent-a7bb0f.txt"
+        },
+        {
+          "text": "The two diagrams disagree, and sq.md is the accurate one.",
+          "line": 53,
+          "file": "2026-07-18_dc3bc182_sub-agent-a7bb0f.txt"
+        }
+      ],
+      "artifacts": [
+        "core/sq.md",
+        "semantic_merge_driver/initial architecture.md",
+        "core/driver.py",
+        "core/backends/",
+        "strategies/",
+        "ResearchSummary.xml"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the primary-sources-only instruction is Ali's in the sub-agent brief, the sq.md-is-authoritative determination is Claude's finding. Recorded as joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    }
+  ],
+  "not_promoted": [
+    {
+      "uid": "preA:pre-comparator-3e-tier-e-transforms-21",
+      "reason": "Contingency for a Tier-E shortfall (if TP lands below 32, ISSUES #2 stays 'decided' and Tier F becomes the closure path); extraction records it as abandoned and it carries no standing scope boundary beyond comparator-closure-ladder-deferred."
+    }
+  ],
+  "cross_theme": [
+    {
+      "slug": "no-llm-in-analysis",
+      "other_theme": null,
+      "other_uid": null,
+      "relation": "contradicts",
+      "note": "The 2026-04-16 'no LLM approaches' rule sits in tension with the transcript-era use of an LLM batch as a labelling/coding instrument (methodology/instrument theme). Whether the ban was ever narrowed to 'not in the driver' is not visible here; S10z should reconcile with the LLM-instrument and validity entries."
+    },
+    {
+      "slug": "four-tier-scope-menu-with-tier-a-floor",
+      "other_theme": null,
+      "other_uid": null,
+      "relation": "superseded-by",
+      "note": "Both extraction passes marked the Tier A\u2013D menu and the Tier-D lean as superseded, but the superseding decision is not in this slice \u2014 most likely the later delivery-status record or the detector-cycle planning regime. S10z should locate it and fill superseded_by."
+    },
+    {
+      "slug": "driver-is-research-instrument-verification-gate",
+      "other_theme": null,
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The reframe rests on the routing-collapse findings (#27/#28: routing collapsed to NONE\u2192git, else\u2192Mergiraf) and on 'no tool beats Mergiraf', which live in the empirical-findings theme."
+    },
+    {
+      "slug": "mandatory-differential-semantic-verification",
+      "other_theme": null,
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The differential-triple conformance rule was argued from the detector record (v1 InfiniteLoop, the dropped type lane, merge-induced filtering), which sits in the detector-design theme; whether the rule was ratified there is not visible here."
+    },
+    {
+      "slug": "empirical-claim-bounded-and-limitations-cited",
+      "other_theme": null,
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The cite-as-limitation call for Phase-2b depends on the base-rate finding (category #3 conflicts ~never occur in the wild), owned by the empirical-findings theme."
+    },
+    {
+      "slug": "comparator-closure-ladder-deferred",
+      "other_theme": null,
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The whole ladder exists to close ISSUES.md #2 (textual comparator credibility); the #2 methodology decisions, including the Tier-C/Tier-D transform work and the interim results.csv publication, are owned by the comparator-methodology theme (also-uids preA:pre-stage-gamma-fp-diagnostic-25, preA:pre-commits-73)."
+    },
+    {
+      "slug": "seven-categories-historical-taxonomy-recoded",
+      "other_theme": null,
+      "other_uid": "a:6296f4f6-08",
+      "relation": "depends-on",
+      "note": "The rejection of the four-family view as the primary scheme is placed in another theme (taxonomy coding); it is the outcome of the hypothesis this entry set up, so the two should be cross-referenced."
+    }
+  ],
+  "notes": "Coverage: all 91 primary uids are accounted for \u2014 90 in entry `sources`, 1 in `not_promoted`. Four also-placed uids are cited as supporting evidence only (preA:pre-stage-gamma-fp-diagnostic-25, preB:pre-execution-sequence-23, preA:pre-tool-evaluation-findings-14, a:6296f4f6-08) and are not counted toward coverage. Density: 32 entries for 90 sources (~2.8 per entry), below the 5\u20139 signal. This is a property of the theme rather than under-consolidation: scope-architecture is largely a set of independent boundaries, each excluding a different tool, track, session or diagram element (taint analysis, MCP, RM-ASTDiff, mergiraf_plus, SafeMerge, the language axis, individual session fences). Merging further would have flattened exclusions a future reader needs to find separately; where a coherent cluster existed I merged aggressively (phase-decomposition 6 sources, Path A 7, refactoring-aware track 6, per-session fences 6, driver-as-verification-gate 5). Status downgrades: per the plan-sourced rule I downgraded to 'proposed' six entries whose sources are all planning documents with no landed-commit or transcript-era confirmation citable in this file (java-only-seven-category-scope, mandatory-differential-semantic-verification, python-plugin-host-architecture, no-llm-in-analysis, mvp-first-ship-dispatch-before-validation, weave-integration-scope-and-non-goals). In several of these the later record is clearly consistent (AutoBackend/Weave exist; a plugin loader exists in the as-built diagram), but the confirming uid was needed in another entry and each uid may appear only once, so the confirmation is named by entry slug in status_note rather than double-cited. One flattening to flag: preA:pre-commits-28 carried extraction status 'superseded' because its M3 option-3i clause was later deferred; it is merged into path-a-local-adapter-over-upstream-framework (status adopted, since Path A itself held), with the deferred 3i clause recorded in comparator-closure-ladder-deferred. Judgment calls S11 may want to sample: merging preA:pre-architecture-refmerge-04 with b:bfc672b4-23 into one 'mandatory verification' entry (different eras, one single-pass source), and merging a:20b53f98-09 with a:e1df1610-02 and a:fb0fa5c5-42 into a single 'bounded empirical claim' entry.",
+  "theme": "scope-architecture",
+  "slice_primary_total": 91
+}

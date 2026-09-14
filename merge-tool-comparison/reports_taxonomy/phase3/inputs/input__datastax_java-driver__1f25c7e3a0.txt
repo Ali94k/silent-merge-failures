@@ -1,0 +1,758 @@
+UNIT datastax_java-driver__1f25c7e3a0
+repo: datastax_java-driver   merge: 1f25c7e3a0bf10b65765b3b23bdcf9a5de30888a   stratum: A
+files shown: 1 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): driver-core/src/main/java/com/datastax/driver/core/TypeCodec.java
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: driver-core/src/main/java/com/datastax/driver/core/Cluster.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -640,18 +640,20 @@
+          * auto-detection (see above) but this is the default (so you don't have to call
+          * this method for that behavior).
+          * @return this Builder.
+          *
+          * @throws IllegalArgumentException if {@code version} is neither 1, 2 or a
+          * negative value.
+          */
+         public Builder withProtocolVersion(int version) {
+-            if (version >= 0 && version != 1 && version != 2)
+-                throw new IllegalArgumentException(String.format("Unsupported protocol version %d; valid values are 1, 2 or negative (for auto-detect).", version));
++            if (protocolVersion == 0 || protocolVersion > ProtocolOptions.NEWEST_SUPPORTED_PROTOCOL_VERSION)
++                throw new IllegalArgumentException(String.format("Unsupported protocol version %d; valid values must be between 1 and %d or negative (for auto-detect).",
++                                                                 protocolVersion,
++                                                                 ProtocolOptions.NEWEST_SUPPORTED_PROTOCOL_VERSION));
+             this.protocolVersion = version;
+             return this;
+         }
+ 
+         /**
+          * Adds a contact point.
+          * <p>
+          * Contact points are addresses of Cassandra nodes that the driver uses
+@@ -1137,17 +1139,17 @@
+                 Host host = metadata.add(address);
+             }
+ 
+             try {
+                 while (true) {
+                     try {
+                         controlConnection.connect();
+                         if (connectionFactory.protocolVersion < 0)
+-                            connectionFactory.protocolVersion = 2;
++                            connectionFactory.protocolVersion = ProtocolOptions.NEWEST_SUPPORTED_PROTOCOL_VERSION;
+ 
+                         // Now that the control connection is ready, we have all the information we need about the nodes (datacenter,
+                         // rack...) to initialize the load balancing policy
+                         Collection<Host> hosts = metadata.allHosts();
+                         loadBalancingPolicy().init(Cluster.this, hosts);
+ 
+                         isFullyInit = true;
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1325,31 +1325,31 @@
+                         logger.debug("Connection pool cannot be created, not marking {} UP", host);
+                         return;
+                     }
+ 
+                     host.setUp();
+ 
+                     for (Host.StateListener listener : listeners)
+                         listener.onUp(host);
+-
+-                    // Now, check if there isn't pools to create/remove following the addition.
+-                    // We do that now only so that it's not called before we've set the node up.
+-                    for (SessionManager s : sessions)
+-                        s.updateCreatedPools(blockingExecutor);
+                 }
+ 
+                 public void onFailure(Throwable t) {
+                     // That future is not really supposed to throw unexpected exceptions
+                     if (!(t instanceof InterruptedException))
+                         logger.error("Unexpected error while marking node UP: while this shouldn't happen, this shouldn't be critical", t);
+                 }
+             });
+ 
+             f.get();
++
++            // Now, check if there isn't pools to create/remove following the addition.
++            // We do that now only so that it's not called before we've set the node up.
++            for (SessionManager s : sessions)
++                s.updateCreatedPools(blockingExecutor);
+         }
+ 
+         public ListenableFuture<?> triggerOnDown(final Host host) {
+             return triggerOnDown(host, false);
+         }
+ 
+         public ListenableFuture<?> triggerOnDown(final Host host, final boolean isHostAddition) {
+             return executor.submit(new ExceptionCatchingRunnable() {
+@@ -1572,31 +1572,31 @@
+                         logger.debug("Connection pool cannot be created, not marking {} UP", host);
+                         return;
+                     }
+ 
+                     host.setUp();
+ 
+                     for (Host.StateListener listener : listeners)
+                         listener.onAdd(host);
+-
+-                    // Now, check if there isn't pools to create/remove following the addition.
+-                    // We do that now only so that it's not called before we've set the node up.
+-                    for (SessionManager s : sessions)
+-                        s.updateCreatedPools(blockingExecutor);
+                 }
+ 
+                 public void onFailure(Throwable t) {
+                     // That future is not really supposed to throw unexpected exceptions
+                     if (!(t instanceof InterruptedException))
+                         logger.error("Unexpected error while adding node: while this shouldn't happen, this shouldn't be critical", t);
+                 }
+             });
+ 
+             f.get();
++
++            // Now, check if there isn't pools to create/remove following the addition.
++            // We do that now only so that it's not called before we've set the node up.
++            for (SessionManager s : sessions)
++                s.updateCreatedPools(blockingExecutor);
+         }
+ 
+         public ListenableFuture<?> triggerOnRemove(final Host host) {
+             return executor.submit(new ExceptionCatchingRunnable() {
+                 @Override
+                 public void runMayThrow() throws InterruptedException, ExecutionException {
+                     onRemove(host);
+                 }
+@@ -1624,17 +1624,17 @@
+             // Don't signal failure until we've fully initialized the controlConnection as this might mess up with
+             // the protocol detection
+             if (!isFullyInit || isClosed())
+                 return true;
+ 
+             boolean isDown = host.signalConnectionFailure(exception);
+             if (isDown) {
+                 if (isHostAddition || !markSuspected) {
+-                    triggerOnDown(host, true);
++                    triggerOnDown(host, isHostAddition);
+                 } else {
+                     // Note that we do want to call onSuspected on the current thread, as the whole point is
+                     // that by the time this method return, the host initialReconnectionAttempt will have been
+                     // set and the load balancing policy informed of the suspection. We know that onSuspected
+                     // does little work (and non blocking one) itself however.
+                     onSuspected(host);
+                 }
+             }
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package com.datastax.driver.core;
+        // ... 1 lines elided ...
+import java.io.Closeable;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+        // ... 1 lines elided ...
+import com.google.common.base.Predicates;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.MapMaker;
+import com.google.common.collect.SetMultimap;
+import com.google.common.util.concurrent.*;
+        // ... 1 lines elided ...
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+        // ... 1 lines elided ...
+import com.datastax.driver.core.exceptions.AuthenticationException;
+import com.datastax.driver.core.exceptions.DriverInternalError;
+import com.datastax.driver.core.exceptions.NoHostAvailableException;
+import com.datastax.driver.core.policies.*;
+        // ... 20 lines elided ...
+public class Cluster implements Closeable {
+        // ... 44 lines elided ...
+    private static List<InetSocketAddress> checkNotEmpty(List<InetSocketAddress> contactPoints) {
+        // ... 41 lines elided ...
+    public Cluster init() {
+        // ... 19 lines elided ...
+    public static Cluster buildFrom(Initializer initializer) {
+        // ... 10 lines elided ...
+    public static Cluster.Builder builder() {
+        // ... 20 lines elided ...
+    public Session newSession() {
+        // ... 23 lines elided ...
+    public Session connect() {
+        // ... 31 lines elided ...
+    public Session connect(String keyspace) {
+        // ... 31 lines elided ...
+    public String getClusterName() {
+        // ... 23 lines elided ...
+    public Metadata getMetadata() {
+        // ... 9 lines elided ...
+    public Configuration getConfiguration() {
+        // ... 10 lines elided ...
+    public Metrics getMetrics() {
+        // ... 17 lines elided ...
+    public Cluster register(Host.StateListener listener) {
+        // ... 13 lines elided ...
+    public Cluster unregister(Host.StateListener listener) {
+        // ... 23 lines elided ...
+    public Cluster register(LatencyTracker tracker) {
+        // ... 14 lines elided ...
+    public Cluster unregister(LatencyTracker tracker) {
+        // ... 22 lines elided ...
+    public CloseFuture closeAsync() {
+        // ... 9 lines elided ...
+    public void close() {
+        // ... 21 lines elided ...
+    public boolean isClosed() {
+        // ... 13 lines elided ...
+    public interface Initializer {
+        // ... 11 lines elided ...
+        public String getClusterName();
+        // ... 7 lines elided ...
+        public List<InetSocketAddress> getContactPoints();
+        // ... 16 lines elided ...
+        public Configuration getConfiguration();
+        // ... 11 lines elided ...
+        public Collection<Host.StateListener> getInitialListeners();
+        // ... 5 lines elided ...
+    public static class Builder implements Initializer {
+        // ... 26 lines elided ...
+        public String getClusterName() {
+        // ... 4 lines elided ...
+        public List<InetSocketAddress> getContactPoints() {
+        // ... 24 lines elided ...
+        public Builder withClusterName(String name) {
+        // ... 13 lines elided ...
+        public Builder withPort(int port) {
+        // ... 8 lines elided ...
+         * of the protocol has more features and should be preferred, but it is only
+         * supported by Cassandra 2.0 and above, so you will have to use version 1 with
+         * Cassandra 1.2 nodes.
+         * <p>
+         * By default, the driver will "auto-detect" which protocol version it can use
+         * when connecting to the first node. More precisely, it will try the version
+         * 2 first and will fallback to version 1 if it is not supported by that first
+         * node it connects to. Please note that once the version is "auto-detected",
+         * it won't change: if the first node the driver connects to is a Cassandra 1.2
+         * node and auto-detection is used (the default), then the native protocol
+         * version 1 will be use for the lifetime of the Cluster instance.
+         * <p>
+         * This method allows to force the use of a particular protocol version. Forcing
+         * version 1 is always fine since all Cassandra version (at least all those
+         * supporting the native protocol in the first place) so far supports it. However,
+         * please note that a number of features of the driver won't be available if that
+         * version of thr protocol is in use, including result set paging,
+         * {@link BatchStatement}, executing a non-prepared query with binary values
+         * ({@link Session#execute(String, Object...)}), ... (those methods will throw
+         * an UnsupportedFeatureException). Using the protocol version 1 should thus
+         * only be considered when using Cassandra 1.2, until nodes have been upgraded
+         * to Cassandra 2.0.
+         * <p>
+         * If version 2 of the protocol is used, then Cassandra 1.2 nodes will be ignored
+         * (the driver won't connect to them).
+         * <p>
+         * The default behavior (auto-detection) is fine in almost all case, but you may
+         * want to force a particular version if you have a Cassandra cluster with mixed
+         * 1.2/2.0 nodes (i.e. during a Cassandra upgrade).
+         *
+         * @param version the native protocol version to use. The versions supported by
+         * this driver are version 1 and 2. Negative values are also supported to trigger
+         * auto-detection (see above) but this is the default (so you don't have to call
+         * this method for that behavior).
+         * @return this Builder.
+         *
+         * @throws IllegalArgumentException if {@code version} is neither 1, 2 or a
+         * negative value.
+         */
+        public Builder withProtocolVersion(int version) {
+            if (protocolVersion == 0 || protocolVersion > ProtocolOptions.NEWEST_SUPPORTED_PROTOCOL_VERSION)
+                throw new IllegalArgumentException(String.format("Unsupported protocol version %d; valid values must be between 1 and %d or negative (for auto-detect).",
+                                                                 protocolVersion,
+                                                                 ProtocolOptions.NEWEST_SUPPORTED_PROTOCOL_VERSION));
+            this.protocolVersion = version;
+            return this;
+        }
+
+        /**
+         * Adds a contact point.
+         * <p>
+         * Contact points are addresses of Cassandra nodes that the driver uses
+         * to discover the cluster topology. Only one contact point is required
+         * (the driver will retrieve the address of the other nodes
+         * automatically), but it is usually a good idea to provide more than
+         * one contact point, because if that single contact point is unavailable,
+         * the driver cannot initialize itself correctly.
+         * <p>
+         * Note that by default (that is, unless you use the {@link #withLoadBalancingPolicy})
+         * method of this builder), the first succesfully contacted host will be use
+         * to define the local data-center for the client. If follows that if you are
+         * running Cassandra in a  multiple data-center setting, it is a good idea to
+         * only provided contact points that are in the same datacenter than the client,
+         * or to provide manually the load balancing policy that suits your need.
+         *
+         * @param address the address of the node to connect to
+         * @return this Builder.
+         *
+         * @throws IllegalArgumentException if no IP address for {@code address}
+         * could be found
+         * @throws SecurityException if a security manager is present and
+         * permission to resolve the host name is denied.
+         */
+        public Builder addContactPoint(String address) {
+            // We explicitely check for nulls because InetAdress.getByName() will happily
+            // accept it and use localhost (while a null here almost likely mean a user error,
+            // not "connect to localhost")
+            if (address == null)
+                throw new NullPointerException();
+
+            try {
+                this.rawAddresses.add(InetAddress.getByName(address));
+                return this;
+            } catch (UnknownHostException e) {
+        // ... 20 lines elided ...
+        public Builder addContactPoints(String... addresses) {
+        // ... 16 lines elided ...
+        public Builder addContactPoints(InetAddress... addresses) {
+        // ... 15 lines elided ...
+        public Builder addContactPoints(Collection<InetAddress> addresses) {
+        // ... 26 lines elided ...
+        public Builder addContactPointsWithPorts(Collection<InetSocketAddress> addresses) {
+        // ... 13 lines elided ...
+        public Builder withLoadBalancingPolicy(LoadBalancingPolicy policy) {
+        // ... 13 lines elided ...
+        public Builder withReconnectionPolicy(ReconnectionPolicy policy) {
+        // ... 13 lines elided ...
+        public Builder withRetryPolicy(RetryPolicy policy) {
+        // ... 14 lines elided ...
+        public Builder withAddressTranslater(AddressTranslater translater) {
+        // ... 16 lines elided ...
+        public Builder withCredentials(String username, String password) {
+        // ... 17 lines elided ...
+        public Builder withAuthProvider(AuthProvider authProvider) {
+        // ... 12 lines elided ...
+        public Builder withCompression(ProtocolOptions.Compression compression) {
+        // ... 10 lines elided ...
+        public Builder withoutMetrics() {
+        // ... 17 lines elided ...
+        public Builder withSSL() {
+        // ... 11 lines elided ...
+        public Builder withSSL(SSLOptions sslOptions) {
+        // ... 12 lines elided ...
+        public Builder withInitialListeners(Collection<Host.StateListener> listeners) {
+        // ... 13 lines elided ...
+        public Builder withoutJMXReporting() {
+        // ... 13 lines elided ...
+        public Builder withPoolingOptions(PoolingOptions options) {
+        // ... 13 lines elided ...
+        public Builder withSocketOptions(SocketOptions options) {
+        // ... 13 lines elided ...
+        public Builder withQueryOptions(QueryOptions options) {
+        // ... 14 lines elided ...
+        public Configuration getConfiguration() {
+        // ... 15 lines elided ...
+        public Collection<Host.StateListener> getInitialListeners() {
+        // ... 11 lines elided ...
+        public Cluster build() {
+        // ... 4 lines elided ...
+    private static ThreadFactory threadFactory(String nameFormat) {
+        // ... 3 lines elided ...
+    static long timeSince(long startNanos, TimeUnit destUnit) {
+        // ... 3 lines elided ...
+    private static String generateClusterName() {
+        // ... 3 lines elided ...
+    private static ListeningExecutorService makeExecutor(int threads, String name) {
+        // ... 18 lines elided ...
+    class Manager implements Connection.DefaultResponseHandler {
+        // ... 40 lines elided ...
+        private Manager(String clusterName, List<InetSocketAddress> contactPoints, Configuration configuration, Collection<Host.StateListener> listeners) {
+            logger.debug("Starting new cluster with contact points " + contactPoints);
+
+            this.clusterName = clusterName == null ? generateClusterName() : clusterName;
+            this.configuration = configuration;
+            this.configuration.register(this);
+
+            this.executor = makeExecutor(Runtime.getRuntime().availableProcessors(), "Cassandra Java Driver worker-%d");
+            this.blockingExecutor = makeExecutor(2, "Cassandra Java Driver blocking tasks worker-%d");
+
+            this.metadata = new Metadata(this);
+            this.contactPoints = contactPoints;
+            this.connectionFactory = new Connection.Factory(this, configuration);
+            this.controlConnection = new ControlConnection(this);
+
+            this.metrics = configuration.getMetricsOptions() == null ? null : new Metrics(this);
+            this.listeners = new CopyOnWriteArraySet<Host.StateListener>(listeners);
+        }
+
+        // Initialization is not too performance intensive and in practice there shouldn't be contention
+        // on it so synchronized is good enough.
+        synchronized void init() {
+            if (isClosed())
+                throw new IllegalStateException("Can't use this Cluster instance because it was previously closed");
+            if (isInit)
+                return;
+            isInit = true;
+
+            for (InetSocketAddress address : contactPoints) {
+                // We don't want to signal -- call onAdd() -- because nothing is ready
+                // yet (loadbalancing policy, control connection, ...). All we want is
+                // create the Host object so we can initialize the control connection.
+                Host host = metadata.add(address);
+            }
+
+            try {
+                while (true) {
+                    try {
+                        controlConnection.connect();
+                        if (connectionFactory.protocolVersion < 0)
+                            connectionFactory.protocolVersion = ProtocolOptions.NEWEST_SUPPORTED_PROTOCOL_VERSION;
+
+                        // Now that the control connection is ready, we have all the information we need about the nodes (datacenter,
+                        // rack...) to initialize the load balancing policy
+                        Collection<Host> hosts = metadata.allHosts();
+                        loadBalancingPolicy().init(Cluster.this, hosts);
+
+                        isFullyInit = true;
+
+                        for (Host host : hosts)
+                            triggerOnAdd(host);
+
+                        return;
+                    } catch (UnsupportedProtocolVersionException e) {
+                        assert connectionFactory.protocolVersion < 1;
+                        // For now, all C* version supports the protocol version 1
+                        if (e.versionUnsupported <= 1)
+                            throw new DriverInternalError("Got a node that don't even support the protocol version 1, this makes no sense", e);
+                        logger.debug("{}: retrying with version {}", e.getMessage(), e.versionUnsupported - 1);
+                        connectionFactory.protocolVersion = e.versionUnsupported - 1;
+                    }
+                }
+            } catch (NoHostAvailableException e) {
+                close();
+                throw e;
+            }
+        }
+
+        int protocolVersion() {
+            return connectionFactory.protocolVersion;
+        }
+
+        Cluster getCluster() {
+            return Cluster.this;
+        }
+
+        LoadBalancingPolicy loadBalancingPolicy() {
+            return configuration.getPolicies().getLoadBalancingPolicy();
+        }
+
+        ReconnectionPolicy reconnectionPolicy() {
+        // ... 8 lines elided ...
+        private Session newSession() {
+        // ... 15 lines elided ...
+        private CloseFuture close() {
+        // ... 39 lines elided ...
+        public ListenableFuture<?> triggerOnUp(final Host host) {
+        // ... 2 lines elided ...
+                public void runMayThrow() throws InterruptedException, ExecutionException {
+        // ... 5 lines elided ...
+        private void onUp(final Host host) throws InterruptedException, ExecutionException {
+        // ... 8 lines elided ...
+        private void onUp(final Host host, ListeningExecutorService poolCreationExecutor) throws InterruptedException, ExecutionException {
+        // ... 24 lines elided ...
+                Thread.currentThread().interrupt();
+                // Don't propagate because we don't want to prevent other listener to run
+            } catch (UnsupportedProtocolVersionException e) {
+                logUnsupportedVersionProtocol(host);
+                return;
+            }
+
+            // Session#onUp() expects the load balancing policy to have been updated first, so that
+            // Host distances are up to date. This mean the policy could return the node before the
+            // new pool have been created. This is harmless if there is no prior pool since RequestHandler
+            // will ignore the node, but we do want to make sure there is no prior pool so we don't
+            // query from a pool we will shutdown right away.
+            for (SessionManager s : sessions)
+                s.removePool(host);
+            loadBalancingPolicy().onUp(host);
+            controlConnection.onUp(host);
+
+            logger.trace("Adding/renewing host pools for newly UP host {}", host);
+
+            List<ListenableFuture<Boolean>> futures = new ArrayList<ListenableFuture<Boolean>>(sessions.size());
+            for (SessionManager s : sessions)
+                futures.add(s.forceRenewPool(host, poolCreationExecutor));
+
+            // Only mark the node up once all session have re-added their pool (if the load-balancing
+            // policy says it should), so that Host.isUp() don't return true before we're reconnected
+            // to the node.
+            ListenableFuture<List<Boolean>> f = Futures.allAsList(futures);
+            Futures.addCallback(f, new FutureCallback<List<Boolean>>() {
+                public void onSuccess(List<Boolean> poolCreationResults) {
+                    // If any of the creation failed, they will have signaled a connection failure
+                    // which will trigger a reconnection to the node. So don't bother marking UP.
+                    if (Iterables.any(poolCreationResults, Predicates.equalTo(false))) {
+                        logger.debug("Connection pool cannot be created, not marking {} UP", host);
+                        return;
+                    }
+
+                    host.setUp();
+
+                    for (Host.StateListener listener : listeners)
+                        listener.onUp(host);
+                }
+
+                public void onFailure(Throwable t) {
+                    // That future is not really supposed to throw unexpected exceptions
+                    if (!(t instanceof InterruptedException))
+                        logger.error("Unexpected error while marking node UP: while this shouldn't happen, this shouldn't be critical", t);
+                }
+            });
+
+            f.get();
+
+            // Now, check if there isn't pools to create/remove following the addition.
+            // We do that now only so that it's not called before we've set the node up.
+            for (SessionManager s : sessions)
+                s.updateCreatedPools(blockingExecutor);
+        }
+
+        public ListenableFuture<?> triggerOnDown(final Host host) {
+            return triggerOnDown(host, false);
+        }
+
+        public ListenableFuture<?> triggerOnDown(final Host host, final boolean isHostAddition) {
+            return executor.submit(new ExceptionCatchingRunnable() {
+                @Override
+                public void runMayThrow() throws InterruptedException, ExecutionException {
+                    onDown(host, isHostAddition, false);
+                }
+            });
+        }
+
+        public void onSuspected(final Host host) {
+            logger.debug("Host {} is Suspected", host);
+
+            if (isClosed())
+                return;
+
+            // We shouldn't really get there for IGNORED nodes since we shouldn't have
+            // connected to one in the first place, but if we ever do, simply hand it
+            // off to onDown
+            if (loadBalancingPolicy().distance(host) == HostDistance.IGNORED) {
+                triggerOnDown(host);
+                return;
+            }
+
+            // We need to
+            //  1) mark the node suspect if no-one has bitten us to it
+            //  2) start the reconnection attempt
+            //  3) inform the loadbalancing policy
+            // We must do 2) before 3) as we want the policy to be able to rely
+            // on the reconnection attempt future.
+            //
+            // If multiple threads get there, we want to start reconnection attempts only
+            // once, but we also don't want said threads to return from this method before
+            // the loadbalancing policy has been informed (otherwise those threads won't
+            // consider the host suspect but simply ignore it). So we synchronize.
+        // ... 8 lines elided ...
+                    public void runMayThrow() throws InterruptedException, ExecutionException {
+        // ... 24 lines elided ...
+        private void onDown(final Host host, final boolean isHostAddition, final boolean isSuspectedVerification) throws InterruptedException, ExecutionException {
+        // ... 48 lines elided ...
+                protected Connection tryReconnect() throws ConnectionException, InterruptedException, UnsupportedProtocolVersionException {
+        // ... 3 lines elided ...
+                protected void onReconnection(Connection connection) {
+        // ... 20 lines elided ...
+                protected boolean onConnectionException(ConnectionException e, long nextDelayMs) {
+        // ... 5 lines elided ...
+                protected boolean onUnknownException(Exception e, long nextDelayMs) {
+        // ... 7 lines elided ...
+        public ListenableFuture<?> triggerOnAdd(final Host host) {
+        // ... 2 lines elided ...
+                public void runMayThrow() throws InterruptedException, ExecutionException {
+        // ... 6 lines elided ...
+        private void onAdd(final Host host) throws InterruptedException, ExecutionException {
+        // ... 20 lines elided ...
+                // for IGNORED hosts, the isUp() method was a best effort guess
+                host.setUp();
+                for (Host.StateListener listener : listeners)
+                    listener.onAdd(host);
+                return;
+            }
+
+            try {
+                prepareAllQueries(host);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                // Don't propagate because we don't want to prevent other listener to run
+            } catch (UnsupportedProtocolVersionException e) {
+                logUnsupportedVersionProtocol(host);
+                return;
+            }
+
+            controlConnection.onAdd(host);
+
+            List<ListenableFuture<Boolean>> futures = new ArrayList<ListenableFuture<Boolean>>(sessions.size());
+            for (SessionManager s : sessions)
+                futures.add(s.maybeAddPool(host, blockingExecutor));
+
+            // Only mark the node up once all session have added their pool (if the load-balancing
+            // policy says it should), so that Host.isUp() don't return true before we're reconnected
+            // to the node.
+            ListenableFuture<List<Boolean>> f = Futures.allAsList(futures);
+            Futures.addCallback(f, new FutureCallback<List<Boolean>>() {
+                public void onSuccess(List<Boolean> poolCreationResults) {
+                    // If any of the creation failed, they will have signaled a connection failure
+                    // which will trigger a reconnection to the node. So don't bother marking UP.
+                    if (Iterables.any(poolCreationResults, Predicates.equalTo(false))) {
+                        logger.debug("Connection pool cannot be created, not marking {} UP", host);
+                        return;
+                    }
+
+                    host.setUp();
+
+                    for (Host.StateListener listener : listeners)
+                        listener.onAdd(host);
+                }
+
+                public void onFailure(Throwable t) {
+                    // That future is not really supposed to throw unexpected exceptions
+                    if (!(t instanceof InterruptedException))
+                        logger.error("Unexpected error while adding node: while this shouldn't happen, this shouldn't be critical", t);
+                }
+            });
+
+            f.get();
+
+            // Now, check if there isn't pools to create/remove following the addition.
+            // We do that now only so that it's not called before we've set the node up.
+            for (SessionManager s : sessions)
+                s.updateCreatedPools(blockingExecutor);
+        }
+
+        public ListenableFuture<?> triggerOnRemove(final Host host) {
+            return executor.submit(new ExceptionCatchingRunnable() {
+                @Override
+                public void runMayThrow() throws InterruptedException, ExecutionException {
+                    onRemove(host);
+                }
+            });
+        }
+
+        // Use triggerOnRemove unless you're sure you want to run this on the current thread.
+        private void onRemove(Host host) throws InterruptedException, ExecutionException {
+            if (isClosed())
+                return;
+
+            host.setDown();
+
+            logger.debug("Removing host {}", host);
+            loadBalancingPolicy().onRemove(host);
+            controlConnection.onRemove(host);
+            for (SessionManager s : sessions)
+                s.onRemove(host);
+
+            for (Host.StateListener listener : listeners)
+                listener.onRemove(host);
+        }
+
+        public boolean signalConnectionFailure(Host host, ConnectionException exception, boolean isHostAddition, boolean markSuspected) {
+            // Don't signal failure until we've fully initialized the controlConnection as this might mess up with
+            // the protocol detection
+            if (!isFullyInit || isClosed())
+                return true;
+
+            boolean isDown = host.signalConnectionFailure(exception);
+            if (isDown) {
+                if (isHostAddition || !markSuspected) {
+                    triggerOnDown(host, isHostAddition);
+                } else {
+                    // Note that we do want to call onSuspected on the current thread, as the whole point is
+                    // that by the time this method return, the host initialReconnectionAttempt will have been
+                    // set and the load balancing policy informed of the suspection. We know that onSuspected
+                    // does little work (and non blocking one) itself however.
+                    onSuspected(host);
+                }
+            }
+            return isDown;
+        }
+
+        private boolean supportsProtocolV2(Host newHost) {
+            return newHost.getCassandraVersion() == null || newHost.getCassandraVersion().getMajor() >= 2;
+        }
+
+        public void removeHost(Host host, boolean isInitialConnection) {
+            if (host == null)
+                return;
+
+            if (metadata.remove(host)) {
+                if (isInitialConnection) {
+                    logger.warn("You listed {} in your contact points, but it could not be reached at startup", host);
+                } else {
+                    logger.info("Cassandra host {} removed", host);
+                    triggerOnRemove(host);
+                }
+            }
+        }
+
+        public void ensurePoolsSizing() {
+            for (SessionManager session : sessions) {
+                for (HostConnectionPool pool : session.pools.values())
+                    pool.ensureCoreConnections();
+            }
+        }
+
+        public PreparedStatement addPrepared(PreparedStatement stmt) {
+            PreparedStatement previous = preparedQueries.putIfAbsent(stmt.getPreparedId().id, stmt);
+            if (previous != null) {
+                logger.warn("Re-preparing already prepared query {}. Please note that preparing the same query more than once is "
+        // ... 9 lines elided ...
+        private void prepareAllQueries(Host host) throws InterruptedException, UnsupportedProtocolVersionException {
+        // ... 65 lines elided ...
+        public void submitSchemaRefresh(final String keyspace, final String table) {
+        // ... 3 lines elided ...
+                public void runMayThrow() throws InterruptedException, ExecutionException {
+        // ... 6 lines elided ...
+        public void refreshSchemaAndSignal(final Connection connection, final DefaultResultSetFuture future, final ResultSet rs, final String keyspace, final String table) {
+        // ... 5 lines elided ...
+                public void run() {
+        // ... 20 lines elided ...
+        public void handle(Message.Response response) {
+        // ... 24 lines elided ...
+                                    public void runMayThrow() throws InterruptedException, ExecutionException {
+        // ... 14 lines elided ...
+                                public void runMayThrow() {
+        // ... 23 lines elided ...
+                                    public void runMayThrow() throws InterruptedException, ExecutionException {
+        // ... 9 lines elided ...
+                                    public void runMayThrow() throws InterruptedException, ExecutionException {
+        // ... 56 lines elided ...
+        private class ClusterCloseFuture extends CloseFuture.Forwarding {
+        // ... 6 lines elided ...
+            public CloseFuture force() {
+        // ... 6 lines elided ...
+            protected void onFuturesDone() {
+        // ... 10 lines elided ...
+                    public void run() {
+        // ... 22 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

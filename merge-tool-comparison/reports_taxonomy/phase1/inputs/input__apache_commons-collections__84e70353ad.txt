@@ -1,0 +1,1155 @@
+UNIT apache_commons-collections__84e70353ad
+repo: apache_commons-collections   merge: 84e70353ad885685faf82f55600fa736e577699b   stratum: B
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/2: src/main/java/org/apache/commons/collections4/CollectionUtils.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -12,29 +12,33 @@
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package org.apache.commons.collections4;
+ 
+ import java.lang.reflect.Array;
++import java.lang.reflect.InvocationTargetException;
+ import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.Enumeration;
+ import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.ListIterator;
+ import java.util.Map;
+ import java.util.Objects;
+ import java.util.Set;
++import java.util.concurrent.atomic.AtomicInteger;
++import java.util.function.Supplier;
++import java.util.stream.Collectors;
+ 
+ import org.apache.commons.collections4.bag.HashBag;
+ import org.apache.commons.collections4.collection.PredicatedCollection;
+ import org.apache.commons.collections4.collection.SynchronizedCollection;
+ import org.apache.commons.collections4.collection.TransformedCollection;
+ import org.apache.commons.collections4.collection.UnmodifiableBoundedCollection;
+ import org.apache.commons.collections4.collection.UnmodifiableCollection;
+ import org.apache.commons.collections4.functors.TruePredicate;
+@@ -2150,9 +2154,58 @@
+      */
+     public static <E> E extractSingleton(final Collection<E> collection) {
+         Objects.requireNonNull(collection, "collection");
+         if (collection.size() != 1) {
+             throw new IllegalArgumentException("Can extract singleton only when collection size == 1");
+         }
+         return collection.iterator().next();
+     }
++
++    /**
++     * Returns partitions of given {@code collection}, each of size
++     * {@code chunkSize} (the final partition may be smaller).
++     * <p>
++     * For example, partitioning a {@code collection} containing
++     * {@code [a, b, c, d, e, f, g]} with a {@code chunkSize} of 3 yields an outer
++     * {@link List} containing three collections of type {@code collection} where
++     * the first two collections will have three elements each and the final
++     * collection will have one element. Ordering of elements would be based on that
++     * of the Stream of the given {@code collection}.
++     * </p>
++     * <p>
++     * Passing an empty {@code collection} as input would return an empty
++     * {@link List}. Passing {@code chunkSize} greater than the size of input
++     * {@code collection} would return a {@link List} with just one element which
++     * would in-turn be the input {@code collection} itself.
++     * </p>
++     *
++     * @param            <E> the type of Collection
++     * @param collection the collection to be partitioned
++     * @param chunkSize  the desired size of each partition (the last may be
++     *                   smaller)
++     * @return a list of collections (type as that of given input collection)
++     * @throws NullPointerException     if the input collection is null
++     * @throws IllegalArgumentException if the input chunkSize is lesser than or
++     *                                  equal to 0
++     * @throws IllegalArgumentException if new instance of input collection cannot
++     *                                  be instantiated
++     */
++    @SuppressWarnings({ "unchecked", "rawtypes" })
++    public static <E extends Collection> List<E> partitionByChunkSize(final E collection, int chunkSize) {
++        Objects.requireNonNull(collection, "input collection must not be null");
++        if (chunkSize <= 0) {
++            throw new IllegalArgumentException("input chunk size must be greater than 0");
++        }
++        Supplier<E> supplier = () -> {
++            try {
++                return (E) collection.getClass().getDeclaredConstructor().newInstance();
++            } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException
++                    | InstantiationException e) {
++                throw new IllegalArgumentException("unable to get instance of given input collection");
++            }
++        };
++        final AtomicInteger counter = new AtomicInteger(0);
++        final Map<Integer, E> map = (Map<Integer, E>) collection.stream().collect(
++                Collectors.groupingBy((i -> counter.getAndIncrement() / chunkSize), Collectors.toCollection(supplier)));
++        return new ArrayList<>(map.values());
++    }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -427,28 +427,26 @@
+      * @since 4.0
+      */
+     public static boolean containsAll(final Collection<?> coll1, final Collection<?> coll2) {
+         Objects.requireNonNull(coll1, "coll1");
+         Objects.requireNonNull(coll2, "coll2");
+         if (coll2.isEmpty()) {
+             return true;
+         }
+-        final Iterator<?> it = coll1.iterator();
+         final Set<Object> elementsAlreadySeen = new HashSet<>();
+         for (final Object nextElement : coll2) {
+             if (elementsAlreadySeen.contains(nextElement)) {
+                 continue;
+             }
+ 
+             boolean foundCurrentElement = false;
+-            while (it.hasNext()) {
+-                final Object p = it.next();
++            for (final Object p : coll1) {
+                 elementsAlreadySeen.add(p);
+-                if (nextElement == null ? p == null : nextElement.equals(p)) {
++                if (Objects.equals(nextElement, p)) {
+                     foundCurrentElement = true;
+                     break;
+                 }
+             }
+ 
+             if (!foundCurrentElement) {
+                 return false;
+             }
+@@ -1184,17 +1182,17 @@
+      * @param <I>  the type of object in the input collection
+      * @param <O>  the type of object in the output collection
+      * @param inputIterator  the iterator to get the input from, may be null
+      * @param transformer  the transformer to use, may be null
+      * @return the transformed result (new list)
+      */
+     public static <I, O> Collection<O> collect(final Iterator<I> inputIterator,
+                                                final Transformer<? super I, ? extends O> transformer) {
+-        return collect(inputIterator, transformer, new ArrayList<O>());
++        return collect(inputIterator, transformer, new ArrayList<>());
+     }
+ 
+     /**
+      * Transforms all elements from input collection with the given transformer
+      * and adds them to the output collection.
+      * <p>
+      * If the input collection or transformer is null, there is no change to the
+      * output collection.
+@@ -1887,17 +1885,17 @@
+                                               final Iterable<? extends E> retain,
+                                               final Equator<? super E> equator) {
+         Objects.requireNonNull(collection, "collection");
+         Objects.requireNonNull(retain, "retain");
+         Objects.requireNonNull(equator, "equator");
+         final Transformer<E, EquatorWrapper<E>> transformer = input -> new EquatorWrapper<>(equator, input);
+ 
+         final Set<EquatorWrapper<E>> retainSet =
+-                collect(retain, transformer, new HashSet<EquatorWrapper<E>>());
++                collect(retain, transformer, new HashSet<>());
+ 
+         final List<E> list = new ArrayList<>();
+         for (final E element : collection) {
+             if (retainSet.contains(new EquatorWrapper<>(equator, element))) {
+                 list.add(element);
+             }
+         }
+         return list;
+@@ -2026,17 +2024,17 @@
+                                               final Iterable<? extends E> remove,
+                                               final Equator<? super E> equator) {
+         Objects.requireNonNull(collection, "collection");
+         Objects.requireNonNull(remove, "remove");
+         Objects.requireNonNull(equator, "equator");
+         final Transformer<E, EquatorWrapper<E>> transformer = input -> new EquatorWrapper<>(equator, input);
+ 
+         final Set<EquatorWrapper<E>> removeSet =
+-                collect(remove, transformer, new HashSet<EquatorWrapper<E>>());
++                collect(remove, transformer, new HashSet<>());
+ 
+         final List<E> list = new ArrayList<>();
+         for (final E element : collection) {
+             if (!removeSet.contains(new EquatorWrapper<>(equator, element))) {
+                 list.add(element);
+             }
+         }
+         return list;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/org/apache/commons/collections4/CollectionUtilsTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -17,19 +17,19 @@
+ package org.apache.commons.collections4;
+ 
+ import static org.apache.commons.collections4.functors.EqualPredicate.equalPredicate;
+ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.junit.jupiter.api.Assertions.assertFalse;
+ import static org.junit.jupiter.api.Assertions.assertNull;
+ import static org.junit.jupiter.api.Assertions.assertSame;
++import static org.junit.jupiter.api.Assertions.assertThrows;
+ import static org.junit.jupiter.api.Assertions.assertTrue;
+ import static org.junit.jupiter.api.Assertions.fail;
+-import static org.junit.jupiter.api.Assertions.assertThrows;
+ 
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.Enumeration;
+ import java.util.HashMap;
+@@ -2341,9 +2341,119 @@
+         final Map<Number, Integer> freq2 = CollectionUtils.getCardinalityMap(col2);
+         assertEquals(Integer.valueOf(1), freq2.get(1));
+         assertEquals(Integer.valueOf(4), freq2.get(2));
+         assertEquals(Integer.valueOf(3), freq2.get(3));
+         assertEquals(Integer.valueOf(4), freq2.get(4));
+         assertEquals(Integer.valueOf(1), freq2.get(5));
+     }
+ 
++    @Test
++    public void testPartitionByChunkSize() {
++        // test with Set
++        final Set<Number> set = new HashSet<>();
++        for (int i = 1; i <= 7; i++) {
++            set.add(i);
++        }
++        List<Set<Number>> setPartitions = CollectionUtils.partitionByChunkSize(set, 3);
++        assertEquals(3, setPartitions.size());
++        assertEquals(3, setPartitions.get(0).size());
++        assertEquals(3, setPartitions.get(1).size());
++        assertEquals(1, setPartitions.get(2).size());
++
++        // test for max chunk size use-case
++        List<Set<Number>> setPartitionMaxSize = CollectionUtils.partitionByChunkSize(set, Integer.MAX_VALUE);
++        assertEquals(1, setPartitionMaxSize.size());
++        assertEquals(set, setPartitionMaxSize.get(0));
++
++        // test with List, have duplicate values
++        final List<Number> list = new ArrayList<>();
++        for (int i = 1; i <= 7; i++) {
++            list.add(i);
++        }
++        list.add(7L);
++        list.add(7L);
++        List<List<Number>> listPartitions = CollectionUtils.partitionByChunkSize(list, 2);
++        assertEquals(5, listPartitions.size());
++        assertEquals(2, listPartitions.get(0).size());
++        assertEquals(2, listPartitions.get(1).size());
++        assertEquals(2, listPartitions.get(2).size());
++        assertEquals(2, listPartitions.get(3).size());
++        assertEquals(1, listPartitions.get(4).size());
++
++        // test with List, have null elements
++        final List<Number> listWithNullElements = new ArrayList<>();
++        for (int i = 1; i <= 6; i++) {
++            listWithNullElements.add(i);
++        }
++        listWithNullElements.add(null);
++        listWithNullElements.add(7L);
++        List<List<Number>> listPartitionsWithNullElements = CollectionUtils.partitionByChunkSize(listWithNullElements,
++                2);
++        assertEquals(4, listPartitionsWithNullElements.size());
++        assertEquals(2, listPartitionsWithNullElements.get(0).size());
++        assertEquals(2, listPartitionsWithNullElements.get(1).size());
++        assertEquals(2, listPartitionsWithNullElements.get(2).size());
++        assertEquals(2, listPartitionsWithNullElements.get(3).size());
++
++        // test with nested Collection
++        List<List<String>> strLists = new ArrayList<>();
++        List<String> strList1 = Arrays.asList("1", "one");
++        strLists.add(strList1);
++        List<String> strList2 = Arrays.asList("2");
++        strLists.add(strList2);
++        List<String> strList3 = Arrays.asList("3", "three");
++        strLists.add(strList3);
++        List<String> strList4 = Arrays.asList("4", null);
++        strLists.add(strList4);
++        List<String> strList5 = Arrays.asList("5", "five");
++        strLists.add(strList5);
++        List<List<List<String>>> retStrLists = CollectionUtils.partitionByChunkSize(strLists, 2);
++        assertEquals(3, retStrLists.size());
++        assertEquals(2, retStrLists.get(0).size());
++        assertEquals(strList1, retStrLists.get(0).get(0));
++        assertEquals(strList2, retStrLists.get(0).get(1));
++        assertEquals(2, retStrLists.get(1).size());
++        assertEquals(strList3, retStrLists.get(1).get(0));
++        assertEquals(strList4, retStrLists.get(1).get(1));
++        assertEquals(1, retStrLists.get(2).size());
++        assertEquals(strList5, retStrLists.get(2).get(0));
++
++        // test with empty collection
++        List<String> emptyList = new ArrayList<>();
++        List<List<String>> emptyPartitions = CollectionUtils.partitionByChunkSize(emptyList, 2);
++        assertEquals(0, emptyPartitions.size());
++
++        // test exception scenarios
++        try {
++            CollectionUtils.partitionByChunkSize(listWithNullElements, -2);
++            fail("failed to check if input chunk size is greater than 0");
++        } catch (final IllegalArgumentException e) {
++            assertEquals("input chunk size must be greater than 0", e.getMessage());
++        }
++
++        try {
++            CollectionUtils.partitionByChunkSize(listWithNullElements, 0);
++            fail("failed to check if input chunk size is greater than 0");
++        } catch (final IllegalArgumentException e) {
++            assertEquals("input chunk size must be greater than 0", e.getMessage());
++        }
++
++        try {
++            CollectionUtils.partitionByChunkSize(null, 2);
++            fail("failed to check if input collection is null");
++        } catch (final NullPointerException e) {
++            assertEquals("input collection must not be null", e.getMessage());
++        }
++
++        try {
++            @SuppressWarnings("rawtypes")
++            Collection mockCollection = createMock(Collection.class);
++            expect(mockCollection.stream()).andReturn(Arrays.asList("").stream());
++            replay();
++            CollectionUtils.partitionByChunkSize(mockCollection, 2);
++            fail("failed to check if input collection is empty");
++        } catch (final IllegalArgumentException e) {
++            assertEquals("unable to get instance of given input collection", e.getMessage());
++        }
++    }
++
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -12,24 +12,24 @@
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+ package org.apache.commons.collections4;
+ 
+ import static org.apache.commons.collections4.functors.EqualPredicate.equalPredicate;
++import static org.junit.jupiter.api.Assertions.assertAll;
+ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.junit.jupiter.api.Assertions.assertFalse;
+ import static org.junit.jupiter.api.Assertions.assertNull;
+ import static org.junit.jupiter.api.Assertions.assertSame;
++import static org.junit.jupiter.api.Assertions.assertThrows;
+ import static org.junit.jupiter.api.Assertions.assertTrue;
+-import static org.junit.jupiter.api.Assertions.fail;
+-import static org.junit.jupiter.api.Assertions.assertThrows;
+ 
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.Enumeration;
+ import java.util.HashMap;
+@@ -49,27 +49,26 @@
+ 
+ import org.apache.commons.collections4.bag.HashBag;
+ import org.apache.commons.collections4.collection.PredicatedCollection;
+ import org.apache.commons.collections4.collection.SynchronizedCollection;
+ import org.apache.commons.collections4.collection.TransformedCollection;
+ import org.apache.commons.collections4.collection.UnmodifiableCollection;
+ import org.apache.commons.collections4.functors.DefaultEquator;
+ import org.apache.commons.collections4.queue.CircularFifoQueue;
++import org.apache.commons.lang3.ArrayUtils;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ 
+ /**
+  * Tests for CollectionUtils.
+- *
+  */
+ @SuppressWarnings("boxing")
+ public class CollectionUtilsTest extends MockTestCase {
+ 
+-    // -----------------------------------------------------------------------
+     private static final Predicate<Number> EQUALS_TWO = input -> input.intValue() == 2;
+ 
+     /**
+      * Collection of {@link Integer}s
+      */
+     private List<Integer> collectionA = null;
+ 
+     /**
+@@ -175,17 +174,16 @@
+         assertTrue(CollectionUtils.addAll(c, iterable));
+         assertTrue(CollectionUtils.addAll(c, inputIterable));
+ 
+         assertFalse(CollectionUtils.addAll(c, iterable));
+         assertFalse(CollectionUtils.addAll(c, inputIterable));
+         verify();
+     }
+ 
+-    // -----------------------------------------------------------------------
+     @Test
+     public void addIgnoreNull() {
+         final Set<String> set = new HashSet<>();
+         set.add("1");
+         set.add("2");
+         set.add("3");
+         assertFalse(CollectionUtils.addIgnoreNull(set, null));
+         assertEquals(3, set.size());
+@@ -334,17 +332,16 @@
+         collection = CollectionUtils.collect((Iterator<Integer>) null, (Transformer<Integer, Number>) null);
+         assertTrue(collection.isEmpty());
+ 
+         final int size = collectionA.size();
+         collectionB = CollectionUtils.collect((Collection<Integer>) null, transformer, collectionB);
+         assertTrue(collectionA.size() == size && collectionA.contains(1));
+         CollectionUtils.collect(collectionB, null, collectionA);
+         assertTrue(collectionA.size() == size && collectionA.contains(1));
+-
+     }
+ 
+     @Test
+     public void containsAll() {
+         final Collection<String> empty = new ArrayList<>(0);
+         final Collection<String> one = new ArrayList<>(1);
+         one.add("1");
+         final Collection<String> two = new ArrayList<>(1);
+@@ -496,36 +493,37 @@
+         assertFalse(CollectionUtils.exists(list, EQUALS_TWO));
+ 
+         list.add(2);
+         assertTrue(CollectionUtils.exists(list, EQUALS_TWO));
+     }
+ 
+     @Test
+     public void extractSingleton() {
+-        ArrayList<String> coll = null;
+-        try {
+-            CollectionUtils.extractSingleton(coll);
+-            fail("expected NullPointerException from extractSingleton(null)");
+-        } catch (final NullPointerException e) {
+-        }
+-        coll = new ArrayList<>();
+-        try {
+-            CollectionUtils.extractSingleton(coll);
+-            fail("expected IllegalArgumentException from extractSingleton(empty)");
+-        } catch (final IllegalArgumentException e) {
+-        }
+-        coll.add("foo");
+-        assertEquals("foo", CollectionUtils.extractSingleton(coll));
+-        coll.add("bar");
+-        try {
+-            CollectionUtils.extractSingleton(coll);
+-            fail("expected IllegalArgumentException from extractSingleton(size == 2)");
+-        } catch (final IllegalArgumentException e) {
+-        }
++        assertAll(
++                () -> {
++                    final ArrayList<String> collNull = null;
++                    assertThrows(NullPointerException.class, () -> CollectionUtils.extractSingleton(collNull),
++                            "expected NullPointerException from extractSingleton(null)");
++                },
++                () -> {
++                    final ArrayList<String> collEmpty = new ArrayList<>();
++                    assertThrows(IllegalArgumentException.class, () -> CollectionUtils.extractSingleton(collEmpty),
++                            "expected IllegalArgumentException from extractSingleton(empty)");
++                },
++                () -> {
++                    final ArrayList<String> coll = new ArrayList<>();
++                    coll.add("foo");
++                    assertEquals("foo", CollectionUtils.extractSingleton(coll));
++                    coll.add("bar");
++
++                    assertThrows(IllegalArgumentException.class, () -> CollectionUtils.extractSingleton(coll),
++                            "expected IllegalArgumentException from extractSingleton(size == 2)");
++                }
++        );
+     }
+ 
+     //Up to here
+     @Test
+     public void filter() {
+         final List<Integer> ints = new ArrayList<>();
+         ints.add(1);
+         ints.add(2);
+@@ -685,17 +683,20 @@
+         CollectionUtils.forAllDo(col.iterator(), testClosure);
+     }
+ 
+     @Test
+     public void get() {
+         assertEquals(2, CollectionUtils.get((Object) collectionA, 2));
+         assertEquals(2, CollectionUtils.get((Object) collectionA.iterator(), 2));
+         final Map<Integer, Integer> map = CollectionUtils.getCardinalityMap(collectionA);
+-        assertEquals(map.entrySet().iterator().next(), CollectionUtils.get((Object) map, 0));
++        // Test assumes a defined iteration order so convert to a LinkedHashMap
++        final Map<Integer, Integer> linkedMap = new LinkedHashMap<>();
++        linkedMap.putAll(map);
++        assertEquals(linkedMap.entrySet().iterator().next(), CollectionUtils.get((Object) linkedMap, 0));
+     }
+ 
+     @Test
+     public void get1() {
+         assertThrows(IllegalArgumentException.class, () -> CollectionUtils.get((Object) null, 0));
+     }
+ 
+     @Test
+@@ -733,50 +734,42 @@
+         vector.addElement("zero");
+         vector.addElement("one");
+         Enumeration<String> en = vector.elements();
+         assertEquals("zero", CollectionUtils.get(en, 0));
+         en = vector.elements();
+         assertEquals("one", CollectionUtils.get(en, 1));
+ 
+         // Enumerator, non-existent entry
+-        try {
+-            CollectionUtils.get(en, 3);
+-            fail("Expecting IndexOutOfBoundsException.");
+-        } catch (final IndexOutOfBoundsException e) {
+-            // expected
+-        }
++        final Enumeration<String> finalEn = en;
++        assertThrows(IndexOutOfBoundsException.class, () -> CollectionUtils.get(finalEn, 3),
++                "Expecting IndexOutOfBoundsException.");
++
+         assertFalse(en.hasMoreElements());
+     }
+ 
+     @Test
+     public void getFromHashMap() {
+         // Unordered map, entries exist
+         final Map<String, String> expected = new HashMap<>();
+         expected.put("zeroKey", "zero");
+         expected.put("oneKey", "one");
+ 
+         Map.Entry<String, String> entry = CollectionUtils.get(expected, 0);
+         assertTrue(entry.toString().equals("zeroKey=zero") || entry.toString().equals("oneKey=one"));
+         entry = CollectionUtils.get(expected, 1);
+         assertTrue(entry.toString().equals("zeroKey=zero") || entry.toString().equals("oneKey=one"));
+ 
+         // Map index out of range
+-        try {
+-            CollectionUtils.get(expected, 2);
+-            fail("Expecting IndexOutOfBoundsException.");
+-        } catch (final IndexOutOfBoundsException e) {
+-            // expected
+-        }
+-        try {
+-            CollectionUtils.get(expected, -2);
+-            fail("Expecting IndexOutOfBoundsException.");
+-        } catch (final IndexOutOfBoundsException e) {
+-            // expected
+-        }
++        assertAll(
++                () -> assertThrows(IndexOutOfBoundsException.class, () -> CollectionUtils.get(expected, 2),
++                        "Expecting IndexOutOfBoundsException."),
++                () -> assertThrows(IndexOutOfBoundsException.class, () -> CollectionUtils.get(expected, -2),
++                        "Expecting IndexOutOfBoundsException.")
++        );
+     }
+ 
+     @Test
+     @Deprecated
+     public void getFromIterable() throws Exception {
+         // Collection, entry exists
+         final Bag<String> bag = new HashBag<>();
+         bag.add("element", 1);
+@@ -791,22 +784,20 @@
+     public void getFromIterator() throws Exception {
+         // Iterator, entry exists
+         Iterator<Integer> iterator = iterableA.iterator();
+         assertEquals(1, (int) CollectionUtils.get(iterator, 0));
+         iterator = iterableA.iterator();
+         assertEquals(2, (int) CollectionUtils.get(iterator, 1));
+ 
+         // Iterator, non-existent entry
+-        try {
+-            CollectionUtils.get(iterator, 10);
+-            fail("Expecting IndexOutOfBoundsException.");
+-        } catch (final IndexOutOfBoundsException e) {
+-            // expected
+-        }
++        final Iterator<Integer> finalIterator = iterator;
++        assertThrows(IndexOutOfBoundsException.class, () -> CollectionUtils.get(finalIterator, 10),
++                "Expecting IndexOutOfBoundsException.");
++
+         assertFalse(iterator.hasNext());
+     }
+ 
+     @Test
+     public void getFromLinkedHashMap() {
+         // Ordered map, entries exist
+         final Map<String, String> expected = new LinkedHashMap<>();
+         expected.put("zeroKey", "zero");
+@@ -841,28 +832,22 @@
+     @Test
+     public void getFromMapIndexOutOfRange() {
+         // Ordered map, entries exist
+         final Map<String, String> expected = new LinkedHashMap<>();
+         expected.put("zeroKey", "zero");
+         expected.put("oneKey", "one");
+ 
+         // Map index out of range
+-        try {
+-            CollectionUtils.get(expected, 2);
+-            fail("Expecting IndexOutOfBoundsException.");
+-        } catch (final IndexOutOfBoundsException e) {
+-            // expected
+-        }
+-        try {
+-            CollectionUtils.get(expected, -2);
+-            fail("Expecting IndexOutOfBoundsException.");
+-        } catch (final IndexOutOfBoundsException e) {
+-            // expected
+-        }
++        assertAll(
++                () -> assertThrows(IndexOutOfBoundsException.class, () -> CollectionUtils.get(expected, 2),
++                        "Expecting IndexOutOfBoundsException."),
++                () -> assertThrows(IndexOutOfBoundsException.class, () -> CollectionUtils.get(expected, -2),
++                        "Expecting IndexOutOfBoundsException.")
++        );
+     }
+ 
+     @Test
+     public void getFromObject() throws Exception {
+         // Invalid object
+         final Object obj = new Object();
+         assertThrows(IllegalArgumentException.class, () -> CollectionUtils.get(obj, 0));
+     }
+@@ -1030,28 +1015,27 @@
+     /**
+      * Records the next object returned for a mock iterator
+      */
+     private <T> void next(final Iterator<T> iterator, final T t) {
+         expect(iterator.hasNext()).andReturn(true);
+         expect(iterator.next()).andReturn(t);
+     }
+ 
+-    // -----------------------------------------------------------------------
+     @Test
+     public void predicatedCollection() {
+         final Predicate<Object> predicate = PredicateUtils.instanceofPredicate(Integer.class);
+         final Collection<Number> collection = CollectionUtils.predicatedCollection(new ArrayList<Number>(), predicate);
+         assertTrue(collection instanceof PredicatedCollection, "returned object should be a PredicatedCollection");
+     }
+ 
+     @Test
+     public void reverse() {
+         CollectionUtils.reverseArray(new Object[] {});
+-        final Integer[] a = collectionA.toArray(new Integer[collectionA.size()]);
++        final Integer[] a = collectionA.toArray(ArrayUtils.EMPTY_INTEGER_OBJECT_ARRAY);
+         CollectionUtils.reverseArray(a);
+         // assume our implementation is correct if it returns the same order as the Java function
+         Collections.reverse(collectionA);
+         assertEquals(collectionA, Arrays.asList(a));
+     }
+ 
+     @Test
+     public void select() {
+@@ -1224,17 +1208,17 @@
+         assertEquals(collectionA, result, "Merge empty with non-empty");
+ 
+         List<Integer> result1 = CollectionUtils.collate(collectionD, collectionE);
+         List<Integer> result2 = CollectionUtils.collate(collectionE, collectionD);
+         assertEquals(result1, result2, "Merge two lists 1");
+ 
+         final List<Integer> combinedList = new ArrayList<>(collectionD);
+         combinedList.addAll(collectionE);
+-        Collections.sort(combinedList);
++        combinedList.sort(null);
+ 
+         assertEquals(combinedList, result2, "Merge two lists 2");
+ 
+         final Comparator<Integer> reverseComparator =
+                 ComparatorUtils.reversedComparator(ComparatorUtils.<Integer>naturalComparator());
+ 
+         result = CollectionUtils.collate(emptyCollection, emptyCollection, reverseComparator);
+         assertEquals(0, result.size(), "Comparator Merge empty with empty");
+@@ -1253,17 +1237,17 @@
+     public void testCollateIgnoreDuplicates() {
+         final List<Integer> result1 = CollectionUtils.collate(collectionD, collectionE, false);
+         final List<Integer> result2 = CollectionUtils.collate(collectionE, collectionD, false);
+         assertEquals(result1, result2, "Merge two lists 1 - ignore duplicates");
+ 
+         final Set<Integer> combinedSet = new HashSet<>(collectionD);
+         combinedSet.addAll(collectionE);
+         final List<Integer> combinedList = new ArrayList<>(combinedSet);
+-        Collections.sort(combinedList);
++        combinedList.sort(null);
+ 
+         assertEquals(combinedList, result2, "Merge two lists 2 - ignore duplicates");
+     }
+ 
+     @Test
+     public void testContainsAnyInArrayNullArray() {
+         final Collection<String> list = new ArrayList<>(1);
+         list.add("1");
+@@ -1292,25 +1276,25 @@
+         assertThrows(NullPointerException.class, () -> CollectionUtils.containsAny(null, list));
+     }
+ 
+     @Test
+     public void testContainsAnyNullColl2() {
+         final Collection<String> list = new ArrayList<>(1);
+         list.add("1");
+         final Collection<String> list2 = null;
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.containsAny(list, list2));
++        assertThrows(NullPointerException.class, () -> CollectionUtils.containsAny(list, list2));
+     }
+ 
+     @Test
+     public void testContainsAnyNullColl3() {
+         final Collection<String> list = new ArrayList<>(1);
+         list.add("1");
+         final String[] array = null;
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.containsAny(list, array));
++        assertThrows(NullPointerException.class, () -> CollectionUtils.containsAny(list, array));
+     }
+ 
+     @Test
+     public void testDisjunctionAsSymmetricDifference() {
+         final Collection<Number> dis = CollectionUtils.<Number>disjunction(collectionA, collectionC);
+         final Collection<Number> amb = CollectionUtils.<Number>subtract(collectionA, collectionC);
+         final Collection<Number> bma = CollectionUtils.<Number>subtract(collectionC, collectionA);
+         assertTrue(CollectionUtils.isEqualCollection(dis, CollectionUtils.union(amb, bma)));
+@@ -1323,29 +1307,29 @@
+         final Collection<Number> inter = CollectionUtils.<Number>intersection(collectionA, collectionC);
+         assertTrue(CollectionUtils.isEqualCollection(dis, CollectionUtils.subtract(un, inter)));
+     }
+ 
+     @Test
+     public void testDisjunctionNullColl1() {
+         final Collection<String> list = new ArrayList<>(1);
+         list.add("1");
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.disjunction(null, list));
++        assertThrows(NullPointerException.class, () -> CollectionUtils.disjunction(null, list));
+     }
+ 
+     @Test
+     public void testDisjunctionNullColl2() {
+         final Collection<String> list = new ArrayList<>(1);
+         list.add("1");
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.disjunction(list, null));
++        assertThrows(NullPointerException.class, () -> CollectionUtils.disjunction(list, null));
+     }
+ 
+     @Test
+     public void testGetCardinalityMapNull() {
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.getCardinalityMap(null));
++        assertThrows(NullPointerException.class, () -> CollectionUtils.getCardinalityMap(null));
+     }
+ 
+     @Test
+     public void testHashCode() {
+         final Equator<Integer> e = new Equator<Integer>() {
+             @Override
+             public boolean equate(final Integer o1, final Integer o2) {
+                 if (o1 % 2 == 0 ^ o2 % 2 == 0) {
+@@ -1381,34 +1365,33 @@
+         };
+ 
+         final Collection<Integer> collection = null;
+         assertEquals(0, CollectionUtils.hashCode(collection, e));
+     }
+ 
+     @Test
+     public void testHashCodeNullEquator() {
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.hashCode(collectionB, null));
++        assertThrows(NullPointerException.class, () -> CollectionUtils.hashCode(collectionB, null));
+     }
+ 
+     @Test
+     public void testIntersectionNullColl1() {
+         final Collection<String> list = new ArrayList<>(1);
+         list.add("1");
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.intersection(null, list));
++        assertThrows(NullPointerException.class, () -> CollectionUtils.intersection(null, list));
+     }
+ 
+     @Test
+     public void testIntersectionNullColl2() {
+         final Collection<String> list = new ArrayList<>(1);
+         list.add("1");
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.intersection(list, null));
+-    }
+-
+-    // -----------------------------------------------------------------------
++        assertThrows(NullPointerException.class, () -> CollectionUtils.intersection(list, null));
++    }
++
+     @Test
+     public void testIsEmptyWithEmptyCollection() {
+         assertTrue(CollectionUtils.isEmpty(new ArrayList<>()));
+     }
+ 
+     @Test
+     public void testIsEmptyWithNonEmptyCollection() {
+         assertFalse(CollectionUtils.isEmpty(Collections.singletonList("item")));
+@@ -1494,17 +1477,17 @@
+                 return true;
+             }
+ 
+             @Override
+             public int hash(final Integer o) {
+                 return o.intValue() % 2 == 0 ? Integer.valueOf(0).hashCode() : Integer.valueOf(1).hashCode();
+             }
+         };
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.isEqualCollection(null, list, e));
++        assertThrows(NullPointerException.class, () -> CollectionUtils.isEqualCollection(null, list, e));
+     }
+ 
+     @Test
+     public void testIsEqualCollectionNullColl2() {
+         final Collection<Integer> list = new ArrayList<>(1);
+         list.add(1);
+ 
+         final Equator<Integer> e = new Equator<Integer>() {
+@@ -1516,22 +1499,22 @@
+                 return true;
+             }
+ 
+             @Override
+             public int hash(final Integer o) {
+                 return o.intValue() % 2 == 0 ? Integer.valueOf(0).hashCode() : Integer.valueOf(1).hashCode();
+             }
+         };
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.isEqualCollection(list, null, e));
++        assertThrows(NullPointerException.class, () -> CollectionUtils.isEqualCollection(list, null, e));
+     }
+ 
+     @Test
+     public void testIsEqualCollectionNullEquator() {
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.isEqualCollection(collectionA, collectionA, null));
++        assertThrows(NullPointerException.class, () -> CollectionUtils.isEqualCollection(collectionA, collectionA, null));
+     }
+ 
+     @Test
+     public void testIsEqualCollectionReturnsFalse() {
+         final List<Integer> b = new ArrayList<>(collectionA);
+         // remove an extra '2', and add a 5.  This will increase the size of the cardinality
+         b.remove(1);
+         b.add(5);
+@@ -1542,17 +1525,17 @@
+     @Test
+     public void testIsEqualCollectionToSelf() {
+         assertTrue(CollectionUtils.isEqualCollection(collectionA, collectionA));
+         assertTrue(CollectionUtils.isEqualCollection(collectionB, collectionB));
+     }
+ 
+     @Test
+     public void testIsFullNullColl() {
+-        assertThrows(NullPointerException.class, () ->  CollectionUtils.isFull(null));
++        assertThrows(NullPointerException.class, () -> CollectionUtils.isFull(null));
+     }
+ 
+     @Test
+     public void testIsNotEmptyWithEmptyCollection() {
+         assertFalse(CollectionUtils.isNotEmpty(new ArrayList<>()));
+     }
+ 
+     @Test
+@@ -1792,28 +1775,22 @@
+         assertEquals(3, base.size());
+         assertTrue(base.contains("AC"));
+         assertTrue(base.contains("BB"));
+         assertTrue(base.contains("CA"));
+         assertEquals(3, remove.size());
+         assertTrue(remove.contains("AA"));
+         assertTrue(remove.contains("CX"));
+         assertTrue(remove.contains("XZ"));
+-
+-        try {
+-            CollectionUtils.removeAll(null, null, DefaultEquator.defaultEquator());
+-            fail("expecting NullPointerException");
+-        } catch (final NullPointerException npe) {
+-        } // this is what we want
+-
+-        try {
+-            CollectionUtils.removeAll(base, remove, null);
+-            fail("expecting NullPointerException");
+-        } catch (final NullPointerException npe) {
+-        } // this is what we want
++        assertAll(
++                () -> assertThrows(NullPointerException.class, () -> CollectionUtils.removeAll(null, null, DefaultEquator.defaultEquator()),
++                        "expecting NullPointerException"),
++                () -> assertThrows(NullPointerException.class, () -> CollectionUtils.removeAll(base, remove, null),
++                        "expecting NullPointerException")
++        );
+     }
+ 
+     @Test
+     public void testRemoveCount() {
+         final List<Integer> list = new ArrayList<>();
+         list.add(1);
+         list.add(2);
+         list.add(3);
+@@ -1915,18 +1892,16 @@
+ 
+     @Test
+     public void testRemoveRangeWrongEndIndex() {
+         final Collection<Integer> list = new ArrayList<>();
+         list.add(1);
+         assertThrows(IndexOutOfBoundsException.class, () -> CollectionUtils.removeRange(list, 0, 2));
+     }
+ 
+-    // -----------------------------------------------------------------------
+-    //Up to here
+     @Test
+     public void testRetainAll() {
+         final List<String> base = new ArrayList<>();
+         base.add("A");
+         base.add("B");
+         base.add("C");
+         final List<Object> sub = new ArrayList<>();
+         sub.add("A");
+@@ -1996,38 +1971,32 @@
+         assertTrue(base.contains("AC"));
+         assertTrue(base.contains("BB"));
+         assertTrue(base.contains("CA"));
+ 
+         assertEquals(3, retain.size());
+         assertTrue(retain.contains("AA"));
+         assertTrue(retain.contains("CX"));
+         assertTrue(retain.contains("XZ"));
+-
+-        try {
+-            CollectionUtils.retainAll(null, null, null);
+-            fail("expecting NullPointerException");
+-        } catch (final NullPointerException npe) {
+-        } // this is what we want
+-
+-        try {
+-            CollectionUtils.retainAll(base, retain, null);
+-            fail("expecting NullPointerException");
+-        } catch (final NullPointerException npe) {
+-        } // this is what we want
++        assertAll(
++                () -> assertThrows(NullPointerException.class, () -> CollectionUtils.retainAll(null, null, null),
++                        "expecting NullPointerException"),
++                () -> assertThrows(NullPointerException.class, () -> CollectionUtils.retainAll(base, retain, null),
++                        "expecting NullPointerException")
++        );
+     }
+ 
+     @Test
+     public void testReverseArrayNull() {
+         assertThrows(NullPointerException.class, () -> CollectionUtils.reverseArray(null));
+     }
+ 
+     @Test
+     public void testSize_Array() {
+-        final Object[] objectArray = new Object[0];
++        final Object[] objectArray = {};
+         assertEquals(0, CollectionUtils.size(objectArray));
+ 
+         final String[] stringArray = new String[3];
+         assertEquals(3, CollectionUtils.size(stringArray));
+         stringArray[0] = "a";
+         stringArray[1] = "b";
+         stringArray[2] = "c";
+         assertEquals(3, CollectionUtils.size(stringArray));
+@@ -2048,17 +2017,16 @@
+         final List<String> list = new ArrayList<>();
+         assertEquals(0, CollectionUtils.size(list.iterator()));
+         list.add("a");
+         assertEquals(1, CollectionUtils.size(list.iterator()));
+         list.add("b");
+         assertEquals(2, CollectionUtils.size(list.iterator()));
+     }
+ 
+-    // -----------------------------------------------------------------------
+     @Test
+     public void testSize_List() {
+         List<String> list = null;
+         assertEquals(0, CollectionUtils.size(list));
+         list = new ArrayList<>();
+         assertEquals(0, CollectionUtils.size(list));
+         list.add("a");
+         assertEquals(1, CollectionUtils.size(list));
+@@ -2078,30 +2046,30 @@
+ 
+     @Test
+     public void testSize_Other() {
+         assertThrows(IllegalArgumentException.class, () -> CollectionUtils.size("not a list"));
+     }
+ 
+     @Test
+     public void testSize_PrimitiveArray() {
+-        final int[] intArray = new int[0];
++        final int[] intArray = {};
+         assertEquals(0, CollectionUtils.size(intArray));
+ 
+         final double[] doubleArray = new double[3];
+         assertEquals(3, CollectionUtils.size(doubleArray));
+         doubleArray[0] = 0.0d;
+         doubleArray[1] = 1.0d;
+         doubleArray[2] = 2.5d;
+         assertEquals(3, CollectionUtils.size(doubleArray));
+     }
+ 
+     @Test
+     public void testSizeIsEmpty_Array() {
+-        final Object[] objectArray = new Object[0];
++        final Object[] objectArray = {};
+         assertTrue(CollectionUtils.sizeIsEmpty(objectArray));
+ 
+         final String[] stringArray = new String[3];
+         assertFalse(CollectionUtils.sizeIsEmpty(stringArray));
+         stringArray[0] = "a";
+         stringArray[1] = "b";
+         stringArray[2] = "c";
+         assertFalse(CollectionUtils.sizeIsEmpty(stringArray));
+@@ -2140,34 +2108,30 @@
+     @Test
+     public void testSizeIsEmpty_Map() {
+         final Map<String, String> map = new HashMap<>();
+         assertTrue(CollectionUtils.sizeIsEmpty(map));
+         map.put("1", "a");
+         assertFalse(CollectionUtils.sizeIsEmpty(map));
+     }
+ 
+-    // -----------------------------------------------------------------------
+     @Test
+     public void testSizeIsEmpty_Null() {
+         assertTrue(CollectionUtils.sizeIsEmpty(null));
+     }
+ 
+     @Test
+     public void testSizeIsEmpty_Other() {
+-        try {
+-            CollectionUtils.sizeIsEmpty("not a list");
+-            fail("Expecting IllegalArgumentException");
+-        } catch (final IllegalArgumentException ex) {
+-        }
++        assertThrows(IllegalArgumentException.class, () -> CollectionUtils.sizeIsEmpty("not a list"),
++                "Expecting IllegalArgumentException");
+     }
+ 
+     @Test
+     public void testSizeIsEmpty_PrimitiveArray() {
+-        final int[] intArray = new int[0];
++        final int[] intArray = {};
+         assertTrue(CollectionUtils.sizeIsEmpty(intArray));
+ 
+         final double[] doubleArray = new double[3];
+         assertFalse(CollectionUtils.sizeIsEmpty(doubleArray));
+         doubleArray[0] = 0.0d;
+         doubleArray[1] = 1.0d;
+         doubleArray[2] = 2.5d;
+         assertFalse(CollectionUtils.sizeIsEmpty(doubleArray));
+@@ -2220,25 +2184,21 @@
+         assertNull(freq2.get(5));
+     }
+ 
+     @Test
+     @Deprecated
+     public void testSynchronizedCollection() {
+         final Collection<Object> col = CollectionUtils.synchronizedCollection(new ArrayList<>());
+         assertTrue(col instanceof SynchronizedCollection, "Returned object should be a SynchronizedCollection.");
+-        try {
+-            CollectionUtils.synchronizedCollection(null);
+-            fail("Expecting NullPointerException for null collection.");
+-        } catch (final NullPointerException ex) {
+-            // expected
+-        }
+-    }
+-
+-    // -----------------------------------------------------------------------
++
++        assertThrows(NullPointerException.class, () -> CollectionUtils.synchronizedCollection(null),
++                "Expecting NullPointerException for null collection.");
++    }
++
+     @Test
+     public void testTransformedCollection() {
+         final Transformer<Object, Object> transformer = TransformerUtils.nopTransformer();
+         final Collection<Object> collection = CollectionUtils.transformingCollection(new ArrayList<>(), transformer);
+         assertTrue(collection instanceof TransformedCollection, "returned object should be a TransformedCollection");
+     }
+ 
+     @Test
+@@ -2279,22 +2239,19 @@
+         assertThrows(NullPointerException.class, () -> CollectionUtils.union(list, null));
+     }
+ 
+     @Test
+     @Deprecated
+     public void testUnmodifiableCollection() {
+         final Collection<Object> col = CollectionUtils.unmodifiableCollection(new ArrayList<>());
+         assertTrue(col instanceof UnmodifiableCollection, "Returned object should be a UnmodifiableCollection.");
+-        try {
+-            CollectionUtils.unmodifiableCollection(null);
+-            fail("Expecting NullPointerException for null collection.");
+-        } catch (final NullPointerException ex) {
+-            // expected
+-        }
++
++        assertThrows(NullPointerException.class, () -> CollectionUtils.unmodifiableCollection(null),
++                "Expecting NullPointerException for null collection.");
+     }
+ 
+     @Test
+     public void transform1() {
+         List<Number> list = new ArrayList<>();
+         list.add(1L);
+         list.add(2L);
+         list.add(3L);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -20,16 +20,17 @@
+ import static org.junit.jupiter.api.Assertions.assertAll;
+ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.junit.jupiter.api.Assertions.assertFalse;
+ import static org.junit.jupiter.api.Assertions.assertNull;
+ import static org.junit.jupiter.api.Assertions.assertSame;
+ import static org.junit.jupiter.api.Assertions.assertThrows;
+ import static org.junit.jupiter.api.Assertions.assertTrue;
++import static org.junit.jupiter.api.Assertions.fail;
+ 
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.Enumeration;
+ import java.util.HashMap;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

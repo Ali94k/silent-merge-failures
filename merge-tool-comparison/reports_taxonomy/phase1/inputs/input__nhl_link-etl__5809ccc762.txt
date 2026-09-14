@@ -1,0 +1,515 @@
+UNIT nhl_link-etl__5809ccc762
+repo: nhl_link-etl   merge: 5809ccc76269b6a862d5670835367f18ad2061ae   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: link-move-csv/src/test/java/com/nhl/link/move/runtime/csv/CsvExtractorFactoryTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,24 +1,22 @@
+ package com.nhl.link.move.runtime.csv;
+ 
+ import com.nhl.link.move.BaseRowAttribute;
+-import com.nhl.link.move.Row;
+ import com.nhl.link.move.RowReader;
+ import com.nhl.link.move.connect.StreamConnector;
+ import com.nhl.link.move.runtime.extractor.BaseExtractorFactoryTest;
+ import org.junit.Test;
+ 
+ import java.io.ByteArrayInputStream;
+ import java.io.IOException;
+ import java.util.Iterator;
+ 
+-import static org.junit.Assert.assertEquals;
+-import static org.junit.Assert.assertFalse;
+-import static org.junit.Assert.assertTrue;
++import static org.junit.Assert.*;
++import static org.mockito.Matchers.anyMap;
+ import static org.mockito.Mockito.when;
+ 
+ public class CsvExtractorFactoryTest extends BaseExtractorFactoryTest<StreamConnector, CsvExtractorFactory> {
+ 
+ 	@Override
+ 	protected CsvExtractorFactory createExtractorFactory() {
+ 		return new CsvExtractorFactory();
+ 	}
+@@ -32,45 +30,45 @@
+ 	public void setUpExtractorModel() {
+ 		super.setUpExtractorModel();
+ 		getModel().setAttributes(new BaseRowAttribute(String.class, "k1", "k1", 0),
+ 				new BaseRowAttribute(String.class, "k2", "k2", 1),
+ 				new BaseRowAttribute(String.class, "k3", "k3", 2));
+ 	}
+ 
+ 	private void doCheck(RowReader reader) {
+-		Iterator<Row> rowIt = reader.iterator();
++		Iterator<Object[]> rowIt = reader.iterator();
+ 		for (int i = 1; i <= 2; i++) {
+ 			assertTrue(rowIt.hasNext());
+-			Row row = rowIt.next();
++			Object[] row = rowIt.next();
+ 			for (int j = 1; j <= 3; j++) {
+-				assertEquals("r" + i + "c" + j, row.get(row.attributes()[j - 1]));
++				assertEquals("r" + i + "c" + j, row[j - 1]);
+ 			}
+ 		}
+ 		assertFalse(rowIt.hasNext());
+ 	}
+ 
+ 	@Test
+ 	public void testBasicIntegration() throws IOException {
+-		when(getConnectorMock().getInputStream())
++		when(getConnectorMock().getInputStream(anyMap()))
+ 				.thenReturn(new ByteArrayInputStream("r1c1,r1c2,r1c3\nr2c1,r2c2,r2c3".getBytes()));
+ 		RowReader reader = getExtractorFactory().createExtractor(getConnectorMock(), getModel()).getReader(null);
+ 		doCheck(reader);
+ 	}
+ 
+ 	@Test
+ 	public void testSetDelimiter() throws IOException {
+-		when(getConnectorMock().getInputStream())
++		when(getConnectorMock().getInputStream(anyMap()))
+ 				.thenReturn(new ByteArrayInputStream("r1c1;r1c2;r1c3\nr2c1;r2c2;r2c3".getBytes()));
+ 		getModel().getProperties().put(CsvExtractorFactory.DELIMITER_PROPERTY, ";");
+ 		RowReader reader = getExtractorFactory().createExtractor(getConnectorMock(), getModel()).getReader(null);
+ 		doCheck(reader);
+ 	}
+ 
+ 	@Test
+ 	public void testSetReadFrom() throws IOException {
+-		when(getConnectorMock().getInputStream())
++		when(getConnectorMock().getInputStream(anyMap()))
+ 				.thenReturn(new ByteArrayInputStream("k1,k2,k3\nr1c1,r1c2,r1c3\nr2c1,r2c2,r2c3".getBytes()));
+ 		getModel().getProperties().put(CsvExtractorFactory.READ_FROM_PROPERTY, "2");
+ 		RowReader reader = getExtractorFactory().createExtractor(getConnectorMock(), getModel()).getReader(null);
+ 		doCheck(reader);
+ 	}
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -55,22 +55,22 @@
+ 		RowReader reader = getExtractorFactory().createExtractor(getConnectorMock(), getModel()).getReader(null);
+ 		doCheck(reader);
+ 	}
+ 
+ 	@Test
+ 	public void testSetDelimiter() throws IOException {
+ 		when(getConnectorMock().getInputStream())
+ 				.thenReturn(new ByteArrayInputStream("r1c1;r1c2;r1c3\nr2c1;r2c2;r2c3".getBytes()));
+-		getModel().getProperties().put(CsvExtractorFactory.DELIMITER_PROPERTY, ";");
++		getModel().addProperty(CsvExtractorFactory.DELIMITER_PROPERTY, ";");
+ 		RowReader reader = getExtractorFactory().createExtractor(getConnectorMock(), getModel()).getReader(null);
+ 		doCheck(reader);
+ 	}
+ 
+ 	@Test
+ 	public void testSetReadFrom() throws IOException {
+ 		when(getConnectorMock().getInputStream())
+ 				.thenReturn(new ByteArrayInputStream("k1,k2,k3\nr1c1,r1c2,r1c3\nr2c1,r2c2,r2c3".getBytes()));
+-		getModel().getProperties().put(CsvExtractorFactory.READ_FROM_PROPERTY, "2");
++		getModel().addProperty(CsvExtractorFactory.READ_FROM_PROPERTY, "2");
+ 		RowReader reader = getExtractorFactory().createExtractor(getConnectorMock(), getModel()).getReader(null);
+ 		doCheck(reader);
+ 	}
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package com.nhl.link.move.runtime.csv;
+
+import com.nhl.link.move.BaseRowAttribute;
+import com.nhl.link.move.RowReader;
+import com.nhl.link.move.connect.StreamConnector;
+import com.nhl.link.move.runtime.extractor.BaseExtractorFactoryTest;
+import org.junit.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.util.Iterator;
+
+import static org.junit.Assert.*;
+import static org.mockito.Matchers.anyMap;
+import static org.mockito.Mockito.when;
+
+public class CsvExtractorFactoryTest extends BaseExtractorFactoryTest<StreamConnector, CsvExtractorFactory> {
+
+	@Override
+	protected CsvExtractorFactory createExtractorFactory() {
+		return new CsvExtractorFactory();
+	}
+
+	@Override
+	protected Class<StreamConnector> getConnectorType() {
+		return StreamConnector.class;
+	}
+
+	@Override
+	public void setUpExtractorModel() {
+		super.setUpExtractorModel();
+		getModel().setAttributes(new BaseRowAttribute(String.class, "k1", "k1", 0),
+				new BaseRowAttribute(String.class, "k2", "k2", 1),
+				new BaseRowAttribute(String.class, "k3", "k3", 2));
+	}
+
+	private void doCheck(RowReader reader) {
+		Iterator<Object[]> rowIt = reader.iterator();
+		for (int i = 1; i <= 2; i++) {
+			assertTrue(rowIt.hasNext());
+			Object[] row = rowIt.next();
+			for (int j = 1; j <= 3; j++) {
+				assertEquals("r" + i + "c" + j, row[j - 1]);
+			}
+		}
+		assertFalse(rowIt.hasNext());
+	}
+
+	@Test
+	public void testBasicIntegration() throws IOException {
+		when(getConnectorMock().getInputStream(anyMap()))
+				.thenReturn(new ByteArrayInputStream("r1c1,r1c2,r1c3\nr2c1,r2c2,r2c3".getBytes()));
+		RowReader reader = getExtractorFactory().createExtractor(getConnectorMock(), getModel()).getReader(null);
+		doCheck(reader);
+	}
+
+	@Test
+	public void testSetDelimiter() throws IOException {
+		when(getConnectorMock().getInputStream(anyMap()))
+				.thenReturn(new ByteArrayInputStream("r1c1;r1c2;r1c3\nr2c1;r2c2;r2c3".getBytes()));
+		getModel().addProperty(CsvExtractorFactory.DELIMITER_PROPERTY, ";");
+		RowReader reader = getExtractorFactory().createExtractor(getConnectorMock(), getModel()).getReader(null);
+		doCheck(reader);
+	}
+
+	@Test
+	public void testSetReadFrom() throws IOException {
+		when(getConnectorMock().getInputStream(anyMap()))
+				.thenReturn(new ByteArrayInputStream("k1,k2,k3\nr1c1,r1c2,r1c3\nr2c1,r2c2,r2c3".getBytes()));
+		getModel().addProperty(CsvExtractorFactory.READ_FROM_PROPERTY, "2");
+		RowReader reader = getExtractorFactory().createExtractor(getConnectorMock(), getModel()).getReader(null);
+		doCheck(reader);
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: link-move-json/src/main/java/com/nhl/link/move/runtime/json/JsonExtractorFactory.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -5,54 +5,59 @@
+ import com.nhl.link.move.extractor.Extractor;
+ import com.nhl.link.move.extractor.model.ExtractorModel;
+ import com.nhl.link.move.runtime.extractor.IExtractorFactory;
+ import com.nhl.link.move.runtime.json.query.JsonQuery;
+ import com.nhl.link.move.runtime.json.query.QueryCompiler;
+ 
+ public class JsonExtractorFactory implements IExtractorFactory<StreamConnector> {
+ 
+-	private static final String JSON_EXTRACTOR_TYPE = "json";
+     public static final String JSON_QUERY_PROPERTY = "extractor.json.path";
++    private static final String JSON_EXTRACTOR_TYPE = "json";
+ 
+     private IJacksonService jacksonService;
+-	private QueryCompiler compiler;
++    private QueryCompiler compiler;
+ 
+-	public JsonExtractorFactory() {
++    public JsonExtractorFactory() {
+         jacksonService = new JacksonService();
+-		compiler = new QueryCompiler();
+-	}
++        compiler = new QueryCompiler();
++    }
+ 
+-	@Override
+-	public String getExtractorType() {
+-		return JSON_EXTRACTOR_TYPE;
+-	}
++    @Override
++    public String getExtractorType() {
++        return JSON_EXTRACTOR_TYPE;
++    }
+ 
+-	@Override
+-	public Class<StreamConnector> getConnectorType() {
+-		return StreamConnector.class;
+-	}
++    @Override
++    public Class<StreamConnector> getConnectorType() {
++        return StreamConnector.class;
++    }
+ 
+-	@Override
+-	public Extractor createExtractor(StreamConnector connector, ExtractorModel model) {
+-        return new JsonExtractor(jacksonService, connector, mapToJsonAttributes(model.getAttributes()),
+-				getRootQuery(model));
+-	}
++    @Override
++    public Extractor createExtractor(StreamConnector connector, ExtractorModel model) {
++        return new JsonExtractor(
++                jacksonService,
++                connector,
++                mapToJsonAttributes(model.getAttributes()),
++                getRootQuery(model));
++    }
+ 
+-	private JsonQuery getRootQuery(ExtractorModel model) {
+-		String query = model.getProperties().get(JSON_QUERY_PROPERTY);
+-		if (query == null) {
+-			throw new IllegalArgumentException(String.format(
++    private JsonQuery getRootQuery(ExtractorModel model) {
++        String query = model.getProperties().get(JSON_QUERY_PROPERTY);
++
++        // TODO: should we just use "$" for root instead of throwing?
++        if (query == null) {
++            throw new IllegalArgumentException(String.format(
+                     "Missing required property for key '%s'", JSON_QUERY_PROPERTY));
+-		}
+-		return compiler.compile(query);
+-	}
++        }
++        return compiler.compile(query);
++    }
+ 
+-	private JsonRowAttribute[] mapToJsonAttributes(RowAttribute[] attributes) {
+-		int len = attributes.length;
+-		JsonRowAttribute[] jsonAttributes = new JsonRowAttribute[len];
++    private JsonRowAttribute[] mapToJsonAttributes(RowAttribute[] attributes) {
++        int len = attributes.length;
++        JsonRowAttribute[] jsonAttributes = new JsonRowAttribute[len];
+ 
+-		for (int i = 0; i < len; i++) {
+-			jsonAttributes[i] = new JsonRowAttribute(attributes[i], compiler);
+-		}
+-		return jsonAttributes;
+-	}
++        for (int i = 0; i < len; i++) {
++            jsonAttributes[i] = new JsonRowAttribute(attributes[i], compiler);
++        }
++        return jsonAttributes;
++    }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -33,17 +33,17 @@
+ 
+ 	@Override
+ 	public Extractor createExtractor(StreamConnector connector, ExtractorModel model) {
+         return new JsonExtractor(jacksonService, connector, mapToJsonAttributes(model.getAttributes()),
+ 				getRootQuery(model));
+ 	}
+ 
+ 	private JsonQuery getRootQuery(ExtractorModel model) {
+-		String query = model.getProperties().get(JSON_QUERY_PROPERTY);
++		String query = model.getSingletonProperty(JSON_QUERY_PROPERTY);
+ 		if (query == null) {
+ 			throw new IllegalArgumentException(String.format(
+                     "Missing required property for key '%s'", JSON_QUERY_PROPERTY));
+ 		}
+ 		return compiler.compile(query);
+ 	}
+ 
+ 	private JsonRowAttribute[] mapToJsonAttributes(RowAttribute[] attributes) {
+--- MERGED RESULT (mergiraf; full) ---
+package com.nhl.link.move.runtime.json;
+
+import com.nhl.link.move.RowAttribute;
+import com.nhl.link.move.connect.StreamConnector;
+import com.nhl.link.move.extractor.Extractor;
+import com.nhl.link.move.extractor.model.ExtractorModel;
+import com.nhl.link.move.runtime.extractor.IExtractorFactory;
+import com.nhl.link.move.runtime.json.query.JsonQuery;
+import com.nhl.link.move.runtime.json.query.QueryCompiler;
+
+public class JsonExtractorFactory implements IExtractorFactory<StreamConnector> {
+
+    public static final String JSON_QUERY_PROPERTY = "extractor.json.path";
+    private static final String JSON_EXTRACTOR_TYPE = "json";
+
+    private IJacksonService jacksonService;
+    private QueryCompiler compiler;
+
+    public JsonExtractorFactory() {
+        jacksonService = new JacksonService();
+        compiler = new QueryCompiler();
+    }
+
+    @Override
+    public String getExtractorType() {
+        return JSON_EXTRACTOR_TYPE;
+    }
+
+    @Override
+    public Class<StreamConnector> getConnectorType() {
+        return StreamConnector.class;
+    }
+
+    @Override
+    public Extractor createExtractor(StreamConnector connector, ExtractorModel model) {
+        return new JsonExtractor(
+                jacksonService,
+                connector,
+                mapToJsonAttributes(model.getAttributes()),
+                getRootQuery(model));
+    }
+
+    private JsonQuery getRootQuery(ExtractorModel model) {
+        String query = model.getSingletonProperty(JSON_QUERY_PROPERTY);
+
+        // TODO: should we just use "$" for root instead of throwing?
+        if (query == null) {
+            throw new IllegalArgumentException(String.format(
+                    "Missing required property for key '%s'", JSON_QUERY_PROPERTY));
+        }
+        return compiler.compile(query);
+    }
+
+    private JsonRowAttribute[] mapToJsonAttributes(RowAttribute[] attributes) {
+        int len = attributes.length;
+        JsonRowAttribute[] jsonAttributes = new JsonRowAttribute[len];
+
+        for (int i = 0; i < len; i++) {
+            jsonAttributes[i] = new JsonRowAttribute(attributes[i], compiler);
+        }
+        return jsonAttributes;
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: link-move/src/test/java/com/nhl/link/move/runtime/xml/XmlExtractorFactoryTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -4,16 +4,17 @@
+ import com.nhl.link.move.runtime.extractor.BaseExtractorFactoryTest;
+ 
+ import org.junit.Test;
+ 
+ import java.io.ByteArrayInputStream;
+ import java.io.IOException;
+ 
+ import static org.junit.Assert.fail;
++import static org.mockito.Matchers.anyMap;
+ import static org.mockito.Mockito.when;
+ 
+ public class XmlExtractorFactoryTest extends BaseExtractorFactoryTest<StreamConnector, XmlExtractorFactory> {
+ 	private static final String XML = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<test></test>";
+ 
+ 	@Override
+ 	protected XmlExtractorFactory createExtractorFactory() {
+ 		return new XmlExtractorFactory();
+@@ -23,17 +24,17 @@
+ 	protected Class<StreamConnector> getConnectorType() {
+ 		return StreamConnector.class;
+ 	}
+ 
+ 	@Override
+ 	public void setUpExtractorFactory() {
+ 		super.setUpExtractorFactory();
+ 		try {
+-			when(getConnectorMock().getInputStream())
++			when(getConnectorMock().getInputStream(anyMap()))
+ 					.thenReturn(new ByteArrayInputStream(XML.getBytes()));
+ 		} catch (IOException e) {
+ 			fail("Unexpected IO exception");
+ 		}
+ 	}
+ 
+ 	@Override
+ 	public void setUpExtractorModel() {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -33,17 +33,17 @@
+ 		} catch (IOException e) {
+ 			fail("Unexpected IO exception");
+ 		}
+ 	}
+ 
+ 	@Override
+ 	public void setUpExtractorModel() {
+ 		super.setUpExtractorModel();
+-		getModel().getProperties().put(XmlExtractorFactory.XPATH_EXPRESSION_PROPERTY, "/test");
++		getModel().addProperty(XmlExtractorFactory.XPATH_EXPRESSION_PROPERTY, "/test");
+ 	}
+ 
+ 	@Test(expected = IllegalArgumentException.class)
+ 	public void testCreateExtractorWithEmptyXPathExpression() {
+ 		getModel().getProperties().remove(XmlExtractorFactory.XPATH_EXPRESSION_PROPERTY);
+ 		getExtractorFactory().createExtractor(getConnectorMock(), getModel());
+ 	}
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package com.nhl.link.move.runtime.xml;
+
+import com.nhl.link.move.connect.StreamConnector;
+import com.nhl.link.move.runtime.extractor.BaseExtractorFactoryTest;
+
+import org.junit.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.anyMap;
+import static org.mockito.Mockito.when;
+
+public class XmlExtractorFactoryTest extends BaseExtractorFactoryTest<StreamConnector, XmlExtractorFactory> {
+	private static final String XML = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<test></test>";
+
+	@Override
+	protected XmlExtractorFactory createExtractorFactory() {
+		return new XmlExtractorFactory();
+	}
+
+	@Override
+	protected Class<StreamConnector> getConnectorType() {
+		return StreamConnector.class;
+	}
+
+	@Override
+	public void setUpExtractorFactory() {
+		super.setUpExtractorFactory();
+		try {
+			when(getConnectorMock().getInputStream(anyMap()))
+					.thenReturn(new ByteArrayInputStream(XML.getBytes()));
+		} catch (IOException e) {
+			fail("Unexpected IO exception");
+		}
+	}
+
+	@Override
+	public void setUpExtractorModel() {
+		super.setUpExtractorModel();
+		getModel().addProperty(XmlExtractorFactory.XPATH_EXPRESSION_PROPERTY, "/test");
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testCreateExtractorWithEmptyXPathExpression() {
+		getModel().getProperties().remove(XmlExtractorFactory.XPATH_EXPRESSION_PROPERTY);
+		getExtractorFactory().createExtractor(getConnectorMock(), getModel());
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

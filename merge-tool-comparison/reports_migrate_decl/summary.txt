@@ -1,0 +1,51 @@
+# MIGRATE_DECL W3 gate — Weave vs Mergiraf vs git   (n=38 distinct scenarios)
+# pools: data/scenarios, data/scenarios_ci, data/scenarios_expanded, data/scenarios_spork
+
+## Aggregate — oracle=normalized
+tool              TP  FP  TN  FN  CR      precision (Wilson95)      clean-correct rate  mean_rt_s
+git-merge-file    12   0  26   0   0      1.000 [0.757, 1.000]    0.316 [0.191, 0.475]       0.02
+mergiraf          19   7  12   0   0      0.731 [0.539, 0.863]    0.500 [0.348, 0.652]       0.42
+weave             11   0  27   0   0      1.000 [0.741, 1.000]    0.289 [0.170, 0.448]       0.32
+
+## Aggregate — oracle=raw
+tool              TP  FP  TN  FN  CR      precision (Wilson95)      clean-correct rate  mean_rt_s
+git-merge-file    11   1  26   0   0      0.917 [0.646, 0.985]    0.289 [0.170, 0.448]       0.02
+mergiraf          12  14  12   0   0      0.462 [0.288, 0.645]    0.316 [0.191, 0.475]       0.42
+weave              9   2  27   0   0      0.818 [0.523, 0.949]    0.237 [0.130, 0.392]       0.32
+
+## Paired Weave vs Mergiraf — clean-correct (TP) outcomes, normalized oracle
+  both correct           : 11
+  Mergiraf only correct  : 8   (Weave failed to clean-merge these)
+  Weave only correct     : 0   (the W3 win cell — Weave beats Mergiraf here)
+  neither correct        : 19
+  McNemar exact p (discordant 8 vs 0) = 0.0078
+
+## Cross-tab — Mergiraf class (rows) x Weave class (cols), normalized
+  mg\wv       TP    FP    TN    FN CRASH
+  TP          11     0     8     0     0
+  FP           0     0     7     0     0
+  TN           0     0    12     0     0
+  FN           0     0     0     0     0
+  CRASH        0     0     0     0     0
+  (note: Weave TN = entity-level conflict / abstention, not a wrong merge)
+
+## Comparator-gap calibration — Mergiraf dev-class (normalized) x Schesch test-suite label
+   (test label is WHOLE-MERGE Mergiraf from result_adjusted.csv; single-file proxy caveat noted by num_diff_files)
+  mg-class    Tests_passed  Tests_failed  Merge_failed
+  TP                    17             1             1
+  FP                     5             0             2
+  TN                     5             2             5
+  unjoined scenarios: 0
+  -> of Mergiraf dev-FPs: 0 truly fail tests (real silent errors), 5 pass tests (valid-alt comparator-gap), 2 whole-merge Merge_failed (granularity).
+
+## Discordant scenarios (Mergiraf vs Weave clean-correct differ, normalized)
+  scenario                                             mg   wv  git       mg_test nfiles
+  dakusui_jcunit__c3ec977b19__src_main_java_com_gith   TP   TN   TN  Tests_passed   32.0
+  davidmoten_rxjava-file__c7c2b3aa06__src_main_java_   TP   TN   TN  Tests_passed    7.0
+  helun_ektorp__95fdd42218__org.ektorp.android_src_m   TP   TN   TN  Tests_passed   17.0
+  jri_deepamehta__117efbac7c__modules_dm4-core_src_m   TP   TN   TP  Tests_passed  283.0
+  mongobee_mongobee__abf507930c__src_main_java_com_g   TP   TN   TN  Tests_passed   11.0
+  openpnp_openpnp__7be07e17b3__src_main_java_org_ope   TP   TN   TP  Tests_passed   55.0
+  pragmatists_junitparams__8f6c13ae04__src_main_java   TP   TN   TN  Tests_passed   18.0
+  segmentio_analytics-java__b5a96236e4__analytics_sr   TP   TN   TN  Merge_failed   24.0
+

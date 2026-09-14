@@ -1,0 +1,378 @@
+UNIT sander2798_enderstone__b515bac1b0
+repo: sander2798_enderstone   merge: b515bac1b027442fee058b69e9c56f1d7941d55a   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/org/enderstone/server/packet/codec/MinecraftServerCodex.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -13,22 +13,27 @@
+  *     GNU General Public License for more details.
+  *
+  *     You should have received a copy of the GNU General Public License
+  *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ package org.enderstone.server.packet.codec;
+ 
+ import io.netty.buffer.ByteBuf;
++import io.netty.channel.ChannelFutureListener;
+ import io.netty.channel.ChannelHandlerContext;
+ import io.netty.handler.codec.ByteToMessageCodec;
+ import java.io.IOException;
++import java.net.InetAddress;
++import java.net.InetSocketAddress;
+ import java.util.List;
++import java.util.Map;
+ import org.enderstone.server.EnderLogger;
+ import org.enderstone.server.api.messages.Message;
++import org.enderstone.server.api.messages.SimpleMessage;
+ import org.enderstone.server.packet.HandshakeState;
+ import org.enderstone.server.packet.NetworkManager;
+ import org.enderstone.server.packet.Packet;
+ import org.enderstone.server.packet.PacketDataWrapper;
+ import org.enderstone.server.packet.PacketHandshake;
+ import org.enderstone.server.packet.PacketManager;
+ import org.enderstone.server.packet.login.PacketOutLoginPlayerDisconnect;
+ import org.enderstone.server.packet.play.PacketOutPlayerDisconnect;
+@@ -36,20 +41,25 @@
+ /**
+  *
+  * @author Fernando
+  */
+ public class MinecraftServerCodex extends ByteToMessageCodec<Packet> {
+ 
+ 	HandshakeState state = HandshakeState.NEW;
+ 	NetworkManager manager;
++	private final Map<InetAddress, Long> connectionThrottlingMap;
++	private final long maxConnectionThrottle;
+ 
+-	public MinecraftServerCodex(NetworkManager manager) {
++	public MinecraftServerCodex(NetworkManager manager, 
++		Map<InetAddress, Long> connectionThrottlingMap, long maxConnectionThrottle) {
+ 		super(Packet.class);
+ 		this.manager = manager;
++		this.connectionThrottlingMap = connectionThrottlingMap;
++		this.maxConnectionThrottle = maxConnectionThrottle;
+ 	}
+ 
+ 	@Override
+ 	public boolean acceptOutboundMessage(Object msg) throws Exception {
+ 		return msg instanceof Packet;
+ 	}
+ 
+ 	@Override
+@@ -97,16 +107,28 @@
+ 						PacketHandshake packet = (PacketHandshake) PacketManager.handshake.newInstance();
+ 						packet.read(buf);
+ 						switch (packet.getNextState()) {
+ 							case 1:
+ 								state = HandshakeState.STATUS;
+ 								break;
+ 							case 2:
+ 								state = HandshakeState.LOGIN;
++								InetAddress address = ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress();
++								EnderLogger.info("Incomming connection: " + address.toString());
++								if (this.connectionThrottlingMap.containsKey(address)) {
++									long lastLogin = this.connectionThrottlingMap.get(address);
++									if (System.currentTimeMillis() - lastLogin < maxConnectionThrottle) {
++										ctx.write(new PacketOutLoginPlayerDisconnect(
++											new SimpleMessage("Connection throtled!")))
++											.addListener(ChannelFutureListener.CLOSE);
++										return;
++									}
++								}
++								this.connectionThrottlingMap.put(address, System.currentTimeMillis());
+ 								break;
+ 							case 3:
+ 								state = HandshakeState.PLAY;
+ 								break;
+ 							default:
+ 								throw new IOException("Invalid packet");
+ 						}
+ 						in = packet;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -15,19 +15,20 @@
+  *     You should have received a copy of the GNU General Public License
+  *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  */
+ package org.enderstone.server.packet.codec;
+ 
+ import io.netty.buffer.ByteBuf;
+ import io.netty.channel.ChannelHandlerContext;
+ import io.netty.handler.codec.ByteToMessageCodec;
++
+ import java.io.IOException;
+ import java.util.List;
+-import org.enderstone.server.EnderLogger;
++
+ import org.enderstone.server.api.messages.Message;
+ import org.enderstone.server.packet.HandshakeState;
+ import org.enderstone.server.packet.NetworkManager;
+ import org.enderstone.server.packet.Packet;
+ import org.enderstone.server.packet.PacketDataWrapper;
+ import org.enderstone.server.packet.PacketHandshake;
+ import org.enderstone.server.packet.PacketManager;
+ import org.enderstone.server.packet.login.PacketOutLoginPlayerDisconnect;
+@@ -105,17 +106,16 @@
+ 								break;
+ 							case 3:
+ 								state = HandshakeState.PLAY;
+ 								break;
+ 							default:
+ 								throw new IOException("Invalid packet");
+ 						}
+ 						in = packet;
+-						
+ 					}
+ 					break;
+ 					default: {
+ 						Packet packet = PacketManager.getPacketInstance(id, state);
+ 						if (packet == null)
+ 							throw new DecodeException("Packet decode failed:"
+ 									+ "\nPacket ID: 0x" + Integer.toHexString(id) + ""
+ 									+ "\nHandshake state: " + this.state
+@@ -136,20 +136,20 @@
+ 			}
+ 			buf.discardSomeReadBytes();
+ 		}
+ 	}
+ 
+ 	public void setState(HandshakeState state) {
+ 		this.state = state;
+ 	}
+-	
+-	public Packet getDisconnectionPacket(Message m)
+-	{
+-		switch(this.state)
+-		{
+-			case LOGIN: return new PacketOutLoginPlayerDisconnect(m);
+-			case PLAY: return new PacketOutPlayerDisconnect(m);
++
++	public Packet getDisconnectionPacket(Message m) {
++		switch (this.state) {
++		case LOGIN:
++			return new PacketOutLoginPlayerDisconnect(m);
++		case PLAY:
++			return new PacketOutPlayerDisconnect(m);
+ 		default:
+ 			return null;
+ 		}
+ 	}
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/* 
+ * Enderstone
+ * Copyright (C) 2014 Sander Gielisse and Fernando van Loenhout
+ *
+ *     This program is free software: you can redistribute it and/or modify
+ *     it under the terms of the GNU General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ *
+ *     This program is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ *     You should have received a copy of the GNU General Public License
+ *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.enderstone.server.packet.codec;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.ByteToMessageCodec;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.List;
+import java.util.Map;
+import org.enderstone.server.api.messages.Message;
+import org.enderstone.server.api.messages.SimpleMessage;
+import org.enderstone.server.packet.HandshakeState;
+import org.enderstone.server.packet.NetworkManager;
+import org.enderstone.server.packet.Packet;
+import org.enderstone.server.packet.PacketDataWrapper;
+import org.enderstone.server.packet.PacketHandshake;
+import org.enderstone.server.packet.PacketManager;
+import org.enderstone.server.packet.login.PacketOutLoginPlayerDisconnect;
+import org.enderstone.server.packet.play.PacketOutPlayerDisconnect;
+
+/**
+ *
+ * @author Fernando
+ */
+public class MinecraftServerCodex extends ByteToMessageCodec<Packet> {
+
+	HandshakeState state = HandshakeState.NEW;
+	NetworkManager manager;
+	private final Map<InetAddress, Long> connectionThrottlingMap;
+	private final long maxConnectionThrottle;
+
+	public MinecraftServerCodex(NetworkManager manager, 
+		Map<InetAddress, Long> connectionThrottlingMap, long maxConnectionThrottle) {
+		super(Packet.class);
+		this.manager = manager;
+		this.connectionThrottlingMap = connectionThrottlingMap;
+		this.maxConnectionThrottle = maxConnectionThrottle;
+	}
+
+	@Override
+	public boolean acceptOutboundMessage(Object msg) throws Exception {
+		return msg instanceof Packet;
+	}
+
+	@Override
+	protected void encode(ChannelHandlerContext ctx, Packet packet, ByteBuf buf) throws IOException {
+		packet.writeFully(new PacketDataWrapper(manager, buf));
+	}
+
+	@Override
+	protected void decode(ChannelHandlerContext ctx, ByteBuf buffer, List<Object> out) throws DecodeException {
+		PacketDataWrapper buf = new PacketDataWrapper(manager, buffer);
+		while (buf.readableBytes() > 0) {
+			buf.markReaderIndex();
+			int readBytes = buf.readableBytes();
+			int length = 0;
+			{
+				int bytes = 0;
+				byte in;
+				while (true) {
+					if (readBytes < 1) {
+						buf.resetReaderIndex();
+						return;
+					}
+					in = buf.readByte();
+
+					length |= (in & 0x7F) << (bytes++ * 7);
+
+					if (bytes > 5) {
+						throw new DecodeException("VarInt too big");
+					}
+
+					if ((in & 0x80) != 0x80) {
+						break;
+					}
+				}
+			}
+			if (buf.readableBytes() < length) {
+				buf.resetReaderIndex();
+				return;
+			}
+			int id = buf.readVarInt();
+			Packet in;
+			try {
+				switch (state) {
+					case NEW: {
+						PacketHandshake packet = (PacketHandshake) PacketManager.handshake.newInstance();
+						packet.read(buf);
+						switch (packet.getNextState()) {
+							case 1:
+								state = HandshakeState.STATUS;
+								break;
+							case 2:
+								state = HandshakeState.LOGIN;
+								InetAddress address = ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress();
+								EnderLogger.info("Incomming connection: " + address.toString());
+								if (this.connectionThrottlingMap.containsKey(address)) {
+									long lastLogin = this.connectionThrottlingMap.get(address);
+									if (System.currentTimeMillis() - lastLogin < maxConnectionThrottle) {
+										ctx.write(new PacketOutLoginPlayerDisconnect(
+											new SimpleMessage("Connection throtled!")))
+											.addListener(ChannelFutureListener.CLOSE);
+										return;
+									}
+								}
+								this.connectionThrottlingMap.put(address, System.currentTimeMillis());
+								break;
+							case 3:
+								state = HandshakeState.PLAY;
+								break;
+							default:
+								throw new IOException("Invalid packet");
+						}
+						in = packet;
+					}
+					break;
+					default: {
+						Packet packet = PacketManager.getPacketInstance(id, state);
+						if (packet == null)
+							throw new DecodeException("Packet decode failed:"
+									+ "\nPacket ID: 0x" + Integer.toHexString(id) + ""
+									+ "\nHandshake state: " + this.state
+									+ "\nPacket size: " + length
+									+ "\nReason: Unknown packet");
+						packet.read(buf);
+						in = packet;
+					}
+					break;
+				}
+				out.add(in);
+			} catch (IOException | InstantiationException | IllegalAccessException ex) {
+				throw new DecodeException("Packet decode failed:"
+						+ "\nPacket ID: 0x" + Integer.toHexString(id) + ""
+						+ "\nHandshake state: " + this.state
+						+ "\nPacket size: " + length
+						+ "\nReason: " + ex.getMessage(), ex);
+			}
+			buf.discardSomeReadBytes();
+		}
+	}
+
+	public void setState(HandshakeState state) {
+		this.state = state;
+	}
+
+	public Packet getDisconnectionPacket(Message m) {
+		switch (this.state) {
+		case LOGIN:
+			return new PacketOutLoginPlayerDisconnect(m);
+		case PLAY:
+			return new PacketOutPlayerDisconnect(m);
+		default:
+			return null;
+		}
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -22,16 +22,18 @@
+ import io.netty.channel.ChannelHandlerContext;
+ import io.netty.handler.codec.ByteToMessageCodec;
+ 
+ import java.io.IOException;
+ import java.net.InetAddress;
+ import java.net.InetSocketAddress;
+ import java.util.List;
+ import java.util.Map;
++
++import org.enderstone.server.EnderLogger;
+ import org.enderstone.server.api.messages.Message;
+ import org.enderstone.server.api.messages.SimpleMessage;
+ import org.enderstone.server.packet.HandshakeState;
+ import org.enderstone.server.packet.NetworkManager;
+ import org.enderstone.server.packet.Packet;
+ import org.enderstone.server.packet.PacketDataWrapper;
+ import org.enderstone.server.packet.PacketHandshake;
+ import org.enderstone.server.packet.PacketManager;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

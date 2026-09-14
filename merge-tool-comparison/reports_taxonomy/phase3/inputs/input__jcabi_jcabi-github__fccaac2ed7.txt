@@ -1,0 +1,1170 @@
+UNIT jcabi_jcabi-github__fccaac2ed7
+repo: jcabi_jcabi-github   merge: fccaac2ed7cdbf3a9dd7a558acaee05140805dcc   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: src/main/java/com/jcabi/github/mock/MkContents.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -215,17 +215,17 @@
+         }
+         if (json.containsKey("author")) {
+             final JsonObject author = json.getJsonObject("author");
+             commit.add("author")
+                 .add("email").set(author.getString("email")).up()
+                 .add("name").set(author.getString("name")).up();
+         }
+         this.storage.apply(commit);
+-        return new MkRepoCommit(this.repo(), sha);
++        return new MkRepoCommit(this.storage, this.repo(), sha);
+     }
+ 
+     /**
+      * Generate a random fake SHA hex string.
+      *
+      * @return Fake SHA string.
+      */
+     private static String fakeSha() {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -32,18 +32,18 @@
+ import com.jcabi.aspects.Immutable;
+ import com.jcabi.aspects.Loggable;
+ import com.jcabi.github.Content;
+ import com.jcabi.github.Contents;
+ import com.jcabi.github.Coordinates;
+ import com.jcabi.github.Repo;
+ import com.jcabi.github.RepoCommit;
+ import java.io.IOException;
+-import java.util.Map;
+ import javax.json.JsonObject;
++import javax.validation.constraints.NotNull;
+ import lombok.EqualsAndHashCode;
+ import lombok.ToString;
+ import org.apache.commons.lang3.RandomStringUtils;
+ import org.xembly.Directives;
+ 
+ /**
+  * Mock Github contents.
+  *
+@@ -75,46 +75,56 @@
+ 
+     /**
+      * Public ctor.
+      * @param stg Storage
+      * @param login User to login
+      * @param rep Repo
+      * @throws IOException If there is any I/O problem
+      */
+-    public MkContents(final MkStorage stg, final String login,
+-        final Coordinates rep) throws IOException {
++    public MkContents(
++        @NotNull(message = "stg can't be NULL") final MkStorage stg,
++        @NotNull(message = "login can't be NULL") final String login,
++        @NotNull(message = "rep can't be NULL") final Coordinates rep
++    ) throws IOException {
+         this.storage = stg;
+         this.self = login;
+         this.coords = rep;
+         this.storage.apply(
+             new Directives().xpath(
+                 String.format("/github/repos/repo[@coords='%s']", this.coords)
+             ).addIf("contents").up().addIf("commits")
+         );
+     }
+ 
+     @Override
++    @NotNull(message = "Repo is never NULL")
+     public Repo repo() {
+         return new MkRepo(this.storage, this.self, this.coords);
+     }
+ 
+     @Override
++    @NotNull(message = "the content is never NULL")
+     public Content readme() throws IOException {
+         return new MkContent(this.storage, this.self, this.coords, "README.md");
+     }
+ 
+     @Override
+-    public Content readme(final String branch) {
++    @NotNull(message = "content is never NULL")
++    public Content readme(@NotNull(message = "branch can't be NULL")
++        final String branch
++    ) {
+         throw new UnsupportedOperationException("Readme not yet implemented.");
+     }
+ 
+     @Override
+-    public Content create(final JsonObject json)
+-        throws IOException {
++    @NotNull(message = "created content is never NULL")
++    public Content create(
++        @NotNull(message = "json can't be NULL") final JsonObject json
++    ) throws IOException {
+         this.storage.lock();
+         // @checkstyle MultipleStringLiterals (40 lines)
+         final String path = json.getString("path");
+         try {
+             this.storage.apply(
+                 new Directives().xpath(this.xpath()).add("content")
+                     .add("name").set(path).up()
+                     .add("path").set(path).up()
+@@ -129,81 +139,88 @@
+             this.commit(json);
+         } finally {
+             this.storage.unlock();
+         }
+         return new MkContent(this.storage, this.self, this.coords, path);
+     }
+ 
+     @Override
+-    public Content get(final String path, final String ref)
+-        throws IOException {
++    @NotNull(message = "retrieved content is never NULL")
++    public Content get(
++        @NotNull(message = "path can't be NULL") final String path,
++        @NotNull(message = "ref can't be NULL") final String ref
++    ) throws IOException {
+         return new MkContent(this.storage, this.self, this.coords, path);
+     }
+ 
+-    // @checkstyle ParameterNumberCheck (9 lines)
+-    @Override
++    @Override
++    @NotNull(message = "commit is never NULL")
+     public RepoCommit remove(
+-        final String path,
+-        final String message,
+-        final String sha,
+-        final String branch,
+-        final Map<String, String> committer,
+-        final Map<String, String> author)
+-        throws IOException {
++        @NotNull(message = "content should not be NULL")
++        final JsonObject content
++    ) throws IOException {
+         throw new UnsupportedOperationException("Remove not yet implemented.");
+     }
+ 
+     /**
+      * Updates a file.
+      * @param path The content path.
+      * @param json JSON object containing updates to the content.
+      * @return Commit related to this update.
+      * @throws IOException If any I/O problem occurs.
+      */
+     @Override
+-    public RepoCommit update(final String path, final JsonObject json)
+-        throws IOException {
++    @NotNull(message = "updated commit is never NULL")
++    public RepoCommit update(
++        @NotNull(message = "path cannot be NULL") final String path,
++        @NotNull(message = "json should not be NULL") final JsonObject json
++    ) throws IOException {
+         try {
+             new JsonPatch(this.storage).patch(path, json);
+             return this.commit(json);
+         } finally {
+             this.storage.unlock();
+         }
+     }
+ 
+     /**
+      * XPath of this element in XML tree.
+      * @return The XPath
+      */
++    @NotNull(message = "Xpath is never NULL")
+     private String xpath() {
+         return String.format(
+             "/github/repos/repo[@coords='%s']/contents",
+             this.coords
+         );
+     }
+ 
+     /**
+      * Xpath of the commits element in XML tree.
+      * @return Xpath
+      */
++    @NotNull(message = "commit xpath is never NULL")
+     private String commitXpath() {
+         return String.format(
+             "/github/repos/repo[@coords='%s']/commits",
+             this.coords
+         );
+     }
+ 
+     /**
+      * XML Directives for commit creation.
+      * @param json Source
+      * @return SHA string
+      * @throws IOException If an IO Exception occurs
+      */
+-    private MkRepoCommit commit(final JsonObject json) throws IOException {
++    @NotNull(message = "MkRepoCommit is never NULL")
++    private MkRepoCommit commit(
++        @NotNull(message = "json can't be NULL") final JsonObject json
++    ) throws IOException {
+         final String sha = fakeSha();
+         // @checkstyle MultipleStringLiterals (40 lines)
+         final Directives commit = new Directives().xpath(this.commitXpath())
+             .add("commit")
+             .add("sha").set(sha).up()
+             .add("url").set("http://localhost/4").up()
+             .add("html_url").set("http://localhost/5").up()
+             .add("message").set(json.getString("message")).up();
+@@ -223,13 +240,14 @@
+         return new MkRepoCommit(this.repo(), sha);
+     }
+ 
+     /**
+      * Generate a random fake SHA hex string.
+      *
+      * @return Fake SHA string.
+      */
++    @NotNull(message = "fake sha can't be NULL")
+     private static String fakeSha() {
+         // @checkstyle MagicNumberCheck (1 line)
+         return RandomStringUtils.random(40, "0123456789abcdef");
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/**
+ * Copyright (c) 2013-2014, JCabi.com
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met: 1) Redistributions of source code must retain the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer. 2) Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer in the documentation and/or other materials provided
+ * with the distribution. 3) Neither the name of the jcabi.com nor
+ * the names of its contributors may be used to endorse or promote
+ * products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT
+ * NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+ * THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.jcabi.github.mock;
+
+import com.jcabi.aspects.Immutable;
+import com.jcabi.aspects.Loggable;
+import com.jcabi.github.Content;
+import com.jcabi.github.Contents;
+import com.jcabi.github.Coordinates;
+import com.jcabi.github.Repo;
+import com.jcabi.github.RepoCommit;
+import java.io.IOException;
+import javax.json.JsonObject;
+import javax.validation.constraints.NotNull;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.xembly.Directives;
+
+/**
+ * Mock Github contents.
+ *
+ * @author Andres Candal (andres.candal@rollasolution.com)
+ * @version $Id$
+ * @since 0.8
+ */
+@Immutable
+@Loggable(Loggable.DEBUG)
+@ToString
+@EqualsAndHashCode(of = { "storage", "self", "coords" })
+@SuppressWarnings("PMD.AvoidDuplicateLiterals")
+public final class MkContents implements Contents {
+
+    /**
+     * Storage.
+     */
+    private final transient MkStorage storage;
+
+    /**
+     * Login of the user logged in.
+     */
+    private final transient String self;
+
+    /**
+     * Repo name.
+     */
+    private final transient Coordinates coords;
+
+    /**
+     * Public ctor.
+     * @param stg Storage
+     * @param login User to login
+     * @param rep Repo
+     * @throws IOException If there is any I/O problem
+     */
+    public MkContents(
+        @NotNull(message = "stg can't be NULL") final MkStorage stg,
+        @NotNull(message = "login can't be NULL") final String login,
+        @NotNull(message = "rep can't be NULL") final Coordinates rep
+    ) throws IOException {
+        this.storage = stg;
+        this.self = login;
+        this.coords = rep;
+        this.storage.apply(
+            new Directives().xpath(
+                String.format("/github/repos/repo[@coords='%s']", this.coords)
+            ).addIf("contents").up().addIf("commits")
+        );
+    }
+
+    @Override
+    @NotNull(message = "Repo is never NULL")
+    public Repo repo() {
+        return new MkRepo(this.storage, this.self, this.coords);
+    }
+
+    @Override
+    @NotNull(message = "the content is never NULL")
+    public Content readme() throws IOException {
+        return new MkContent(this.storage, this.self, this.coords, "README.md");
+    }
+
+    @Override
+    @NotNull(message = "content is never NULL")
+    public Content readme(@NotNull(message = "branch can't be NULL")
+        final String branch
+    ) {
+        throw new UnsupportedOperationException("Readme not yet implemented.");
+    }
+
+    @Override
+    @NotNull(message = "created content is never NULL")
+    public Content create(
+        @NotNull(message = "json can't be NULL") final JsonObject json
+    ) throws IOException {
+        this.storage.lock();
+        // @checkstyle MultipleStringLiterals (40 lines)
+        final String path = json.getString("path");
+        try {
+            this.storage.apply(
+                new Directives().xpath(this.xpath()).add("content")
+                    .add("name").set(path).up()
+                    .add("path").set(path).up()
+                    .add("content").set(json.getString("content")).up()
+                    .add("type").set("file").up()
+                    .add("encoding").set("base64").up()
+                    .add("sha").set(fakeSha()).up()
+                    .add("url").set("http://localhost/1").up()
+                    .add("git_url").set("http://localhost/2").up()
+                    .add("html_url").set("http://localhost/3").up()
+            );
+            this.commit(json);
+        } finally {
+            this.storage.unlock();
+        }
+        return new MkContent(this.storage, this.self, this.coords, path);
+    }
+
+    @Override
+    @NotNull(message = "retrieved content is never NULL")
+    public Content get(
+        @NotNull(message = "path can't be NULL") final String path,
+        @NotNull(message = "ref can't be NULL") final String ref
+    ) throws IOException {
+        return new MkContent(this.storage, this.self, this.coords, path);
+    }
+
+    @Override
+    @NotNull(message = "commit is never NULL")
+    public RepoCommit remove(
+        @NotNull(message = "content should not be NULL")
+        final JsonObject content
+    ) throws IOException {
+        throw new UnsupportedOperationException("Remove not yet implemented.");
+    }
+
+    /**
+     * Updates a file.
+     * @param path The content path.
+     * @param json JSON object containing updates to the content.
+     * @return Commit related to this update.
+     * @throws IOException If any I/O problem occurs.
+     */
+    @Override
+    @NotNull(message = "updated commit is never NULL")
+    public RepoCommit update(
+        @NotNull(message = "path cannot be NULL") final String path,
+        @NotNull(message = "json should not be NULL") final JsonObject json
+    ) throws IOException {
+        try {
+            new JsonPatch(this.storage).patch(path, json);
+            return this.commit(json);
+        } finally {
+            this.storage.unlock();
+        }
+    }
+
+    /**
+     * XPath of this element in XML tree.
+     * @return The XPath
+     */
+    @NotNull(message = "Xpath is never NULL")
+    private String xpath() {
+        return String.format(
+            "/github/repos/repo[@coords='%s']/contents",
+            this.coords
+        );
+    }
+
+    /**
+     * Xpath of the commits element in XML tree.
+     * @return Xpath
+     */
+    @NotNull(message = "commit xpath is never NULL")
+    private String commitXpath() {
+        return String.format(
+            "/github/repos/repo[@coords='%s']/commits",
+            this.coords
+        );
+    }
+
+    /**
+     * XML Directives for commit creation.
+     * @param json Source
+     * @return SHA string
+     * @throws IOException If an IO Exception occurs
+     */
+    @NotNull(message = "MkRepoCommit is never NULL")
+    private MkRepoCommit commit(
+        @NotNull(message = "json can't be NULL") final JsonObject json
+    ) throws IOException {
+        final String sha = fakeSha();
+        // @checkstyle MultipleStringLiterals (40 lines)
+        final Directives commit = new Directives().xpath(this.commitXpath())
+            .add("commit")
+            .add("sha").set(sha).up()
+            .add("url").set("http://localhost/4").up()
+            .add("html_url").set("http://localhost/5").up()
+            .add("message").set(json.getString("message")).up();
+        if (json.containsKey("committer")) {
+            final JsonObject committer = json.getJsonObject("committer");
+            commit.add("committer")
+                .add("email").set(committer.getString("email")).up()
+                .add("name").set(committer.getString("name")).up();
+        }
+        if (json.containsKey("author")) {
+            final JsonObject author = json.getJsonObject("author");
+            commit.add("author")
+                .add("email").set(author.getString("email")).up()
+                .add("name").set(author.getString("name")).up();
+        }
+        this.storage.apply(commit);
+        return new MkRepoCommit(this.storage, this.repo(), sha);
+    }
+
+    /**
+     * Generate a random fake SHA hex string.
+     *
+     * @return Fake SHA string.
+     */
+    @NotNull(message = "fake sha can't be NULL")
+    private static String fakeSha() {
+        // @checkstyle MagicNumberCheck (1 line)
+        return RandomStringUtils.random(40, "0123456789abcdef");
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/main/java/com/jcabi/github/mock/MkRepoCommit.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -39,55 +39,66 @@
+ import lombok.ToString;
+ 
+ /**
+  * Mock Github commit.
+  * @author Carlos Crespo (carlos.a.crespo@gmail.com)
+  * @version $Id$
+  * @todo #166 Should implement the compareTo method in MkRepoCommit.
+  *  Once implemented please remove this puzzle.
+- * @todo #166 Should implement the json method in MkRepoCommit.
+- *  Once implemented please remove this puzzle.
+  * @todo #166 Should create test class for MkRepoCommit.
+  *  Once created please remove this puzzle.
+  */
+ @Immutable
+ @Loggable(Loggable.DEBUG)
+ @ToString
+ @EqualsAndHashCode(of = { "repository", "hash" })
+ final class MkRepoCommit implements RepoCommit {
+ 
+     /**
+      * Commit SHA.
+      */
+     private final transient String hash;
+ 
+     /**
++     * The storage.
++     */
++    private final transient MkStorage storage;
++    /**
+      * The repository.
+      */
+     private final transient Repo repository;
+ 
+     /**
+      * Public ctor.
++     * @param stg The storage
+      * @param repo The repository
+      * @param sha Commit SHA
+      */
+-    MkRepoCommit(final Repo repo, final String sha) {
++    MkRepoCommit(final MkStorage stg, final Repo repo, final String sha) {
++        this.storage = stg;
+         this.repository = repo;
+         this.hash = sha;
+     }
+ 
+     @Override
+     public int compareTo(final RepoCommit other) {
+         throw new UnsupportedOperationException("MkRepoCommit#compareTo()");
+     }
+ 
+     @Override
+     public JsonObject json() throws IOException {
+-        throw new UnsupportedOperationException("MkRepoCommit#json()");
++        return new JsonNode(
++            this.storage.xml().nodes(
++                String.format(
++                    "/github/repos/repo[@coords='%s']/commits/commit[sha='%s']",
++                        this.repo().coordinates(), this.hash
++                )
++            ).get(0)
++        ).json();
+     }
+ 
+     @Override
+     public Repo repo() {
+         return this.repository;
+     }
+ 
+     @Override
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -30,29 +30,28 @@
+ package com.jcabi.github.mock;
+ 
+ import com.jcabi.aspects.Immutable;
+ import com.jcabi.aspects.Loggable;
+ import com.jcabi.github.Repo;
+ import com.jcabi.github.RepoCommit;
+ import java.io.IOException;
+ import javax.json.JsonObject;
++import javax.validation.constraints.NotNull;
+ import lombok.EqualsAndHashCode;
+ import lombok.ToString;
+ 
+ /**
+  * Mock Github commit.
+  * @author Carlos Crespo (carlos.a.crespo@gmail.com)
+  * @version $Id$
+  * @todo #166 Should implement the compareTo method in MkRepoCommit.
+  *  Once implemented please remove this puzzle.
+  * @todo #166 Should implement the json method in MkRepoCommit.
+  *  Once implemented please remove this puzzle.
+- * @todo #166 Should create test class for MkRepoCommit.
+- *  Once created please remove this puzzle.
+  */
+ @Immutable
+ @Loggable(Loggable.DEBUG)
+ @ToString
+ @EqualsAndHashCode(of = { "repository", "hash" })
+ final class MkRepoCommit implements RepoCommit {
+ 
+     /**
+@@ -65,34 +64,41 @@
+      */
+     private final transient Repo repository;
+ 
+     /**
+      * Public ctor.
+      * @param repo The repository
+      * @param sha Commit SHA
+      */
+-    MkRepoCommit(final Repo repo, final String sha) {
++    MkRepoCommit(
++        @NotNull(message = "repo is never NULL") final Repo repo,
++        @NotNull(message = "sha is never NULL") final String sha) {
+         this.repository = repo;
+         this.hash = sha;
+     }
+ 
+     @Override
+-    public int compareTo(final RepoCommit other) {
++    public int compareTo(
++        @NotNull(message = "other can't be NULL") final RepoCommit other
++    ) {
+         throw new UnsupportedOperationException("MkRepoCommit#compareTo()");
+     }
+ 
+     @Override
++    @NotNull(message = "JSON is never NULL")
+     public JsonObject json() throws IOException {
+         throw new UnsupportedOperationException("MkRepoCommit#json()");
+     }
+ 
+     @Override
++    @NotNull(message = "repository is never NULL")
+     public Repo repo() {
+         return this.repository;
+     }
+ 
+     @Override
++    @NotNull(message = "sha should no be NULL")
+     public String sha() {
+         return this.hash;
+     }
+ 
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/**
+ * Copyright (c) 2013-2014, JCabi.com
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met: 1) Redistributions of source code must retain the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer. 2) Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer in the documentation and/or other materials provided
+ * with the distribution. 3) Neither the name of the jcabi.com nor
+ * the names of its contributors may be used to endorse or promote
+ * products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT
+ * NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+ * THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.jcabi.github.mock;
+
+import com.jcabi.aspects.Immutable;
+import com.jcabi.aspects.Loggable;
+import com.jcabi.github.Repo;
+import com.jcabi.github.RepoCommit;
+import java.io.IOException;
+import javax.json.JsonObject;
+import javax.validation.constraints.NotNull;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+
+/**
+ * Mock Github commit.
+ * @author Carlos Crespo (carlos.a.crespo@gmail.com)
+ * @version $Id$
+ * @todo #166 Should implement the compareTo method in MkRepoCommit.
+ *  Once implemented please remove this puzzle.
+ */
+@Immutable
+@Loggable(Loggable.DEBUG)
+@ToString
+@EqualsAndHashCode(of = { "repository", "hash" })
+final class MkRepoCommit implements RepoCommit {
+
+    /**
+     * Commit SHA.
+     */
+    private final transient String hash;
+
+    /**
+     * The storage.
+     */
+    private final transient MkStorage storage;
+    /**
+     * The repository.
+     */
+    private final transient Repo repository;
+
+    /**
+     * Public ctor.
+     * @param stg The storage
+     * @param repo The repository
+     * @param sha Commit SHA
+     */
+    MkRepoCommit(final MkStorage stg, @NotNull(message = "repo is never NULL") final Repo repo,
+        @NotNull(message = "sha is never NULL") final String sha) {
+        this.storage = stg;
+        this.repository = repo;
+        this.hash = sha;
+    }
+
+    @Override
+    public int compareTo(
+        @NotNull(message = "other can't be NULL") final RepoCommit other
+    ) {
+        throw new UnsupportedOperationException("MkRepoCommit#compareTo()");
+    }
+
+    @Override
+    @NotNull(message = "JSON is never NULL")
+    public JsonObject json() throws IOException {
+        return new JsonNode(
+            this.storage.xml().nodes(
+                String.format(
+                    "/github/repos/repo[@coords='%s']/commits/commit[sha='%s']",
+                        this.repo().coordinates(), this.hash
+                )
+            ).get(0)
+        ).json();
+    }
+
+    @Override
+    @NotNull(message = "repository is never NULL")
+    public Repo repo() {
+        return this.repository;
+    }
+
+    @Override
+    @NotNull(message = "sha should no be NULL")
+    public String sha() {
+        return this.hash;
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -40,16 +40,18 @@
+ import lombok.ToString;
+ 
+ /**
+  * Mock Github commit.
+  * @author Carlos Crespo (carlos.a.crespo@gmail.com)
+  * @version $Id$
+  * @todo #166 Should implement the compareTo method in MkRepoCommit.
+  *  Once implemented please remove this puzzle.
++ * @todo #166 Should create test class for MkRepoCommit.
++ *  Once created please remove this puzzle.
+  */
+ @Immutable
+ @Loggable(Loggable.DEBUG)
+ @ToString
+ @EqualsAndHashCode(of = { "repository", "hash" })
+ final class MkRepoCommit implements RepoCommit {
+ 
+     /**
+@@ -67,18 +69,17 @@
+     private final transient Repo repository;
+ 
+     /**
+      * Public ctor.
+      * @param stg The storage
+      * @param repo The repository
+      * @param sha Commit SHA
+      */
+-    MkRepoCommit(final MkStorage stg, @NotNull(message = "repo is never NULL") final Repo repo,
+-        @NotNull(message = "sha is never NULL") final String sha) {
++    MkRepoCommit(final MkStorage stg, final Repo repo, final String sha) {
+         this.storage = stg;
+         this.repository = repo;
+         this.hash = sha;
+     }
+ 
+     @Override
+     public int compareTo(
+         @NotNull(message = "other can't be NULL") final RepoCommit other
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/main/java/com/jcabi/github/mock/MkRepoCommits.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -98,17 +98,17 @@
+     @Override
+     public Iterable<RepoCommit> iterate() {
+         throw new UnsupportedOperationException();
+     }
+ 
+     @Override
+     public RepoCommit get(final String sha) {
+         return new MkRepoCommit(
+-            new MkRepo(this.storage, this.self, this.coords), sha
++            this.storage, new MkRepo(this.storage, this.self, this.coords), sha
+         );
+     }
+ 
+     @Override
+     public CommitsComparison compare(final String base, final String head) {
+         throw new UnsupportedOperationException();
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -30,36 +30,31 @@
+ package com.jcabi.github.mock;
+ 
+ import com.jcabi.aspects.Immutable;
+ import com.jcabi.aspects.Loggable;
+ import com.jcabi.github.CommitsComparison;
+ import com.jcabi.github.Coordinates;
+ import com.jcabi.github.RepoCommit;
+ import com.jcabi.github.RepoCommits;
++import com.jcabi.xml.XML;
+ import java.io.IOException;
+ import javax.json.JsonObject;
++import javax.validation.constraints.NotNull;
+ import lombok.EqualsAndHashCode;
+ import lombok.ToString;
++import org.xembly.Directives;
+ 
+ /**
+  * Mock commits of a Github repository.
+  * @author Alexander Sinyagin (sinyagin.alexander@gmail.com)
+  * @version $Id$
+- * @todo #117 MkRepoCommits should be able to fetch commits. Let's
+- *  implement this method. When done, remove this puzzle and
+- *  Ignore annotation from a test for the method.
+  * @todo #273 MkRepoCommits should be able to compare two commits. Let's
+  *  create a test for this method and implement the method. When done, remove
+  *  this puzzle.
+- * @todo #439 MkRepoCommits should be able to compare two commits and return
+- *  comparison in diff format.
+- *  Let's create a test for this method and implement the method.
+- *  When done, remove this puzzle.
+- *  See http://developer.github.com/v3/repos/commits/#compare-two-commits
+  * @todo #439 MkRepoCommits should be able to compare two commits and return
+  *  comparison in patch format.
+  *  Let's create a test for this method and implement the method.
+  *  When done, remove this puzzle.
+  *  See http://developer.github.com/v3/repos/commits/#compare-two-commits
+  */
+ @Immutable
+ @Loggable(Loggable.DEBUG)
+@@ -82,63 +77,98 @@
+      */
+     private final transient Coordinates coords;
+ 
+     /**
+      * Public ctor.
+      * @param stg Storage
+      * @param login User to login
+      * @param repo Repository coordinates
++     * @throws IOException If something goes wrong.
+      */
+-    MkRepoCommits(final MkStorage stg, final String login,
+-        final Coordinates repo) {
++    MkRepoCommits(
++        @NotNull(message = "stg can't be NULL") final MkStorage stg,
++        @NotNull(message = "login can't be NULL")  final String login,
++        @NotNull(message = "repo can't be NULL")final Coordinates repo
++    ) throws IOException {
+         this.storage = stg;
+         this.self = login;
+         this.coords = repo;
++        this.storage.apply(
++            new Directives().xpath(
++                String.format("/github/repos/repo[@coords='%s']", this.coords)
++            ).addIf("commits")
++        );
+     }
+ 
+     @Override
++    @NotNull(message = "Iterable of commits can't be NULL")
+     public Iterable<RepoCommit> iterate() {
+-        throw new UnsupportedOperationException();
++        return new MkIterable<RepoCommit>(
++            this.storage, String.format("%s/commit", this.xpath()),
++            new MkIterable.Mapping<RepoCommit>() {
++                @Override
++                public RepoCommit map(final XML xml) {
++                    return MkRepoCommits.this.get(
++                        xml.xpath("sha/text()").get(0)
++                    );
++                }
++            }
++        );
+     }
+ 
+     @Override
+-    public RepoCommit get(final String sha) {
++    @NotNull(message = "repocommit can't be NULL")
++    public RepoCommit get(
++        @NotNull(message = "sha shouldn't be NULL") final String sha
++    ) {
+         return new MkRepoCommit(
+             new MkRepo(this.storage, this.self, this.coords), sha
+         );
+     }
+ 
+     @Override
+-    public CommitsComparison compare(final String base, final String head) {
+-        throw new UnsupportedOperationException();
++    @NotNull(message = "comparison is never NULL")
++    public CommitsComparison compare(
++        @NotNull(message = "base can't be NULL") final String base,
++        @NotNull(message = "head can't be NULL") final String head
++    ) {
++        return new MkCommitsComparison(this.storage, this.self, this.coords);
+     }
+ 
+     @Override
+-    public String diff(final String base, final String head)
+-        throws IOException {
++    @NotNull(message = "diff is never NULL")
++    public String diff(
++        @NotNull(message = "base should not be NULL") final String base,
++        @NotNull(message = "head should not be NULL") final String head
++    ) throws IOException {
+         throw new UnsupportedOperationException("MkRepoCommits#diff()");
+     }
+ 
+     @Override
+-    public String patch(final String base, final String head)
+-        throws IOException {
++    @NotNull(message = "patch is never NULL")
++    public String patch(
++        @NotNull(message = "base shouldn't be NULL") final String base,
++        @NotNull(message = "head shouldn't be NULL") final String head
++    ) throws IOException {
+         throw new UnsupportedOperationException("MkRepoCommits#patch()");
+     }
+ 
+     @Override
++    @NotNull(message = "JSON is never NULL")
+     public JsonObject json() throws IOException {
+         return new JsonNode(
+             this.storage.xml().nodes(this.xpath()).get(0)
+         ).json();
+     }
+ 
+     /**
+      * Xpath of this element in XML tree.
+      * @return Xpath
+      */
++    @NotNull(message = "Xpath is never NULL")
+     private String xpath() {
+         return String.format(
+             "/github/repos/repo[@coords='%s']/commits",
+             this.coords
+         );
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/**
+ * Copyright (c) 2013-2014, JCabi.com
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met: 1) Redistributions of source code must retain the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer. 2) Redistributions in binary form must reproduce the above
+ * copyright notice, this list of conditions and the following
+ * disclaimer in the documentation and/or other materials provided
+ * with the distribution. 3) Neither the name of the jcabi.com nor
+ * the names of its contributors may be used to endorse or promote
+ * products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT
+ * NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+ * THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.jcabi.github.mock;
+
+import com.jcabi.aspects.Immutable;
+import com.jcabi.aspects.Loggable;
+import com.jcabi.github.CommitsComparison;
+import com.jcabi.github.Coordinates;
+import com.jcabi.github.RepoCommit;
+import com.jcabi.github.RepoCommits;
+import com.jcabi.xml.XML;
+import java.io.IOException;
+import javax.json.JsonObject;
+import javax.validation.constraints.NotNull;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import org.xembly.Directives;
+
+/**
+ * Mock commits of a Github repository.
+ * @author Alexander Sinyagin (sinyagin.alexander@gmail.com)
+ * @version $Id$
+ * @todo #273 MkRepoCommits should be able to compare two commits. Let's
+ *  create a test for this method and implement the method. When done, remove
+ *  this puzzle.
+ * @todo #439 MkRepoCommits should be able to compare two commits and return
+ *  comparison in patch format.
+ *  Let's create a test for this method and implement the method.
+ *  When done, remove this puzzle.
+ *  See http://developer.github.com/v3/repos/commits/#compare-two-commits
+ */
+@Immutable
+@Loggable(Loggable.DEBUG)
+@ToString
+@EqualsAndHashCode(of = { "storage", "self", "coords" })
+final class MkRepoCommits implements RepoCommits {
+
+    /**
+     * Storage.
+     */
+    private final transient MkStorage storage;
+
+    /**
+     * Login of the user logged in.
+     */
+    private final transient String self;
+
+    /**
+     * Repo coordinates.
+     */
+    private final transient Coordinates coords;
+
+    /**
+     * Public ctor.
+     * @param stg Storage
+     * @param login User to login
+     * @param repo Repository coordinates
+     * @throws IOException If something goes wrong.
+     */
+    MkRepoCommits(
+        @NotNull(message = "stg can't be NULL") final MkStorage stg,
+        @NotNull(message = "login can't be NULL")  final String login,
+        @NotNull(message = "repo can't be NULL")final Coordinates repo
+    ) throws IOException {
+        this.storage = stg;
+        this.self = login;
+        this.coords = repo;
+        this.storage.apply(
+            new Directives().xpath(
+                String.format("/github/repos/repo[@coords='%s']", this.coords)
+            ).addIf("commits")
+        );
+    }
+
+    @Override
+    @NotNull(message = "Iterable of commits can't be NULL")
+    public Iterable<RepoCommit> iterate() {
+        return new MkIterable<RepoCommit>(
+            this.storage, String.format("%s/commit", this.xpath()),
+            new MkIterable.Mapping<RepoCommit>() {
+                @Override
+                public RepoCommit map(final XML xml) {
+                    return MkRepoCommits.this.get(
+                        xml.xpath("sha/text()").get(0)
+                    );
+                }
+            }
+        );
+    }
+
+    @Override
+    @NotNull(message = "repocommit can't be NULL")
+    public RepoCommit get(
+        @NotNull(message = "sha shouldn't be NULL") final String sha
+    ) {
+        return new MkRepoCommit(
+            this.storage, new MkRepo(this.storage, this.self, this.coords), sha
+        );
+    }
+
+    @Override
+    @NotNull(message = "comparison is never NULL")
+    public CommitsComparison compare(
+        @NotNull(message = "base can't be NULL") final String base,
+        @NotNull(message = "head can't be NULL") final String head
+    ) {
+        return new MkCommitsComparison(this.storage, this.self, this.coords);
+    }
+
+    @Override
+    @NotNull(message = "diff is never NULL")
+    public String diff(
+        @NotNull(message = "base should not be NULL") final String base,
+        @NotNull(message = "head should not be NULL") final String head
+    ) throws IOException {
+        throw new UnsupportedOperationException("MkRepoCommits#diff()");
+    }
+
+    @Override
+    @NotNull(message = "patch is never NULL")
+    public String patch(
+        @NotNull(message = "base shouldn't be NULL") final String base,
+        @NotNull(message = "head shouldn't be NULL") final String head
+    ) throws IOException {
+        throw new UnsupportedOperationException("MkRepoCommits#patch()");
+    }
+
+    @Override
+    @NotNull(message = "JSON is never NULL")
+    public JsonObject json() throws IOException {
+        return new JsonNode(
+            this.storage.xml().nodes(this.xpath()).get(0)
+        ).json();
+    }
+
+    /**
+     * Xpath of this element in XML tree.
+     * @return Xpath
+     */
+    @NotNull(message = "Xpath is never NULL")
+    private String xpath() {
+        return String.format(
+            "/github/repos/repo[@coords='%s']/commits",
+            this.coords
+        );
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

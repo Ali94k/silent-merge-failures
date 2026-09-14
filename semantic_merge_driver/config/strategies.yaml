@@ -1,0 +1,21 @@
+# Semantic merge driver strategy configuration.
+#
+# enabled: list of strategy names to activate. Each name must match the
+#   `.name` property of a MergeStrategy subclass discovered under
+#   `strategies/`. Names not listed are skipped.
+#
+# If `enabled` is absent or null, all discovered strategies run.
+# If `enabled` is an empty list, no semantic strategies run (textual
+# merge result alone decides the exit code).
+
+enabled:
+  - JoernInfiniteLoop
+  - JoernInvalidLoopBounds
+  - JoernDataFlowInterference
+  - JoernUnresolvedReference
+  - RM2RenameConflict
+  # Detector-cycle experimental lanes (ISSUES #31, plan §2 N2): listed here
+  # so the loader discovers them, but each returns clean unless
+  # SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS=1 is set in the environment.
+  - ImportPruneUsage
+  - SignatureStaleCall

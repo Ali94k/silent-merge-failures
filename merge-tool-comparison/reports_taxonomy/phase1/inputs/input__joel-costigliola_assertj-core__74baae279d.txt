@@ -1,0 +1,754 @@
+UNIT joel-costigliola_assertj-core__74baae279d
+repo: joel-costigliola_assertj-core   merge: 74baae279d3574b916ef068af9b58f5990750027   stratum: A
+files shown: 1 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): src/main/java/org/assertj/core/api/AbstractObjectAssert.java
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/main/java/org/assertj/core/api/AbstractMapAssert.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -12,16 +12,17 @@
+  */
+ package org.assertj.core.api;
+ 
+ import static org.assertj.core.data.MapEntry.entry;
+ import static org.assertj.core.util.Arrays.array;
+ 
+ import java.util.Comparator;
+ import java.util.Map;
++import java.util.function.Consumer;
+ 
+ import org.assertj.core.description.Description;
+ import org.assertj.core.internal.Maps;
+ import org.assertj.core.util.CheckReturnValue;
+ import org.assertj.core.util.Preconditions;
+ import org.assertj.core.util.VisibleForTesting;
+ 
+ /**
+@@ -282,16 +283,17 @@
+    *
+    * @param entries the given entries.
+    * @return {@code this} assertion object.
+    * @throws NullPointerException if the given argument is {@code null}.
+    * @throws IllegalArgumentException if the given argument is an empty array.
+    * @throws NullPointerException if any of the entries in the given array is {@code null}.
+    * @throws AssertionError if the actual map is {@code null}.
+    * @throws AssertionError if the actual map does not contain any of the given entries.
++   * @since 3.6.0
+    */
+   public SELF containsAnyOf(@SuppressWarnings("unchecked") Map.Entry<? extends K, ? extends V>... entries) {
+     maps.assertContainsAnyOf(info, actual, entries);
+     return myself;
+   }
+   
+   /**
+    * Verifies that the actual map contains all entries of the given map, in any order.
+@@ -386,16 +388,51 @@
+    * @throws NullPointerException if the given values is {@code null}.
+    * @throws AssertionError if the actual map is {@code null}.
+    * @throws AssertionError if the actual map not contains the given {@code key}.
+    * @throws AssertionError if the actual map contains the given key, but value not match the given {@code valueCondition}.
+    * @since 2.6.0 / 3.6.0
+    */
+   public SELF hasEntrySatisfying(K key, Condition<? super V> valueCondition) {
+     maps.assertHasEntrySatisfying(info, actual, key, valueCondition);
++    return myself;
++  }
++
++  /**
++   * Verifies that the actual map contains the value for given {@code key} that satisfy given {@code valueRequirements}.
++   * <p>
++   * Example:
++   * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = new HashMap<>();
++   * ringBearers.put(nenya, galadriel);
++   * ringBearers.put(narya, gandalf);
++   * ringBearers.put(vilya, elrond);
++   * ringBearers.put(oneRing, frodo);
++   * 
++   * // this assertion will pass
++   * assertThat(ringBearers).hasEntrySatisfying(nenya, character -&gt; {
++   *     assertThat(character.getName()).contains("driel");
++   *     assertThat(character.getRace()).isEqualTo(ELF);
++   * });
++   *
++   * // this assertion will fail
++   * assertThat(ringBearers).hasEntrySatisfying(oneRing, character -&gt; {
++   *     assertThat(character.getRace()).isEqualTo(ELF);
++   * });</code></pre>
++   *
++   * @param key he given key to check.
++   * @param valueRequirements the given requirements for check value.
++   * @return {@code this} assertion object.
++   * @throws NullPointerException if the given values is {@code null}.
++   * @throws AssertionError if the actual map is {@code null}.
++   * @throws AssertionError if the actual map not contains the given {@code key}.
++   * @throws AssertionError if the actual map contains the given key, but value not pass the given {@code valueRequirements}.
++   * @since 3.6.0
++   */
++  public SELF hasEntrySatisfying(K key, Consumer<? super V> valueRequirements) {
++    maps.assertHasEntrySatisfying(info, actual, key, valueRequirements);
+     return myself;
+   }
+ 
+   /**
+    * Verifies that the actual map does not contain the given entries.
+    * <p>
+    * Example :
+    * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = new HashMap<>();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -37,17 +37,17 @@
+  * @author David DIDIER
+  * @author Yvonne Wang
+  * @author Alex Ruiz
+  * @author Mikhail Mazursky
+  * @author Nicolas François
+  * @author dorzey
+  */
+ public abstract class AbstractMapAssert<SELF extends AbstractMapAssert<SELF, ACTUAL, K, V>, ACTUAL extends Map<K, V>, K, V>
+-    extends AbstractAssert<SELF, ACTUAL> implements EnumerableAssert<SELF, Map.Entry<? extends K, ? extends V>> {
++    extends AbstractObjectAssert<SELF, ACTUAL> implements EnumerableAssert<SELF, Map.Entry<? extends K, ? extends V>> {
+ 
+   @VisibleForTesting
+   Maps maps = Maps.instance();
+ 
+   public AbstractMapAssert(ACTUAL actual, Class<?> selfType) {
+     super(actual, selfType);
+   }
+ 
+@@ -159,16 +159,17 @@
+    * assertThat(keyToValue).hasSameSizeAs(new char[] {'a', 'b', 'c', 'd'});</code></pre>
+    * 
+    * @param other the array to compare size with actual group.
+    * @return {@code this} assertion object.
+    * @throws AssertionError if the actual group is {@code null}.
+    * @throws AssertionError if the array parameter is {@code null} or is not a true array.
+    * @throws AssertionError if actual group and given array don't have the same size.
+    */
++  @Override
+   public SELF hasSameSizeAs(Object other) {
+     maps.assertHasSameSizeAs(info, actual, other);
+     return myself;
+   }
+ 
+   /**
+    * Verifies that the actual map has the same size as the given {@link Iterable}.
+    * <p>
+@@ -287,17 +288,17 @@
+    * @throws NullPointerException if any of the entries in the given array is {@code null}.
+    * @throws AssertionError if the actual map is {@code null}.
+    * @throws AssertionError if the actual map does not contain any of the given entries.
+    */
+   public SELF containsAnyOf(@SuppressWarnings("unchecked") Map.Entry<? extends K, ? extends V>... entries) {
+     maps.assertContainsAnyOf(info, actual, entries);
+     return myself;
+   }
+-  
++
+   /**
+    * Verifies that the actual map contains all entries of the given map, in any order.
+    * <p>
+    * Example :
+    * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = new HashMap<>();
+    * ringBearers.put(nenya, galadriel);
+    * ringBearers.put(narya, gandalf);
+    * ringBearers.put(vilya, elrond);
+@@ -945,9 +946,40 @@
+    * @throws NullPointerException if the given map is {@code null}.
+    */
+   @SuppressWarnings({ "rawtypes", "unchecked" })
+   @CheckReturnValue
+   public AbstractMapSizeAssert<SELF, ACTUAL, K, V> size() {
+     Preconditions.checkNotNull(actual, "Can not perform assertions on the size of a null map.");
+     return new MapSizeAssert(this, actual.size());
+   }
++
++  /**
++   * Extract the values of given keys from the map under test into an array, this new array becoming
++   * the object under test.
++   * <p>
++   * For example, if you specify "id", "name" and "email" keys then the array will contain the map values for 
++   * these keys, you can then perform array assertions on the extracted values.
++   * <p>
++   * If a given key is not present in the map under test, a null value is extracted.
++   * <p>
++   * Example:
++   * <pre><code class='java'> Map<String, Object> map = new HashMap<>(); 
++   * map.put("name", "kawhi");                  
++   * map.put("age", 25);                        
++   *                                            
++   * assertThat(map).extracting("name", "age")
++   *                .contains("kawhi", 25);</code></pre>     
++   * <p>
++   * Note that the order of extracted keys value is consistent with the iteration order of the array under test.
++   * <p>
++   * Nested keys are not yet supported, passing "name.first" won't get a value for "name" and then try to extract 
++   * "first" from the previously extracted value, instead it will simply look for a value under "name.first" key.  
++   *
++   * @param keys the keys used to get values from the map under test
++   * @return a new assertion object whose object under test is the array containing the extracted map values
++   */
++  @CheckReturnValue
++  @Override
++  public AbstractObjectArrayAssert<?, Object> extracting(String... keys) {
++    return super.extracting(keys);
++  }
+ }
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+/**
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * Copyright 2012-2017 the original author or authors.
+ */
+package org.assertj.core.api;
+
+import static org.assertj.core.data.MapEntry.entry;
+import static org.assertj.core.util.Arrays.array;
+
+import java.util.Comparator;
+import java.util.Map;
+import java.util.function.Consumer;
+
+import org.assertj.core.description.Description;
+import org.assertj.core.internal.Maps;
+import org.assertj.core.util.CheckReturnValue;
+import org.assertj.core.util.Preconditions;
+import org.assertj.core.util.VisibleForTesting;
+
+/**
+ * Base class for all implementations of assertions for {@link Map}s.
+ * 
+ * @param <SELF> the "self" type of this assertion class. Please read &quot;<a href="http://bit.ly/1IZIRcY"
+ *          target="_blank">Emulating 'self types' using Java Generics to simplify fluent API implementation</a>&quot;
+ *          for more details.
+ * @param <ACTUAL> the type of the "actual" value.
+ * @param <K> the type of keys in map.
+ * @param <V> the type of values in map.
+ * 
+ * @author David DIDIER
+ * @author Yvonne Wang
+ * @author Alex Ruiz
+ * @author Mikhail Mazursky
+ * @author Nicolas François
+ * @author dorzey
+ */
+public abstract class AbstractMapAssert<SELF extends AbstractMapAssert<SELF, ACTUAL, K, V>, ACTUAL extends Map<K, V>, K, V>
+    extends AbstractObjectAssert<SELF, ACTUAL> implements EnumerableAssert<SELF, Map.Entry<? extends K, ? extends V>> {
+
+  @VisibleForTesting
+  Maps maps = Maps.instance();
+
+  public AbstractMapAssert(ACTUAL actual, Class<?> selfType) {
+    super(actual, selfType);
+  }
+
+  /**
+   * Verifies that the {@link Map} is {@code null} or empty.
+   * <p>
+   * Example:
+   * <pre><code class='java'> // assertions will pass
+   * Map&lt;Integer, String&gt; map = null;
+   * assertThat(map).isNullOrEmpty();
+   * assertThat(new HashMap()).isNullOrEmpty();
+   * 
+   * // assertion will fail
+   * Map&lt;String, String&gt; keyToValue = new HashMap();
+   * keyToValue.put(&quot;key&quot;, &quot;value&quot;);
+   * assertThat(keyToValue).isNullOrEmpty()</code></pre>
+   * </p>
+   * @throws AssertionError if the {@link Map} is not {@code null} or not empty.
+   */
+  @Override
+  public void isNullOrEmpty() {
+    maps.assertNullOrEmpty(info, actual);
+  }
+
+  /**
+   * Verifies that the {@link Map} is empty.
+   * <p>
+   * Example:
+   * <pre><code class='java'> // assertion will pass
+   * assertThat(new HashMap()).isEmpty();
+   * 
+   * // assertion will fail
+   * Map&lt;String, String&gt; map = new HashMap();
+   * map.put(&quot;key&quot;, &quot;value&quot;);
+   * assertThat(map).isEmpty();</code></pre>
+        // ... 4 lines elided ...
+  public void isEmpty() {
+        // ... 20 lines elided ...
+  public SELF isNotEmpty() {
+        // ... 15 lines elided ...
+   * // assertions will fail
+   * assertThat(map).hasSize(0);
+   * assertThat(map).hasSize(2);</code></pre>
+   * </p>
+   * @param expected the expected number of values in the {@link Map}.
+   * @return {@code this} assertion object.
+   * @throws AssertionError if the number of values of the {@link Map} is not equal to the given one.
+   */
+  @Override
+  public SELF hasSize(int expected) {
+    maps.assertHasSize(info, actual, expected);
+    return myself;
+  }
+
+  /**
+   * Verifies that the actual map has the same size as the given array.
+   * <p>
+   * Parameter is declared as Object to accept both Object[] and primitive arrays (e.g. int[]).
+   * <p>
+   * Example:
+   * <pre><code class='java'> int[] oneTwoThree = {1, 2, 3};
+   * 
+   * Map&lt;Ring, TolkienCharacter&gt; elvesRingBearers = new HashMap<>();
+   * elvesRingBearers.put(nenya, galadriel);
+   * elvesRingBearers.put(narya, gandalf);
+   * elvesRingBearers.put(vilya, elrond);
+   * 
+   * // assertion will pass
+   * assertThat(elvesRingBearers).hasSameSizeAs(oneTwoThree);
+   * 
+   * // assertions will fail
+   * assertThat(elvesRingBearers).hasSameSizeAs(new int[] {1});
+   * assertThat(keyToValue).hasSameSizeAs(new char[] {'a', 'b', 'c', 'd'});</code></pre>
+   * 
+   * @param other the array to compare size with actual group.
+   * @return {@code this} assertion object.
+   * @throws AssertionError if the actual group is {@code null}.
+   * @throws AssertionError if the array parameter is {@code null} or is not a true array.
+   * @throws AssertionError if actual group and given array don't have the same size.
+   */
+  @Override
+  public SELF hasSameSizeAs(Object other) {
+    maps.assertHasSameSizeAs(info, actual, other);
+    return myself;
+  }
+
+  /**
+   * Verifies that the actual map has the same size as the given {@link Iterable}.
+   * <p>
+   * Example :
+   * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; elvesRingBearers = new HashMap<>();
+   * elvesRingBearers.put(nenya, galadriel);
+   * elvesRingBearers.put(narya, gandalf);
+   * elvesRingBearers.put(vilya, elrond);
+   * 
+   * // assertion will pass
+   * assertThat(elvesRingBearers).hasSameSizeAs(Array.asList(vilya, nenya, narya));
+   * 
+   * // assertions will fail
+   * assertThat(elvesRingBearers).hasSameSizeAs(Array.asList(1));
+   * assertThat(keyToValue).hasSameSizeAs(Array.asList('a', 'b', 'c', 'd'));</code></pre>
+   * 
+   * @param other the {@code Iterable} to compare size with actual group.
+   * @return {@code this} assertion object.
+   * @throws AssertionError if the actual map is {@code null}.
+   * @throws AssertionError if the other {@code Iterable} is {@code null}.
+   * @throws AssertionError if the actual map and the given {@code Iterable} don't have the same size
+   */
+  @Override
+  public SELF hasSameSizeAs(Iterable<?> other) {
+    maps.assertHasSameSizeAs(info, actual, other);
+    return myself;
+  }
+
+  /**
+   * Verifies that the actual map has the same size as the given {@link Map}.
+   * <p>
+   * Example :
+   * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = new HashMap<>();
+   * ringBearers.put(nenya, galadriel);
+   * ringBearers.put(narya, gandalf);
+        // ... 21 lines elided ...
+  public SELF hasSameSizeAs(Map<?, ?> other) {
+        // ... 21 lines elided ...
+   * assertThat(ringBearers).contains(entry(oneRing, sauron));
+   * assertThat(ringBearers).contains(entry(oneRing, sauron), entry(oneRing, aragorn));
+   * assertThat(ringBearers).contains(entry(narya, gandalf), entry(oneRing, sauron));</code></pre>
+   *
+   * @param entries the given entries.
+   * @return {@code this} assertion object.
+   * @throws NullPointerException if the given argument is {@code null}.
+   * @throws NullPointerException if any of the entries in the given array is {@code null}.
+   * @throws AssertionError if the actual map is {@code null}.
+   * @throws AssertionError if the actual map does not contain the given entries.
+   */
+  public SELF contains(@SuppressWarnings("unchecked") Map.Entry<? extends K, ? extends V>... entries) {
+    maps.assertContains(info, actual, entries);
+    return myself;
+  }
+
+  /**
+   * Verifies that the actual map contains at least one of the given entries.
+   * <p>
+   * Example :
+   * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = new HashMap<>();
+   * ringBearers.put(nenya, galadriel);
+   * ringBearers.put(narya, gandalf);
+   * ringBearers.put(vilya, elrond);
+   * ringBearers.put(oneRing, frodo);
+   * 
+   * // assertions will pass
+   * assertThat(ringBearers).containsAnyOf(entry(oneRing, frodo), entry(oneRing, sauron));
+   * assertThat(emptyMap).containsAnyOf();
+   * 
+   * // assertion will fail
+   * assertThat(ringBearers).containsAnyOf(entry(oneRing, gandalf), entry(oneRing, aragorn));</code></pre>
+   *
+   * @param entries the given entries.
+   * @return {@code this} assertion object.
+   * @throws NullPointerException if the given argument is {@code null}.
+   * @throws IllegalArgumentException if the given argument is an empty array.
+   * @throws NullPointerException if any of the entries in the given array is {@code null}.
+   * @throws AssertionError if the actual map is {@code null}.
+   * @throws AssertionError if the actual map does not contain any of the given entries.
+   * @since 3.6.0
+   */
+  public SELF containsAnyOf(@SuppressWarnings("unchecked") Map.Entry<? extends K, ? extends V>... entries) {
+    maps.assertContainsAnyOf(info, actual, entries);
+    return myself;
+  }
+
+  /**
+   * Verifies that the actual map contains all entries of the given map, in any order.
+   * <p>
+   * Example :
+   * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = new HashMap<>();
+   * ringBearers.put(nenya, galadriel);
+   * ringBearers.put(narya, gandalf);
+   * ringBearers.put(vilya, elrond);
+   * ringBearers.put(oneRing, frodo);
+   *
+   * Map&lt;Ring, TolkienCharacter&gt; elvesRingBearers = new HashMap<>();
+   * elvesRingBearers.put(nenya, galadriel);
+   * elvesRingBearers.put(narya, gandalf);
+   * elvesRingBearers.put(vilya, elrond);
+   * 
+   * // assertion will succeed
+   * assertThat(ringBearers).containsAllEntriesOf(elvesRingBearers);
+   * 
+   * // assertion will fail
+   * assertThat(elvesRingBearers).containsAllEntriesOf(ringBearers);</code></pre>
+   *
+   * @param other the map with the given entries.
+   * @return {@code this} assertion object.
+   * @throws NullPointerException if the given argument is {@code null}.
+   * @throws NullPointerException if any of the entries in the given map is {@code null}.
+   * @throws AssertionError if the actual map is {@code null}.
+   * @throws AssertionError if the actual map does not contain the given entries.
+   */
+  public SELF containsAllEntriesOf(Map<? extends K, ? extends V> other) {
+    @SuppressWarnings("unchecked")
+    Map.Entry<? extends K, ? extends V>[] entries = other.entrySet().toArray(new Map.Entry[other.size()]);
+    maps.assertContains(info, actual, entries);
+    return myself;
+  }
+
+  /**
+   * Verifies that the actual map contains the given entry.
+   * <p>
+   * Example :
+   * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = new HashMap<>();
+        // ... 18 lines elided ...
+   * @throws AssertionError if the actual map does not contain the given entries.
+   */
+  public SELF containsEntry(K key, V value) {
+    maps.assertContains(info, actual, array(entry(key, value)));
+    return myself;
+  }
+
+  /**
+   * Verifies that the actual map contains a value for the given {@code key} that satisfies the given {@code valueCondition}.
+   * <p>
+   * Example:
+   * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = new HashMap<>();
+   * ringBearers.put(nenya, galadriel);
+   * ringBearers.put(narya, gandalf);
+   * ringBearers.put(vilya, elrond);
+   * ringBearers.put(oneRing, frodo);
+   * 
+   * Condition&lt;TolkienCharacter&gt elfBearer = new Condition&lt;&gt;(&quot;an elf bearer&quot;) {
+   *   public boolean matches(TolkienCharacter character) {
+   *     return character.getRace() == ELF;
+   *   }
+   * };
+   *
+   * // this assertion will pass
+   * assertThat(ringBearers).hasEntrySatisfying(nenya, elfBearer);
+   *
+   * // this assertion will fail
+   * assertThat(ringBearers).hasEntrySatisfying(oneRing, elfBearer);</code></pre>
+   *
+   * @param key he given key to check.
+   * @param valueCondition the given condition for check value.
+   * @return {@code this} assertion object.
+   * @throws NullPointerException if the given values is {@code null}.
+   * @throws AssertionError if the actual map is {@code null}.
+   * @throws AssertionError if the actual map not contains the given {@code key}.
+   * @throws AssertionError if the actual map contains the given key, but value not match the given {@code valueCondition}.
+   * @since 2.6.0 / 3.6.0
+   */
+  public SELF hasEntrySatisfying(K key, Condition<? super V> valueCondition) {
+    maps.assertHasEntrySatisfying(info, actual, key, valueCondition);
+    return myself;
+  }
+
+  /**
+   * Verifies that the actual map contains the value for given {@code key} that satisfy given {@code valueRequirements}.
+   * <p>
+   * Example:
+   * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = new HashMap<>();
+   * ringBearers.put(nenya, galadriel);
+   * ringBearers.put(narya, gandalf);
+   * ringBearers.put(vilya, elrond);
+   * ringBearers.put(oneRing, frodo);
+   * 
+   * // this assertion will pass
+   * assertThat(ringBearers).hasEntrySatisfying(nenya, character -&gt; {
+   *     assertThat(character.getName()).contains("driel");
+   *     assertThat(character.getRace()).isEqualTo(ELF);
+   * });
+   *
+   * // this assertion will fail
+   * assertThat(ringBearers).hasEntrySatisfying(oneRing, character -&gt; {
+   *     assertThat(character.getRace()).isEqualTo(ELF);
+   * });</code></pre>
+   *
+   * @param key he given key to check.
+   * @param valueRequirements the given requirements for check value.
+   * @return {@code this} assertion object.
+   * @throws NullPointerException if the given values is {@code null}.
+   * @throws AssertionError if the actual map is {@code null}.
+   * @throws AssertionError if the actual map not contains the given {@code key}.
+   * @throws AssertionError if the actual map contains the given key, but value not pass the given {@code valueRequirements}.
+   * @since 3.6.0
+   */
+  public SELF hasEntrySatisfying(K key, Consumer<? super V> valueRequirements) {
+    maps.assertHasEntrySatisfying(info, actual, key, valueRequirements);
+    return myself;
+  }
+
+  /**
+   * Verifies that the actual map does not contain the given entries.
+   * <p>
+   * Example :
+   * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = new HashMap<>();
+   * ringBearers.put(nenya, galadriel);
+   * ringBearers.put(narya, gandalf);
+   * ringBearers.put(vilya, elrond);
+   * ringBearers.put(oneRing, frodo);
+   * 
+   * // assertion will pass
+   * assertThat(ringBearers).doesNotContain(entry(oneRing, aragorn), entry(oneRing, sauron));
+   * 
+   * // assertions will fail
+   * assertThat(ringBearers).doesNotContain(entry(oneRing, frodo));
+   * assertThat(ringBearers).doesNotContain(entry(oneRing, frodo), entry(oneRing, aragorn));</code></pre>
+   * 
+   * @param entries the given entries.
+   * @return {@code this} assertion object.
+   * @throws NullPointerException if the given argument is {@code null}.
+   * @throws IllegalArgumentException if the given argument is an empty array.
+   * @throws AssertionError if the actual map is {@code null}.
+   * @throws AssertionError if the actual map contains any of the given entries.
+   */
+  public SELF doesNotContain(@SuppressWarnings("unchecked") Map.Entry<? extends K, ? extends V>... entries) {
+    maps.assertDoesNotContain(info, actual, entries);
+    return myself;
+  }
+
+  /**
+   * Verifies that the actual map does not contain the given entry.
+   * <p>
+   * Example :
+   * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = new HashMap<>();
+   * ringBearers.put(nenya, galadriel);
+   * ringBearers.put(narya, gandalf);
+   * ringBearers.put(vilya, elrond);
+        // ... 16 lines elided ...
+  public SELF doesNotContainEntry(K key, V value) {
+        // ... 24 lines elided ...
+  public SELF containsKey(K key) {
+        // ... 25 lines elided ...
+  public SELF containsKeys(@SuppressWarnings("unchecked") K... keys) {
+        // ... 24 lines elided ...
+  public SELF doesNotContainKey(K key) {
+        // ... 23 lines elided ...
+  public SELF doesNotContainKeys(@SuppressWarnings("unchecked") K... keys) {
+        // ... 28 lines elided ...
+  public SELF containsOnlyKeys(@SuppressWarnings("unchecked") K... keys) {
+        // ... 24 lines elided ...
+  public SELF containsValue(V value) {
+        // ... 26 lines elided ...
+  public SELF containsValues(@SuppressWarnings("unchecked") V... values) {
+        // ... 24 lines elided ...
+  public SELF doesNotContainValue(V value) {
+        // ... 28 lines elided ...
+  public SELF containsOnly(@SuppressWarnings("unchecked") Map.Entry<? extends K, ? extends V>... entries) {
+        // ... 32 lines elided ...
+  public SELF containsExactly(@SuppressWarnings("unchecked") Map.Entry<? extends K, ? extends V>... entries) {
+        // ... 12 lines elided ...
+  public SELF usingElementComparator(Comparator<? super Map.Entry<? extends K, ? extends V>> customComparator) {
+        // ... 11 lines elided ...
+  public SELF usingDefaultElementComparator() {
+        // ... 8 lines elided ...
+  public SELF as(String description, Object... args) {
+        // ... 5 lines elided ...
+  public SELF as(Description description) {
+        // ... 5 lines elided ...
+  public SELF describedAs(Description description) {
+        // ... 5 lines elided ...
+  public SELF describedAs(String description, Object... args) {
+        // ... 4 lines elided ...
+  public SELF doesNotHave(Condition<? super ACTUAL> condition) {
+        // ... 4 lines elided ...
+  public SELF doesNotHaveSameClassAs(Object other) {
+        // ... 4 lines elided ...
+  public SELF has(Condition<? super ACTUAL> condition) {
+        // ... 4 lines elided ...
+  public SELF hasSameClassAs(Object other) {
+        // ... 4 lines elided ...
+  public SELF hasToString(String expectedToString) {
+        // ... 4 lines elided ...
+  public SELF is(Condition<? super ACTUAL> condition) {
+        // ... 4 lines elided ...
+  public SELF isEqualTo(Object expected) {
+        // ... 4 lines elided ...
+  public SELF isExactlyInstanceOf(Class<?> type) {
+        // ... 4 lines elided ...
+  public SELF isIn(Iterable<?> values) {
+        // ... 4 lines elided ...
+  public SELF isIn(Object... values) {
+        // ... 4 lines elided ...
+  public SELF isInstanceOf(Class<?> type) {
+        // ... 4 lines elided ...
+  public SELF isInstanceOfAny(Class<?>... types) {
+        // ... 4 lines elided ...
+  public SELF isNot(Condition<? super ACTUAL> condition) {
+        // ... 4 lines elided ...
+  public SELF isNotEqualTo(Object other) {
+        // ... 4 lines elided ...
+  public SELF isNotExactlyInstanceOf(Class<?> type) {
+        // ... 4 lines elided ...
+  public SELF isNotIn(Iterable<?> values) {
+        // ... 4 lines elided ...
+  public SELF isNotIn(Object... values) {
+        // ... 4 lines elided ...
+  public SELF isNotInstanceOf(Class<?> type) {
+        // ... 4 lines elided ...
+  public SELF isNotInstanceOfAny(Class<?>... types) {
+        // ... 4 lines elided ...
+  public SELF isNotOfAnyClassIn(Class<?>... types) {
+        // ... 4 lines elided ...
+  public SELF isNotNull() {
+        // ... 4 lines elided ...
+  public SELF isNotSameAs(Object other) {
+        // ... 4 lines elided ...
+  public SELF isOfAnyClassIn(Class<?>... types) {
+        // ... 4 lines elided ...
+  public SELF isSameAs(Object expected) {
+        // ... 5 lines elided ...
+  public SELF overridingErrorMessage(String newErrorMessage, Object... args) {
+        // ... 5 lines elided ...
+  public SELF usingDefaultComparator() {
+        // ... 5 lines elided ...
+  public SELF usingComparator(Comparator<? super ACTUAL> customComparator) {
+        // ... 4 lines elided ...
+  @CheckReturnValue
+  public SELF withFailMessage(String newErrorMessage, Object... args) {
+    return super.withFailMessage(newErrorMessage, args);
+  }
+
+  @Override
+  @CheckReturnValue
+  public SELF withThreadDumpOnError() {
+    return super.withThreadDumpOnError();
+  }
+
+  /**
+   * Returns an {@code Assert} object that allows performing assertions on the size of the {@link Map} under test.
+   * <p>
+   * Once this method is called, the object under test is no longer the {@link Map} but its size,
+   * to perform assertions on the {@link Map}, call {@link AbstractMapSizeAssert#returnToMap()}. 
+   * <p>
+   * Example :
+   * <pre><code class='java'> Map&lt;Ring, TolkienCharacter&gt; ringBearers = newHashMap(entry(oneRing, frodo),
+   *                                                      entry(nenya, galadriel), 
+   *                                                      entry(narya, gandalf));  
+   * 
+   * // assertion will pass:
+   * assertThat(ringBearers).size().isGreaterThan(1)                
+   *                               .isLessThanOrEqualTo(3)
+   *                        returnToMap().contains(entry(oneRing, frodo), 
+   *                                               entry(nenya, galadriel), 
+   *                                               entry(narya, gandalf));
+   * 
+   * // assertion will fail:
+   * assertThat(ringBearers).size().isGreaterThan(5);</code></pre>
+   * 
+   * @throws NullPointerException if the given map is {@code null}.
+   */
+  @SuppressWarnings({ "rawtypes", "unchecked" })
+  @CheckReturnValue
+  public AbstractMapSizeAssert<SELF, ACTUAL, K, V> size() {
+    Preconditions.checkNotNull(actual, "Can not perform assertions on the size of a null map.");
+    return new MapSizeAssert(this, actual.size());
+  }
+
+  /**
+   * Extract the values of given keys from the map under test into an array, this new array becoming
+   * the object under test.
+   * <p>
+   * For example, if you specify "id", "name" and "email" keys then the array will contain the map values for 
+   * these keys, you can then perform array assertions on the extracted values.
+   * <p>
+   * If a given key is not present in the map under test, a null value is extracted.
+   * <p>
+   * Example:
+   * <pre><code class='java'> Map<String, Object> map = new HashMap<>(); 
+   * map.put("name", "kawhi");                  
+   * map.put("age", 25);                        
+   *                                            
+   * assertThat(map).extracting("name", "age")
+   *                .contains("kawhi", 25);</code></pre>     
+   * <p>
+   * Note that the order of extracted keys value is consistent with the iteration order of the array under test.
+   * <p>
+   * Nested keys are not yet supported, passing "name.first" won't get a value for "name" and then try to extract 
+   * "first" from the previously extracted value, instead it will simply look for a value under "name.first" key.  
+   *
+   * @param keys the keys used to get values from the map under test
+   * @return a new assertion object whose object under test is the array containing the extracted map values
+   */
+  @CheckReturnValue
+  @Override
+  public AbstractObjectArrayAssert<?, Object> extracting(String... keys) {
+    return super.extracting(keys);
+  }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

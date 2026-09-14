@@ -1,0 +1,1369 @@
+UNIT sbtourist_journal.io__f13d15914f
+repo: sbtourist_journal.io   merge: f13d15914f40f49d860acbb2501e31185ed70a41   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/3: src/main/java/journal/io/api/Journal.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -38,24 +38,20 @@
+ import java.util.zip.Adler32;
+ import java.util.zip.Checksum;
+ import journal.io.util.IOHelper;
+ import static journal.io.util.LogHelper.*;
+ 
+ /**
+  * Journal implementation based on append-only rotating logs and checksummed
+  * records, with concurrent writes and reads, dynamic batching and logs
+- * compaction.
+- * <br/><br/> 
+- * Journal records can be written, read and deleted by
+- * providing a {@link Location} object.
+- * <br/><br/> 
+- * The whole Journal can be replayed forward or backward  
+- * by simply obtaining a redo or undo iterable and going through it in a for-each block.
+- * <br/>
++ * compaction. <br/><br/> Journal records can be written, read and deleted by
++ * providing a {@link Location} object. <br/><br/> The whole Journal can be
++ * replayed forward or backward by simply obtaining a redo or undo iterable and
++ * going through it in a for-each block. <br/>
+  *
+  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
+  * @author Sergio Bossa
+  */
+ public class Journal {
+ 
+     static final int RECORD_POINTER_SIZE = 4;
+     static final int RECORD_LENGTH_SIZE = 4;
+@@ -690,37 +686,43 @@
+         accessor.dispose(currentFile);
+         totalLength.addAndGet(-currentFile.getLength());
+         totalLength.addAndGet(tmpFile.getLength());
+         IOHelper.copyFile(tmpFile.getFile(), currentFile.getFile());
+         IOHelper.deleteFile(tmpFile.getFile());
+     }
+ 
+     private Location recoveryCheck() throws IOException {
+-        Location currentUserBatch = goToFirstLocation(dataFiles.firstEntry().getValue(), Location.BATCH_CONTROL_RECORD_TYPE, false);
++        Location currentBatch = goToFirstLocation(dataFiles.firstEntry().getValue(), Location.BATCH_CONTROL_RECORD_TYPE, false);
++        Location nextBatch = null;
+         while (true) {
+-            ByteBuffer buffer = ByteBuffer.wrap(accessor.readLocation(currentUserBatch, false));
+             if (isChecksum()) {
+-                long expectedChecksum = buffer.getLong();
+-                byte data[] = new byte[buffer.remaining()];
+-                Checksum checksum = new Adler32();
+-                buffer.get(data);
+-                checksum.update(data, 0, data.length);
+-                if (expectedChecksum != checksum.getValue()) {
+-                    throw new IOException("Bad checksum for location: " + currentUserBatch);
+-                }
+-            }
+-            Location next = goToNextLocation(currentUserBatch, Location.BATCH_CONTROL_RECORD_TYPE, true);
+-            if (next != null) {
+-                currentUserBatch = next;
++                ByteBuffer currentBatchBuffer = ByteBuffer.wrap(accessor.readLocation(currentBatch, false));
++                long expectedChecksum = currentBatchBuffer.getLong();
++                Checksum actualChecksum = new Adler32();
++                Location nextLocation = goToNextLocation(currentBatch, Location.ANY_RECORD_TYPE, true);
++                while (nextLocation != null && nextLocation.getType() != Location.BATCH_CONTROL_RECORD_TYPE) {
++                    byte data[] = accessor.readLocation(nextLocation, false);
++                    actualChecksum.update(data, 0, data.length);
++                    nextLocation = goToNextLocation(nextLocation, Location.ANY_RECORD_TYPE, true);
++                }
++                if (expectedChecksum != actualChecksum.getValue()) {
++                    throw new IOException("Bad checksum for location: " + currentBatch);
++                }
++                nextBatch = nextLocation;
++            } else {
++                nextBatch = goToNextLocation(currentBatch, Location.BATCH_CONTROL_RECORD_TYPE, true);
++            }
++            if (nextBatch != null) {
++                currentBatch = nextBatch;
+             } else {
+                 break;
+             }
+         }
+-        Location currentUserRecord = currentUserBatch;
++        Location currentUserRecord = currentBatch;
+         while (true) {
+             Location next = goToNextLocation(currentUserRecord, Location.USER_RECORD_TYPE, false);
+             if (next != null) {
+                 currentUserRecord = next;
+             } else {
+                 break;
+             }
+         }
+@@ -776,16 +778,17 @@
+         void appendBatch(WriteCommand writeRecord) throws IOException {
+             size += writeRecord.location.getSize();
+             dataFile.incrementLength(writeRecord.location.getSize());
+             writes.offer(writeRecord);
+         }
+ 
+         void perform(RandomAccessFile file, JournalListener listener, ReplicationTarget replicator, boolean checksum, boolean physicalSync) throws IOException {
+             ByteBuffer buffer = ByteBuffer.allocate(size);
++            Checksum adler32 = new Adler32();
+             WriteCommand control = writes.peek();
+ 
+             // Write an empty batch control record.
+             buffer.putInt(control.location.getPointer());
+             buffer.putInt(BATCH_CONTROL_RECORD_SIZE);
+             buffer.put(Location.BATCH_CONTROL_RECORD_TYPE);
+             buffer.putInt(0);
+             buffer.putLong(0);
+@@ -795,26 +798,25 @@
+             commands.next();
+             // Process others:
+             while (commands.hasNext()) {
+                 WriteCommand current = commands.next();
+                 buffer.putInt(current.location.getPointer());
+                 buffer.putInt(current.location.getSize());
+                 buffer.put(current.location.getType());
+                 buffer.put(current.getData());
++                if (checksum) {
++                    adler32.update(current.getData(), 0, current.getData().length);
++                }
+             }
+ 
+             // Now we can fill in the batch control record properly.
+             buffer.position(Journal.HEADER_SIZE);
+             buffer.putInt(size - Journal.BATCH_CONTROL_RECORD_SIZE);
+             if (checksum) {
+-                Checksum adler32 = new Adler32();
+-                adler32.update(buffer.array(),
+-                        Journal.BATCH_CONTROL_RECORD_SIZE,
+-                        size - Journal.BATCH_CONTROL_RECORD_SIZE);
+                 buffer.putLong(adler32.getValue());
+             }
+ 
+             // Now do the 1 big write.
+             file.seek(offset);
+             file.write(buffer.array(), 0, size);
+ 
+             if (physicalSync) {
+@@ -912,17 +914,17 @@
+             return true;
+         }
+ 
+         public Boolean get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+             boolean success = latch.await(timeout, unit);
+             return success;
+         }
+     }
+-    
++
+     private class Redo implements Iterable<Location> {
+ 
+         private final Location start;
+ 
+         public Redo(Location start) {
+             this.start = start;
+         }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -38,24 +38,20 @@
+ import java.util.zip.Adler32;
+ import java.util.zip.Checksum;
+ import journal.io.util.IOHelper;
+ import static journal.io.util.LogHelper.*;
+ 
+ /**
+  * Journal implementation based on append-only rotating logs and checksummed
+  * records, with concurrent writes and reads, dynamic batching and logs
+- * compaction.
+- * <br/><br/> 
+- * Journal records can be written, read and deleted by
+- * providing a {@link Location} object.
+- * <br/><br/> 
+- * The whole Journal can be replayed forward or backward  
+- * by simply obtaining a redo or undo iterable and going through it in a for-each block.
+- * <br/>
++ * compaction. <br/><br/> Journal records can be written, read and deleted by
++ * providing a {@link Location} object. <br/><br/> The whole Journal can be
++ * replayed forward or backward by simply obtaining a redo or undo iterable and
++ * going through it in a for-each block. <br/>
+  *
+  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
+  * @author Sergio Bossa
+  */
+ public class Journal {
+ 
+     static final int RECORD_POINTER_SIZE = 4;
+     static final int RECORD_LENGTH_SIZE = 4;
+@@ -95,18 +91,16 @@
+     //
+     private DataFileAppender appender;
+     private DataFileAccessor accessor;
+     //
+     private boolean opened;
+     //
+     private boolean archiveFiles;
+     //
+-    private JournalListener listener;
+-    //
+     private ReplicationTarget replicationTarget;
+ 
+     /**
+      * Open the journal, eventually recovering it if already existent.
+      *
+      * @throws IOException
+      */
+     public synchronized void open() throws IOException {
+@@ -208,63 +202,74 @@
+     /**
+      * Sync asynchronously written records on disk.
+      *
+      * @throws IOException
+      */
+     public void sync() throws IOException {
+         try {
+             appender.sync().get();
++            if (appender.getAsyncException() != null) {
++                throw new IOException(appender.getAsyncException());
++            }
+         } catch (Exception ex) {
+             throw new IllegalStateException(ex.getMessage(), ex);
+         }
+     }
+ 
+     /**
+-     * Read the record stored at the given {@link Location}, taking advantage of
+-     * speculative disk reads.
++     * Read the record stored at the given {@link Location}, either by syncing
++     * with the disk state (if {@code ReadType.SYNC}) or by taking advantage of
++     * speculative disk
++     * reads (if {@code ReadType.ASYNC}); the latter is faster, while the former
++     * is slower but
++     * will suddenly detect deleted records.
+      *
+      * @param location
++     * @param read
+      * @return
+      * @throws IOException
+      * @throws IllegalStateException
+      */
+-    public byte[] read(Location location) throws IOException, IllegalStateException {
+-        return accessor.readLocation(location, false);
+-    }
+-
+-    /**
+-     * Read the record stored at the given {@link Location}, either by syncing
+-     * with the disk state (if true) or by taking advantage of speculative disk
+-     * reads (if false); the latter is faster, while the former is slower but
+-     * will suddenly detect deleted records.
+-     *
+-     * @param location
+-     * @param sync
+-     * @return
+-     * @throws IOException
+-     * @throws IllegalStateException
+-     */
+-    public byte[] read(Location location, boolean sync) throws IOException, IllegalStateException {
+-        return accessor.readLocation(location, sync);
+-    }
+-
+-    /**
+-     * Write the given byte buffer record, either sync or async, and returns the
++    public byte[] read(Location location, ReadType read) throws IOException, IllegalStateException {
++        return accessor.readLocation(location, read.equals(ReadType.SYNC) ? true : false);
++    }
++
++    /**
++     * Write the given byte buffer record, either sync (if {@code WriteType.SYNC})
++     * or async (if {@code WriteType.ASYNC}), and returns the
+      * stored {@link Location}.<br/> A sync write causes all previously batched
+      * async writes to be synced too.
+      *
+      * @param data
+-     * @param sync True if sync, false if async.
++     * @param write
+      * @return
+      * @throws IOException
+      * @throws IllegalStateException
+      */
+-    public Location write(byte[] data, boolean sync) throws IOException, IllegalStateException {
+-        Location loc = appender.storeItem(data, Location.USER_RECORD_TYPE, sync);
++    public Location write(byte[] data, WriteType write) throws IOException, IllegalStateException {
++        return write(data, write, Location.NoWriteCallback.INSTANCE);
++    }
++
++    /**
++     * Write the given byte buffer record, either sync (if {@code WriteType.SYNC})
++     * or async (if {@code WriteType.ASYNC}), and returns the
++     * stored {@link Location}.<br/> A sync write causes all previously batched
++     * async writes to be synced too.<br/> The provided callback will be invoked
++     * if sync is completed or if some error occurs during syncing.
++     *
++     * @param data
++     * @param write
++     * @param callback
++     * @return
++     * @throws IOException
++     * @throws IllegalStateException
++     */
++    public Location write(byte[] data, WriteType write, WriteCallback callback) throws IOException, IllegalStateException {
++        Location loc = appender.storeItem(data, Location.USER_RECORD_TYPE, write.equals(WriteType.SYNC) ? true : false, callback);
+         return loc;
+     }
+ 
+     /**
+      * Delete the record at the given {@link Location}.<br/> Deletes cause first
+      * a batch sync and always are logical: records will be actually deleted at
+      * log cleanup time.
+      *
+@@ -516,34 +521,16 @@
+     /**
+      * Set the max size in bytes of the write batch: must always be equal or
+      * less than the max file length.
+      *
+      * @param maxWriteBatchSize
+      */
+     public void setMaxWriteBatchSize(int maxWriteBatchSize) {
+         this.maxWriteBatchSize = maxWriteBatchSize;
+-    }
+-
+-    /**
+-     * Get the {@link JournalListener} to notify when syncing batches.
+-     *
+-     * @return
+-     */
+-    public JournalListener getListener() {
+-        return listener;
+-    }
+-
+-    /**
+-     * Set the {@link JournalListener} to notify when syncing batches.
+-     *
+-     * @param listener
+-     */
+-    public void setListener(JournalListener listener) {
+-        this.listener = listener;
+     }
+ 
+     /**
+      * Set the milliseconds interval for resources disposal: i.e., un-accessed
+      * files will be closed.
+      *
+      * @param disposeInterval
+      */
+@@ -676,17 +663,17 @@
+             WriteBatch batch = new WriteBatch(tmpFile, 0);
+             batch.prepareBatch();
+             while (currentUserLocation != null) {
+                 byte[] data = accessor.readLocation(currentUserLocation, false);
+                 WriteCommand write = new WriteCommand(currentUserLocation, data, true);
+                 batch.appendBatch(write);
+                 currentUserLocation = goToNextLocation(currentUserLocation, Location.USER_RECORD_TYPE, false);
+             }
+-            batch.perform(raf, null, null, true, true);
++            batch.perform(raf, true, true, null);
+         } finally {
+             if (raf != null) {
+                 raf.close();
+             }
+         }
+         accessor.dispose(currentFile);
+         totalLength.addAndGet(-currentFile.getLength());
+         totalLength.addAndGet(tmpFile.getLength());
+@@ -722,16 +709,26 @@
+                 currentUserRecord = next;
+             } else {
+                 break;
+             }
+         }
+         return currentUserRecord;
+     }
+ 
++    public static enum ReadType {
++
++        SYNC, ASYNC;
++    }
++
++    public static enum WriteType {
++
++        SYNC, ASYNC;
++    }
++
+     static class WriteBatch {
+ 
+         private static byte[] EMPTY_BUFFER = new byte[0];
+         //
+         private final DataFile dataFile;
+         private final Queue<WriteCommand> writes = new ConcurrentLinkedQueue<WriteCommand>();
+         private final CountDownLatch latch = new CountDownLatch(1);
+         private volatile int offset;
+@@ -774,17 +771,17 @@
+         }
+ 
+         void appendBatch(WriteCommand writeRecord) throws IOException {
+             size += writeRecord.location.getSize();
+             dataFile.incrementLength(writeRecord.location.getSize());
+             writes.offer(writeRecord);
+         }
+ 
+-        void perform(RandomAccessFile file, JournalListener listener, ReplicationTarget replicator, boolean checksum, boolean physicalSync) throws IOException {
++        void perform(RandomAccessFile file, boolean checksum, boolean physicalSync, ReplicationTarget replicationTarget) throws IOException {
+             ByteBuffer buffer = ByteBuffer.allocate(size);
+             WriteCommand control = writes.peek();
+ 
+             // Write an empty batch control record.
+             buffer.putInt(control.location.getPointer());
+             buffer.putInt(BATCH_CONTROL_RECORD_SIZE);
+             buffer.put(Location.BATCH_CONTROL_RECORD_TYPE);
+             buffer.putInt(0);
+@@ -812,30 +809,25 @@
+                         size - Journal.BATCH_CONTROL_RECORD_SIZE);
+                 buffer.putLong(adler32.getValue());
+             }
+ 
+             // Now do the 1 big write.
+             file.seek(offset);
+             file.write(buffer.array(), 0, size);
+ 
++            // Then sync:
+             if (physicalSync) {
+                 IOHelper.sync(file.getFD());
+             }
+ 
++            // And replicate:
+             try {
+-                if (listener != null) {
+-                    listener.synced(writes.toArray(new WriteCommand[writes.size()]));
+-                }
+-            } catch (Throwable ex) {
+-                warn("Cannot notify listeners!", ex);
+-            }
+-            try {
+-                if (replicator != null) {
+-                    replicator.replicate(control.location, buffer.array());
++                if (replicationTarget != null) {
++                    replicationTarget.replicate(control.location, buffer.array());
+                 }
+             } catch (Throwable ex) {
+                 warn("Cannot replicate!", ex);
+             }
+         }
+ 
+         DataFile getDataFile() {
+             return dataFile;
+@@ -857,17 +849,17 @@
+             return writes.isEmpty();
+         }
+ 
+         int incrementAndGetPointer() {
+             return ++pointer;
+         }
+     }
+ 
+-    static class WriteCommand implements JournalListener.Write {
++    static class WriteCommand {
+ 
+         private final Location location;
+         private final boolean sync;
+         private volatile byte[] data;
+ 
+         WriteCommand(Location location, byte[] data, boolean sync) {
+             this.location = location;
+             this.data = data;
+@@ -912,17 +904,17 @@
+             return true;
+         }
+ 
+         public Boolean get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+             boolean success = latch.await(timeout, unit);
+             return success;
+         }
+     }
+-    
++
+     private class Redo implements Iterable<Location> {
+ 
+         private final Location start;
+ 
+         public Redo(Location start) {
+             this.start = start;
+         }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/main/java/journal/io/api/Location.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -21,27 +21,27 @@
+ /**
+  * Represent a location inside the journal.
+  * 
+  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
+  * @author Sergio Bossa
+  */
+ public final class Location implements Comparable<Location> {
+ 
+-    static final byte NO_RECORD_TYPE = 0;
++    static final byte ANY_RECORD_TYPE = 0;
+     static final byte USER_RECORD_TYPE = 1;
+     static final byte BATCH_CONTROL_RECORD_TYPE = 2;
+     static final byte DELETED_RECORD_TYPE = 3;
+     //
+     static final int NOT_SET = -1;
+     //
+     private volatile int dataFileId = NOT_SET;
+     private volatile int pointer = NOT_SET;
+     private volatile int size = NOT_SET;
+-    private volatile byte type = NO_RECORD_TYPE;
++    private volatile byte type = ANY_RECORD_TYPE;
+     private volatile byte[] data;
+     private CountDownLatch latch;
+ 
+     public Location() {
+     }
+ 
+     public Location(Location item) {
+         this.dataFileId = item.dataFileId;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,47 +1,48 @@
+ /**
+- *    Licensed under the Apache License, Version 2.0 (the "License");
+- *    you may not use this file except in compliance with the License.
+- *    You may obtain a copy of the License at
++ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
++ * use this file except in compliance with the License. You may obtain a copy of
++ * the License at
+  *
+- *        http://www.apache.org/licenses/LICENSE-2.0
++ * http://www.apache.org/licenses/LICENSE-2.0
+  *
+- *    Unless required by applicable law or agreed to in writing, software
+- *    distributed under the License is distributed on an "AS IS" BASIS,
+- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- *    See the License for the specific language governing permissions and
+- *    limitations under the License.
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++ * License for the specific language governing permissions and limitations under
++ * the License.
+  */
+ package journal.io.api;
+ 
+ import java.io.DataInput;
+ import java.io.DataOutput;
+ import java.io.IOException;
+ import java.util.concurrent.CountDownLatch;
+ 
+ /**
+  * Represent a location inside the journal.
+- * 
++ *
+  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
+  * @author Sergio Bossa
+  */
+ public final class Location implements Comparable<Location> {
+ 
+     static final byte NO_RECORD_TYPE = 0;
+     static final byte USER_RECORD_TYPE = 1;
+     static final byte BATCH_CONTROL_RECORD_TYPE = 2;
+     static final byte DELETED_RECORD_TYPE = 3;
+     //
+     static final int NOT_SET = -1;
+     //
+     private volatile int dataFileId = NOT_SET;
+     private volatile int pointer = NOT_SET;
+     private volatile int size = NOT_SET;
+     private volatile byte type = NO_RECORD_TYPE;
++    private volatile WriteCallback writeCallback = NoWriteCallback.INSTANCE;
+     private volatile byte[] data;
+     private CountDownLatch latch;
+ 
+     public Location() {
+     }
+ 
+     public Location(Location item) {
+         this.dataFileId = item.dataFileId;
+@@ -110,16 +111,24 @@
+     CountDownLatch getLatch() {
+         return latch;
+     }
+ 
+     void setLatch(CountDownLatch latch) {
+         this.latch = latch;
+     }
+ 
++    void setWriteCallback(WriteCallback writeCallback) {
++        this.writeCallback = writeCallback;
++    }
++
++    WriteCallback getWriteCallback() {
++        return writeCallback;
++    }
++
+     void setData(byte[] data) {
+         this.data = data;
+     }
+ 
+     public String toString() {
+         return dataFileId + ":" + pointer;
+     }
+ 
+@@ -153,9 +162,21 @@
+         }
+         return result;
+     }
+ 
+     public int hashCode() {
+         return dataFileId ^ pointer;
+     }
+ 
++    static class NoWriteCallback implements WriteCallback {
++
++        public static final WriteCallback INSTANCE = new NoWriteCallback();
++
++        @Override
++        public void onSync(Location syncedLocation) {
++        }
++
++        @Override
++        public void onError(Location location, Throwable error) {
++        }
++    }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/test/java/journal/io/api/JournalTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -356,17 +356,17 @@
+     @Test(expected = IllegalStateException.class)
+     public void testIllegalStateExceptionIfCallingRemoveBeforeNextWithUndo() throws Exception {
+         journal.write("A".getBytes("UTF-8"), false);
+         Iterator<Location> itr = journal.undo().iterator();
+         itr.remove();
+     }
+ 
+     @Test
+-    public void testLogRecovery() throws Exception {
++    public void testLogRecoveryWithFollowingWrites() throws Exception {
+         int iterations = 10;
+         //
+         for (int i = 0; i < iterations; i++) {
+             boolean sync = i % 2 == 0 ? true : false;
+             journal.write(new String("DATA" + i).getBytes("UTF-8"), sync);
+         }
+         //
+         journal.close();
+@@ -379,16 +379,48 @@
+         }
+         //
+         int index = 0;
+         for (Location location : journal.redo()) {
+             byte[] buffer = journal.read(location, false);
+             assertEquals("DATA" + index++, new String(buffer, "UTF-8"));
+         }
+         assertEquals(iterations * 2, index);
++    }
++    
++    @Test
++    public void testLogRecoveryWithDeletes() throws Exception {
++        int iterations = 10;
++        //
++        for (int i = 0; i < iterations; i++) {
++            boolean sync = i % 2 == 0 ? true : false;
++            Location written = journal.write(new String("DATA" + i).getBytes("UTF-8"), sync);
++            journal.delete(written);
++        }
++        //
++        journal.close();
++        //
++        journal.open();
++    }
++    
++    @Test
++    public void testLogRecoveryWithDeletesAndCompact() throws Exception {
++        int iterations = 10;
++        //
++        for (int i = 0; i < iterations; i++) {
++            boolean sync = i % 2 == 0 ? true : false;
++            Location written = journal.write(new String("DATA" + i).getBytes("UTF-8"), sync);
++            journal.delete(written);
++        }
++        //
++        journal.compact();
++        //
++        journal.close();
++        //
++        journal.open();
+     }
+ 
+     @Test
+     public void testLogSpanningMultipleFiles() throws Exception {
+         int iterations = 1000;
+         for (int i = 0; i < iterations; i++) {
+             boolean sync = i % 2 == 0 ? true : false;
+             journal.write(new String("DATA" + i).getBytes("UTF-8"), sync);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -55,405 +55,434 @@
+     public void tearDown() throws Exception {
+         journal.close();
+         deleteFilesInDirectory(dir);
+         dir.delete();
+     }
+ 
+     @Test(expected = IOException.class)
+     public void testAsyncSpeculativeReadWorksButSyncReadRaisesException() throws Exception {
+-        Location data = journal.write(new String("DATA").getBytes("UTF-8"), true);
++        Location data = journal.write(new String("DATA").getBytes("UTF-8"), Journal.WriteType.SYNC);
+         journal.delete(data);
+-        assertEquals("DATA", journal.read(data, false));
+-        journal.read(data, true);
++        assertEquals("DATA", journal.read(data, Journal.ReadType.ASYNC));
++        journal.read(data, Journal.ReadType.SYNC);
+     }
+ 
+     @Test
+     public void testSyncLogWritingAndRedoing() throws Exception {
+         int iterations = 10;
+         for (int i = 0; i < iterations; i++) {
+-            journal.write(new String("DATA" + i).getBytes("UTF-8"), true);
++            journal.write(new String("DATA" + i).getBytes("UTF-8"), Journal.WriteType.SYNC);
+         }
+         int i = 0;
+         for (Location location : journal.redo()) {
+-            byte[] buffer = journal.read(location, false);
++            byte[] buffer = journal.read(location, Journal.ReadType.ASYNC);
+             assertEquals("DATA" + i++, new String(buffer, "UTF-8"));
+         }
+     }
+ 
+     @Test
+     public void testSyncLogWritingAndUndoing() throws Exception {
+         int iterations = 10;
+         for (int i = 0; i < iterations; i++) {
+-            journal.write(new String("DATA" + i).getBytes("UTF-8"), true);
++            journal.write(new String("DATA" + i).getBytes("UTF-8"), Journal.WriteType.SYNC);
+         }
+         int i = 10;
+         for (Location location : journal.undo()) {
+-            byte[] buffer = journal.read(location, false);
++            byte[] buffer = journal.read(location, Journal.ReadType.ASYNC);
+             assertEquals("DATA" + --i, new String(buffer, "UTF-8"));
+         }
+     }
+ 
+     @Test
+     public void testAsyncLogWritingAndRedoing() throws Exception {
+         int iterations = 10;
+         for (int i = 0; i < iterations; i++) {
+-            journal.write(new String("DATA" + i).getBytes("UTF-8"), false);
++            journal.write(new String("DATA" + i).getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         }
+         int i = 0;
+         for (Location location : journal.redo()) {
+-            byte[] buffer = journal.read(location, false);
++            byte[] buffer = journal.read(location, Journal.ReadType.SYNC);
+             assertEquals("DATA" + i++, new String(buffer, "UTF-8"));
+         }
+     }
+ 
+     @Test
+     public void testAsyncLogWritingAndUndoing() throws Exception {
+         int iterations = 10;
+         for (int i = 0; i < iterations; i++) {
+-            journal.write(new String("DATA" + i).getBytes("UTF-8"), false);
++            journal.write(new String("DATA" + i).getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         }
+         int i = 10;
+         for (Location location : journal.undo()) {
+-            byte[] buffer = journal.read(location, false);
++            byte[] buffer = journal.read(location, Journal.ReadType.ASYNC);
+             assertEquals("DATA" + --i, new String(buffer, "UTF-8"));
+         }
+     }
+ 
+     @Test
+     public void testMixedSyncAsyncLogWritingAndRedoing() throws Exception {
+         int iterations = 10;
+         for (int i = 0; i < iterations; i++) {
+-            boolean sync = i % 2 == 0 ? true : false;
++            Journal.WriteType sync = i % 2 == 0 ? Journal.WriteType.SYNC : Journal.WriteType.ASYNC;
+             journal.write(new String("DATA" + i).getBytes("UTF-8"), sync);
+         }
+         int i = 0;
+         for (Location location : journal.redo()) {
+-            byte[] buffer = journal.read(location, false);
++            byte[] buffer = journal.read(location, Journal.ReadType.ASYNC);
+             assertEquals("DATA" + i++, new String(buffer, "UTF-8"));
+         }
+     }
+ 
+     @Test
+     public void testMixedSyncAsyncLogWritingAndUndoing() throws Exception {
+         int iterations = 10;
+         for (int i = 0; i < iterations; i++) {
+-            boolean sync = i % 2 == 0 ? true : false;
++            Journal.WriteType sync = i % 2 == 0 ? Journal.WriteType.SYNC : Journal.WriteType.ASYNC;
+             journal.write(new String("DATA" + i).getBytes("UTF-8"), sync);
+         }
+         int i = 10;
+         for (Location location : journal.undo()) {
+-            byte[] buffer = journal.read(location, false);
++            byte[] buffer = journal.read(location, Journal.ReadType.ASYNC);
+             assertEquals("DATA" + --i, new String(buffer, "UTF-8"));
+         }
+     }
+ 
+     @Test
+     public void testRedoForwardOrder() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
+-        journal.write("B".getBytes("UTF-8"), false);
+-        journal.write("C".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        journal.write("B".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        journal.write("C".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> redo = journal.redo().iterator();
+         assertTrue(redo.hasNext());
+-        assertEquals("A", new String(journal.read(redo.next(), false), "UTF-8"));
++        assertEquals("A", new String(journal.read(redo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+         assertTrue(redo.hasNext());
+-        assertEquals("B", new String(journal.read(redo.next(), false), "UTF-8"));
++        assertEquals("B", new String(journal.read(redo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+         assertTrue(redo.hasNext());
+-        assertEquals("C", new String(journal.read(redo.next(), false), "UTF-8"));
++        assertEquals("C", new String(journal.read(redo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+         assertFalse(redo.hasNext());
+     }
+ 
+     @Test
+     public void testRedoForwardOrderWithStartingLocation() throws Exception {
+-        Location a = journal.write("A".getBytes("UTF-8"), false);
+-        Location b = journal.write("B".getBytes("UTF-8"), false);
+-        Location c = journal.write("C".getBytes("UTF-8"), false);
++        Location a = journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        Location b = journal.write("B".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        Location c = journal.write("C".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> redo = journal.redo(b).iterator();
+         assertTrue(redo.hasNext());
+-        assertEquals("B", new String(journal.read(redo.next(), false), "UTF-8"));
++        assertEquals("B", new String(journal.read(redo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+         assertTrue(redo.hasNext());
+-        assertEquals("C", new String(journal.read(redo.next(), false), "UTF-8"));
++        assertEquals("C", new String(journal.read(redo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+         assertFalse(redo.hasNext());
+     }
+ 
+     @Test
+     public void testRedoEmptyJournal() throws Exception {
+         int iterations = 0;
+         for (Location loc : journal.redo()) {
+             iterations++;
+         }
+         assertEquals(0, iterations);
+     }
+ 
+     @Test
+     public void testRedoLargeChunksOfData() throws Exception {
+         byte parts = 127;
+         for (byte i = 0; i < parts; i++) {
+-            journal.write(new byte[]{i}, false);
++            journal.write(new byte[]{i}, Journal.WriteType.ASYNC);
+         }
+         parts = 0;
+         for (Location loc : journal.redo()) {
+-            assertArrayEquals(new byte[]{parts++}, journal.read(loc));
++            assertArrayEquals(new byte[]{parts++}, journal.read(loc, Journal.ReadType.ASYNC));
+         }
+         assertEquals(127, parts);
+     }
+ 
+     @Test
+     public void testRedoTakesNewWritesIntoAccount() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
+-        journal.write("B".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        journal.write("B".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> redo = journal.redo().iterator();
+-        journal.write("C".getBytes("UTF-8"), false);
+-        assertEquals("A", new String(journal.read(redo.next(), false), "UTF-8"));
+-        assertEquals("B", new String(journal.read(redo.next(), false), "UTF-8"));
+-        assertEquals("C", new String(journal.read(redo.next(), false), "UTF-8"));
++        journal.write("C".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        assertEquals("A", new String(journal.read(redo.next(), Journal.ReadType.ASYNC), "UTF-8"));
++        assertEquals("B", new String(journal.read(redo.next(), Journal.ReadType.ASYNC), "UTF-8"));
++        assertEquals("C", new String(journal.read(redo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+     }
+ 
+     @Test
+     public void testRemoveThroughRedo() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
+-        journal.write("B".getBytes("UTF-8"), false);
+-        journal.write("C".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        journal.write("B".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        journal.write("C".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> itr = journal.redo().iterator();
+         int iterations = 0;
+         while (itr.hasNext()) {
+             itr.next();
+             itr.remove();
+             iterations++;
+         }
+         assertEquals(3, iterations);
+         iterations = 0;
+         for (Location loc : journal.redo()) {
+             iterations++;
+         }
+         assertEquals(0, iterations);
+     }
+-    
++
+     @Test(expected = NoSuchElementException.class)
+     public void testNoSuchElementExceptionWithRedoIterator() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> itr = journal.redo().iterator();
+         assertTrue(itr.hasNext());
+         itr.next();
+         assertFalse(itr.hasNext());
+         itr.next();
+     }
+ 
+     @Test(expected = IllegalStateException.class)
+     public void testIllegalStateExceptionIfTheSameLocationIsRemovedThroughRedoMoreThanOnce() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> itr = journal.redo().iterator();
+         itr.next();
+         itr.remove();
+         itr.remove();
+     }
+ 
+     @Test(expected = IllegalStateException.class)
+     public void testIllegalStateExceptionIfCallingRemoveBeforeNextWithRedo() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> itr = journal.redo().iterator();
+         itr.remove();
+     }
+ 
+     @Test
+     public void testUndoBackwardOrder() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
+-        journal.write("B".getBytes("UTF-8"), false);
+-        journal.write("C".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        journal.write("B".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        journal.write("C".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> undo = journal.undo().iterator();
+         assertTrue(undo.hasNext());
+-        assertEquals("C", new String(journal.read(undo.next(), false), "UTF-8"));
++        assertEquals("C", new String(journal.read(undo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+         assertTrue(undo.hasNext());
+-        assertEquals("B", new String(journal.read(undo.next(), false), "UTF-8"));
++        assertEquals("B", new String(journal.read(undo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+         assertTrue(undo.hasNext());
+-        assertEquals("A", new String(journal.read(undo.next(), false), "UTF-8"));
++        assertEquals("A", new String(journal.read(undo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+         assertFalse(undo.hasNext());
+     }
+ 
+     @Test
+     public void testUndoBackwardOrderWithEndingLocation() throws Exception {
+-        Location a = journal.write("A".getBytes("UTF-8"), false);
+-        Location b = journal.write("B".getBytes("UTF-8"), false);
+-        Location c = journal.write("C".getBytes("UTF-8"), false);
++        Location a = journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        Location b = journal.write("B".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        Location c = journal.write("C".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> undo = journal.undo(b).iterator();
+         assertTrue(undo.hasNext());
+-        assertEquals("C", new String(journal.read(undo.next(), false), "UTF-8"));
++        assertEquals("C", new String(journal.read(undo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+         assertTrue(undo.hasNext());
+-        assertEquals("B", new String(journal.read(undo.next(), false), "UTF-8"));
++        assertEquals("B", new String(journal.read(undo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+         assertFalse(undo.hasNext());
+     }
+ 
+     @Test
+     public void testUndoEmptyJournal() throws Exception {
+         int iterations = 0;
+         for (Location loc : journal.undo()) {
+             iterations++;
+         }
+         assertEquals(0, iterations);
+     }
+ 
+     @Test
+     public void testUndoLargeChunksOfData() throws Exception {
+         byte parts = 127;
+         for (byte i = 0; i < parts; i++) {
+-            journal.write(new byte[]{i}, false);
++            journal.write(new byte[]{i}, Journal.WriteType.ASYNC);
+         }
+         parts = 127;
+         for (Location loc : journal.undo()) {
+-            assertArrayEquals(new byte[]{--parts}, journal.read(loc));
++            assertArrayEquals(new byte[]{--parts}, journal.read(loc, Journal.ReadType.ASYNC));
+         }
+         assertEquals(0, parts);
+     }
+ 
+     @Test
+     public void testUndoDoesntTakeNewWritesIntoAccount() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
+-        journal.write("B".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        journal.write("B".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> undo = journal.undo().iterator();
+-        journal.write("C".getBytes("UTF-8"), false);
+-        assertEquals("B", new String(journal.read(undo.next(), false), "UTF-8"));
+-        assertEquals("A", new String(journal.read(undo.next(), false), "UTF-8"));
++        journal.write("C".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        assertEquals("B", new String(journal.read(undo.next(), Journal.ReadType.ASYNC), "UTF-8"));
++        assertEquals("A", new String(journal.read(undo.next(), Journal.ReadType.ASYNC), "UTF-8"));
+         assertFalse(undo.hasNext());
+     }
+ 
+     @Test
+     public void testRemoveThroughUndo() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
+-        journal.write("B".getBytes("UTF-8"), false);
+-        journal.write("C".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        journal.write("B".getBytes("UTF-8"), Journal.WriteType.ASYNC);
++        journal.write("C".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> itr = journal.undo().iterator();
+         int iterations = 0;
+         while (itr.hasNext()) {
+             itr.next();
+             itr.remove();
+             iterations++;
+         }
+         assertEquals(3, iterations);
+         iterations = 0;
+         for (Location loc : journal.undo()) {
+             iterations++;
+         }
+         assertEquals(0, iterations);
+     }
+-    
++
+     @Test(expected = NoSuchElementException.class)
+     public void testNoSuchElementExceptionWithUndoIterator() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> itr = journal.undo().iterator();
+         assertTrue(itr.hasNext());
+         itr.next();
+         assertFalse(itr.hasNext());
+         itr.next();
+     }
+ 
+     @Test(expected = IllegalStateException.class)
+     public void testIllegalStateExceptionIfTheSameLocationIsRemovedThroughUndoMoreThanOnce() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> itr = journal.undo().iterator();
+         itr.next();
+         itr.remove();
+         itr.remove();
+     }
+ 
+     @Test(expected = IllegalStateException.class)
+     public void testIllegalStateExceptionIfCallingRemoveBeforeNextWithUndo() throws Exception {
+-        journal.write("A".getBytes("UTF-8"), false);
++        journal.write("A".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         Iterator<Location> itr = journal.undo().iterator();
+         itr.remove();
+     }
+ 
+     @Test
+     public void testLogRecovery() throws Exception {
+         int iterations = 10;
+         //
+         for (int i = 0; i < iterations; i++) {
+-            boolean sync = i % 2 == 0 ? true : false;
++            Journal.WriteType sync = i % 2 == 0 ? Journal.WriteType.SYNC : Journal.WriteType.ASYNC;
+             journal.write(new String("DATA" + i).getBytes("UTF-8"), sync);
+         }
+         //
+         journal.close();
+         //
+         journal.open();
+         //
+         for (int i = iterations; i < iterations * 2; i++) {
+-            boolean sync = i % 2 == 0 ? true : false;
++            Journal.WriteType sync = i % 2 == 0 ? Journal.WriteType.SYNC : Journal.WriteType.ASYNC;
+             journal.write(new String("DATA" + i).getBytes("UTF-8"), sync);
+         }
+         //
+         int index = 0;
+         for (Location location : journal.redo()) {
+-            byte[] buffer = journal.read(location, false);
++            byte[] buffer = journal.read(location, Journal.ReadType.ASYNC);
+             assertEquals("DATA" + index++, new String(buffer, "UTF-8"));
+         }
+         assertEquals(iterations * 2, index);
+     }
+ 
+     @Test
+     public void testLogSpanningMultipleFiles() throws Exception {
+         int iterations = 1000;
+         for (int i = 0; i < iterations; i++) {
+-            boolean sync = i % 2 == 0 ? true : false;
++            Journal.WriteType sync = i % 2 == 0 ? Journal.WriteType.SYNC : Journal.WriteType.ASYNC;
+             journal.write(new String("DATA" + i).getBytes("UTF-8"), sync);
+         }
+         int i = 0;
+         for (Location location : journal.redo()) {
+-            byte[] buffer = journal.read(location, false);
++            byte[] buffer = journal.read(location, Journal.ReadType.ASYNC);
+             assertEquals("DATA" + i++, new String(buffer, "UTF-8"));
+         }
+     }
+ 
+     @Test
+     public void testLogCompaction() throws Exception {
+         int iterations = 1000;
+         for (int i = 0; i < iterations / 2; i++) {
+-            boolean sync = i % 2 == 0 ? true : false;
++            Journal.WriteType sync = i % 2 == 0 ? Journal.WriteType.SYNC : Journal.WriteType.ASYNC;
+             Location toDelete = journal.write(new String("DATA" + i).getBytes("UTF-8"), sync);
+             journal.delete(toDelete);
+         }
+         for (int i = iterations / 2; i < iterations; i++) {
+-            boolean sync = i % 2 == 0 ? true : false;
++            Journal.WriteType sync = i % 2 == 0 ? Journal.WriteType.SYNC : Journal.WriteType.ASYNC;
+             journal.write(new String("DATA" + i).getBytes("UTF-8"), sync);
+         }
+         //
+         int preCleanupFiles = journal.getFiles().size();
+         journal.compact();
+         assertTrue(journal.getFiles().size() < preCleanupFiles);
+         //
+         int i = iterations / 2;
+         for (Location location : journal.redo()) {
+-            byte[] buffer = journal.read(location, false);
++            byte[] buffer = journal.read(location, Journal.ReadType.ASYNC);
+             assertEquals("DATA" + i++, new String(buffer, "UTF-8"));
+         }
+     }
+ 
+     @Test(expected = IOException.class)
+     public void testCannotReadDeletedLocation() throws Exception {
+-        Location location = journal.write("DATA".getBytes("UTF-8"), false);
++        Location location = journal.write("DATA".getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         journal.delete(location);
+-        journal.read(location, false);
++        journal.read(location, Journal.ReadType.ASYNC);
+         fail("Should have raised IOException!");
+     }
+ 
+     @Test
+-    public void testSyncAndCallListener() throws Exception {
++    public void testWriteCallbackOnSync() throws Exception {
+         final int iterations = 10;
+         final CountDownLatch writeLatch = new CountDownLatch(iterations);
+-        JournalListener listener = new JournalListener() {
+-
+-            public void synced(Write[] writes) {
+-                for (int i = 0; i < writes.length; i++) {
+-                    writeLatch.countDown();
+-                }
++        WriteCallback callback = new WriteCallback() {
++
++            @Override
++            public void onSync(Location syncedLocation) {
++                writeLatch.countDown();
++            }
++
++            @Override
++            public void onError(Location location, Throwable error) {
+             }
+         };
+-        journal.setListener(listener);
+-        for (int i = 0; i < iterations; i++) {
+-            journal.write(new String("DATA" + i).getBytes("UTF-8"), false);
++        for (int i = 0; i < iterations; i++) {
++            journal.write(new byte[]{(byte) i}, Journal.WriteType.ASYNC, callback);
+         }
+         journal.sync();
++        assertTrue(writeLatch.await(5, TimeUnit.SECONDS));
++    }
++
++    @Test
++    public void testWriteCallbackOnError() throws Exception {
++        final int iterations = 10;
++        final CountDownLatch writeLatch = new CountDownLatch(iterations);
++        WriteCallback callback = new WriteCallback() {
++
++            @Override
++            public void onSync(Location syncedLocation) {
++            }
++
++            @Override
++            public void onError(Location location, Throwable error) {
++                writeLatch.countDown();
++            }
++        };
++        for (int i = 0; i < iterations; i++) {
++            journal.write(new byte[]{(byte) i}, Journal.WriteType.ASYNC, callback);
++        }
++        deleteFilesInDirectory(dir);
++        dir.delete();
++        try {
++            journal.sync();
++        } catch (Exception ex) {
++        }
+         assertTrue(writeLatch.await(5, TimeUnit.SECONDS));
+     }
+ 
+     @Test
+     public void testSyncAndCallReplicator() throws Exception {
+         final int iterations = 3;
+         final CountDownLatch writeLatch = new CountDownLatch(1);
+         ReplicationTarget replicator = new ReplicationTarget() {
+@@ -461,59 +490,59 @@
+             public void replicate(Location startLocation, byte[] data) {
+                 if (startLocation.getDataFileId() == 1 && startLocation.getPointer() == 0) {
+                     writeLatch.countDown();
+                 }
+             }
+         };
+         journal.setReplicationTarget(replicator);
+         for (int i = 0; i < iterations; i++) {
+-            journal.write(new String("DATA" + i).getBytes("UTF-8"), false);
++            journal.write(new String("DATA" + i).getBytes("UTF-8"), Journal.WriteType.ASYNC);
+         }
+         journal.sync();
+         assertTrue(writeLatch.await(5, TimeUnit.SECONDS));
+     }
+ 
+     @Test
+     public void testBatchWriteCompletesAfterClose() throws Exception {
+         byte[] data = "DATA".getBytes();
+         final int iterations = 10;
+         for (int i = 0; i < iterations; i++) {
+-            journal.write(data, false);
++            journal.write(data, Journal.WriteType.ASYNC);
+         }
+         journal.close();
+         assertTrue(journal.getInflightWrites().isEmpty());
+     }
+ 
+     @Test
+     public void testNoBatchWriteWithSync() throws Exception {
+         byte[] data = "DATA".getBytes();
+         final int iterations = 10;
+         for (int i = 0; i < iterations; i++) {
+-            journal.write(data, true);
++            journal.write(data, Journal.WriteType.SYNC);
+             assertTrue(journal.getInflightWrites().isEmpty());
+         }
+     }
+ 
+     @Test
+     public void testConcurrentWriteAndRead() throws Exception {
+         final AtomicInteger counter = new AtomicInteger(0);
+         ExecutorService executor = Executors.newFixedThreadPool(25);
+         int iterations = 1000;
+         //
+         for (int i = 0; i < iterations; i++) {
+             final int index = i;
+             executor.submit(new Runnable() {
+ 
+                 public void run() {
+                     try {
+-                        boolean sync = index % 2 == 0 ? true : false;
++                        Journal.WriteType sync = index % 2 == 0 ? Journal.WriteType.SYNC : Journal.WriteType.ASYNC;
+                         String write = new String("DATA" + index);
+                         Location location = journal.write(write.getBytes("UTF-8"), sync);
+-                        String read = new String(journal.read(location, false), "UTF-8");
++                        String read = new String(journal.read(location, Journal.ReadType.ASYNC), "UTF-8");
+                         if (read.equals("DATA" + index)) {
+                             counter.incrementAndGet();
+                         } else {
+                             System.out.println(write);
+                             System.out.println(read);
+                         }
+                     } catch (Exception ex) {
+                         ex.printStackTrace();
+@@ -533,20 +562,20 @@
+         int iterations = 1000;
+         //
+         for (int i = 0; i < iterations; i++) {
+             final int index = i;
+             executor.submit(new Runnable() {
+ 
+                 public void run() {
+                     try {
+-                        boolean sync = index % 2 == 0 ? true : false;
++                        Journal.WriteType sync = index % 2 == 0 ? Journal.WriteType.SYNC : Journal.WriteType.ASYNC;
+                         String write = new String("DATA" + index);
+                         Location location = journal.write(write.getBytes("UTF-8"), sync);
+-                        String read = new String(journal.read(location, false), "UTF-8");
++                        String read = new String(journal.read(location, Journal.ReadType.ASYNC), "UTF-8");
+                         if (read.equals("DATA" + index)) {
+                             if (index % 4 == 0) {
+                                 journal.delete(location);
+                             }
+                             counter.incrementAndGet();
+                         } else {
+                             System.out.println(write);
+                             System.out.println(read);
+@@ -579,17 +608,19 @@
+ 
+     protected void configure(Journal journal) {
+         journal.setMaxFileLength(1024);
+         journal.setMaxWriteBatchSize(1024);
+     }
+ 
+     private void deleteFilesInDirectory(File directory) {
+         File[] files = directory.listFiles();
+-        for (int i = 0; i < files.length; i++) {
+-            File f = files[i];
+-            if (f.isDirectory()) {
+-                deleteFilesInDirectory(f);
++        if (files != null) {
++            for (int i = 0; i < files.length; i++) {
++                File f = files[i];
++                if (f.isDirectory()) {
++                    deleteFilesInDirectory(f);
++                }
++                f.delete();
+             }
+-            f.delete();
+         }
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

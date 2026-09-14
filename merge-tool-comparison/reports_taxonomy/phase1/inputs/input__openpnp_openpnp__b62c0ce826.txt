@@ -1,0 +1,1232 @@
+UNIT openpnp_openpnp__b62c0ce826
+repo: openpnp_openpnp   merge: b62c0ce8269e73c38ef5215d02d264586a1ab399   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: src/main/java/org/openpnp/machine/reference/vision/ReferenceBottomVision.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -86,18 +86,18 @@
+                 new Location(partHeight.getUnits(), 0, 0, partHeight.getValue(), 0);
+         startLocation = startLocation.add(partHeightLocation)
+                                      .derive(null, null, null, preRotateAngle);
+ 
+         MovableUtils.moveToLocationAtSafeZ(nozzle, startLocation);
+ 
+         CvPipeline pipeline = partSettings.getPipeline();
+ 
+-        pipeline.setCamera(camera);
+-        pipeline.setNozzle(nozzle);
++        pipeline.setProperty("camera", camera);
++        pipeline.setProperty("nozzle", nozzle);
+         pipeline.process();
+ 
+         Result result = pipeline.getResult("result");
+         if (!(result.model instanceof RotatedRect)) {
+             throw new Exception("Bottom vision alignment failed for part " + part.getId()
+                     + " on nozzle " + nozzle.getName() + ". No result found.");
+         }
+         RotatedRect rect = (RotatedRect) result.model;
+@@ -244,17 +244,17 @@
+         return partSettingsByPartId;
+     }
+ 
+     @Override
+     public Wizard getPartConfigurationWizard(Part part) {
+         PartSettings partSettings = getPartSettings(part);
+         try {
+             partSettings.getPipeline()
+-                        .setCamera(VisionUtils.getBottomVisionCamera());
++                        .setProperty("camera", VisionUtils.getBottomVisionCamera());
+         }
+         catch (Exception e) {
+         }
+         return new ReferenceBottomVisionPartConfigurationWizard(this, part);
+     }
+ 
+     @Root
+     public static class PartSettings {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -29,58 +29,122 @@
+ import org.openpnp.util.VisionUtils;
+ import org.openpnp.vision.pipeline.CvPipeline;
+ import org.openpnp.vision.pipeline.CvStage.Result;
+ import org.pmw.tinylog.Logger;
+ import org.simpleframework.xml.Attribute;
+ import org.simpleframework.xml.Element;
+ import org.simpleframework.xml.ElementMap;
+ import org.simpleframework.xml.Root;
+-import org.simpleframework.xml.core.Commit;
+ 
+ public class ReferenceBottomVision implements PartAlignment {
+ 
+ 
+     @Element(required = false)
+     protected CvPipeline pipeline = createDefaultPipeline();
+ 
+ 
+     @Attribute(required = false)
+     protected boolean enabled = false;
+ 
+     @Attribute(required = false)
+     protected boolean preRotate = false;
+ 
+     @ElementMap(required = false)
+     protected Map<String, PartSettings> partSettingsByPartId = new HashMap<>();
+-    
+-    @Commit
+-    public void commit() {
+-        // TODO Temporarily disabled due to bugs, see: https://github.com/openpnp/openpnp/issues/401
+-        preRotate = false;
++
++    private double angleNorm(double val, double lim) {
++        double clip = lim * 2;
++        while (Math.abs(val) > lim) {
++            val += (val < 0.) ? clip : -clip;
++        }
++        return val;
++    }
++
++    private double angleNorm(double val) {
++        return angleNorm(val, 45.);
+     }
+ 
+ 
+     @Override
+     public PartAlignmentOffset findOffsets(Part part, BoardLocation boardLocation,
+             Location placementLocation, Nozzle nozzle) throws Exception {
+         PartSettings partSettings = getPartSettings(part);
+ 
+         if (!isEnabled() || !partSettings.isEnabled()) {
+             return new PartAlignmentOffset(new Location(LengthUnit.Millimeters), false);
+         }
+ 
+         Camera camera = VisionUtils.getBottomVisionCamera();
+ 
+         // Pre-rotate to minimize runout
+         double preRotateAngle = 0;
+-        if (preRotate && boardLocation != null && placementLocation != null) {
+-            preRotateAngle =
+-                    Utils2D.calculateBoardPlacementLocation(boardLocation, placementLocation)
+-                           .getRotation();
++        if (preRotate) {
++            if (part == null || nozzle.getPart() == null) {
++                throw new Exception("No part on nozzle.");
++            }
++            if (part != nozzle.getPart()) {
++                throw new Exception("Part mismatch with part on nozzle.");
++            }
++            double angle = placementLocation.getRotation();
++            if (boardLocation != null) {
++                angle = Utils2D.calculateBoardPlacementLocation(boardLocation, placementLocation)
++                               .getRotation();
++            }
++            angle = angleNorm(angle, 180.);
++            double placementAngle = angle;
++            MovableUtils.moveToLocationAtSafeZ(nozzle, camera.getLocation()
++                                                             .add(new Location(part.getHeight()
++                                                                                   .getUnits(),
++                                                                     0.0, 0.0, part.getHeight()
++                                                                                   .getValue(),
++                                                                     0.0))
++                                                             .derive(null, null, null, angle));
++            CvPipeline pipeline = partSettings.getPipeline();
++            pipeline.setCamera(camera);
++            pipeline.setNozzle(nozzle);
++            pipeline.process();
++            if (!((pipeline.getResult("result")).model instanceof RotatedRect)) {
++                throw new Exception("Bottom vision alignment failed for part " + part.getId()
++                        + " on nozzle " + nozzle.getName() + ". No result found.");
++            }
++
++            RotatedRect rect = ((RotatedRect) (pipeline.getResult("result")).model);
++            angle = angleNorm(angleNorm(angle) + angleNorm(
++                    (rect.size.width < rect.size.height) ? 90 + rect.angle : rect.angle));
++            // error is -angle
++            // See https://github.com/openpnp/openpnp/pull/590 for explanations of the magic
++            // values below.
++            if (Math.abs(angle) > 0.0765) {
++                angle += 0.0567 * Math.signum(angle);
++            } // rounding
++            nozzle.moveTo(
++                    new Location(LengthUnit.Millimeters, Double.NaN, Double.NaN, Double.NaN,
++                            placementAngle + angle),
++                    nozzle.getHead()
++                          .getMachine()
++                          .getSpeed());
++            pipeline.process();
++            if (!((pipeline.getResult("result")).model instanceof RotatedRect)) {
++                throw new Exception("Bottom vision alignment failed for part " + part.getId()
++                        + " on nozzle " + nozzle.getName() + ". No result found.");
++            }
++
++            rect = (RotatedRect) pipeline.getResult("result").model;
++            Logger.debug("Result rect {}", rect);
++            Location offsets =
++                    VisionUtils.getPixelCenterOffsets(camera, rect.center.x, rect.center.y)
++                               .derive(null, null, null, Double.NaN);
++            String s = "Align offset for " + part.getName() + ": " + offsets.toString() + "     ";
++            MainFrame.get()
++                     .getCameraViews()
++                     .getCameraView(camera)
++                     .showFilteredImage(OpenCvUtils.toBufferedImage(pipeline.getWorkingImage()), s,
++                             1500);
++            return new PartAlignment.PartAlignmentOffset(offsets, true);
+         }
+ 
+         // Create a location that is the Camera's X, Y, it's Z + part height
+         // and a rotation of 0, unless preRotate is enabled
+         Location startLocation = camera.getLocation();
+         Length partHeight = part.getHeight();
+         Location partHeightLocation =
+                 new Location(partHeight.getUnits(), 0, 0, partHeight.getValue(), 0);
+@@ -131,17 +195,18 @@
+         CameraView cameraView = MainFrame.get()
+                                          .getCameraViews()
+                                          .getCameraView(camera);
+         String s = rect.size.toString() + " " + rect.angle + "°";
+         cameraView.showFilteredImage(OpenCvUtils.toBufferedImage(pipeline.getWorkingImage()), s,
+                 1500);
+ 
+ 
+-        return new PartAlignmentOffset(offsets.derive(null, null, null, offsets.getRotation() + preRotateAngle),false);
++        return new PartAlignmentOffset(
++                offsets.derive(null, null, null, offsets.getRotation() + preRotateAngle), false);
+     }
+ 
+     @Override
+     public boolean canHandle(Part part) {
+         PartSettings partSettings = getPartSettings(part);
+         boolean result = (enabled && partSettings.isEnabled());
+         Logger.debug("{}.canHandle({}) => {}", part.getId(), result);
+         return result;
+--- MERGED RESULT (mergiraf; full) ---
+package org.openpnp.machine.reference.vision;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.swing.Action;
+import javax.swing.Icon;
+
+import org.apache.commons.io.IOUtils;
+import org.opencv.core.RotatedRect;
+import org.openpnp.gui.MainFrame;
+import org.openpnp.gui.components.CameraView;
+import org.openpnp.gui.support.PropertySheetWizardAdapter;
+import org.openpnp.gui.support.Wizard;
+import org.openpnp.machine.reference.vision.wizards.ReferenceBottomVisionConfigurationWizard;
+import org.openpnp.machine.reference.vision.wizards.ReferenceBottomVisionPartConfigurationWizard;
+import org.openpnp.model.BoardLocation;
+import org.openpnp.model.Length;
+import org.openpnp.model.LengthUnit;
+import org.openpnp.model.Location;
+import org.openpnp.model.Part;
+import org.openpnp.spi.Camera;
+import org.openpnp.spi.Nozzle;
+import org.openpnp.spi.PartAlignment;
+import org.openpnp.spi.PropertySheetHolder;
+import org.openpnp.util.MovableUtils;
+import org.openpnp.util.OpenCvUtils;
+import org.openpnp.util.Utils2D;
+import org.openpnp.util.VisionUtils;
+import org.openpnp.vision.pipeline.CvPipeline;
+import org.openpnp.vision.pipeline.CvStage.Result;
+import org.pmw.tinylog.Logger;
+import org.simpleframework.xml.Attribute;
+import org.simpleframework.xml.Element;
+import org.simpleframework.xml.ElementMap;
+import org.simpleframework.xml.Root;
+
+public class ReferenceBottomVision implements PartAlignment {
+
+
+    @Element(required = false)
+    protected CvPipeline pipeline = createDefaultPipeline();
+
+
+    @Attribute(required = false)
+    protected boolean enabled = false;
+
+    @Attribute(required = false)
+    protected boolean preRotate = false;
+
+    @ElementMap(required = false)
+    protected Map<String, PartSettings> partSettingsByPartId = new HashMap<>();
+
+    private double angleNorm(double val, double lim) {
+        double clip = lim * 2;
+        while (Math.abs(val) > lim) {
+            val += (val < 0.) ? clip : -clip;
+        }
+        return val;
+    }
+
+    private double angleNorm(double val) {
+        return angleNorm(val, 45.);
+    }
+
+
+    @Override
+    public PartAlignmentOffset findOffsets(Part part, BoardLocation boardLocation,
+            Location placementLocation, Nozzle nozzle) throws Exception {
+        PartSettings partSettings = getPartSettings(part);
+
+        if (!isEnabled() || !partSettings.isEnabled()) {
+            return new PartAlignmentOffset(new Location(LengthUnit.Millimeters), false);
+        }
+
+        Camera camera = VisionUtils.getBottomVisionCamera();
+
+        // Pre-rotate to minimize runout
+        double preRotateAngle = 0;
+        if (preRotate) {
+            if (part == null || nozzle.getPart() == null) {
+                throw new Exception("No part on nozzle.");
+            }
+            if (part != nozzle.getPart()) {
+                throw new Exception("Part mismatch with part on nozzle.");
+            }
+            double angle = placementLocation.getRotation();
+            if (boardLocation != null) {
+                angle = Utils2D.calculateBoardPlacementLocation(boardLocation, placementLocation)
+                               .getRotation();
+            }
+            angle = angleNorm(angle, 180.);
+            double placementAngle = angle;
+            MovableUtils.moveToLocationAtSafeZ(nozzle, camera.getLocation()
+                                                             .add(new Location(part.getHeight()
+                                                                                   .getUnits(),
+                                                                     0.0, 0.0, part.getHeight()
+                                                                                   .getValue(),
+                                                                     0.0))
+                                                             .derive(null, null, null, angle));
+            CvPipeline pipeline = partSettings.getPipeline();
+            pipeline.setCamera(camera);
+            pipeline.setNozzle(nozzle);
+            pipeline.process();
+            if (!((pipeline.getResult("result")).model instanceof RotatedRect)) {
+                throw new Exception("Bottom vision alignment failed for part " + part.getId()
+                        + " on nozzle " + nozzle.getName() + ". No result found.");
+            }
+
+            RotatedRect rect = ((RotatedRect) (pipeline.getResult("result")).model);
+            angle = angleNorm(angleNorm(angle) + angleNorm(
+                    (rect.size.width < rect.size.height) ? 90 + rect.angle : rect.angle));
+            // error is -angle
+            // See https://github.com/openpnp/openpnp/pull/590 for explanations of the magic
+            // values below.
+            if (Math.abs(angle) > 0.0765) {
+                angle += 0.0567 * Math.signum(angle);
+            } // rounding
+            nozzle.moveTo(
+                    new Location(LengthUnit.Millimeters, Double.NaN, Double.NaN, Double.NaN,
+                            placementAngle + angle),
+                    nozzle.getHead()
+                          .getMachine()
+                          .getSpeed());
+            pipeline.process();
+            if (!((pipeline.getResult("result")).model instanceof RotatedRect)) {
+                throw new Exception("Bottom vision alignment failed for part " + part.getId()
+                        + " on nozzle " + nozzle.getName() + ". No result found.");
+            }
+
+            rect = (RotatedRect) pipeline.getResult("result").model;
+            Logger.debug("Result rect {}", rect);
+            Location offsets =
+                    VisionUtils.getPixelCenterOffsets(camera, rect.center.x, rect.center.y)
+                               .derive(null, null, null, Double.NaN);
+            String s = "Align offset for " + part.getName() + ": " + offsets.toString() + "     ";
+            MainFrame.get()
+                     .getCameraViews()
+                     .getCameraView(camera)
+                     .showFilteredImage(OpenCvUtils.toBufferedImage(pipeline.getWorkingImage()), s,
+                             1500);
+            return new PartAlignment.PartAlignmentOffset(offsets, true);
+        }
+
+        // Create a location that is the Camera's X, Y, it's Z + part height
+        // and a rotation of 0, unless preRotate is enabled
+        Location startLocation = camera.getLocation();
+        Length partHeight = part.getHeight();
+        Location partHeightLocation =
+                new Location(partHeight.getUnits(), 0, 0, partHeight.getValue(), 0);
+        startLocation = startLocation.add(partHeightLocation)
+                                     .derive(null, null, null, preRotateAngle);
+
+        MovableUtils.moveToLocationAtSafeZ(nozzle, startLocation);
+
+        CvPipeline pipeline = partSettings.getPipeline();
+
+        pipeline.setProperty("camera", camera);
+        pipeline.setProperty("nozzle", nozzle);
+        pipeline.process();
+
+        Result result = pipeline.getResult("result");
+        if (!(result.model instanceof RotatedRect)) {
+            throw new Exception("Bottom vision alignment failed for part " + part.getId()
+                    + " on nozzle " + nozzle.getName() + ". No result found.");
+        }
+        RotatedRect rect = (RotatedRect) result.model;
+        Logger.debug("Result rect {}", rect);
+
+        // Create the offsets object. This is the physical distance from
+        // the center of the camera to the located part.
+        Location offsets = VisionUtils.getPixelCenterOffsets(camera, rect.center.x, rect.center.y);
+
+        // We assume that the part is never picked more than 45º rotated
+        // so if OpenCV tells us it's rotated more than 45º we correct
+        // it. This seems to happen quite a bit when the angle of rotation
+        // is close to 0.
+        double angle = rect.angle;
+        while (Math.abs(angle) > 45) {
+            if (angle < 0) {
+                angle += 90;
+            }
+            else {
+                angle -= 90;
+            }
+        }
+
+        // Set the angle on the offsets.
+        offsets = offsets.derive(null, null, null, -angle);
+        Logger.debug("Final offsets {}", offsets);
+
+        OpenCvUtils.saveDebugImage(ReferenceBottomVision.class, "findOffsets", "result",
+                pipeline.getWorkingImage());
+
+        CameraView cameraView = MainFrame.get()
+                                         .getCameraViews()
+                                         .getCameraView(camera);
+        String s = rect.size.toString() + " " + rect.angle + "°";
+        cameraView.showFilteredImage(OpenCvUtils.toBufferedImage(pipeline.getWorkingImage()), s,
+                1500);
+
+
+        return new PartAlignmentOffset(
+                offsets.derive(null, null, null, offsets.getRotation() + preRotateAngle), false);
+    }
+
+    @Override
+    public boolean canHandle(Part part) {
+        PartSettings partSettings = getPartSettings(part);
+        boolean result = (enabled && partSettings.isEnabled());
+        Logger.debug("{}.canHandle({}) => {}", part.getId(), result);
+        return result;
+    }
+
+    public static CvPipeline createDefaultPipeline() {
+        try {
+            String xml = IOUtils.toString(ReferenceBottomVision.class.getResource(
+                    "ReferenceBottomVision-DefaultPipeline.xml"));
+            return new CvPipeline(xml);
+        }
+        catch (Exception e) {
+            throw new Error(e);
+        }
+    }
+
+
+
+    @Override
+    public String getId() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public String getName() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public void setName(String name) {
+        // TODO Auto-generated method stub
+
+    }
+
+    public CvPipeline getPipeline() {
+        return pipeline;
+    }
+
+    public void setPipeline(CvPipeline pipeline) {
+        this.pipeline = pipeline;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isPreRotate() {
+        return preRotate;
+    }
+
+    public void setPreRotate(boolean preRotate) {
+        this.preRotate = preRotate;
+    }
+
+    @Override
+    public String getPropertySheetHolderTitle() {
+        return "Bottom Vision";
+    }
+
+    @Override
+    public PropertySheetHolder[] getChildPropertySheetHolders() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public PropertySheet[] getPropertySheets() {
+        return new PropertySheet[] {
+                new PropertySheetWizardAdapter(new ReferenceBottomVisionConfigurationWizard(this))};
+    }
+
+    @Override
+    public Action[] getPropertySheetHolderActions() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Icon getPropertySheetHolderIcon() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    public PartSettings getPartSettings(Part part) {
+        PartSettings partSettings = this.partSettingsByPartId.get(part.getId());
+        if (partSettings == null) {
+            partSettings = new PartSettings(this);
+            this.partSettingsByPartId.put(part.getId(), partSettings);
+        }
+        return partSettings;
+    }
+
+    public Map<String, PartSettings> getPartSettingsByPartId() {
+        return partSettingsByPartId;
+    }
+
+    @Override
+    public Wizard getPartConfigurationWizard(Part part) {
+        PartSettings partSettings = getPartSettings(part);
+        try {
+            partSettings.getPipeline()
+                        .setProperty("camera", VisionUtils.getBottomVisionCamera());
+        }
+        catch (Exception e) {
+        }
+        return new ReferenceBottomVisionPartConfigurationWizard(this, part);
+    }
+
+    @Root
+    public static class PartSettings {
+        @Attribute
+        protected boolean enabled;
+
+        @Element
+        protected CvPipeline pipeline;
+
+        public PartSettings() {
+
+        }
+
+        public PartSettings(ReferenceBottomVision bottomVision) {
+            setEnabled(bottomVision.isEnabled());
+            try {
+                setPipeline(bottomVision.getPipeline()
+                                        .clone());
+            }
+            catch (Exception e) {
+                throw new Error(e);
+            }
+        }
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public CvPipeline getPipeline() {
+            return pipeline;
+        }
+
+        public void setPipeline(CvPipeline pipeline) {
+            this.pipeline = pipeline;
+        }
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -94,18 +94,18 @@
+             MovableUtils.moveToLocationAtSafeZ(nozzle, camera.getLocation()
+                                                              .add(new Location(part.getHeight()
+                                                                                    .getUnits(),
+                                                                      0.0, 0.0, part.getHeight()
+                                                                                    .getValue(),
+                                                                      0.0))
+                                                              .derive(null, null, null, angle));
+             CvPipeline pipeline = partSettings.getPipeline();
+-            pipeline.setCamera(camera);
+-            pipeline.setNozzle(nozzle);
++            pipeline.setProperty("camera", camera);
++            pipeline.setProperty("nozzle", nozzle);
+             pipeline.process();
+             if (!((pipeline.getResult("result")).model instanceof RotatedRect)) {
+                 throw new Exception("Bottom vision alignment failed for part " + part.getId()
+                         + " on nozzle " + nozzle.getName() + ". No result found.");
+             }
+ 
+             RotatedRect rect = ((RotatedRect) (pipeline.getResult("result")).model);
+             angle = angleNorm(angleNorm(angle) + angleNorm(
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/main/java/org/openpnp/machine/reference/vision/wizards/ReferenceBottomVisionConfigurationWizard.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -107,18 +107,18 @@
+         panel.add(preRotCheckbox, "4, 6");
+         
+         JLabel lblcurrentlyInDevelopment = new JLabel("(Currently in development)");
+         panel.add(lblcurrentlyInDevelopment, "6, 6, 3, 1");
+     }
+ 
+     private void editPipeline() throws Exception {
+         CvPipeline pipeline = bottomVision.getPipeline();
+-        pipeline.setCamera(VisionUtils.getBottomVisionCamera());
+-		pipeline.setNozzle(MainFrame.get().getMachineControls().getSelectedNozzle());
++        pipeline.setProperty("camera", VisionUtils.getBottomVisionCamera());
++		pipeline.setProperty("nozzle", MainFrame.get().getMachineControls().getSelectedNozzle());
+         CvPipelineEditor editor = new CvPipelineEditor(pipeline);
+         JDialog dialog = new JDialog(MainFrame.get(), "Bottom Vision Pipeline");
+         dialog.getContentPane().setLayout(new BorderLayout());
+         dialog.getContentPane().add(editor);
+         dialog.setSize(1024, 768);
+         dialog.setVisible(true);
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -84,45 +84,46 @@
+         JButton btnResetAllTo = new JButton("Reset All Parts");
+         btnResetAllTo.addActionListener((e) -> {
+             int result = JOptionPane.showConfirmDialog(getTopLevelAncestor(),
+                     "This will replace all custom part pipelines with the current pipeline. Are you sure?",
+                     null, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+             if (result == JOptionPane.YES_OPTION) {
+                 UiUtils.messageBoxOnException(() -> {
+                     for (PartSettings partSettings : bottomVision.getPartSettingsByPartId()
+-                            .values()) {
+-                        partSettings.setPipeline(bottomVision.getPipeline().clone());
++                                                                 .values()) {
++                        partSettings.setPipeline(bottomVision.getPipeline()
++                                                             .clone());
+                     }
+                     MessageBoxes.infoBox("Parts Reset",
+                             "All custom part pipelines have been reset.");
+                 });
+             }
+         });
+         panel.add(btnResetAllTo, "8, 4");
+-        
++
+         JLabel lblPreRot = new JLabel("Rotate parts prior to vision?");
+         panel.add(lblPreRot, "2, 6");
+ 
+         preRotCheckbox = new JCheckBox("");
+-        preRotCheckbox.setEnabled(false);
+         panel.add(preRotCheckbox, "4, 6");
+-        
+-        JLabel lblcurrentlyInDevelopment = new JLabel("(Currently in development)");
+-        panel.add(lblcurrentlyInDevelopment, "6, 6, 3, 1");
+     }
+ 
+     private void editPipeline() throws Exception {
+         CvPipeline pipeline = bottomVision.getPipeline();
+         pipeline.setCamera(VisionUtils.getBottomVisionCamera());
+-		pipeline.setNozzle(MainFrame.get().getMachineControls().getSelectedNozzle());
++        pipeline.setNozzle(MainFrame.get()
++                                    .getMachineControls()
++                                    .getSelectedNozzle());
+         CvPipelineEditor editor = new CvPipelineEditor(pipeline);
+         JDialog dialog = new JDialog(MainFrame.get(), "Bottom Vision Pipeline");
+-        dialog.getContentPane().setLayout(new BorderLayout());
+-        dialog.getContentPane().add(editor);
++        dialog.getContentPane()
++              .setLayout(new BorderLayout());
++        dialog.getContentPane()
++              .add(editor);
+         dialog.setSize(1024, 768);
+         dialog.setVisible(true);
+     }
+ 
+     @Override
+     public String getWizardName() {
+         return "ReferenceBottomVision";
+     }
+--- MERGED RESULT (mergiraf; full) ---
+package org.openpnp.machine.reference.vision.wizards;
+
+import java.awt.BorderLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.border.TitledBorder;
+
+import org.openpnp.gui.MainFrame;
+import org.openpnp.gui.support.AbstractConfigurationWizard;
+import org.openpnp.gui.support.MessageBoxes;
+import org.openpnp.machine.reference.vision.ReferenceBottomVision;
+import org.openpnp.machine.reference.vision.ReferenceBottomVision.PartSettings;
+import org.openpnp.util.UiUtils;
+import org.openpnp.util.VisionUtils;
+import org.openpnp.vision.pipeline.CvPipeline;
+import org.openpnp.vision.pipeline.ui.CvPipelineEditor;
+
+import com.jgoodies.forms.layout.ColumnSpec;
+import com.jgoodies.forms.layout.FormLayout;
+import com.jgoodies.forms.layout.FormSpecs;
+import com.jgoodies.forms.layout.RowSpec;
+
+public class ReferenceBottomVisionConfigurationWizard extends AbstractConfigurationWizard {
+    private final ReferenceBottomVision bottomVision;
+    private JCheckBox enabledCheckbox;
+    private JCheckBox preRotCheckbox;
+
+    public ReferenceBottomVisionConfigurationWizard(ReferenceBottomVision bottomVision) {
+        this.bottomVision = bottomVision;
+
+        JPanel panel = new JPanel();
+        panel.setBorder(new TitledBorder(null, "General", TitledBorder.LEADING, TitledBorder.TOP,
+                null, null));
+        contentPanel.add(panel);
+        panel.setLayout(new FormLayout(
+                new ColumnSpec[] {FormSpecs.RELATED_GAP_COLSPEC, ColumnSpec.decode("right:default"),
+                        FormSpecs.RELATED_GAP_COLSPEC, FormSpecs.DEFAULT_COLSPEC,
+                        FormSpecs.RELATED_GAP_COLSPEC, FormSpecs.DEFAULT_COLSPEC,
+                        FormSpecs.RELATED_GAP_COLSPEC, FormSpecs.DEFAULT_COLSPEC,},
+                new RowSpec[] {FormSpecs.RELATED_GAP_ROWSPEC, FormSpecs.DEFAULT_ROWSPEC,
+                        FormSpecs.RELATED_GAP_ROWSPEC, FormSpecs.DEFAULT_ROWSPEC,
+                        FormSpecs.RELATED_GAP_ROWSPEC, FormSpecs.DEFAULT_ROWSPEC,}));
+
+        JLabel lblEnabled = new JLabel("Enabled?");
+        panel.add(lblEnabled, "2, 2");
+
+        enabledCheckbox = new JCheckBox("");
+        panel.add(enabledCheckbox, "4, 2");
+
+        JLabel lblPipeline = new JLabel("Pipeline");
+        panel.add(lblPipeline, "2, 4");
+
+        JButton editPipelineButton = new JButton("Edit");
+        editPipelineButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                UiUtils.messageBoxOnException(() -> {
+                    editPipeline();
+                });
+            }
+        });
+        panel.add(editPipelineButton, "4, 4");
+
+        JButton btnResetToDefault = new JButton("Reset to Default");
+        btnResetToDefault.addActionListener((e) -> {
+            int result = JOptionPane.showConfirmDialog(getTopLevelAncestor(),
+                    "This will replace the current pipeline with the built in default pipeline. Are you sure?",
+                    null, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (result == JOptionPane.YES_OPTION) {
+                UiUtils.messageBoxOnException(() -> {
+                    bottomVision.setPipeline(ReferenceBottomVision.createDefaultPipeline());
+                    editPipeline();
+                });
+            }
+        });
+        panel.add(btnResetToDefault, "6, 4");
+
+        JButton btnResetAllTo = new JButton("Reset All Parts");
+        btnResetAllTo.addActionListener((e) -> {
+            int result = JOptionPane.showConfirmDialog(getTopLevelAncestor(),
+                    "This will replace all custom part pipelines with the current pipeline. Are you sure?",
+                    null, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (result == JOptionPane.YES_OPTION) {
+                UiUtils.messageBoxOnException(() -> {
+                    for (PartSettings partSettings : bottomVision.getPartSettingsByPartId()
+                                                                 .values()) {
+                        partSettings.setPipeline(bottomVision.getPipeline()
+                                                             .clone());
+                    }
+                    MessageBoxes.infoBox("Parts Reset",
+                            "All custom part pipelines have been reset.");
+                });
+            }
+        });
+        panel.add(btnResetAllTo, "8, 4");
+
+        JLabel lblPreRot = new JLabel("Rotate parts prior to vision?");
+        panel.add(lblPreRot, "2, 6");
+
+        preRotCheckbox = new JCheckBox("");
+        panel.add(preRotCheckbox, "4, 6");
+    }
+
+    private void editPipeline() throws Exception {
+        CvPipeline pipeline = bottomVision.getPipeline();
+        pipeline.setProperty("camera", VisionUtils.getBottomVisionCamera());
+        pipeline.setProperty("nozzle", MainFrame.get()
+                                    .getMachineControls()
+                                    .getSelectedNozzle());
+        CvPipelineEditor editor = new CvPipelineEditor(pipeline);
+        JDialog dialog = new JDialog(MainFrame.get(), "Bottom Vision Pipeline");
+        dialog.getContentPane()
+              .setLayout(new BorderLayout());
+        dialog.getContentPane()
+              .add(editor);
+        dialog.setSize(1024, 768);
+        dialog.setVisible(true);
+    }
+
+    @Override
+    public String getWizardName() {
+        return "ReferenceBottomVision";
+    }
+
+    @Override
+    public void createBindings() {
+        addWrappedBinding(bottomVision, "enabled", enabledCheckbox, "selected");
+        addWrappedBinding(bottomVision, "preRotate", preRotCheckbox, "selected");
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -105,19 +105,17 @@
+ 
+         preRotCheckbox = new JCheckBox("");
+         panel.add(preRotCheckbox, "4, 6");
+     }
+ 
+     private void editPipeline() throws Exception {
+         CvPipeline pipeline = bottomVision.getPipeline();
+         pipeline.setProperty("camera", VisionUtils.getBottomVisionCamera());
+-        pipeline.setProperty("nozzle", MainFrame.get()
+-                                    .getMachineControls()
+-                                    .getSelectedNozzle());
++		pipeline.setProperty("nozzle", MainFrame.get().getMachineControls().getSelectedNozzle());
+         CvPipelineEditor editor = new CvPipelineEditor(pipeline);
+         JDialog dialog = new JDialog(MainFrame.get(), "Bottom Vision Pipeline");
+         dialog.getContentPane()
+               .setLayout(new BorderLayout());
+         dialog.getContentPane()
+               .add(editor);
+         dialog.setSize(1024, 768);
+         dialog.setVisible(true);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/main/java/org/openpnp/machine/reference/vision/wizards/ReferenceBottomVisionPartConfigurationWizard.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -156,18 +156,18 @@
+         // the nozzle.
+         location = location.subtract(offsets);
+ 
+         nozzle.moveTo(location);
+     }
+ 
+     private void editPipeline() throws Exception {
+         CvPipeline pipeline = partSettings.getPipeline();
+-        pipeline.setCamera(VisionUtils.getBottomVisionCamera());
+-		pipeline.setNozzle(MainFrame.get().getMachineControls().getSelectedNozzle());
++        pipeline.setProperty("camera", VisionUtils.getBottomVisionCamera());
++		pipeline.setProperty("nozzle", MainFrame.get().getMachineControls().getSelectedNozzle());
+ 
+         CvPipelineEditor editor = new CvPipelineEditor(pipeline);
+         JDialog dialog = new JDialog(MainFrame.get(), "Bottom Vision Pipeline");
+         dialog.getContentPane().setLayout(new BorderLayout());
+         dialog.getContentPane().add(editor);
+         dialog.setSize(1024, 768);
+         dialog.setVisible(true);
+     }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -94,50 +94,69 @@
+ 
+         JButton btnLoadDefault = new JButton("Reset to Default");
+         btnLoadDefault.addActionListener((e) -> {
+             int result = JOptionPane.showConfirmDialog(getTopLevelAncestor(),
+                     "This will replace the current part pipeline with the default pipeline. Are you sure?",
+                     null, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+             if (result == JOptionPane.YES_OPTION) {
+                 UiUtils.messageBoxOnException(() -> {
+-                    partSettings.setPipeline(bottomVision.getPipeline().clone());
++                    partSettings.setPipeline(bottomVision.getPipeline()
++                                                         .clone());
+                     editPipeline();
+                 });
+             }
+         });
+         panel.add(btnLoadDefault, "6, 6");
+     }
+ 
+     private void testAlignment() throws Exception {
+         if (!bottomVision.isEnabled()) {
+-            MessageBoxes.errorBox(getTopLevelAncestor(), "Error", "Bottom vision is not enabled in Machine Setup.");
++            MessageBoxes.errorBox(getTopLevelAncestor(), "Error",
++                    "Bottom vision is not enabled in Machine Setup.");
+             return;
+         }
+ 
+         if (!enabledCheckbox.isSelected()) {
+-            MessageBoxes.errorBox(getTopLevelAncestor(), "Error", "Bottom vision is not enabled for this part.");
+-            return;
+-        }
+-
+-        Nozzle nozzle = MainFrame.get().getMachineControls().getSelectedNozzle();
++            MessageBoxes.errorBox(getTopLevelAncestor(), "Error",
++                    "Bottom vision is not enabled for this part.");
++            return;
++        }
++
++        Nozzle nozzle = MainFrame.get()
++                                 .getMachineControls()
++                                 .getSelectedNozzle();
+ 
+         // perform the alignment
+-
+-
+-        PartAlignment.PartAlignmentOffset alignmentOffset =
+-                VisionUtils.findPartAlignmentOffsets(bottomVision, part, null, null, nozzle);
++        PartAlignment.PartAlignmentOffset alignmentOffset = VisionUtils.findPartAlignmentOffsets(
++                bottomVision, part, null, new Location(LengthUnit.Millimeters), nozzle);
+         Location offsets = alignmentOffset.getLocation();
+ 
+         if (!chckbxCenterAfterTest.isSelected()) {
+             return;
+         }
+ 
+         // position the part over camera center
+-        Location cameraLocation = VisionUtils.getBottomVisionCamera().getLocation();
++        Location cameraLocation = VisionUtils.getBottomVisionCamera()
++                                             .getLocation();
++
++        if (alignmentOffset.getPreRotated()) {
++            // See https://github.com/openpnp/openpnp/pull/590 for explanations of the magic
++            // value below.
++            if (Math.abs(alignmentOffset.getLocation()
++                                        .convertToUnits(LengthUnit.Millimeters)
++                                        .getLinearDistanceTo(0., 0.)) > 19.999) {
++                throw new Exception("Offset too big");
++            }
++            nozzle.moveTo(nozzle.getLocation()
++                                .subtract(alignmentOffset.getLocation()),
++                    nozzle.getPart()
++                          .getSpeed());
++            return;
++        }
+ 
+         // Rotate the point 0,0 using the bottom offsets as a center point by the angle
+         // that is
+         // the difference between the bottom vision angle and the calculated global
+         // placement angle.
+         Location location = new Location(LengthUnit.Millimeters).rotateXyCenterPoint(offsets,
+                 cameraLocation.getRotation() - offsets.getRotation());
+ 
+@@ -157,22 +176,26 @@
+         location = location.subtract(offsets);
+ 
+         nozzle.moveTo(location);
+     }
+ 
+     private void editPipeline() throws Exception {
+         CvPipeline pipeline = partSettings.getPipeline();
+         pipeline.setCamera(VisionUtils.getBottomVisionCamera());
+-		pipeline.setNozzle(MainFrame.get().getMachineControls().getSelectedNozzle());
++        pipeline.setNozzle(MainFrame.get()
++                                    .getMachineControls()
++                                    .getSelectedNozzle());
+ 
+         CvPipelineEditor editor = new CvPipelineEditor(pipeline);
+         JDialog dialog = new JDialog(MainFrame.get(), "Bottom Vision Pipeline");
+-        dialog.getContentPane().setLayout(new BorderLayout());
+-        dialog.getContentPane().add(editor);
++        dialog.getContentPane()
++              .setLayout(new BorderLayout());
++        dialog.getContentPane()
++              .add(editor);
+         dialog.setSize(1024, 768);
+         dialog.setVisible(true);
+     }
+ 
+     @Override
+     public String getWizardName() {
+         return "ReferenceBottomVision";
+     }
+--- MERGED RESULT (mergiraf; full) ---
+package org.openpnp.machine.reference.vision.wizards;
+
+import java.awt.BorderLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.border.TitledBorder;
+
+import org.openpnp.gui.MainFrame;
+import org.openpnp.gui.support.AbstractConfigurationWizard;
+import org.openpnp.gui.support.MessageBoxes;
+import org.openpnp.machine.reference.vision.ReferenceBottomVision;
+import org.openpnp.machine.reference.vision.ReferenceBottomVision.PartSettings;
+import org.openpnp.model.LengthUnit;
+import org.openpnp.model.Location;
+import org.openpnp.model.Part;
+import org.openpnp.spi.Nozzle;
+import org.openpnp.spi.PartAlignment;
+import org.openpnp.util.UiUtils;
+import org.openpnp.util.VisionUtils;
+import org.openpnp.vision.pipeline.CvPipeline;
+import org.openpnp.vision.pipeline.ui.CvPipelineEditor;
+
+import com.jgoodies.forms.layout.ColumnSpec;
+import com.jgoodies.forms.layout.FormLayout;
+import com.jgoodies.forms.layout.FormSpecs;
+import com.jgoodies.forms.layout.RowSpec;
+
+public class ReferenceBottomVisionPartConfigurationWizard extends AbstractConfigurationWizard {
+    private final ReferenceBottomVision bottomVision;
+    private final Part part;
+    private final PartSettings partSettings;
+
+    private JCheckBox enabledCheckbox;
+    private JCheckBox chckbxCenterAfterTest;
+
+    public ReferenceBottomVisionPartConfigurationWizard(ReferenceBottomVision bottomVision,
+            Part part) {
+        this.bottomVision = bottomVision;
+        this.part = part;
+        this.partSettings = bottomVision.getPartSettings(part);
+
+        JPanel panel = new JPanel();
+        panel.setBorder(new TitledBorder(null, "General", TitledBorder.LEADING, TitledBorder.TOP,
+                null, null));
+        contentPanel.add(panel);
+        panel.setLayout(new FormLayout(
+                new ColumnSpec[] {FormSpecs.RELATED_GAP_COLSPEC, ColumnSpec.decode("right:default"),
+                        FormSpecs.RELATED_GAP_COLSPEC, FormSpecs.DEFAULT_COLSPEC,
+                        FormSpecs.RELATED_GAP_COLSPEC, FormSpecs.DEFAULT_COLSPEC,},
+                new RowSpec[] {FormSpecs.RELATED_GAP_ROWSPEC, FormSpecs.DEFAULT_ROWSPEC,
+                        FormSpecs.RELATED_GAP_ROWSPEC, FormSpecs.DEFAULT_ROWSPEC,
+                        FormSpecs.RELATED_GAP_ROWSPEC, FormSpecs.DEFAULT_ROWSPEC,}));
+
+        JLabel lblEnabled = new JLabel("Enabled?");
+        panel.add(lblEnabled, "2, 2");
+
+        enabledCheckbox = new JCheckBox("");
+        panel.add(enabledCheckbox, "4, 2");
+
+        JButton btnTestAlighment = new JButton("Test Alignment");
+        btnTestAlighment.addActionListener((e) -> {
+            UiUtils.submitUiMachineTask(() -> {
+                testAlignment();
+            });
+        });
+
+        JLabel lblTest = new JLabel("Test");
+        panel.add(lblTest, "2, 4");
+        panel.add(btnTestAlighment, "4, 4");
+
+        chckbxCenterAfterTest = new JCheckBox("Center After Test");
+        chckbxCenterAfterTest.setSelected(true);
+        panel.add(chckbxCenterAfterTest, "6, 4");
+
+        JLabel lblPipeline = new JLabel("Pipeline");
+        panel.add(lblPipeline, "2, 6");
+
+        JButton editPipelineButton = new JButton("Edit");
+        editPipelineButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                UiUtils.messageBoxOnException(() -> {
+                    editPipeline();
+                });
+            }
+        });
+        panel.add(editPipelineButton, "4, 6");
+
+        JButton btnLoadDefault = new JButton("Reset to Default");
+        btnLoadDefault.addActionListener((e) -> {
+            int result = JOptionPane.showConfirmDialog(getTopLevelAncestor(),
+                    "This will replace the current part pipeline with the default pipeline. Are you sure?",
+                    null, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (result == JOptionPane.YES_OPTION) {
+                UiUtils.messageBoxOnException(() -> {
+                    partSettings.setPipeline(bottomVision.getPipeline()
+                                                         .clone());
+                    editPipeline();
+                });
+            }
+        });
+        panel.add(btnLoadDefault, "6, 6");
+    }
+
+    private void testAlignment() throws Exception {
+        if (!bottomVision.isEnabled()) {
+            MessageBoxes.errorBox(getTopLevelAncestor(), "Error",
+                    "Bottom vision is not enabled in Machine Setup.");
+            return;
+        }
+
+        if (!enabledCheckbox.isSelected()) {
+            MessageBoxes.errorBox(getTopLevelAncestor(), "Error",
+                    "Bottom vision is not enabled for this part.");
+            return;
+        }
+
+        Nozzle nozzle = MainFrame.get()
+                                 .getMachineControls()
+                                 .getSelectedNozzle();
+
+        // perform the alignment
+        PartAlignment.PartAlignmentOffset alignmentOffset = VisionUtils.findPartAlignmentOffsets(
+                bottomVision, part, null, new Location(LengthUnit.Millimeters), nozzle);
+        Location offsets = alignmentOffset.getLocation();
+
+        if (!chckbxCenterAfterTest.isSelected()) {
+            return;
+        }
+
+        // position the part over camera center
+        Location cameraLocation = VisionUtils.getBottomVisionCamera()
+                                             .getLocation();
+
+        if (alignmentOffset.getPreRotated()) {
+            // See https://github.com/openpnp/openpnp/pull/590 for explanations of the magic
+            // value below.
+            if (Math.abs(alignmentOffset.getLocation()
+                                        .convertToUnits(LengthUnit.Millimeters)
+                                        .getLinearDistanceTo(0., 0.)) > 19.999) {
+                throw new Exception("Offset too big");
+            }
+            nozzle.moveTo(nozzle.getLocation()
+                                .subtract(alignmentOffset.getLocation()),
+                    nozzle.getPart()
+                          .getSpeed());
+            return;
+        }
+
+        // Rotate the point 0,0 using the bottom offsets as a center point by the angle
+        // that is
+        // the difference between the bottom vision angle and the calculated global
+        // placement angle.
+        Location location = new Location(LengthUnit.Millimeters).rotateXyCenterPoint(offsets,
+                cameraLocation.getRotation() - offsets.getRotation());
+
+        // Set the angle to the difference mentioned above, aligning the part to the
+        // same angle as
+        // the placement.
+        location = location.derive(null, null, null,
+                cameraLocation.getRotation() - offsets.getRotation());
+
+        // Add the placement final location to move our local coordinate into global
+        // space
+        location = location.add(cameraLocation);
+
+        // Subtract the bottom vision offsets to move the part to the final location,
+        // instead of
+        // the nozzle.
+        location = location.subtract(offsets);
+
+        nozzle.moveTo(location);
+    }
+
+    private void editPipeline() throws Exception {
+        CvPipeline pipeline = partSettings.getPipeline();
+        pipeline.setProperty("camera", VisionUtils.getBottomVisionCamera());
+        pipeline.setProperty("nozzle", MainFrame.get()
+                                    .getMachineControls()
+                                    .getSelectedNozzle());
+
+        CvPipelineEditor editor = new CvPipelineEditor(pipeline);
+        JDialog dialog = new JDialog(MainFrame.get(), "Bottom Vision Pipeline");
+        dialog.getContentPane()
+              .setLayout(new BorderLayout());
+        dialog.getContentPane()
+              .add(editor);
+        dialog.setSize(1024, 768);
+        dialog.setVisible(true);
+    }
+
+    @Override
+    public String getWizardName() {
+        return "ReferenceBottomVision";
+    }
+
+    @Override
+    public void createBindings() {
+        addWrappedBinding(partSettings, "enabled", enabledCheckbox, "selected");
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -176,19 +176,17 @@
+         location = location.subtract(offsets);
+ 
+         nozzle.moveTo(location);
+     }
+ 
+     private void editPipeline() throws Exception {
+         CvPipeline pipeline = partSettings.getPipeline();
+         pipeline.setProperty("camera", VisionUtils.getBottomVisionCamera());
+-        pipeline.setProperty("nozzle", MainFrame.get()
+-                                    .getMachineControls()
+-                                    .getSelectedNozzle());
++		pipeline.setProperty("nozzle", MainFrame.get().getMachineControls().getSelectedNozzle());
+ 
+         CvPipelineEditor editor = new CvPipelineEditor(pipeline);
+         JDialog dialog = new JDialog(MainFrame.get(), "Bottom Vision Pipeline");
+         dialog.getContentPane()
+               .setLayout(new BorderLayout());
+         dialog.getContentPane()
+               .add(editor);
+         dialog.setSize(1024, 768);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

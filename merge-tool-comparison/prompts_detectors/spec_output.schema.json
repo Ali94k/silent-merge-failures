@@ -1,0 +1,103 @@
+{
+  "type": "object",
+  "properties": {
+    "unit_id": { "type": "string" },
+    "category": {
+      "type": "string",
+      "enum": [
+        "stale-usage-of-pruned-import",
+        "stale-caller-of-changed-signature",
+        "stale-reference-to-removed-declaration",
+        "stale-reference-to-renamed-or-relocated-declaration"
+      ]
+    },
+    "extraction_status": { "type": "string", "enum": ["ok", "partial", "cannot_extract"] },
+    "cannot_extract": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": { "type": "string" },
+          "reason": { "type": "string" }
+        },
+        "required": ["field", "reason"],
+        "additionalProperties": false
+      }
+    },
+    "d1": {
+      "type": "object",
+      "properties": {
+        "pruned_import_statement": { "$ref": "#/$defs/site" },
+        "pruned_symbol": { "type": "string" },
+        "pruning_side": { "type": "string", "enum": ["ours", "theirs", "unclear", ""] },
+        "import_change_kind": { "type": "string", "enum": ["removed", "replaced", "narrowed", "other", ""] },
+        "stale_usage_sites": { "type": "array", "items": { "$ref": "#/$defs/site" } },
+        "usage_added_by": { "type": "string", "enum": ["ours", "theirs", "kept-from-base", "unclear", ""] },
+        "guards_notes": { "type": "string" }
+      },
+      "required": ["pruned_import_statement", "pruned_symbol", "pruning_side", "import_change_kind", "stale_usage_sites", "usage_added_by", "guards_notes"],
+      "additionalProperties": false
+    },
+    "d2": {
+      "type": "object",
+      "properties": {
+        "old_signature": { "$ref": "#/$defs/site" },
+        "new_signature": { "$ref": "#/$defs/site" },
+        "declaration_visible_in_unit": { "type": "string", "enum": ["yes", "no", ""] },
+        "change_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["param_added", "param_removed", "param_type_changed", "params_reordered", "return_type_changed", "name_and_signature", "exceptions_changed", "visibility_or_modifier", "other"]
+          }
+        },
+        "arity_changed": { "type": "string", "enum": ["yes", "no", ""] },
+        "changing_side": { "type": "string", "enum": ["ours", "theirs", "unclear", ""] },
+        "stale_call_sites": { "type": "array", "items": { "$ref": "#/$defs/site" } },
+        "mismatch_statement": { "type": "string" }
+      },
+      "required": ["old_signature", "new_signature", "declaration_visible_in_unit", "change_kinds", "arity_changed", "changing_side", "stale_call_sites", "mismatch_statement"],
+      "additionalProperties": false
+    },
+    "d3": {
+      "type": "object",
+      "properties": {
+        "declaration_kind": { "type": "string", "enum": ["method", "constructor", "class", "interface", "enum", "field", "constant", "variable", "parameter", "other", ""] },
+        "old_declaration": { "$ref": "#/$defs/site" },
+        "change_kind": { "type": "string", "enum": ["removed", "renamed", "relocated", "renamed_and_relocated", "other", ""] },
+        "new_name_or_location": { "type": "string" },
+        "changing_side": { "type": "string", "enum": ["ours", "theirs", "unclear", ""] },
+        "stale_reference_sites": { "type": "array", "items": { "$ref": "#/$defs/site" } },
+        "rm2_would_fire": { "$ref": "#/$defs/verdict" },
+        "joern_would_fire": { "$ref": "#/$defs/verdict" },
+        "missed_shape": { "type": "string" }
+      },
+      "required": ["declaration_kind", "old_declaration", "change_kind", "new_name_or_location", "changing_side", "stale_reference_sites", "rm2_would_fire", "joern_would_fire", "missed_shape"],
+      "additionalProperties": false
+    },
+    "notes": { "type": "string" }
+  },
+  "required": ["unit_id", "category", "extraction_status", "cannot_extract", "d1", "d2", "d3", "notes"],
+  "additionalProperties": false,
+  "$defs": {
+    "site": {
+      "type": "object",
+      "properties": {
+        "file": { "type": "string" },
+        "quote": { "type": "string" },
+        "line": { "type": "integer" }
+      },
+      "required": ["file", "quote", "line"],
+      "additionalProperties": false
+    },
+    "verdict": {
+      "type": "object",
+      "properties": {
+        "verdict": { "type": "string", "enum": ["yes", "no", "uncertain", ""] },
+        "reasoning": { "type": "string" }
+      },
+      "required": ["verdict", "reasoning"],
+      "additionalProperties": false
+    }
+  }
+}

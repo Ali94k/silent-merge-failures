@@ -1,0 +1,1701 @@
+UNIT apache_opennlp__8240a2c660
+repo: apache_opennlp   merge: 8240a2c66097f25303d9f4959b128db9bff1c840   stratum: B
+files shown: 9 of 9 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T3/cap8  (diffs at -U3; merged bodies omitted; hard-fit to the 30k budget: files capped at 8 largest merged-vs-dev diffs)
+
+=== FILE 1/9: opennlp-tools/src/main/java/opennlp/tools/ml/maxent/quasinewton/QNTrainer.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -21,6 +21,7 @@
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.List;
++import java.util.Map;
+ 
+ import opennlp.tools.ml.AbstractEventTrainer;
+ import opennlp.tools.ml.maxent.quasinewton.QNMinimizer.Evaluator;
+@@ -95,6 +96,16 @@
+   public QNTrainer() {
+   }
+ 
++  @Override
++  public void init(Map<String, String> trainParams, Map<String, String> reportMap) {
++    super.init(trainParams, reportMap);
++    this.m = parameters.getIntParam(M_PARAM, M_DEFAULT);
++    this.maxFctEval = parameters.getIntParam(MAX_FCT_EVAL_PARAM, MAX_FCT_EVAL_DEFAULT);
++    this.threads = parameters.getIntParam(THREADS_PARAM, THREADS_DEFAULT);
++    this.l1Cost = parameters.getDoubleParam(L1COST_PARAM, L1COST_DEFAULT);
++    this.l2Cost = parameters.getDoubleParam(L2COST_PARAM, L2COST_DEFAULT);
++  }
++
+   public boolean isValid() {
+ 
+     if (!super.isValid()) {
+@@ -107,38 +118,28 @@
+     }
+ 
+     // Number of Hessian updates to remember
+-    int m = getIntParam(M_PARAM, M_DEFAULT);
+     if (m < 0) {
+       return false;
+     }
+-    this.m = m;
+ 
+     // Maximum number of function evaluations
+-    int maxFctEval = getIntParam(MAX_FCT_EVAL_PARAM, MAX_FCT_EVAL_DEFAULT);
+     if (maxFctEval < 0) {
+       return false;
+     }
+-    this.maxFctEval = maxFctEval;
+ 
+     // Number of threads must be >= 1
+-    int threads = getIntParam(THREADS_PARAM, THREADS_DEFAULT);
+     if (threads < 1) {
+       return false;
+     }
+-    this.threads = threads;
+ 
+     // Regularization costs must be >= 0
+-    double l1Cost = getDoubleParam(L1COST_PARAM, L1COST_DEFAULT);
+     if (l1Cost < 0) {
+       return false;
+     }
+-    this.l1Cost = l1Cost;
+-
+-    double l2Cost = getDoubleParam(L2COST_PARAM, L2COST_DEFAULT);
++
+     if (l2Cost < 0) {
+       return false;
+     }
+-    this.l2Cost = l2Cost;
+ 
+     return true;
+   }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -16,6 +16,7 @@
+  * specific language governing permissions and limitations
+  * under the License.
+  */
++
+ package opennlp.tools.ml.maxent.quasinewton;
+ 
+ import java.io.IOException;
+@@ -84,8 +85,8 @@
+   // For testing purpose
+   public QNTrainer(int m, int maxFctEval, boolean verbose) {
+     this.verbose    = verbose;
+-    this.m          = m < 0? M_DEFAULT: m;
+-    this.maxFctEval = maxFctEval < 0? MAX_FCT_EVAL_DEFAULT: maxFctEval;
++    this.m          = m < 0 ? M_DEFAULT : m;
++    this.maxFctEval = maxFctEval < 0 ? MAX_FCT_EVAL_DEFAULT : maxFctEval;
+     this.threads    = THREADS_DEFAULT;
+     this.l1Cost     = L1COST_DEFAULT;
+     this.l2Cost     = L2COST_DEFAULT;
+@@ -223,7 +224,7 @@
+ 
+       for (int ei = 0; ei < contexts.length; ei++) {
+         int[] context  = contexts[ei];
+-        float[] value  = values == null? null: values[ei];
++        float[] value  = values == null ? null : values[ei];
+ 
+         double[] probs = new double[nOutcomes];
+         QNModel.eval(context, value, probs, nOutcomes, nPredLabels, parameters);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -1,242 +1,242 @@
+-/*
+- * Licensed to the Apache Software Foundation (ASF) under one
+- * or more contributor license agreements.  See the NOTICE file
+- * distributed with this work for additional information
+- * regarding copyright ownership.  The ASF licenses this file
+- * to you under the Apache License, Version 2.0 (the
+- * "License"); you may not use this file except in compliance
+- * with the License.  You may obtain a copy of the License at
+- *
+- *   http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing,
+- * software distributed under the License is distributed on an
+- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+- * KIND, either express or implied.  See the License for the
+- * specific language governing permissions and limitations
+- * under the License.
+- */
+-
+-package opennlp.tools.ml.maxent.quasinewton;
+-
+-import java.io.IOException;
+-import java.util.ArrayList;
+-import java.util.List;
+-import java.util.Map;
+-
+-import opennlp.tools.ml.AbstractEventTrainer;
+-import opennlp.tools.ml.maxent.quasinewton.QNMinimizer.Evaluator;
+-import opennlp.tools.ml.model.AbstractModel;
+-import opennlp.tools.ml.model.Context;
+-import opennlp.tools.ml.model.DataIndexer;
+-
+-/**
+- * Maxent model trainer using L-BFGS algorithm.
+- */
+-public class QNTrainer extends AbstractEventTrainer {
+-
+-  public static final String MAXENT_QN_VALUE = "MAXENT_QN";
+-
+-  public static final String THREADS_PARAM = "Threads";
+-  public static final int THREADS_DEFAULT  = 1;
+-
+-  public static final String L1COST_PARAM   = "L1Cost";
+-  public static final double L1COST_DEFAULT = 0.1;
+-
+-  public static final String L2COST_PARAM   = "L2Cost";
+-  public static final double L2COST_DEFAULT = 0.1;
+-
+-  // Number of Hessian updates to store
+-  public static final String M_PARAM = "NumOfUpdates";
+-  public static final int M_DEFAULT  = 15;
+-
+-  // Maximum number of function evaluations
+-  public static final String MAX_FCT_EVAL_PARAM = "MaxFctEval";
+-  public static final int MAX_FCT_EVAL_DEFAULT  = 30000;
+-
+-  // Number of threads
+-  private int threads;
+-
+-  // L1-regularization cost
+-  private double l1Cost;
+-
+-  // L2-regularization cost
+-  private double l2Cost;
+-
+-  // Settings for QNMinimizer
+-  private int m;
+-  private int maxFctEval;
+-  private boolean verbose = true;
+-
+-  // Constructor -- to log. For testing purpose
+-  public QNTrainer(boolean verbose) {
+-    this(M_DEFAULT, verbose);
+-  }
+-
+-  // Constructor -- m : number of hessian updates to store. For testing purpose
+-  public QNTrainer(int m) {
+-    this(m, true);
+-  }
+-
+-  // Constructor -- to log, number of hessian updates to store. For testing purpose
+-  public QNTrainer(int m, boolean verbose) {
+-    this(m, MAX_FCT_EVAL_DEFAULT, verbose);
+-  }
+-
+-  // For testing purpose
+-  public QNTrainer(int m, int maxFctEval, boolean verbose) {
+-    this.verbose    = verbose;
+-    this.m          = m < 0 ? M_DEFAULT : m;
+-    this.maxFctEval = maxFctEval < 0 ? MAX_FCT_EVAL_DEFAULT : maxFctEval;
+-    this.threads    = THREADS_DEFAULT;
+-    this.l1Cost     = L1COST_DEFAULT;
+-    this.l2Cost     = L2COST_DEFAULT;
+-  }
+-
+-  // >> Members related to AbstractEventTrainer
+-  public QNTrainer() {
+-  }
+-
+-  @Override
+-  public void init(Map<String, String> trainParams, Map<String, String> reportMap) {
+-    super.init(trainParams, reportMap);
+-    this.m = parameters.getIntParam(M_PARAM, M_DEFAULT);
+-    this.maxFctEval = parameters.getIntParam(MAX_FCT_EVAL_PARAM, MAX_FCT_EVAL_DEFAULT);
+-    this.threads = parameters.getIntParam(THREADS_PARAM, THREADS_DEFAULT);
+-    this.l1Cost = parameters.getDoubleParam(L1COST_PARAM, L1COST_DEFAULT);
+-    this.l2Cost = parameters.getDoubleParam(L2COST_PARAM, L2COST_DEFAULT);
+-  }
+-
+-  public boolean isValid() {
+-
+-    if (!super.isValid()) {
+-      return false;
+-    }
+-
+-    String algorithmName = getAlgorithm();
+-    if (algorithmName != null && !(MAXENT_QN_VALUE.equals(algorithmName))) {
+-      return false;
+-    }
+-
+-    // Number of Hessian updates to remember
+-    if (m < 0) {
+-      return false;
+-    }
+-
+-    // Maximum number of function evaluations
+-    if (maxFctEval < 0) {
+-      return false;
+-    }
+-
+-    // Number of threads must be >= 1
+-    if (threads < 1) {
+-      return false;
+-    }
+-
+-    // Regularization costs must be >= 0
+-    if (l1Cost < 0) {
+-      return false;
+-    }
+-
+-    if (l2Cost < 0) {
+-      return false;
+-    }
+-
+-    return true;
+-  }
+-
+-  public boolean isSortAndMerge() {
+-    return true;
+-  }
+-
+-  public AbstractModel doTrain(DataIndexer indexer) throws IOException {
+-    int iterations = getIterations();
+-    return trainModel(iterations, indexer);
+-  }
+-
+-  // << Members related to AbstractEventTrainer
+-  public QNModel trainModel(int iterations, DataIndexer indexer) {
+-
+-    // Train model's parameters
+-    Function objectiveFunction;
+-    if (threads == 1) {
+-      System.out.println("Computing model parameters ...");
+-      objectiveFunction = new NegLogLikelihood(indexer);
+-    } else {
+-      System.out.println("Computing model parameters in " + threads + " threads ...");
+-      objectiveFunction = new ParallelNegLogLikelihood(indexer, threads);
+-    }
+-
+-    QNMinimizer minimizer = new QNMinimizer(
+-        l1Cost, l2Cost, iterations, m, maxFctEval, verbose);
+-    minimizer.setEvaluator(new ModelEvaluator(indexer));
+-
+-    double[] parameters = minimizer.minimize(objectiveFunction);
+-
+-    // Construct model with trained parameters
+-    String[] predLabels = indexer.getPredLabels();
+-    int nPredLabels = predLabels.length;
+-
+-    String[] outcomeNames = indexer.getOutcomeLabels();
+-    int nOutcomes = outcomeNames.length;
+-
+-    Context[] params = new Context[nPredLabels];
+-    for (int ci = 0; ci < params.length; ci++) {
+-      List<Integer> outcomePattern = new ArrayList<Integer>(nOutcomes);
+-      List<Double> alpha = new ArrayList<Double>(nOutcomes);
+-      for (int oi = 0; oi < nOutcomes; oi++) {
+-        double val = parameters[oi * nPredLabels + ci];
+-        outcomePattern.add(oi);
+-        alpha.add(val);
+-      }
+-      params[ci] = new Context(ArrayMath.toIntArray(outcomePattern),
+-          ArrayMath.toDoubleArray(alpha));
+-    }
+-
+-    return new QNModel(params, predLabels, outcomeNames);
+-  }
+-
+-  /**
+-   * For measuring model's training accuracy
+-   */
+-  private class ModelEvaluator implements Evaluator {
+-
+-    private DataIndexer indexer;
+-
+-    public ModelEvaluator(DataIndexer indexer) {
+-      this.indexer = indexer;
+-    }
+-
+-    /**
+-     * Evaluate the current model on training data set
+-     * @return model's training accuracy
+-     */
+-    @Override
+-    public double evaluate(double[] parameters) {
+-      int[][] contexts  = indexer.getContexts();
+-      float[][] values  = indexer.getValues();
+-      int[] nEventsSeen = indexer.getNumTimesEventsSeen();
+-      int[] outcomeList = indexer.getOutcomeList();
+-      int nOutcomes     = indexer.getOutcomeLabels().length;
+-      int nPredLabels   = indexer.getPredLabels().length;
+-
+-      int nCorrect     = 0;
+-      int nTotalEvents = 0;
+-
+-      for (int ei = 0; ei < contexts.length; ei++) {
+-        int[] context  = contexts[ei];
+-        float[] value  = values == null ? null : values[ei];
+-
+-        double[] probs = new double[nOutcomes];
+-        QNModel.eval(context, value, probs, nOutcomes, nPredLabels, parameters);
+-        int outcome = ArrayMath.maxIdx(probs);
+-        if (outcome == outcomeList[ei]) {
+-          nCorrect += nEventsSeen[ei];
+-        }
+-        nTotalEvents += nEventsSeen[ei];
+-      }
+-
+-      return (double) nCorrect / nTotalEvents;
+-    }
+-  }
+-}
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++package opennlp.tools.ml.maxent.quasinewton;
++
++import java.io.IOException;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Map;
++
++import opennlp.tools.ml.AbstractEventTrainer;
++import opennlp.tools.ml.maxent.quasinewton.QNMinimizer.Evaluator;
++import opennlp.tools.ml.model.AbstractModel;
++import opennlp.tools.ml.model.Context;
++import opennlp.tools.ml.model.DataIndexer;
++
++/**
++ * Maxent model trainer using L-BFGS algorithm.
++ */
++public class QNTrainer extends AbstractEventTrainer {
++
++  public static final String MAXENT_QN_VALUE = "MAXENT_QN";
++
++  public static final String THREADS_PARAM = "Threads";
++  public static final int THREADS_DEFAULT  = 1;
++
++  public static final String L1COST_PARAM   = "L1Cost";
++  public static final double L1COST_DEFAULT = 0.1;
++
++  public static final String L2COST_PARAM   = "L2Cost";
++  public static final double L2COST_DEFAULT = 0.1;
++
++  // Number of Hessian updates to store
++  public static final String M_PARAM = "NumOfUpdates";
++  public static final int M_DEFAULT  = 15;
++
++  // Maximum number of function evaluations
++  public static final String MAX_FCT_EVAL_PARAM = "MaxFctEval";
++  public static final int MAX_FCT_EVAL_DEFAULT  = 30000;
++
++  // Number of threads
++  private int threads;
++
++  // L1-regularization cost
++  private double l1Cost;
++
++  // L2-regularization cost
++  private double l2Cost;
++
++  // Settings for QNMinimizer
++  private int m;
++  private int maxFctEval;
++  private boolean verbose = true;
++
++  // Constructor -- to log. For testing purpose
++  public QNTrainer(boolean verbose) {
++    this(M_DEFAULT, verbose);
++  }
++
++  // Constructor -- m : number of hessian updates to store. For testing purpose
++  public QNTrainer(int m) {
++    this(m, true);
++  }
++
++  // Constructor -- to log, number of hessian updates to store. For testing purpose
++  public QNTrainer(int m, boolean verbose) {
++    this(m, MAX_FCT_EVAL_DEFAULT, verbose);
++  }
++
++  // For testing purpose
++  public QNTrainer(int m, int maxFctEval, boolean verbose) {
++    this.verbose    = verbose;
++    this.m          = m < 0 ? M_DEFAULT : m;
++    this.maxFctEval = maxFctEval < 0 ? MAX_FCT_EVAL_DEFAULT : maxFctEval;
++    this.threads    = THREADS_DEFAULT;
++    this.l1Cost     = L1COST_DEFAULT;
++    this.l2Cost     = L2COST_DEFAULT;
++  }
++
++  // >> Members related to AbstractEventTrainer
++  public QNTrainer() {
++  }
++
++  @Override
++  public void init(Map<String, String> trainParams, Map<String, String> reportMap) {
++    super.init(trainParams, reportMap);
++    this.m = parameters.getIntParam(M_PARAM, M_DEFAULT);
++    this.maxFctEval = parameters.getIntParam(MAX_FCT_EVAL_PARAM, MAX_FCT_EVAL_DEFAULT);
++    this.threads = parameters.getIntParam(THREADS_PARAM, THREADS_DEFAULT);
++    this.l1Cost = parameters.getDoubleParam(L1COST_PARAM, L1COST_DEFAULT);
++    this.l2Cost = parameters.getDoubleParam(L2COST_PARAM, L2COST_DEFAULT);
++  }
++
++  public boolean isValid() {
++
++    if (!super.isValid()) {
++      return false;
++    }
++
++    String algorithmName = getAlgorithm();
++    if (algorithmName != null && !(MAXENT_QN_VALUE.equals(algorithmName))) {
++      return false;
++    }
++
++    // Number of Hessian updates to remember
++    if (m < 0) {
++      return false;
++    }
++
++    // Maximum number of function evaluations
++    if (maxFctEval < 0) {
++      return false;
++    }
++
++    // Number of threads must be >= 1
++    if (threads < 1) {
++      return false;
++    }
++
++    // Regularization costs must be >= 0
++    if (l1Cost < 0) {
++      return false;
++    }
++
++    if (l2Cost < 0) {
++      return false;
++    }
++
++    return true;
++  }
++
++  public boolean isSortAndMerge() {
++    return true;
++  }
++
++  public AbstractModel doTrain(DataIndexer indexer) throws IOException {
++    int iterations = getIterations();
++    return trainModel(iterations, indexer);
++  }
++
++  // << Members related to AbstractEventTrainer
++  public QNModel trainModel(int iterations, DataIndexer indexer) {
++
++    // Train model's parameters
++    Function objectiveFunction;
++    if (threads == 1) {
++      System.out.println("Computing model parameters ...");
++      objectiveFunction = new NegLogLikelihood(indexer);
++    } else {
++      System.out.println("Computing model parameters in " + threads + " threads ...");
++      objectiveFunction = new ParallelNegLogLikelihood(indexer, threads);
++    }
++
++    QNMinimizer minimizer = new QNMinimizer(
++        l1Cost, l2Cost, iterations, m, maxFctEval, verbose);
++    minimizer.setEvaluator(new ModelEvaluator(indexer));
++
++    double[] parameters = minimizer.minimize(objectiveFunction);
++
++    // Construct model with trained parameters
++    String[] predLabels = indexer.getPredLabels();
++    int nPredLabels = predLabels.length;
++
++    String[] outcomeNames = indexer.getOutcomeLabels();
++    int nOutcomes = outcomeNames.length;
++
++    Context[] params = new Context[nPredLabels];
++    for (int ci = 0; ci < params.length; ci++) {
++      List<Integer> outcomePattern = new ArrayList<Integer>(nOutcomes);
++      List<Double> alpha = new ArrayList<Double>(nOutcomes);
++      for (int oi = 0; oi < nOutcomes; oi++) {
++        double val = parameters[oi * nPredLabels + ci];
++        outcomePattern.add(oi);
++        alpha.add(val);
++      }
++      params[ci] = new Context(ArrayMath.toIntArray(outcomePattern),
++          ArrayMath.toDoubleArray(alpha));
++    }
++
++    return new QNModel(params, predLabels, outcomeNames);
++  }
++
++  /**
++   * For measuring model's training accuracy
++   */
++  private class ModelEvaluator implements Evaluator {
++
++    private DataIndexer indexer;
++
++    public ModelEvaluator(DataIndexer indexer) {
++      this.indexer = indexer;
++    }
++
++    /**
++     * Evaluate the current model on training data set
++     * @return model's training accuracy
++     */
++    @Override
++    public double evaluate(double[] parameters) {
++      int[][] contexts  = indexer.getContexts();
++      float[][] values  = indexer.getValues();
++      int[] nEventsSeen = indexer.getNumTimesEventsSeen();
++      int[] outcomeList = indexer.getOutcomeList();
++      int nOutcomes     = indexer.getOutcomeLabels().length;
++      int nPredLabels   = indexer.getPredLabels().length;
++
++      int nCorrect     = 0;
++      int nTotalEvents = 0;
++
++      for (int ei = 0; ei < contexts.length; ei++) {
++        int[] context  = contexts[ei];
++        float[] value  = values == null ? null : values[ei];
++
++        double[] probs = new double[nOutcomes];
++        QNModel.eval(context, value, probs, nOutcomes, nPredLabels, parameters);
++        int outcome = ArrayMath.maxIdx(probs);
++        if (outcome == outcomeList[ei]) {
++          nCorrect += nEventsSeen[ei];
++        }
++        nTotalEvents += nEventsSeen[ei];
++      }
++
++      return (double) nCorrect / nTotalEvents;
++    }
++  }
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/9: opennlp-tools/src/main/java/opennlp/tools/ml/maxent/GISTrainer.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -20,12 +20,15 @@
+ package opennlp.tools.ml.maxent;
+ 
+ import java.io.IOException;
++import java.util.HashMap;
++import java.util.Map;
+ import java.util.concurrent.Callable;
+ import java.util.concurrent.CompletionService;
+ import java.util.concurrent.ExecutionException;
+ import java.util.concurrent.ExecutorCompletionService;
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
++
+ import opennlp.tools.ml.model.DataIndexer;
+ import opennlp.tools.ml.model.EvalParameters;
+ import opennlp.tools.ml.model.Event;
+@@ -220,7 +223,12 @@
+    * @return A GIS model trained with specified
+    */
+   public GISModel trainModel(ObjectStream<Event> eventStream, int iterations, int cutoff) throws IOException {
+-    return trainModel(iterations, new OnePassDataIndexer(eventStream,cutoff),cutoff);
++    DataIndexer indexer = new OnePassDataIndexer();
++    Map<String, String> params=new HashMap<>();
++    params.put(GIS.ITERATIONS_PARAM, Integer.toString(iterations));
++    params.put(GIS.CUTOFF_PARAM, Integer.toString(cutoff));
++    indexer.init(params, new HashMap<>());
++    return trainModel(iterations, indexer, cutoff);
+   }
+ 
+   /**
+@@ -371,7 +379,7 @@
+           modelExpect[pi].setParameter(aoi, 0.0);
+         }
+         if (predCount[pi][oi] > 0) {
+-            observedExpects[pi].setParameter(aoi, predCount[pi][oi]);
++          observedExpects[pi].setParameter(aoi, predCount[pi][oi]);
+         }
+         else if (useSimpleSmoothing) {
+           observedExpects[pi].setParameter(aoi,smoothingObservation);
+@@ -399,9 +407,9 @@
+ 
+   /* Estimate and return the model parameters. */
+   private void findParameters(int iterations, double correctionConstant) {
+-	int threads=modelExpects.length;
+-	ExecutorService executor = Executors.newFixedThreadPool(threads);
+-	CompletionService<ModelExpactationComputeTask> completionService = new ExecutorCompletionService<>(executor);
++    int threads=modelExpects.length;
++    ExecutorService executor = Executors.newFixedThreadPool(threads);
++    CompletionService<ModelExpactationComputeTask> completionService = new ExecutorCompletionService<>(executor);
+     double prevLL = 0.0;
+     double currLL;
+     display("Performing " + iterations + " iterations.\n");
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -273,8 +273,8 @@
+       }
+       else {
+         float cl = values[ci][0];
+-        for (int vi=1;vi<values[ci].length;vi++) {
+-          cl+=values[ci][vi];
++        for (int vi = 1; vi < values[ci].length; vi++) {
++          cl += values[ci][vi];
+         }
+ 
+         if (cl > correctionConstant) {
+@@ -301,7 +301,7 @@
+     for (int ti = 0; ti < numUniqueEvents; ti++) {
+       for (int j = 0; j < contexts[ti].length; j++) {
+         if (values != null && values[ti] != null) {
+-          predCount[contexts[ti][j]][outcomeList[ti]] += numTimesEventsSeen[ti]*values[ti][j];
++          predCount[contexts[ti][j]][outcomeList[ti]] += numTimesEventsSeen[ti] * values[ti][j];
+         }
+         else {
+           predCount[contexts[ti][j]][outcomeList[ti]] += numTimesEventsSeen[ti];
+@@ -323,7 +323,7 @@
+     // implementation, this is cancelled out when we compute the next
+     // iteration of a parameter, making the extra divisions wasteful.
+     params = new MutableContext[numPreds];
+-    for (int i = 0; i< modelExpects.length; i++)
++    for (int i = 0; i < modelExpects.length; i++)
+       modelExpects[i] = new MutableContext[numPreds];
+     observedExpects = new MutableContext[numPreds];
+ 
+@@ -334,7 +334,7 @@
+     evalParams = new EvalParameters(params,0,1,numOutcomes);
+     int[] activeOutcomes = new int[numOutcomes];
+     int[] outcomePattern;
+-    int[] allOutcomesPattern= new int[numOutcomes];
++    int[] allOutcomesPattern = new int[numOutcomes];
+     for (int oi = 0; oi < numOutcomes; oi++) {
+       allOutcomesPattern[oi] = oi;
+     }
+@@ -361,17 +361,17 @@
+         }
+       }
+       params[pi] = new MutableContext(outcomePattern,new double[numActiveOutcomes]);
+-      for (int i = 0; i< modelExpects.length; i++)
++      for (int i = 0; i < modelExpects.length; i++)
+         modelExpects[i][pi] = new MutableContext(outcomePattern,new double[numActiveOutcomes]);
+       observedExpects[pi] = new MutableContext(outcomePattern,new double[numActiveOutcomes]);
+-      for (int aoi=0;aoi<numActiveOutcomes;aoi++) {
++      for (int aoi = 0;aoi < numActiveOutcomes; aoi++) {
+         int oi = outcomePattern[aoi];
+         params[pi].setParameter(aoi, 0.0);
+         for (MutableContext[] modelExpect : modelExpects) {
+           modelExpect[pi].setParameter(aoi, 0.0);
+         }
+         if (predCount[pi][oi] > 0) {
+-            observedExpects[pi].setParameter(aoi, predCount[pi][oi]);
++          observedExpects[pi].setParameter(aoi, predCount[pi][oi]);
+         }
+         else if (useSimpleSmoothing) {
+           observedExpects[pi].setParameter(aoi,smoothingObservation);
+@@ -387,7 +387,7 @@
+     if (threads == 1)
+       display("Computing model parameters ...\n");
+     else
+-      display("Computing model parameters in " + threads +" threads...\n");
++      display("Computing model parameters in " + threads + " threads...\n");
+ 
+     findParameters(iterations, correctionConstant);
+ 
+@@ -399,9 +399,9 @@
+ 
+   /* Estimate and return the model parameters. */
+   private void findParameters(int iterations, double correctionConstant) {
+-	int threads=modelExpects.length;
+-	ExecutorService executor = Executors.newFixedThreadPool(threads);
+-	CompletionService<ModelExpactationComputeTask> completionService = new ExecutorCompletionService<>(executor);
++    int threads = modelExpects.length;
++    ExecutorService executor = Executors.newFixedThreadPool(threads);
++    CompletionService<ModelExpactationComputeTask> completionService = new ExecutorCompletionService<>(executor);
+     double prevLL = 0.0;
+     double currLL;
+     display("Performing " + iterations + " iterations.\n");
+@@ -496,7 +496,7 @@
+           int pi = contexts[ei][j];
+           if (predicateCounts[pi] >= cutoff) {
+             int[] activeOutcomes = modelExpects[threadIndex][pi].getOutcomes();
+-            for (int aoi=0;aoi<activeOutcomes.length;aoi++) {
++            for (int aoi = 0; aoi < activeOutcomes.length; aoi++) {
+               int oi = activeOutcomes[aoi];
+ 
+               // numTimesEventsSeen must also be thread safe
+@@ -552,7 +552,7 @@
+     int numCorrect = 0;
+ 
+     // Each thread gets equal number of tasks, if the number of tasks
+-    // is not divisible by the number of threads, the first "leftOver" 
++    // is not divisible by the number of threads, the first "leftOver"
+     // threads have one extra task.
+     int numberOfThreads = modelExpects.length;
+     int taskSize = numUniqueEvents / numberOfThreads;
+@@ -561,12 +561,12 @@
+     // submit all tasks to the completion service.
+     for (int i = 0; i < numberOfThreads; i++) {
+       if (i < leftOver)
+-        completionService.submit(new ModelExpactationComputeTask(i, i*taskSize+i, taskSize+1));
++        completionService.submit(new ModelExpactationComputeTask(i, i * taskSize + i, taskSize + 1));
+       else
+-        completionService.submit(new ModelExpactationComputeTask(i, i*taskSize+leftOver, taskSize));
+-    }
+-
+-    for (int i=0; i<numberOfThreads; i++) {
++        completionService.submit(new ModelExpactationComputeTask(i, i * taskSize + leftOver, taskSize));
++    }
++
++    for (int i = 0; i < numberOfThreads; i++) {
+       ModelExpactationComputeTask finishedTask;
+       try {
+         finishedTask = completionService.take().get();
+@@ -595,7 +595,7 @@
+     for (int pi = 0; pi < numPreds; pi++) {
+       int[] activeOutcomes = params[pi].getOutcomes();
+ 
+-      for (int aoi=0;aoi<activeOutcomes.length;aoi++) {
++      for (int aoi = 0; aoi < activeOutcomes.length; aoi++) {
+         for (int i = 1; i < modelExpects.length; i++) {
+           modelExpects[0][pi].updateParameter(aoi, modelExpects[i][pi].getParameters()[aoi]);
+         }
+@@ -609,16 +609,16 @@
+       double[] observed = observedExpects[pi].getParameters();
+       double[] model = modelExpects[0][pi].getParameters();
+       int[] activeOutcomes = params[pi].getOutcomes();
+-      for (int aoi=0;aoi<activeOutcomes.length;aoi++) {
++      for (int aoi = 0; aoi < activeOutcomes.length; aoi++) {
+         if (useGaussianSmoothing) {
+           params[pi].updateParameter(aoi,gaussianUpdate(pi,aoi,numEvents,correctionConstant));
+         }
+         else {
+           if (model[aoi] == 0) {
+-            System.err.println("Model expects == 0 for "+predLabels[pi]+" "+outcomeLabels[aoi]);
++            System.err.println("Model expects == 0 for " + predLabels[pi] + " " + outcomeLabels[aoi]);
+           }
+           //params[pi].updateParameter(aoi,(Math.log(observed[aoi]) - Math.log(model[aoi])));
+-          params[pi].updateParameter(aoi,((Math.log(observed[aoi]) - Math.log(model[aoi]))/correctionConstant));
++          params[pi].updateParameter(aoi,((Math.log(observed[aoi]) - Math.log(model[aoi])) / correctionConstant));
+         }
+ 
+         for (MutableContext[] modelExpect : modelExpects) {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -331,7 +331,7 @@
+     // implementation, this is cancelled out when we compute the next
+     // iteration of a parameter, making the extra divisions wasteful.
+     params = new MutableContext[numPreds];
+-    for (int i = 0; i < modelExpects.length; i++)
++    for (int i = 0; i< modelExpects.length; i++)
+       modelExpects[i] = new MutableContext[numPreds];
+     observedExpects = new MutableContext[numPreds];
+ 
+@@ -342,7 +342,7 @@
+     evalParams = new EvalParameters(params,0,1,numOutcomes);
+     int[] activeOutcomes = new int[numOutcomes];
+     int[] outcomePattern;
+-    int[] allOutcomesPattern = new int[numOutcomes];
++    int[] allOutcomesPattern= new int[numOutcomes];
+     for (int oi = 0; oi < numOutcomes; oi++) {
+       allOutcomesPattern[oi] = oi;
+     }
+@@ -369,10 +369,10 @@
+         }
+       }
+       params[pi] = new MutableContext(outcomePattern,new double[numActiveOutcomes]);
+-      for (int i = 0; i < modelExpects.length; i++)
++      for (int i = 0; i< modelExpects.length; i++)
+         modelExpects[i][pi] = new MutableContext(outcomePattern,new double[numActiveOutcomes]);
+       observedExpects[pi] = new MutableContext(outcomePattern,new double[numActiveOutcomes]);
+-      for (int aoi = 0;aoi < numActiveOutcomes; aoi++) {
++      for (int aoi=0;aoi<numActiveOutcomes;aoi++) {
+         int oi = outcomePattern[aoi];
+         params[pi].setParameter(aoi, 0.0);
+         for (MutableContext[] modelExpect : modelExpects) {
+@@ -395,7 +395,7 @@
+     if (threads == 1)
+       display("Computing model parameters ...\n");
+     else
+-      display("Computing model parameters in " + threads + " threads...\n");
++      display("Computing model parameters in " + threads +" threads...\n");
+ 
+     findParameters(iterations, correctionConstant);
+ 
+@@ -504,7 +504,7 @@
+           int pi = contexts[ei][j];
+           if (predicateCounts[pi] >= cutoff) {
+             int[] activeOutcomes = modelExpects[threadIndex][pi].getOutcomes();
+-            for (int aoi = 0; aoi < activeOutcomes.length; aoi++) {
++            for (int aoi=0;aoi<activeOutcomes.length;aoi++) {
+               int oi = activeOutcomes[aoi];
+ 
+               // numTimesEventsSeen must also be thread safe
+@@ -560,7 +560,7 @@
+     int numCorrect = 0;
+ 
+     // Each thread gets equal number of tasks, if the number of tasks
+-    // is not divisible by the number of threads, the first "leftOver"
++    // is not divisible by the number of threads, the first "leftOver" 
+     // threads have one extra task.
+     int numberOfThreads = modelExpects.length;
+     int taskSize = numUniqueEvents / numberOfThreads;
+@@ -569,12 +569,12 @@
+     // submit all tasks to the completion service.
+     for (int i = 0; i < numberOfThreads; i++) {
+       if (i < leftOver)
+-        completionService.submit(new ModelExpactationComputeTask(i, i * taskSize + i, taskSize + 1));
++        completionService.submit(new ModelExpactationComputeTask(i, i*taskSize+i, taskSize+1));
+       else
+-        completionService.submit(new ModelExpactationComputeTask(i, i * taskSize + leftOver, taskSize));
+-    }
+-
+-    for (int i = 0; i < numberOfThreads; i++) {
++        completionService.submit(new ModelExpactationComputeTask(i, i*taskSize+leftOver, taskSize));
++    }
++
++    for (int i=0; i<numberOfThreads; i++) {
+       ModelExpactationComputeTask finishedTask;
+       try {
+         finishedTask = completionService.take().get();
+@@ -603,7 +603,7 @@
+     for (int pi = 0; pi < numPreds; pi++) {
+       int[] activeOutcomes = params[pi].getOutcomes();
+ 
+-      for (int aoi = 0; aoi < activeOutcomes.length; aoi++) {
++      for (int aoi=0;aoi<activeOutcomes.length;aoi++) {
+         for (int i = 1; i < modelExpects.length; i++) {
+           modelExpects[0][pi].updateParameter(aoi, modelExpects[i][pi].getParameters()[aoi]);
+         }
+@@ -617,16 +617,16 @@
+       double[] observed = observedExpects[pi].getParameters();
+       double[] model = modelExpects[0][pi].getParameters();
+       int[] activeOutcomes = params[pi].getOutcomes();
+-      for (int aoi = 0; aoi < activeOutcomes.length; aoi++) {
++      for (int aoi=0;aoi<activeOutcomes.length;aoi++) {
+         if (useGaussianSmoothing) {
+           params[pi].updateParameter(aoi,gaussianUpdate(pi,aoi,numEvents,correctionConstant));
+         }
+         else {
+           if (model[aoi] == 0) {
+-            System.err.println("Model expects == 0 for " + predLabels[pi] + " " + outcomeLabels[aoi]);
++            System.err.println("Model expects == 0 for "+predLabels[pi]+" "+outcomeLabels[aoi]);
+           }
+           //params[pi].updateParameter(aoi,(Math.log(observed[aoi]) - Math.log(model[aoi])));
+-          params[pi].updateParameter(aoi,((Math.log(observed[aoi]) - Math.log(model[aoi])) / correctionConstant));
++          params[pi].updateParameter(aoi,((Math.log(observed[aoi]) - Math.log(model[aoi]))/correctionConstant));
+         }
+ 
+         for (MutableContext[] modelExpect : modelExpects) {
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/9: opennlp-tools/src/main/java/opennlp/tools/ml/model/OnePassRealValueDataIndexer.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -23,7 +23,6 @@
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.HashMap;
+-import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Map;
+ 
+@@ -39,10 +38,6 @@
+ 
+   float[][] values;
+ 
+-  public OnePassRealValueDataIndexer(ObjectStream<Event> eventStream, int cutoff, boolean sort) throws IOException {
+-    super(eventStream,cutoff,sort);
+-  }
+-
+   /**
+    * Two argument constructor for DataIndexer.
+    * @param eventStream An Event[] which contains the a list of all the Events
+@@ -50,8 +45,17 @@
+    * @param cutoff The minimum number of times a predicate must have been
+    *               observed in order to be included in the model.
+    */
++  @Deprecated
+   public OnePassRealValueDataIndexer(ObjectStream<Event> eventStream, int cutoff) throws IOException {
+     super(eventStream,cutoff);
++  }
++
++  @Deprecated
++  public OnePassRealValueDataIndexer(ObjectStream<Event> eventStream, int cutoff, boolean sort) throws IOException {
++    super(eventStream,cutoff,sort);
++  }
++
++  public OnePassRealValueDataIndexer() {
+   }
+ 
+   public float[][] getValues() {
+@@ -72,7 +76,9 @@
+     return numUniqueEvents;
+   }
+ 
+-  protected List<ComparableEvent> index(LinkedList<Event> events, Map<String,Integer> predicateIndex) {
++
++  @Override
++  protected List<ComparableEvent> index(List<Event> events, Map<String,Integer> predicateIndex) {
+     Map<String,Integer> omap = new HashMap<>();
+ 
+     int numEvents = events.size();
+@@ -80,8 +86,7 @@
+     List<ComparableEvent> eventsToCompare = new ArrayList<>(numEvents);
+     List<Integer> indexedContext = new ArrayList<>();
+ 
+-    for (int eventIndex=0; eventIndex<numEvents; eventIndex++) {
+-      Event ev = events.removeFirst();
++    for (Event ev:events) {
+       String[] econtext = ev.getContext();
+       ComparableEvent ce;
+ 
+@@ -109,11 +114,10 @@
+         }
+         ce = new ComparableEvent(ocID, cons, ev.getValues());
+         eventsToCompare.add(ce);
+-      }
+-      else {
++      } else {
+         System.err.println("Dropped event "+ev.getOutcome()+":"+Arrays.asList(ev.getContext()));
+       }
+-//    recycle the TIntArrayList
++      //    recycle the TIntArrayList
+       indexedContext.clear();
+     }
+     outcomeLabels = toIndexedStringArray(omap);
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -80,7 +80,7 @@
+     List<ComparableEvent> eventsToCompare = new ArrayList<>(numEvents);
+     List<Integer> indexedContext = new ArrayList<>();
+ 
+-    for (int eventIndex=0; eventIndex<numEvents; eventIndex++) {
++    for (int eventIndex = 0; eventIndex < numEvents; eventIndex++) {
+       Event ev = events.removeFirst();
+       String[] econtext = ev.getContext();
+       ComparableEvent ce;
+@@ -104,16 +104,16 @@
+       //drop events with no active features
+       if (indexedContext.size() > 0) {
+         int[] cons = new int[indexedContext.size()];
+-        for (int ci=0;ci<cons.length;ci++) {
++        for (int ci = 0; ci < cons.length; ci++) {
+           cons[ci] = indexedContext.get(ci);
+         }
+         ce = new ComparableEvent(ocID, cons, ev.getValues());
+         eventsToCompare.add(ce);
+       }
+       else {
+-        System.err.println("Dropped event "+ev.getOutcome()+":"+Arrays.asList(ev.getContext()));
++        System.err.println("Dropped event " + ev.getOutcome() + ":" + Arrays.asList(ev.getContext()));
+       }
+-//    recycle the TIntArrayList
++
+       indexedContext.clear();
+     }
+     outcomeLabels = toIndexedStringArray(omap);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -86,7 +86,12 @@
+     List<ComparableEvent> eventsToCompare = new ArrayList<>(numEvents);
+     List<Integer> indexedContext = new ArrayList<>();
+ 
++<<<<<<< HEAD
+     for (Event ev:events) {
++=======
++    for (int eventIndex = 0; eventIndex < numEvents; eventIndex++) {
++      Event ev = events.removeFirst();
++>>>>>>> branch 'trunk' of git://git.apache.org/opennlp.git
+       String[] econtext = ev.getContext();
+       ComparableEvent ce;
+ 
+@@ -114,10 +119,20 @@
+         }
+         ce = new ComparableEvent(ocID, cons, ev.getValues());
+         eventsToCompare.add(ce);
++<<<<<<< HEAD
+       } else {
+         System.err.println("Dropped event "+ev.getOutcome()+":"+Arrays.asList(ev.getContext()));
++=======
+       }
++      else {
++        System.err.println("Dropped event " + ev.getOutcome() + ":" + Arrays.asList(ev.getContext()));
++>>>>>>> branch 'trunk' of git://git.apache.org/opennlp.git
++      }
++<<<<<<< HEAD
++      //    recycle the TIntArrayList
++=======
+ 
++>>>>>>> branch 'trunk' of git://git.apache.org/opennlp.git
+       indexedContext.clear();
+     }
+     outcomeLabels = toIndexedStringArray(omap);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package opennlp.tools.util does not exist
+[RESOLVE] package opennlp.tools.util does not exist
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[OTHER] method does not override or implement a method from a supertype
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+[RESOLVE] cannot find symbol
+
+=== FILE 4/9: opennlp-tools/src/main/java/opennlp/tools/ml/EventTrainer.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -20,6 +20,7 @@
+ import java.io.IOException;
+ import java.util.Map;
+ 
++import opennlp.tools.ml.model.DataIndexer;
+ import opennlp.tools.ml.model.Event;
+ import opennlp.tools.ml.model.MaxentModel;
+ import opennlp.tools.util.ObjectStream;
+@@ -30,5 +31,5 @@
+ 
+   public void init(Map<String, String> trainParams, Map<String, String> reportMap);
+   public MaxentModel train(ObjectStream<Event> events) throws IOException;
+-
++  public MaxentModel train(DataIndexer indexer) throws IOException;
+ }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -29,6 +29,7 @@
+   public static final String EVENT_VALUE = "Event";
+ 
+   public void init(Map<String, String> trainParams, Map<String, String> reportMap);
++
+   public MaxentModel train(ObjectStream<Event> events) throws IOException;
+ 
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/9: opennlp-tools/src/main/java/opennlp/tools/ml/model/AbstractDataIndexer.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -24,6 +24,8 @@
+ import java.util.Map;
+ import java.util.Set;
+ 
++import opennlp.tools.ml.AbstractTrainer;
++import opennlp.tools.ml.PluggableParameters;
+ import opennlp.tools.util.InsufficientTrainingDataException;
+ 
+ 
+@@ -32,6 +34,18 @@
+  *
+  */
+ public abstract class AbstractDataIndexer implements DataIndexer {
++
++  public static final String CUTOFF_PARAM = AbstractTrainer.CUTOFF_PARAM;
++  public static final int CUTOFF_DEFAULT = AbstractTrainer.CUTOFF_DEFAULT;
++
++  public static final String SORT_PARAM = "sort";
++  public static final boolean SORT_DEFAULT = true;
++
++  PluggableParameters parameters;
++
++  public void init(Map<String,String> indexingParameters,Map<String, String> reportMap){
++    parameters=new PluggableParameters(indexingParameters, reportMap);
++  }
+ 
+   private int numEvents;
+   /** The integer contexts associated with each unique event. */
+@@ -67,8 +81,6 @@
+     return outcomeLabels;
+   }
+ 
+-
+-
+   public int[] getPredCounts() {
+     return predCounts;
+   }
+@@ -89,7 +101,7 @@
+     if (sort && eventsToCompare.size() > 0) {
+ 
+       Collections.sort(eventsToCompare);
+-      
++
+       ComparableEvent ce = eventsToCompare.get(0);
+       for (int i = 1; i < numEvents; i++) {
+         ComparableEvent ce2 = eventsToCompare.get(i);
+@@ -108,11 +120,11 @@
+     else {
+       numUniqueEvents = eventsToCompare.size();
+     }
+-    
++
+     if(numUniqueEvents == 0) {
+       throw new InsufficientTrainingDataException("Insufficient training data to create model.");
+     }
+-    
++
+     if (sort) System.out.println("done. Reduced " + numEvents + " events to " + numUniqueEvents + ".");
+ 
+     contexts = new int[numUniqueEvents][];
+@@ -144,19 +156,19 @@
+    * @param counter The predicate counters.
+    * @param cutoff The cutoff which determines whether a predicate is included.
+    */
+-   protected static void update(String[] ec, Set<String> predicateSet, Map<String,Integer> counter, int cutoff) {
+-     for (String s : ec) {
+-       Integer i = counter.get(s);
+-       if (i == null) {
+-         counter.put(s, 1);
+-       }
+-       else {
+-         counter.put(s, i + 1);
+-       }
+-       if (!predicateSet.contains(s) && counter.get(s) >= cutoff) {
+-         predicateSet.add(s);
+-       }
+-     }
++  protected static void update(String[] ec, Set<String> predicateSet, Map<String,Integer> counter, int cutoff) {
++    for (String s : ec) {
++      Integer i = counter.get(s);
++      if (i == null) {
++        counter.put(s, 1);
++      }
++      else {
++        counter.put(s, i + 1);
++      }
++      if (!predicateSet.contains(s) && counter.get(s) >= cutoff) {
++        predicateSet.add(s);
++      }
++    }
+   }
+ 
+   /**
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -89,7 +89,7 @@
+     if (sort && eventsToCompare.size() > 0) {
+ 
+       Collections.sort(eventsToCompare);
+-      
++
+       ComparableEvent ce = eventsToCompare.get(0);
+       for (int i = 1; i < numEvents; i++) {
+         ComparableEvent ce2 = eventsToCompare.get(i);
+@@ -108,11 +108,11 @@
+     else {
+       numUniqueEvents = eventsToCompare.size();
+     }
+-    
+-    if(numUniqueEvents == 0) {
++
++    if (numUniqueEvents == 0) {
+       throw new InsufficientTrainingDataException("Insufficient training data to create model.");
+     }
+-    
++
+     if (sort) System.out.println("done. Reduced " + numEvents + " events to " + numUniqueEvents + ".");
+ 
+     contexts = new int[numUniqueEvents][];
+@@ -144,19 +144,19 @@
+    * @param counter The predicate counters.
+    * @param cutoff The cutoff which determines whether a predicate is included.
+    */
+-   protected static void update(String[] ec, Set<String> predicateSet, Map<String,Integer> counter, int cutoff) {
+-     for (String s : ec) {
+-       Integer i = counter.get(s);
+-       if (i == null) {
+-         counter.put(s, 1);
+-       }
+-       else {
+-         counter.put(s, i + 1);
+-       }
+-       if (!predicateSet.contains(s) && counter.get(s) >= cutoff) {
+-         predicateSet.add(s);
+-       }
+-     }
++  protected static void update(String[] ec, Set<String> predicateSet, Map<String,Integer> counter, int cutoff) {
++    for (String s : ec) {
++      Integer i = counter.get(s);
++      if (i == null) {
++        counter.put(s, 1);
++      }
++      else {
++        counter.put(s, i + 1);
++      }
++      if (!predicateSet.contains(s) && counter.get(s) >= cutoff) {
++        predicateSet.add(s);
++      }
++    }
+   }
+ 
+   /**
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/9: opennlp-tools/src/main/java/opennlp/tools/ml/model/DataIndexer.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,6 +18,11 @@
+  */
+ 
+ package opennlp.tools.ml.model;
++
++import java.io.IOException;
++import java.util.Map;
++
++import opennlp.tools.util.ObjectStream;
+ 
+ /** Object which compresses events in memory and performs feature selection.
+  */
+@@ -55,9 +60,9 @@
+   public int[] getPredCounts();
+ 
+   /**
+-    * Returns an array of outcome names.
+-    * @return an array of outcome names indexed by outcome index.
+-    */
++   * Returns an array of outcome names.
++   * @return an array of outcome names indexed by outcome index.
++   */
+   public String[] getOutcomeLabels();
+ 
+   /**
+@@ -71,4 +76,19 @@
+    * @return The number of total events indexed.
+    */
+   public int getNumEvents();
++
++  /**
++   * Sets parameters used during the data indexing.
++   * @param trainParams
++   * @param reportMap
++   */
++  public void init(Map<String, String> trainParams, Map<String, String> reportMap);
++
++  /**
++   * Performs the data indexing. Make sure the init(...) method is called first.
++   * 
++   * @param eventStream
++   * @throws IOException
++   */
++  public void index(ObjectStream<Event> eventStream) throws IOException;
+ }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -25,7 +25,7 @@
+   /**
+    * Returns the array of predicates seen in each event.
+    * @return a 2-D array whose first dimension is the event index and array this refers to contains
+-   * the contexts for that event.
++   *     the contexts for that event.
+    */
+   public int[][] getContexts();
+ 
+@@ -44,7 +44,7 @@
+   /**
+    * Returns an array of predicate/context names.
+    * @return an array of predicate/context names indexed by context index.  These indices are the
+-   * value of the array returned by <code>getContexts</code>.
++   *     value of the array returned by <code>getContexts</code>.
+    */
+   public String[] getPredLabels();
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/9: opennlp-tools/src/main/java/opennlp/tools/ml/model/TwoPassDataIndexer.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -54,13 +54,16 @@
+    * @param eventStream An Event[] which contains the a list of all the Events
+    *               seen in the training data.
+    */
++  @Deprecated
+   public TwoPassDataIndexer(ObjectStream<Event> eventStream) throws IOException {
+     this(eventStream, 0);
+   }
+ 
++  @Deprecated
+   public TwoPassDataIndexer(ObjectStream<Event> eventStream, int cutoff) throws IOException {
+     this(eventStream,cutoff,true);
+   }
++
+   /**
+    * Two argument constructor for DataIndexer.
+    *
+@@ -69,12 +72,13 @@
+    * @param cutoff The minimum number of times a predicate must have been
+    *               observed in order to be included in the model.
+    */
++  @Deprecated
+   public TwoPassDataIndexer(ObjectStream<Event> eventStream, int cutoff, boolean sort) throws IOException {
+     Map<String,Integer> predicateIndex = new HashMap<>();
+     List<ComparableEvent> eventsToCompare;
+-
++  
+     System.out.println("Indexing events using cutoff of " + cutoff + "\n");
+-
++  
+     System.out.print("\tComputing event counts...  ");
+     try {
+       File tmp = File.createTempFile("events", null);
+@@ -82,9 +86,9 @@
+       Writer osw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmp),"UTF8"));
+       int numEvents = computeEventCounts(eventStream, osw, predicateIndex, cutoff);
+       System.out.println("done. " + numEvents + " events");
+-
++  
+       System.out.print("\tIndexing...  ");
+-
++  
+       try (FileEventStream fes = new FileEventStream(tmp)) {
+         eventsToCompare = index(numEvents, fes, predicateIndex);
+       }
+@@ -92,7 +96,7 @@
+       predicateIndex = null;
+       tmp.delete();
+       System.out.println("done.");
+-
++  
+       if (sort) {
+         System.out.print("Sorting and merging events... ");
+       }
+@@ -107,19 +111,62 @@
+     }
+   }
+ 
++  public TwoPassDataIndexer() {}
++
++  @Override
++  public void index(ObjectStream<Event> eventStream) throws IOException {
++    int cutoff=parameters.getIntParam(CUTOFF_PARAM, CUTOFF_DEFAULT);
++    boolean sort=parameters.getBooleanParam(SORT_PARAM, SORT_DEFAULT);
++
++    Map<String,Integer> predicateIndex = new HashMap<>();
++    List<ComparableEvent> eventsToCompare;
++
++    System.out.println("Indexing events using cutoff of " + cutoff + "\n");
++
++    System.out.print("\tComputing event counts...  ");
++    try {
++      File tmp = File.createTempFile("events", null);
++      tmp.deleteOnExit();
++      Writer osw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmp),"UTF8"));
++      int numEvents = computeEventCounts(eventStream, osw, predicateIndex, cutoff);
++      System.out.println("done. " + numEvents + " events");
++
++      System.out.print("\tIndexing...  ");
++
++      try (FileEventStream fes = new FileEventStream(tmp)) {
++        eventsToCompare = index(numEvents, fes, predicateIndex);
++      }
++      // done with predicates
++      predicateIndex = null;
++      tmp.delete();
++      System.out.println("done.");
++
++      if (sort) {
++        System.out.print("Sorting and merging events... ");
++      }
++      else {
++        System.out.print("Collecting events... ");
++      }
++      sortAndMerge(eventsToCompare,sort);
++      System.out.println("Done indexing.");
++    }
++    catch(IOException e) {
++      System.err.println(e);
++    }
++  }
+   /**
+-      * Reads events from <tt>eventStream</tt> into a linked list.  The
+-      * predicates associated with each event are counted and any which
+-      * occur at least <tt>cutoff</tt> times are added to the
+-      * <tt>predicatesInOut</tt> map along with a unique integer index.
+-      *
+-      * @param eventStream an <code>EventStream</code> value
+-      * @param eventStore a writer to which the events are written to for later processing.
+-      * @param predicatesInOut a <code>TObjectIntHashMap</code> value
+-      * @param cutoff an <code>int</code> value
+-      */
++   * Reads events from <tt>eventStream</tt> into a linked list.  The
++   * predicates associated with each event are counted and any which
++   * occur at least <tt>cutoff</tt> times are added to the
++   * <tt>predicatesInOut</tt> map along with a unique integer index.
++   *
++   * @param eventStream an <code>EventStream</code> value
++   * @param eventStore a writer to which the events are written to for later processing.
++   * @param predicatesInOut a <code>TObjectIntHashMap</code> value
++   * @param cutoff an <code>int</code> value
++   */
+   private int computeEventCounts(ObjectStream<Event> eventStream, Writer eventStore,
+-                                 Map<String,Integer> predicatesInOut, int cutoff) throws IOException {
++      Map<String,Integer> predicatesInOut, int cutoff) throws IOException {
+     Map<String,Integer> counter = new HashMap<>();
+     int eventCount = 0;
+     Set<String> predicateSet = new HashSet<>();
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -45,7 +45,7 @@
+  * the events.  During the first pass a temporary event file is created which
+  * is read during the second pass.
+  */
+-public class TwoPassDataIndexer extends AbstractDataIndexer{
++public class TwoPassDataIndexer extends AbstractDataIndexer {
+ 
+   /**
+    * One argument constructor for DataIndexer which calls the two argument
+@@ -61,6 +61,7 @@
+   public TwoPassDataIndexer(ObjectStream<Event> eventStream, int cutoff) throws IOException {
+     this(eventStream,cutoff,true);
+   }
++
+   /**
+    * Two argument constructor for DataIndexer.
+    *
+@@ -102,7 +103,7 @@
+       sortAndMerge(eventsToCompare,sort);
+       System.out.println("Done indexing.");
+     }
+-    catch(IOException e) {
++    catch (IOException e) {
+       System.err.println(e);
+     }
+   }
+@@ -133,7 +134,7 @@
+     }
+     predCounts = new int[predicateSet.size()];
+     int index = 0;
+-    for (Iterator<String> pi=predicateSet.iterator();pi.hasNext();index++) {
++    for (Iterator<String> pi = predicateSet.iterator(); pi.hasNext(); index++) {
+       String predicate = pi.next();
+       predCounts[index] = counter.get(predicate);
+       predicatesInOut.put(predicate,index);
+@@ -173,7 +174,7 @@
+       // drop events with no active features
+       if (indexedContext.size() > 0) {
+         int[] cons = new int[indexedContext.size()];
+-        for (int ci=0;ci<cons.length;ci++) {
++        for (int ci = 0;ci < cons.length; ci++) {
+           cons[ci] = indexedContext.get(ci);
+         }
+         ce = new ComparableEvent(ocID, cons);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 8/9: opennlp-tools/src/main/java/opennlp/tools/ml/perceptron/PerceptronTrainer.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -103,17 +103,17 @@
+ 
+     AbstractModel model;
+ 
+-    boolean useAverage = getBooleanParam("UseAverage", true);
+-
+-    boolean useSkippedAveraging = getBooleanParam("UseSkippedAveraging", false);
++    boolean useAverage = parameters.getBooleanParam("UseAverage", true);
++
++    boolean useSkippedAveraging = parameters.getBooleanParam("UseSkippedAveraging", false);
+ 
+     // overwrite otherwise it might not work
+     if (useSkippedAveraging)
+       useAverage = true;
+ 
+-    double stepSizeDecrease = getDoubleParam("StepSizeDecrease", 0);
+-
+-    double tolerance = getDoubleParam("Tolerance",
++    double stepSizeDecrease = parameters.getDoubleParam("StepSizeDecrease", 0);
++
++    double tolerance = parameters.getDoubleParam("Tolerance",
+         PerceptronTrainer.TOLERANCE_DEFAULT);
+ 
+     this.setSkippedAveraging(useSkippedAveraging);
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -216,11 +216,11 @@
+     return new PerceptronModel(finalParameters, predLabels, outcomeLabels);
+   }
+ 
+-  private MutableContext[] findParameters (int iterations, boolean useAverage) {
++  private MutableContext[] findParameters(int iterations, boolean useAverage) {
+ 
+     display("Performing " + iterations + " iterations.\n");
+ 
+-    int[] allOutcomesPattern= new int[numOutcomes];
++    int[] allOutcomesPattern = new int[numOutcomes];
+     for (int oi = 0; oi < numOutcomes; oi++)
+       allOutcomesPattern[oi] = oi;
+ 
+@@ -228,7 +228,7 @@
+     MutableContext[] params = new MutableContext[numPreds];
+     for (int pi = 0; pi < numPreds; pi++) {
+       params[pi] = new MutableContext(allOutcomesPattern,new double[numOutcomes]);
+-      for (int aoi=0;aoi<numOutcomes;aoi++)
++      for (int aoi = 0; aoi < numOutcomes; aoi++)
+         params[pi].setParameter(aoi, 0.0);
+     }
+ 
+@@ -239,7 +239,7 @@
+     if (useAverage) {
+       for (int pi = 0; pi < numPreds; pi++) {
+         summedParams[pi] = new MutableContext(allOutcomesPattern,new double[numOutcomes]);
+-        for (int aoi=0;aoi<numOutcomes;aoi++)
++        for (int aoi = 0; aoi < numOutcomes; aoi++)
+           summedParams[pi].setParameter(aoi, 0.0);
+       }
+     }
+@@ -324,8 +324,8 @@
+       // current training accuracy and all of the previous three
+       // training accuracies, stop training.
+       if (Math.abs(prevAccuracy1 - trainingAccuracy) < tolerance
+-        && Math.abs(prevAccuracy2 - trainingAccuracy) < tolerance
+-        && Math.abs(prevAccuracy3 - trainingAccuracy) < tolerance) {
++          && Math.abs(prevAccuracy2 - trainingAccuracy) < tolerance
++          && Math.abs(prevAccuracy3 - trainingAccuracy) < tolerance) {
+         display("Stopping: change in training set accuracy less than " + tolerance + "\n");
+         break;
+       }
+@@ -342,8 +342,8 @@
+     // Create averaged parameters
+     if (useAverage) {
+       for (int pi = 0; pi < numPreds; pi++)
+-        for (int aoi=0;aoi<numOutcomes;aoi++)
+-          summedParams[pi].setParameter(aoi, summedParams[pi].getParameters()[aoi]/numTimesSummed);
++        for (int aoi = 0; aoi < numOutcomes; aoi++)
++          summedParams[pi].setParameter(aoi, summedParams[pi].getParameters()[aoi] / numTimesSummed);
+ 
+       return summedParams;
+ 
+@@ -355,11 +355,11 @@
+ 
+   }
+ 
+-  private double trainingStats (EvalParameters evalParams) {
++  private double trainingStats(EvalParameters evalParams) {
+     int numCorrect = 0;
+ 
+     for (int ei = 0; ei < numUniqueEvents; ei++) {
+-      for (int ni=0;ni<this.numTimesEventsSeen[ei];ni++) {
++      for (int ni = 0; ni < this.numTimesEventsSeen[ei]; ni++) {
+ 
+         double[] modelDistribution = new double[numOutcomes];
+ 
+@@ -374,12 +374,12 @@
+       }
+     }
+     double trainingAccuracy = (double) numCorrect / numEvents;
+-    display("Stats: (" + numCorrect + "/" + numEvents+") " + trainingAccuracy + "\n");
++    display("Stats: (" + numCorrect + "/" + numEvents + ") " + trainingAccuracy + "\n");
+     return trainingAccuracy;
+   }
+ 
+ 
+-  private int maxIndex (double[] values) {
++  private int maxIndex(double[] values) {
+     int max = 0;
+     for (int i = 1; i < values.length; i++)
+       if (values[i] > values[max])
+@@ -387,13 +387,13 @@
+     return max;
+   }
+ 
+-  private void display (String s) {
++  private void display(String s) {
+     if (printMessages)
+       System.out.print(s);
+   }
+ 
+-  private void displayIteration (int i) {
+-    if (i > 10 && (i%10) != 0)
++  private void displayIteration(int i) {
++    if (i > 10 && (i % 10) != 0)
+       return;
+ 
+     if (i < 10)
+@@ -406,9 +406,9 @@
+ 
+   // See whether a number is a perfect square. Inefficient, but fine
+   // for our purposes.
+-  private static boolean isPerfectSquare (int n) {
+-    int root = (int)Math.sqrt(n);
+-    return root*root == n;
++  private static boolean isPerfectSquare(int n) {
++    int root = (int) Math.sqrt(n);
++    return root * root == n;
+   }
+ 
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== REMAINING 1 FILES (elided at truncation T3; listed by path + merged-vs-dev diffstat) ===
+  opennlp-tools/src/main/java/opennlp/tools/ml/perceptron/SimplePerceptronSequenceTrainer.java  (merged-vs-dev +0 -0)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

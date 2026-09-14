@@ -1,0 +1,10 @@
+public class TaskManager {
+    private java.util.List<String> pendingTasks = new java.util.ArrayList<>();
+
+    public void run() {
+        pendingTasks.add("init");
+        for (String task : pendingTasks) {
+            System.out.println("Processing " + task);
+        }
+    }
+}

@@ -1,0 +1,486 @@
+{
+ "program": "detector-cycle (D1-D3)",
+ "issue": 31,
+ "authority": "outputs/detector-cycle-plan.md",
+ "plan_freeze_commit": "10b7528",
+ "plan_amendments": [
+  "Amendment 1 (2026-07-16, S-D1): control-draw attrition mechanism (viability + spares) + eval-pool wording (same semantic_ctl pool)",
+  "Amendment 2 (2026-07-16, S-D1): GD1 failure path \u2014 file-local scope reduction (Ali, option b); rescored 37/39 = 94.9%",
+  "Amendment 3 (2026-07-16, post-S-D2; rev-b): dual review pass in build sessions \u2014 project-code + standalone-JLS + open-source practice comparison; S-D2/D1 already compliant via addendum"
+ ],
+ "never_blend": "detector-cycle numbers are a fourth instrument \u2014 never mixed with taxonomy base rates, Stage-C R1/R2, or Phase-2b recall",
+ "upstream": {
+  "labels_final": "reports_taxonomy/labels_final.csv",
+  "split_assignment": "reports_taxonomy/split_assignment.csv",
+  "codebook_frozen": "reports_taxonomy/phase2/codebook_frozen.md",
+  "taxonomy_freeze_commit": "3e7d9b4"
+ },
+ "environment": {
+  "images": {
+   "refactoring_miner": {
+    "tag": "merge-tools/refactoring-miner:2.4.0",
+    "id": "sha256:a07c22bf89fa478e77240ad0545ff1a41f9e84251bacf7a54b3c74284f18d8b1"
+   },
+   "mergiraf": {
+    "tag": "merge-tools/mergiraf:0.17.0",
+    "id": "sha256:059757c5b5d1c3df2f2ed85931392df9c047944c6092be74ffe0ded4f2410d04"
+   },
+   "javac": {
+    "tag": "eclipse-temurin:17-jdk",
+    "id": "sha256:aae0b1494a5637b2c1b933080088ccc196dec7ffb83ce1cd524211ea4f640ff4"
+   }
+  },
+  "experimental_flag": "SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS=1 (plan \u00a72 N2)"
+ },
+ "controls": {
+  "pool": "reaper/result_adjusted.csv: has-Java & mergiraf==Tests_passed & parseable num_intersecting_files; minus 195 Stage-C control merges",
+  "pool_sizes": {
+   "semantic_ctl": 3144,
+   "unparseable_excluded": 0,
+   "fresh": 2949,
+   "le3": 2365,
+   "gt3": 584
+  },
+  "draw_script": "tools/detector_controls_draw.py",
+  "seeds": {
+   "tune": 20260715,
+   "eval": 20260716
+  },
+  "quotas": {
+   "tune": {
+    "le3": 60,
+    "gt3": 40
+   },
+   "eval": {
+    "le3": 120,
+    "gt3": 80
+   },
+   "eval_spares": {
+    "le3": 24,
+    "gt3": 16
+   }
+  },
+  "per_repo_cap": 3,
+  "sha256": {
+   "stagec_exclusion_195.csv": "836a82b3b87094c7377210cd961d7678132f9454850ea8de571bbf8a2de24619",
+   "tune_controls.csv": "9a7b6be2c8c6c4e90580d28e490ca18309be9083986647b74d41420e69e62809",
+   "eval_controls.csv": "4e5632f1d54c9067e8b73eaf54c12cef51c3e26f6173b2aa24d48deed92dc52c",
+   "eval_controls_spares.csv": "ce9be3e4a52e8ac8f069ec6e525e39e3c19cc0a70f6585061ec284d7b35c9f43"
+  },
+  "tune_materialized": {
+   "merges": 100,
+   "files": 243,
+   "dir": "data/scenarios_detector_tune/ (gitignored, regenerable)"
+  },
+  "eval_materialized": {
+   "merges": 200,
+   "files": 832,
+   "strata": {
+    "le3": 120,
+    "gt3": 80
+   },
+   "where": "on-instance 2026-07-16 (S-D5, post-freeze); dir data/scenarios_detector_eval/ (gitignored, regenerable from the committed list + tools/detector_eval_materialize.py)",
+   "effective_list": "eval/eval_controls_effective.csv",
+   "effective_sha256": "30d37700853095093bbebc166b51227f951cb5de6df099431a0a00a00680b526"
+  },
+  "eval_replacements": [
+   {
+    "primary": "urbanairship_datacube__61755d7739",
+    "reason": "clone_fail",
+    "spare": "pablissimo_sonartsplugin__6a86fcb79d",
+    "spare_order": 1,
+    "stratum": "le3"
+   },
+   {
+    "primary": "ymnk_jsch-agent-proxy__be10f22b86",
+    "reason": "extract_fail",
+    "spare": "valotrading_silvertip__9d31f81110",
+    "spare_order": 25,
+    "stratum": "gt3"
+   }
+  ],
+  "replacement_rule": "plan \u00a712 Amendment 1 + controls/README.md \u2014 next unused same-stratum spare keeping per-repo <=3 among effective members; executed only in S-D5",
+  "draw_log": "controls/draw_log.json",
+  "preexisting_scenario_overlap": {
+   "found_at": "2026-07-16 S-D1 pre-push review",
+   "what": "32 eval/spare merges already have scenario JSONs on local disk from the May-2026 comparator programs (different criteria over the same Schesch table). All gitignored; none git-tracked; none read in S-D1; none are sanctioned inputs to any detector-design session.",
+   "firewall_guard": "S-D2..S-D4 must not open data/scenarios_{ci,expanded,spork}/ or data/scenarios/ for these ids; S-D5 materializes eval contents fresh from the committed list into its own directory.",
+   "dirs": {
+    "data/scenarios_ci": 21,
+    "data/scenarios_expanded": 7,
+    "data/scenarios_spork": 5,
+    "data/scenarios": 2
+   },
+   "ids": [
+    "addthis_stream-lib__b61c914497",
+    "adoptopenjdk_mjprof__fde954818e",
+    "apache_commons-csv__41a063d2cf",
+    "bluebreezecf_sparkjobserverclient__b33358fc74",
+    "buddycloud_buddycloud-server-java__a2e19050bf",
+    "chargebee_chargebee-java__3b203b8893",
+    "cloudfoundry_cf-java-client__94fef99862",
+    "datastax_java-driver__aac3baacc4",
+    "flaptor_indextank-java__d850b46a2e",
+    "helun_ektorp__95fdd42218",
+    "imglib_imglib2__e7346e55e9",
+    "jfaster_mango__6c28ffc629",
+    "jgralab_jgralab__d1a767cb2d",
+    "jri_deepamehta__983bdf7360",
+    "kaazing_k3po__c41403daca",
+    "lusito_gamedevweek__23c03d5bca",
+    "mercadopago_sdk-java__3bd9bea9cd",
+    "mercadopago_sdk-java__addc0f809f",
+    "named-data_jndn__0e9fad9fc3",
+    "oldmanpushcart_greys-anatomy__3d5d857cab",
+    "opendatalab-de_geojson-jackson__1890a5b8c5",
+    "openhft_chronicle-threads__617e51c135",
+    "openpnp_openpnp__5ceebb763b",
+    "openpnp_openpnp__7be07e17b3",
+    "pablissimo_sonartsplugin__6a86fcb79d",
+    "pablissimo_sonartsplugin__b13f15db62",
+    "pragmatists_junitparams__8f6c13ae04",
+    "redsolution_otr4j__540d5c8013",
+    "scribble_scribble-java__ac9d2e3af4",
+    "skyscreamer_jsonassert__3ca08b5ddd",
+    "valotrading_silvertip__9d31f81110",
+    "xceptance_xcmailr__8df1e9373b"
+   ]
+  }
+ },
+ "spec_batch": {
+  "model": "claude-opus-4-8",
+  "max_tokens": 16000,
+  "thinking": {
+   "type": "adaptive"
+  },
+  "output_config": {
+   "effort": "high",
+   "format": "json_schema"
+  },
+  "prompt_file": "prompts_detectors/spec_extraction.md",
+  "prompt_blob_sha1": "6bd3451f63fc3d796becb6a61d07df463e4cad1e",
+  "schema_file": "prompts_detectors/spec_output.schema.json",
+  "schema_blob_sha1": "7f648b52bbc87d93666a858cfb6ae66388497601",
+  "inputs": "reports_taxonomy/phase3/inputs/input__<mid>.txt (committed phase-3 texts, byte-identical to what the labeling passes saw)",
+  "units": {
+   "total": 48,
+   "D1": 21,
+   "D2": 14,
+   "D3": 13
+  },
+  "runner": "tools/detector_specs_batch.py",
+  "batches": [
+   {
+    "batch_id": "msgbatch_01EwsTTHk1AHnDw1b98AXwxY",
+    "submitted_at": "2026-07-16T01:25:35+0400",
+    "n_requests": 48,
+    "status": "ended",
+    "request_counts": {
+     "succeeded": 48,
+     "errored": 0,
+     "canceled": 0,
+     "expired": 0
+    }
+   }
+  ],
+  "usage": {
+   "input_tokens": 768732,
+   "output_tokens": 250488,
+   "approx_cost_usd_batch_rate": 5.0
+  }
+ },
+ "detector_suite_commit": "732d8ff",
+ "suite_freeze": {
+  "session": "S-D5",
+  "frozen_at": "2026-07-17",
+  "detector_suite_commit": "732d8ff (last commit touching semantic_merge_driver/ \u2014 the driver_commit() cache key; lanes: D1 9f871b1+423c215+bed3638, D2 6523ab0, D3 732d8ff)",
+  "freeze_parent_head": "9580e1f",
+  "verification": {
+   "driver_tree_diff_732d8ff_to_head": "empty (git diff 732d8ff..9580e1f -- semantic_merge_driver/)",
+   "working_tree": "clean at freeze",
+   "driver_suite": "340 passed (pre-freeze rerun 2026-07-17, venv/bin/python -m pytest tests/)"
+  },
+  "rule": "plan \u00a73 detector freeze: from this record on, any detector change = dated \u00a712 amendment + full S-D5 rerun"
+ },
+ "gates": {
+  "GD1": {
+   "machine": {
+    "pooled_usable": "37/48 = 77.1%",
+    "per_detector": {
+     "D1": "21/21",
+     "D2": "8/14",
+     "D3": "8/13"
+    },
+    "quote_grades": {
+     "exact": 91,
+     "normalized": 3,
+     "empty": 14,
+     "absent": 0
+    },
+    "threshold": 0.8,
+    "machine_pass": false
+   },
+   "failure_path": "plan \u00a712 Amendment 2 (Ali, 2026-07-16): (b) file-local scope reduction",
+   "rescored_file_local": "37/39 = 94.9%",
+   "gap_inventory": "6 shapes / 12 units (>=5 required) \u2014 specs/gap_inventory.md",
+   "control_lists_committed_first": "cf59d37",
+   "verdict": "PASS"
+  },
+  "GD2": {
+   "D1": {
+    "verdict": "PASS",
+    "lane": "ImportPruneUsage (strategies/text_strategies/import_prune_usage.py)",
+    "lane_commit": "9f871b1",
+    "tuning_fix_commit": "423c215",
+    "post_review_fix_commit": "bed3638 (Ali-requested critical review: clause-keyword FN, enum-constant parse, marker check on stripped text, merged==parent invariant test; gates rerun)",
+    "unit_tests": "35 (tests/test_import_prune_usage.py); driver suite 197/197 (162-test pre-session baseline preserved, no expected verdict changed)",
+    "fixture_battery": "positives for all D1 spec sub-shapes (removed/replaced/narrowed x type/static x other-side-added/kept-from-base); cross-category negatives (signature-change, rename, clean dead-import refactor); guard negatives (surviving wildcard, java.lang, FQN, ::, case-label, shadowing, same-package, comments/strings, JDK-wildcard/project-type); documented-FN test (absorption/assertj shape)",
+    "tune_run": {
+     "runs": [
+      {
+       "commit": "9f871b1",
+       "result": "FAIL 1 flag (dynjs same-package type credited to lost java.util.*)"
+      },
+      {
+       "commit": "423c215",
+       "result": "PASS 0 flags, 0 UNANALYZABLE (239 CLEAN / 4 DIVERGED files, 100 merges)"
+      },
+      {
+       "commit": "bed3638",
+       "result": "PASS 0 flags, 0 UNANALYZABLE (rerun after post-review fixes; widened clause-position detection surface produced no new flags)"
+      }
+     ],
+     "artifacts": "reports_detectors/tune_d1/ (summary.txt = run 2, runs.md = full log, raw_results.json = cache)"
+    }
+   },
+   "D2": {
+    "verdict": "PASS",
+    "lane": "SignatureStaleCall (strategies/rm2_strategies/signature_stale_call.py)",
+    "lane_commit": "6523ab0",
+    "design": "arity-primary per-branch RM2 (Add/Remove Parameter only, probed contract); same-arity type/return/throws changes + Split/Merge Parameter = documented FNs; per-file reach (cross-file declarations guarded off per plan \u00a72 + S-D3 prompt)",
+    "unit_tests": "95 (tests/test_signature_stale_call.py incl. image-gated RM2 contract probes); driver suite 292/292 (197-test S-D2 baseline preserved, no expected verdict changed)",
+    "fixture_battery": "positives P1-P7 (param added/removed, constructor, kept-from-base, 0\u21921, symmetric sides, multi-record dedupe, literal-only argument); cross-category negatives (rename, rename+arity composite, import-prune shape, clean refactor, same-arity type change, Split Parameter); guard negatives (surviving old-arity overload, varargs signature + varargs file decl, qualified/chained/this/::, static import, extends/anonymous/enum absorbability, Object methods, X-side leftover x2, Y-unattributable, concurrent edits, change dropped, conflict markers, flag off, missing parents, non-java, merged==parent invariant x3)",
+    "amendment3_review": "pass (a) /code-review high 8 angles: 4 CONFIRMED lane fixes (PascalCase-comparison generic misclassification \u2192 new-rooted rule; literal-only-arg arity-0 \u2192 _strip_for_arity placeholder projection; single-letter type-param poison \u2192 subsumed; annotated-anonymous absorbability) + structure fixes (sig_lists, dead disjunct, early-out, LANES registry, probes via production runner); pass (b) JLS 15.12.1/6.5.7.1/15.12.2.4/8.8 verified, citations corrected; pass (c) Error Prone + PMD + SpotBugs + IntelliJ consulted \u2014 nothing ported, divergences recorded in ISSUES close-out. Non-fixes documented (verdict_of substring sentinel \u2192 S-D5 note; frozen-instrument docstring; per-suite test-helper idiom)",
+    "tune_run": {
+     "runs": [
+      {
+       "commit": "bed3638 (pre-commit working tree)",
+       "result": "PASS 0 flags, 0 UNANALYZABLE (239 CLEAN / 4 DIVERGED files, 100 merges) \u2014 zero tuning iterations"
+      },
+      {
+       "commit": "6523ab0",
+       "result": "PASS 0 flags, 0 UNANALYZABLE (definitive, post-review; merge reproductions seeded from tune_d1 cache \u2014 lane-independent ::__merge__:: keys)"
+      }
+     ],
+     "artifacts": "reports_detectors/tune_d2/ (summary.txt = run 2, runs.md = full log, raw_results.json = cache)"
+    }
+   },
+   "D3": {
+    "verdict": "PASS",
+    "lane": "JoernUnresolvedReference widening (strategies/joern_strategies/unresolved_reference.py) \u2014 flag-gated textual removed/renamed-declaration differential; RM2RenameConflict untouched (no inventoried shape is an RM2-record shape; jline S1b covered without RM2)",
+    "lane_commit": "732d8ff",
+    "design": "three kinds (variable/field incl. this.-qualified, method calls, new/extends/implements/throws-anchored types) over the S-D1 gap-inventory file-local shapes S1/S1b/S2/S3; FIELD-tier candidates + overbroad suppression tiers; remover-absorption (broad matchers) / keeper-attribution (precise) guards; Joern query and flag-off behavior byte-identical (regression floor)",
+    "probe_record": "live-Joern probes corrected two S-D1 lane-fire verdicts: bare-receiver S1/S1b minimal shapes ALREADY fire the existing lane (absent-from-parent != unresolved-in-parent); genuinely Joern-invisible: this.-qualified fieldIdentifiers (yandex), calls (S2), type/ctor refs (S3) \u2014 specs/gap_inventory.md S-D4 addendum",
+    "unit_tests": "63 in tests/test_unresolved_reference.py (6 pre-existing + 57 new incl. 8 review-FP regressions + drift tripwire); driver suite 340/340 (292-test S-D3 baseline preserved, no expected verdict changed)",
+    "fixture_battery": "positives per in-reach inventory shape (datastax bare-receiver, yandex this.-write-under-extends, jline rename, javaparser + jcabi removed-method, gwt removed-inner-type); wiring tests (flag off, no base, non-java, markers, merged==parent x2, dedupe-vs-Joern, fail-closed ride-along + flag-off shape pin); guard negatives (both-removed, surviving decl/overload, pull-up absorption, supertyped-span, keeper-unattributable, static/type-import coverage, java.lang, Object names, annotation-element, labels, qualified receivers, this.-method FN, lambda shadow, enum constant); cross-category negatives (D1 import-prune, D2 arity, clean rename, clean refactor); live-Joern union + flag-off regression",
+    "amendment3_review": "record at reports_detectors/tune_d3/review_record.md + review_oss_comparison.md: (a) /code-review high, 8 angles, 19 candidates -> 8 execution-verified FP-vector fixes pre-gate (multi-declarator+C-style, case-arrow phantom decls, lambda/local scope-blindness -> field-tier, JLS 6.5.2 receiver re-binding, labels after )/else, Java 14 multi-label case fixed in shared _qualified_or_case (D1 inherits \u2014 the one existing-lane touch, gate rerun = this session's suite + FULL tune run), bare-position remover absorption) + harness/cleanup adoptions (call-sites adapter, factored guard tail, FULL_SUITE/LANES asserts, dirty+::exp1 cache keys, argparse rc2, save batching, drift tripwire); non-fixes documented with reasons; (b) JLS probes 8/8 (6.5.2/6.5.5/6.5.6.2/6.5.7.1/8.2/8.8/8.10/15.11.2/15.12.1); (c) Error Prone/SpotBugs/IntelliJ/Checkstyle + SafeMerge/IntelliMerge/Towqir ASE22 \u2014 nothing ported, divergences recorded",
+    "tune_run": {
+     "runs": [
+      {
+       "commit": "wip-s-d4-prelim (pre-review working tree, DRIVER_COMMIT override)",
+       "result": "SUPERSEDED at ~29/243 files, 0 non-CLEAN; 117 rows of the 4 code-identical lanes harvested into run 2 (seed_from_prelim.json)"
+      },
+      {
+       "commit": "732d8ff (keys 732d8ff::exp1)",
+       "result": "PASS 0 flags, 0 UNANALYZABLE \u2014 FULL 7-lane composition (DFI, UnresolvedReference widened, InfiniteLoop, InvalidLoopBounds, RM2RenameConflict, ImportPruneUsage, SignatureStaleCall), 1673 CLEAN / 28 DIVERGED file-lane rows (4 conflict files x 7), 100 merges; 4 parallel shards + unified re-scoring pass; zero tuning iterations"
+      }
+     ],
+     "artifacts": "reports_detectors/tune_d3/ (summary.txt = definitive pass, runs.md = full log incl. shard/harvest provenance, raw_results.json = merged cache, seed_from_prelim.json, review_record.md, review_oss_comparison.md); tune_d3_prelim/ = aborted run-1 cache (provenance)"
+    }
+   }
+  },
+  "GD3": {
+   "verdict": "PASS \u2014 re-judged by Ali 2026-07-20 per plan \u00a75: both control flags ruled INCIDENTAL-BUT-TRUE (jgralab: real breakage in the 0.17.0-reproduced merge, control label = mergiraf-version-skew artifact; jOOQ: developer's own shipped merge broken, confirmed by their 'Grr Git' fix commit \u2014 benchmark label is a behavioral construct). Findings recorded; no amendment, no rerun; zero adjudicated false positives on 363 control units",
+   "harness": "tools/detector_eval_run.py (0e4b35b; materializer fix 027ec4c; post-run evalctl completeness guard) \u2014 two arms per \u00a75: baseline = 5 default lanes flag OFF, experimental = FULL 7-lane suite flag ON; flag-free lanes executed once and shared (source-scan tripwire); closed-world message-stem verdict classifier; machine-caught = any-lane FLAG (\u00a79)",
+   "env_validation": "on-instance: live image probes + 8/8 lane\u00d7flag smoke gate per shard process + known-answer 42/42 file\u00d7lane verdict match vs committed tune_d3 cache (3 merges) \u2014 and identically local pre-flight",
+   "heldout": {
+    "scored": "110/110",
+    "baseline_caught": "5/110 = 0.045 [0.020, 0.102] (+1 UNANALYZABLE-only unit)",
+    "experimental_caught": "20/110 = 0.182 [0.121, 0.264]",
+    "added_recall": "15/110 = 0.136 [0.084, 0.213]",
+    "family_baseline": "2/37 = 0.054 [0.015, 0.177]",
+    "family_experimental": "16/37 = 0.432 [0.287, 0.591]",
+    "family_added": "14/37 = 0.378 [0.241, 0.539]",
+    "per_lane_flag_rows_experimental": {
+     "ImportPruneUsage": 16,
+     "JoernUnresolvedReference[Joern]": 6,
+     "RM2RenameConflict": 4,
+     "JoernUnresolvedReference[D3-widened]": 1,
+     "SignatureStaleCall": 0
+    },
+    "nestedness_violations": 0,
+    "classifier_drift": 0,
+    "note": "machine numbers \u2014 citable recall = CAUSAL-adjudicated only (GD4, S-D6)"
+   },
+   "derivation_TUNING_TAINTED": {
+    "baseline_caught": "11/165",
+    "experimental_caught": "39/165",
+    "family": "5/48 -> 30/48 (descriptive only, never citable)"
+   },
+   "gd3_ii_evalctl": {
+    "baseline_flags": 0,
+    "experimental_flags": 1,
+    "scored": "197 of 200 (3 all-diverged under mergiraf 0.17.0)",
+    "flag": "jgralab_jgralab__d1a767cb2d \u2014 D1; merged text verifiably uncompilable (9 bare IOException uses, no covering import); control premise rests on the dataset-mergiraf Tests_passed column (0.4.x era) vs the 0.17.0 runtime \u2014 version-skew class"
+   },
+   "gd3_iii_spgroup": {
+    "experimental_flags": 1,
+    "scored": "66/66 labeled-clean; positives (descriptive) 0/17",
+    "flag": "jOOQ__d96120f327__org.jooq.impl.DSL \u2014 D1; developer's shipped merge verifiably dropped both org.jooq.conf imports while keeping 34 bare Settings uses (dataset byte-identical to the real repo file); next mainline commit 9e404cff0f 'Grr Git' (2015-01-28) restores exactly those imports; benchmark label is behavioral-construct 'No interference'"
+   },
+   "zero_fp_record_statement": "development: 100 tune-controls 0 flags; evaluation: 197 scored eval-controls + 66 spgroup-clean \u2014 ZERO adjudicated false positives across all 363 control units; the two raised flags (jgralab, jOOQ) both ruled INCIDENTAL-BUT-TRUE by Ali 2026-07-20 (real breakage outside the pools' label constructs; jOOQ doubles as external validation of D1)",
+   "adjudication_ui": "adjudication/adjudication_ui.html \u2014 20 held-out flagged units (15 experimental-only), per-lane CAUSAL/INCIDENTAL/FP controls (GD4 input)",
+   "artifacts": "eval/ (summary.txt, flags.json, gd3.json, units_*.csv, eval_cache_* incl. shard files, materialize_log.json, eval_controls_effective.csv, gd3_flag_package.md, runs.md, logs/)"
+  },
+  "GD4": {
+   "verdict": "PASS \u2014 completeness: 20/20 held-out flagged units adjudicated by Ali 2026-07-20 via adjudication/adjudication_ui.html (probe-verified drafts, 20/20 accepted; per-lane rulings + written rationales in adjudication/sd6_rulings.csv, 22 lane rows)",
+   "causal_recall_heldout": {
+    "experimental": "18/110 = 0.164 [0.106, 0.244]",
+    "baseline": "4/110 = 0.036 [0.014, 0.090]",
+    "added": "14/110 = 0.127 [0.077, 0.202]",
+    "family_experimental_PRIMARY_CITABLE": "16/37 = 0.432 [0.287, 0.591]",
+    "family_baseline": "2/37 = 0.054 [0.015, 0.177]",
+    "family_added": "14/37 = 0.378 [0.241, 0.539]",
+    "own_category_D1": "13/14 = 0.929 [0.685, 0.987]"
+   },
+   "per_lane_precision_units": {
+    "ImportPruneUsage": "14/14 = 1.00 [0.785, 1.00]",
+    "RM2RenameConflict": "3/4 (FP: scribble partial-split misread)",
+    "JoernUnresolvedReference_joern_path": "3/3",
+    "JoernUnresolvedReference_D3_widened": "0/1 (FP: dabsquared same-package extracted class \u2014 registered residual; second same-package instance inside causal unit mcprotocollib)",
+    "SignatureStaleCall": "no flags"
+   },
+   "fp_units": [
+    "dabsquared_gitlab-plugin__d555b8773d",
+    "scribble_scribble-java__e72f7c9c06"
+   ],
+   "dev_identical_causal_units": "10/18 (2 developer-confirmed by fix commits); convention: rulings judge the merged artifact, dev-identical noted never downgraded",
+   "numbers_file": "adjudication/causal_numbers.json (apply_rulings.py)"
+  }
+ },
+ "sessions": {
+  "S-D1": {
+   "date": "2026-07-16",
+   "status": "done",
+   "commits_note": "controls cf59d37; harness 1b99a6a; results+close-out in the S-D1 final commit"
+  },
+  "S-D2": {
+   "date": "2026-07-16",
+   "status": "done",
+   "commits_note": "lane+tests+runner 9f871b1; GD2(iii) tuning fix 423c215; artifacts+close-out in the S-D2 final commit"
+  },
+  "S-D3": {
+   "date": "2026-07-16",
+   "status": "done",
+   "commits_note": "lane+tests+registry (post-review) 6523ab0; artifacts+close-out in the S-D3 final commit"
+  },
+  "S-D4": {
+   "date": "2026-07-16",
+   "status": "done",
+   "commits_note": "lane widening + review fixes + battery + FULL-suite runner 732d8ff; artifacts+close-out in the S-D4 final commit"
+  },
+  "S-D5": {
+   "date": "2026-07-16..19",
+   "status": "done \u2014 GD3 re-judged PASS by Ali 2026-07-20 (both flags INCIDENTAL-BUT-TRUE)",
+   "commits_note": "freeze 21dcda1; harness 0e4b35b + fix 027ec4c; UI generator de04302; artifacts+close-out in the S-D5 final commits",
+   "aws_cycle": "i-0a3193cadee961264 c7i.2xlarge eu-central-1, 2026-07-16 21:58 -> 2026-07-18 ~14:15 UTC (~40.3 h, ~$17-18 incl. EBS vs ~$5-10 plan estimate \u2014 structural: 8 lane-execs/file x 1,751 files, Joern-bound, CPU-saturated at 4 shards; half-shard surgery on evalctl recovered ~10 h; teardown verified empty; on-instance image ids: mergiraf c1fafd90faf7, rm2 000eeb90b435)"
+  },
+  "S-D6": {
+   "date": "2026-07-20",
+   "status": "done",
+   "commits_note": "drafts in UI c531017+e62f7cc; rulings 93ed640; FINDINGS + causal numbers + close-out in the S-D6 final commit",
+   "notes": "GD3 rulings (both INCIDENTAL-BUT-TRUE) + GD4 completeness by Ali in-session; drafts probe-verified, 20/20 accepted; paste-time patch: the plan's pre-written S-D6 prompt assumed 'GD3 PASS' \u2014 actual entry state was GD3-STOPPED, resolved by Ali's rulings before any number was applied"
+  },
+  "S-D7": {
+   "date": "2026-07-22",
+   "status": "done \u2014 both ctl flags ruled INCIDENTAL-BUT-TRUE by Ali (2026-07-22); 0 adjudicated FPs on this instrument's controls; freeze intact",
+   "commits_note": "harness+deploy d63d5e9; artifacts+FINDINGS addendum+ISSUES addendum in the S-D7 close-out commit",
+   "notes": "baseline arm reproduced frozen post-fix Stage-C verdict-for-verdict (2215/2215); R2' 6.7%->22.0% machine, R1' 0->2/193 (both flags evidence-verified true breakage, packaged); zero detector edits, zero amendments"
+  },
+  "S-D8": {
+   "date": "2026-07-22..23",
+   "scope": "whole-driver re-pricing with the experimental lanes ON (plan \u00a78 stub; S-D6 green-light)",
+   "harness": "tools/whole_driver_flagon.py (whole_driver_eval.py imported, untouched) + tools/sd8_predict_flagoff.py",
+   "paste_time_patch": "kickoff literal-1779 env gate replaced by derived-target gate 1784 (Ali 2026-07-22; RUN_NOTES.md); image split deviation-within-intent (pinned built on-instance, unpinned jdime/mastery shipped)",
+   "aws_cycle": "seventh \u2014 eu-north-1 (parallel with S-D7's sixth; per-region vCPU quota), i-0006f73fee2019c40, ~23.5h ~$8.5, teardown verified",
+   "env_gates": {
+    "canonical_six_tool": "PASS \u2014 36/36 count rows exact incl. Spork 32/11",
+    "reconciliation": "PASS \u2014 measured flag-OFF pooled 1784 = pre-registered 1784 to the digit; 5/5 post-fix movements; 2 borderline margin flips only"
+   },
+   "results": {
+    "pooled_cost": "flag OFF 1784 -> flag ON 1579 (delta -205, -11.5%); best measured driver config",
+    "decomposition": "25 moved, all accept->semantic: 23 pos silent-wrongs surfaced (D1 19, D3-widened 4), 2 ctl blocks (jgralab D1 + yubico D2 \u2014 same flags S-D7 packaged, Ali-ruled INCIDENTAL-BUT-TRUE; both Mergiraf-routed, rulings transfer 1:1)",
+    "latency_price": "+8.3 s/file median (79.5->87.8, +10.4%), p90 +9.7, uniform across arms/routes; within-arm drift symmetric (no warm-box confound)"
+   },
+   "enabling_decision": "OUT OF SCOPE \u2014 Ali decides post-S-D8",
+   "artifacts": "reports_detectors/whole_driver_flagon/",
+   "never_blend": "whole-driver cost-model instrument \u2014 separate from held-out recall, Stage-C R2', taxonomy, Phase-2b"
+  }
+ },
+ "stagec_rerun": {
+  "session": "S-D7",
+  "date": "2026-07-22",
+  "authority": "plan \u00a78 S-D7 stub, green-lit at S-D6 (2026-07-20); suite frozen at detector_suite_commit (unchanged, zero detector edits, zero \u00a712 amendments)",
+  "harness": "tools/detector_stagec_rerun.py (detect_validate.py protocol; instrument NOT edited)",
+  "harness_commit": "d63d5e9",
+  "populations": {
+   "stagec_pos": "data/scenarios_semantic \u2014 180 merges / 232 files (164 scored; sha256-pinned via taxonomy manifest)",
+   "stagec_ctl": "data/scenarios_semantic_ctl \u2014 195 merges / 239 files (193 scored; scenario_id set == postfix2 scenarios.csv)"
+  },
+  "env_gates": {
+   "smoke": "8/8 lane\u00d7flag-state rows FLAG",
+   "tune_d3_known_answer": "42/42 file\u00d7lane verdicts over 3 merges",
+   "postfix2_known_answer": {
+    "reference": "reports_detection/postfix2 (lanes f964354)",
+    "merge_outcomes": "471/471",
+    "merged_sha256": "443/443",
+    "lane_verdicts": "2215/2215",
+    "verdict": "PASS"
+   },
+   "crosscheck_sd5_caches": "1871 overlapping keys agree / 0 disagree (descriptive)"
+  },
+  "results_machine": {
+   "R2_pos_baseline": "11/164 = 6.7% [3.8, 11.6] (10 flag + 1 fail-closed)",
+   "R2_pos_experimental": "36/164 = 22.0% [16.3, 28.9] (36 flag + 0 fail-closed)",
+   "R2_added_blocked": "25/164 = 15.2% [10.5, 21.5]; added FLAG-blocked 26/164",
+   "R1_ctl_baseline": "0/193 = 0.0% [0, 2.0]",
+   "R1_ctl_experimental": "2/193 = 1.0% [0.3, 3.7]",
+   "nestedness_violations": 0
+  },
+  "ctl_flag_package": "reports_detectors/stagec_rerun/ctl_flag_package.md",
+  "never_blend": "Stage-C-instrument numbers only; separate from S-D5/S-D6 held-out, eval-controls, spgroup AND from frozen Stage-C R1/R2 history (ISSUES #29)",
+  "aws_cycle": {
+   "record": "sixth cycle",
+   "instance": "i-01b7db6337b2bd523",
+   "type": "c7i.2xlarge eu-central-1",
+   "wall_hours": 9.5,
+   "cost_usd_approx": 4,
+   "images_built_on_instance": true,
+   "teardown_verified_empty": true
+  },
+  "session_log_trivial_clarifications": [
+   "kickoff STATE-line slip: 'R2=11/164 (12/164 incl. fail-closed)' conflates rounds \u2014 postfix2 (the reproducible target at the frozen suite) is 11/164 = 10 flag + 1 fail-closed; 12/164 (11+1) was the pre-fix frozen instrument @843e5f5",
+   "known-answer 'reproduce the frozen Stage-C verdicts' operationalized as file\u00d7lane verdict + merged-content equality vs postfix2 (stronger than unit-number equality)",
+   "sharding = work-queue with O_EXCL claims (S-D5 static-shard lesson); largest merges first",
+   "new runner tool; detect_validate.py, detector_eval_run.py, and all lanes untouched",
+   "taxonomy-split membership rows are labeled corpus-fact context; headline is the instrument-level before/after"
+  ],
+  "ctl_flag_rulings": {
+   "ruled_by": "Ali",
+   "date": "2026-07-22",
+   "jgralab_jgralab__d631209030": "INCIDENTAL-BUT-TRUE \u2014 D1 claim true of the scored artifact (9 bare IOException uses, no covering import, uncompilable); Tests_passed label = dataset-mergiraf version-skew; ruled after an FP challenge resolved against the four-version differential; same class as S-D5 jgralab d1a767cb2d",
+   "yubico_ykneo-openpgp__2766bd7444": "INCIDENTAL-BUT-TRUE (developer-confirmed) \u2014 dev-identical merged file, 12 stale 2-arg doVerify calls vs sole 3-arity decl; next upstream commit de02622 'Fix tests for PDOs' repairs exactly the flagged calls; D2's first real-data catch, externally validated",
+   "consequence": "no amendment, no rerun \u2014 freeze stands; 0 adjudicated FPs on the 193 Stage-C controls (per-instrument statement, never summed with the S-D5 record)"
+  }
+ }
+}

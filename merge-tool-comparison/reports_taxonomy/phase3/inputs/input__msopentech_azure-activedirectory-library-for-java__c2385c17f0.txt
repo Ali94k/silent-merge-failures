@@ -1,0 +1,1407 @@
+UNIT msopentech_azure-activedirectory-library-for-java__c2385c17f0
+repo: msopentech_azure-activedirectory-library-for-java   merge: c2385c17f056dc66330d9568d2cae775c813aa18   stratum: B
+files shown: 3 of 4 intersecting Java files
+dropped (textual-conflict, not silent — excluded): src/main/java/com/microsoft/aad/adal4j/AuthenticationContext.java
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/3: src/main/java/com/microsoft/aad/adal4j/AuthenticationAuthority.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -42,28 +42,33 @@
+     private final static String[] TRUSTED_HOST_LIST = { "login.windows.net",
+             "login.chinacloudapi.cn", "login-us.microsoftonline.com", "login.microsoftonline.de",
+             "login.microsoftonline.com", "login.microsoftonline.us" };
+     private final static String TENANTLESS_TENANT_NAME = "common";
+     private final static String AUTHORIZE_ENDPOINT_TEMPLATE = "https://{host}/{tenant}/oauth2/authorize";
+     private final static String DISCOVERY_ENDPOINT = "common/discovery/instance";
+     private final static String TOKEN_ENDPOINT = "/oauth2/token";
+     private final static String USER_REALM_ENDPOINT = "common/userrealm";
++    final static String DEVICE_CODE_ENDPOINT = "/oauth2/devicecode";
+ 
+     private String host;
+     private String issuer;
+     private final String instanceDiscoveryEndpointFormat = "https://%s/"
+             + DISCOVERY_ENDPOINT;
+     private final String userRealmEndpointFormat = "https://%s/"
+             + USER_REALM_ENDPOINT + "/%s?api-version=1.0";
+     private final String tokenEndpointFormat = "https://%s/{tenant}"
+             + TOKEN_ENDPOINT;
++    private final String devicecodeEndpointFormat = "https://%s/{tenant}"
++            + DEVICE_CODE_ENDPOINT;
++
+     private String authority = "https://%s/%s/";
+     private String instanceDiscoveryEndpoint;
+     private String tokenEndpoint;
++    private String deviceCodeEndpoint;
+ 
+     private final AuthorityType authorityType;
+     private boolean isTenantless;
+     private String tokenUri;
+     private String selfSignedJwtAudience;
+     private boolean instanceDiscoveryCompleted;
+ 
+     private final URL authorityUrl;
+@@ -89,16 +94,18 @@
+ 
+     String getAuthority() {
+         return authority;
+     }
+ 
+     String getTokenEndpoint() {
+         return tokenEndpoint;
+     }
++
++    String getDeviceCodeEndpoint() { return deviceCodeEndpoint; }
+ 
+     String getUserRealmEndpoint(String username) {
+         return String.format(userRealmEndpointFormat, host, username);
+     }
+ 
+     AuthorityType getAuthorityType() {
+         return authorityType;
+     }
+@@ -172,16 +179,18 @@
+         this.host = host;
+         this.authority = String.format(this.authority, host, tenant);
+         this.instanceDiscoveryEndpoint = String.format(
+                 this.instanceDiscoveryEndpointFormat, host);
+         this.tokenEndpoint = String.format(this.tokenEndpointFormat, host);
+         this.tokenEndpoint = this.tokenEndpoint.replace("{tenant}", tenant);
+         this.tokenUri = this.tokenEndpoint;
+         this.issuer = this.tokenUri;
++        this.deviceCodeEndpoint = String.format(this.devicecodeEndpointFormat, host);
++        this.deviceCodeEndpoint = this.deviceCodeEndpoint.replace("{tenant}", tenant);
+ 
+         this.isTenantless = TENANTLESS_TENANT_NAME.equalsIgnoreCase(tenant);
+         this.setSelfSignedJwtAudience(this.getIssuer());
+         this.createInstanceDiscoveryEndpoint(tenant);
+     }
+ 
+     AuthorityType detectAuthorityType() {
+         if (authorityUrl == null) {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -33,16 +33,19 @@
+ import org.slf4j.LoggerFactory;
+ 
+ /**
+  * Represents Authentication Authority responsible for issuing access tokens.
+  */
+ class AuthenticationAuthority {
+     private final Logger log = LoggerFactory
+             .getLogger(AuthenticationAuthority.class);
++
++    private final Logger piiLog = LoggerFactory
++            .getLogger(LogHelper.PII_LOGGER_PREFIX + this.getClass());
+ 
+     private final static String[] TRUSTED_HOST_LIST = { "login.windows.net",
+             "login.chinacloudapi.cn", "login-us.microsoftonline.com", "login.microsoftonline.de",
+             "login.microsoftonline.com", "login.microsoftonline.us" };
+     private final static String TENANTLESS_TENANT_NAME = "common";
+     private final static String AUTHORIZE_ENDPOINT_TEMPLATE = "https://{host}/{tenant}/oauth2/authorize";
+     private final static String DISCOVERY_ENDPOINT = "common/discovery/instance";
+     private final static String TOKEN_ENDPOINT = "/oauth2/token";
+@@ -131,27 +134,30 @@
+                 // as a fall back is success
+                 if (validateAuthority
+                         && !doDynamicInstanceDiscovery(headers, proxy,
+                                 sslSocketFactory)) {
+                     throw new AuthenticationException(
+                             AuthenticationErrorMessage.AUTHORITY_NOT_IN_VALID_LIST);
+                 }
+             }
+-            log.info(LogHelper.createMessage(
++            String msg = LogHelper.createMessage(
+                     "Instance discovery was successful",
+-                    headers.get(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME)));
++                    headers.get(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME));
++            log.info(msg);
++            piiLog.info(msg);
++
+             instanceDiscoveryCompleted = true;
+         }
+     }
+ 
+     boolean doDynamicInstanceDiscovery(final Map<String, String> headers,
+             final Proxy proxy, final SSLSocketFactory sslSocketFactory)
+             throws Exception {
+-        final String json = HttpHelper.executeHttpGet(log,
++        final String json = HttpHelper.executeHttpGet(log, piiLog,
+                 instanceDiscoveryEndpoint, headers, proxy, sslSocketFactory);
+         final InstanceDiscoveryResponse discoveryResponse = JsonHelper
+                 .convertJsonToObject(json, InstanceDiscoveryResponse.class);
+         return !StringHelper.isBlank(discoveryResponse
+                 .getTenantDiscoveryEndpoint());
+     }
+ 
+     boolean doStaticInstanceDiscovery() {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,254 +1,254 @@
+-// Copyright (c) Microsoft Corporation.
+-// All rights reserved.
+-//
+-// This code is licensed under the MIT License.
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files(the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions :
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-// THE SOFTWARE.
+-
+-package com.microsoft.aad.adal4j;
+-
+-import javax.net.ssl.SSLSocketFactory;
+-import java.net.Proxy;
+-import java.net.URL;
+-import java.util.Arrays;
+-import java.util.Map;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * Represents Authentication Authority responsible for issuing access tokens.
+- */
+-class AuthenticationAuthority {
+-    private final Logger log = LoggerFactory
+-            .getLogger(AuthenticationAuthority.class);
+-
+-    private final Logger piiLog = LoggerFactory
+-            .getLogger(LogHelper.PII_LOGGER_PREFIX + this.getClass());
+-
+-    private final static String[] TRUSTED_HOST_LIST = { "login.windows.net",
+-            "login.chinacloudapi.cn", "login-us.microsoftonline.com", "login.microsoftonline.de",
+-            "login.microsoftonline.com", "login.microsoftonline.us" };
+-    private final static String TENANTLESS_TENANT_NAME = "common";
+-    private final static String AUTHORIZE_ENDPOINT_TEMPLATE = "https://{host}/{tenant}/oauth2/authorize";
+-    private final static String DISCOVERY_ENDPOINT = "common/discovery/instance";
+-    private final static String TOKEN_ENDPOINT = "/oauth2/token";
+-    private final static String USER_REALM_ENDPOINT = "common/userrealm";
+-    final static String DEVICE_CODE_ENDPOINT = "/oauth2/devicecode";
+-
+-    private String host;
+-    private String issuer;
+-    private final String instanceDiscoveryEndpointFormat = "https://%s/"
+-            + DISCOVERY_ENDPOINT;
+-    private final String userRealmEndpointFormat = "https://%s/"
+-            + USER_REALM_ENDPOINT + "/%s?api-version=1.0";
+-    private final String tokenEndpointFormat = "https://%s/{tenant}"
+-            + TOKEN_ENDPOINT;
+-    private final String devicecodeEndpointFormat = "https://%s/{tenant}"
+-            + DEVICE_CODE_ENDPOINT;
+-
+-    private String authority = "https://%s/%s/";
+-    private String instanceDiscoveryEndpoint;
+-    private String tokenEndpoint;
+-    private String deviceCodeEndpoint;
+-
+-    private final AuthorityType authorityType;
+-    private boolean isTenantless;
+-    private String tokenUri;
+-    private String selfSignedJwtAudience;
+-    private boolean instanceDiscoveryCompleted;
+-
+-    private final URL authorityUrl;
+-    private final boolean validateAuthority;
+-
+-    AuthenticationAuthority(final URL authorityUrl,
+-            final boolean validateAuthority) {
+-
+-        this.authorityUrl = authorityUrl;
+-        this.authorityType = detectAuthorityType();
+-        this.validateAuthority = validateAuthority;
+-        validateAuthorityUrl();
+-        setupAuthorityProperties();
+-    }
+-
+-    String getHost() {
+-        return host;
+-    }
+-
+-    String getIssuer() {
+-        return issuer;
+-    }
+-
+-    String getAuthority() {
+-        return authority;
+-    }
+-
+-    String getTokenEndpoint() {
+-        return tokenEndpoint;
+-    }
+-
+-    String getDeviceCodeEndpoint() { return deviceCodeEndpoint; }
+-
+-    String getUserRealmEndpoint(String username) {
+-        return String.format(userRealmEndpointFormat, host, username);
+-    }
+-
+-    AuthorityType getAuthorityType() {
+-        return authorityType;
+-    }
+-
+-    boolean isTenantless() {
+-        return isTenantless;
+-    }
+-
+-    String getTokenUri() {
+-        return tokenUri;
+-    }
+-
+-    String getSelfSignedJwtAudience() {
+-        return selfSignedJwtAudience;
+-    }
+-
+-    void setSelfSignedJwtAudience(final String selfSignedJwtAudience) {
+-        this.selfSignedJwtAudience = selfSignedJwtAudience;
+-    }
+-
+-    void doInstanceDiscovery(final Map<String, String> headers,
+-            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
+-            throws Exception {
+-
+-        // instance discovery should be executed only once per context instance.
+-        if (!instanceDiscoveryCompleted) {
+-            // matching against static list failed
+-            if (!doStaticInstanceDiscovery()) {
+-                // if authority must be validated and dynamic discovery request
+-                // as a fall back is success
+-                if (validateAuthority
+-                        && !doDynamicInstanceDiscovery(headers, proxy,
+-                                sslSocketFactory)) {
+-                    throw new AuthenticationException(
+-                            AuthenticationErrorMessage.AUTHORITY_NOT_IN_VALID_LIST);
+-                }
+-            }
+-            String msg = LogHelper.createMessage(
+-                    "Instance discovery was successful",
+-                    headers.get(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME));
+-            log.info(msg);
+-            piiLog.info(msg);
+-
+-            instanceDiscoveryCompleted = true;
+-        }
+-    }
+-
+-    boolean doDynamicInstanceDiscovery(final Map<String, String> headers,
+-            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
+-            throws Exception {
+-        final String json = HttpHelper.executeHttpGet(log, piiLog,
+-                instanceDiscoveryEndpoint, headers, proxy, sslSocketFactory);
+-        final InstanceDiscoveryResponse discoveryResponse = JsonHelper
+-                .convertJsonToObject(json, InstanceDiscoveryResponse.class);
+-        return !StringHelper.isBlank(discoveryResponse
+-                .getTenantDiscoveryEndpoint());
+-    }
+-
+-    boolean doStaticInstanceDiscovery() {
+-        if (validateAuthority) {
+-            return Arrays.asList(TRUSTED_HOST_LIST).contains(this.host);
+-        }
+-        return true;
+-    }
+-
+-    void setupAuthorityProperties() {
+-
+-        final String host = this.authorityUrl.getAuthority().toLowerCase();
+-        final String path = this.authorityUrl.getPath().substring(1)
+-                .toLowerCase();
+-        final String tenant = path.substring(0, path.indexOf("/"))
+-                .toLowerCase();
+-
+-        this.host = host;
+-        this.authority = String.format(this.authority, host, tenant);
+-        this.instanceDiscoveryEndpoint = String.format(
+-                this.instanceDiscoveryEndpointFormat, host);
+-        this.tokenEndpoint = String.format(this.tokenEndpointFormat, host);
+-        this.tokenEndpoint = this.tokenEndpoint.replace("{tenant}", tenant);
+-        this.tokenUri = this.tokenEndpoint;
+-        this.issuer = this.tokenUri;
+-        this.deviceCodeEndpoint = String.format(this.devicecodeEndpointFormat, host);
+-        this.deviceCodeEndpoint = this.deviceCodeEndpoint.replace("{tenant}", tenant);
+-
+-        this.isTenantless = TENANTLESS_TENANT_NAME.equalsIgnoreCase(tenant);
+-        this.setSelfSignedJwtAudience(this.getIssuer());
+-        this.createInstanceDiscoveryEndpoint(tenant);
+-    }
+-
+-    AuthorityType detectAuthorityType() {
+-        if (authorityUrl == null) {
+-            throw new NullPointerException("authority");
+-        }
+-
+-        final String path = authorityUrl.getPath().substring(1);
+-        if (StringHelper.isBlank(path)) {
+-            throw new IllegalArgumentException(
+-                    AuthenticationErrorMessage.AUTHORITY_URI_INVALID_PATH);
+-        }
+-
+-        final String firstPath = path.substring(0, path.indexOf("/"));
+-        final AuthorityType authorityType = isAdfsAuthority(firstPath) ? AuthorityType.ADFS
+-                : AuthorityType.AAD;
+-
+-        return authorityType;
+-    }
+-
+-    void validateAuthorityUrl() {
+-
+-        if (authorityType != AuthorityType.AAD && validateAuthority) {
+-            throw new IllegalArgumentException(
+-                    AuthenticationErrorMessage.UNSUPPORTED_AUTHORITY_VALIDATION);
+-        }
+-
+-        if (!this.authorityUrl.getProtocol().equalsIgnoreCase("https")) {
+-            throw new IllegalArgumentException(
+-                    AuthenticationErrorMessage.AUTHORITY_URI_INSECURE);
+-        }
+-
+-        if (this.authorityUrl.toString().contains("#")) {
+-            throw new IllegalArgumentException(
+-                    "authority is invalid format (contains fragment)");
+-        }
+-
+-        if (!StringHelper.isBlank(this.authorityUrl.getQuery())) {
+-            throw new IllegalArgumentException(
+-                    "authority cannot contain query parameters");
+-        }
+-    }
+-
+-    void createInstanceDiscoveryEndpoint(final String tenant) {
+-        this.instanceDiscoveryEndpoint += "?api-version=1.0&authorization_endpoint="
+-                + AUTHORIZE_ENDPOINT_TEMPLATE;
+-        this.instanceDiscoveryEndpoint = this.instanceDiscoveryEndpoint
+-                .replace("{host}", host);
+-        this.instanceDiscoveryEndpoint = this.instanceDiscoveryEndpoint
+-                .replace("{tenant}", tenant);
+-    }
+-
+-    static boolean isAdfsAuthority(final String firstPath) {
+-        return firstPath.compareToIgnoreCase("adfs") == 0;
+-    }
+-}
++// Copyright (c) Microsoft Corporation.
++// All rights reserved.
++//
++// This code is licensed under the MIT License.
++//
++// Permission is hereby granted, free of charge, to any person obtaining a copy
++// of this software and associated documentation files(the "Software"), to deal
++// in the Software without restriction, including without limitation the rights
++// to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
++// copies of the Software, and to permit persons to whom the Software is
++// furnished to do so, subject to the following conditions :
++//
++// The above copyright notice and this permission notice shall be included in
++// all copies or substantial portions of the Software.
++//
++// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
++// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++// THE SOFTWARE.
++
++package com.microsoft.aad.adal4j;
++
++import javax.net.ssl.SSLSocketFactory;
++import java.net.Proxy;
++import java.net.URL;
++import java.util.Arrays;
++import java.util.Map;
++
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++/**
++ * Represents Authentication Authority responsible for issuing access tokens.
++ */
++class AuthenticationAuthority {
++    private final Logger log = LoggerFactory
++            .getLogger(AuthenticationAuthority.class);
++
++    private final Logger piiLog = LoggerFactory
++            .getLogger(LogHelper.PII_LOGGER_PREFIX + this.getClass());
++
++    private final static String[] TRUSTED_HOST_LIST = { "login.windows.net",
++            "login.chinacloudapi.cn", "login-us.microsoftonline.com", "login.microsoftonline.de",
++            "login.microsoftonline.com", "login.microsoftonline.us" };
++    private final static String TENANTLESS_TENANT_NAME = "common";
++    private final static String AUTHORIZE_ENDPOINT_TEMPLATE = "https://{host}/{tenant}/oauth2/authorize";
++    private final static String DISCOVERY_ENDPOINT = "common/discovery/instance";
++    private final static String TOKEN_ENDPOINT = "/oauth2/token";
++    private final static String USER_REALM_ENDPOINT = "common/userrealm";
++    final static String DEVICE_CODE_ENDPOINT = "/oauth2/devicecode";
++
++    private String host;
++    private String issuer;
++    private final String instanceDiscoveryEndpointFormat = "https://%s/"
++            + DISCOVERY_ENDPOINT;
++    private final String userRealmEndpointFormat = "https://%s/"
++            + USER_REALM_ENDPOINT + "/%s?api-version=1.0";
++    private final String tokenEndpointFormat = "https://%s/{tenant}"
++            + TOKEN_ENDPOINT;
++    private final String devicecodeEndpointFormat = "https://%s/{tenant}"
++            + DEVICE_CODE_ENDPOINT;
++
++    private String authority = "https://%s/%s/";
++    private String instanceDiscoveryEndpoint;
++    private String tokenEndpoint;
++    private String deviceCodeEndpoint;
++
++    private final AuthorityType authorityType;
++    private boolean isTenantless;
++    private String tokenUri;
++    private String selfSignedJwtAudience;
++    private boolean instanceDiscoveryCompleted;
++
++    private final URL authorityUrl;
++    private final boolean validateAuthority;
++
++    AuthenticationAuthority(final URL authorityUrl,
++            final boolean validateAuthority) {
++
++        this.authorityUrl = authorityUrl;
++        this.authorityType = detectAuthorityType();
++        this.validateAuthority = validateAuthority;
++        validateAuthorityUrl();
++        setupAuthorityProperties();
++    }
++
++    String getHost() {
++        return host;
++    }
++
++    String getIssuer() {
++        return issuer;
++    }
++
++    String getAuthority() {
++        return authority;
++    }
++
++    String getTokenEndpoint() {
++        return tokenEndpoint;
++    }
++
++    String getDeviceCodeEndpoint() { return deviceCodeEndpoint; }
++
++    String getUserRealmEndpoint(String username) {
++        return String.format(userRealmEndpointFormat, host, username);
++    }
++
++    AuthorityType getAuthorityType() {
++        return authorityType;
++    }
++
++    boolean isTenantless() {
++        return isTenantless;
++    }
++
++    String getTokenUri() {
++        return tokenUri;
++    }
++
++    String getSelfSignedJwtAudience() {
++        return selfSignedJwtAudience;
++    }
++
++    void setSelfSignedJwtAudience(final String selfSignedJwtAudience) {
++        this.selfSignedJwtAudience = selfSignedJwtAudience;
++    }
++
++    void doInstanceDiscovery(final Map<String, String> headers,
++            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
++            throws Exception {
++
++        // instance discovery should be executed only once per context instance.
++        if (!instanceDiscoveryCompleted) {
++            // matching against static list failed
++            if (!doStaticInstanceDiscovery()) {
++                // if authority must be validated and dynamic discovery request
++                // as a fall back is success
++                if (validateAuthority
++                        && !doDynamicInstanceDiscovery(headers, proxy,
++                                sslSocketFactory)) {
++                    throw new AuthenticationException(
++                            AuthenticationErrorMessage.AUTHORITY_NOT_IN_VALID_LIST);
++                }
++            }
++            String msg = LogHelper.createMessage(
++                    "Instance discovery was successful",
++                    headers.get(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME));
++            log.info(msg);
++            piiLog.info(msg);
++
++            instanceDiscoveryCompleted = true;
++        }
++    }
++
++    boolean doDynamicInstanceDiscovery(final Map<String, String> headers,
++            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
++            throws Exception {
++        final String json = HttpHelper.executeHttpGet(log, piiLog,
++                instanceDiscoveryEndpoint, headers, proxy, sslSocketFactory);
++        final InstanceDiscoveryResponse discoveryResponse = JsonHelper
++                .convertJsonToObject(json, InstanceDiscoveryResponse.class);
++        return !StringHelper.isBlank(discoveryResponse
++                .getTenantDiscoveryEndpoint());
++    }
++
++    boolean doStaticInstanceDiscovery() {
++        if (validateAuthority) {
++            return Arrays.asList(TRUSTED_HOST_LIST).contains(this.host);
++        }
++        return true;
++    }
++
++    void setupAuthorityProperties() {
++
++        final String host = this.authorityUrl.getAuthority().toLowerCase();
++        final String path = this.authorityUrl.getPath().substring(1)
++                .toLowerCase();
++        final String tenant = path.substring(0, path.indexOf("/"))
++                .toLowerCase();
++
++        this.host = host;
++        this.authority = String.format(this.authority, host, tenant);
++        this.instanceDiscoveryEndpoint = String.format(
++                this.instanceDiscoveryEndpointFormat, host);
++        this.tokenEndpoint = String.format(this.tokenEndpointFormat, host);
++        this.tokenEndpoint = this.tokenEndpoint.replace("{tenant}", tenant);
++        this.tokenUri = this.tokenEndpoint;
++        this.issuer = this.tokenUri;
++        this.deviceCodeEndpoint = String.format(this.devicecodeEndpointFormat, host);
++        this.deviceCodeEndpoint = this.deviceCodeEndpoint.replace("{tenant}", tenant);
++
++        this.isTenantless = TENANTLESS_TENANT_NAME.equalsIgnoreCase(tenant);
++        this.setSelfSignedJwtAudience(this.getIssuer());
++        this.createInstanceDiscoveryEndpoint(tenant);
++    }
++
++    AuthorityType detectAuthorityType() {
++        if (authorityUrl == null) {
++            throw new NullPointerException("authority");
++        }
++
++        final String path = authorityUrl.getPath().substring(1);
++        if (StringHelper.isBlank(path)) {
++            throw new IllegalArgumentException(
++                    AuthenticationErrorMessage.AUTHORITY_URI_INVALID_PATH);
++        }
++
++        final String firstPath = path.substring(0, path.indexOf("/"));
++        final AuthorityType authorityType = isAdfsAuthority(firstPath) ? AuthorityType.ADFS
++                : AuthorityType.AAD;
++
++        return authorityType;
++    }
++
++    void validateAuthorityUrl() {
++
++        if (authorityType != AuthorityType.AAD && validateAuthority) {
++            throw new IllegalArgumentException(
++                    AuthenticationErrorMessage.UNSUPPORTED_AUTHORITY_VALIDATION);
++        }
++
++        if (!this.authorityUrl.getProtocol().equalsIgnoreCase("https")) {
++            throw new IllegalArgumentException(
++                    AuthenticationErrorMessage.AUTHORITY_URI_INSECURE);
++        }
++
++        if (this.authorityUrl.toString().contains("#")) {
++            throw new IllegalArgumentException(
++                    "authority is invalid format (contains fragment)");
++        }
++
++        if (!StringHelper.isBlank(this.authorityUrl.getQuery())) {
++            throw new IllegalArgumentException(
++                    "authority cannot contain query parameters");
++        }
++    }
++
++    void createInstanceDiscoveryEndpoint(final String tenant) {
++        this.instanceDiscoveryEndpoint += "?api-version=1.0&authorization_endpoint="
++                + AUTHORIZE_ENDPOINT_TEMPLATE;
++        this.instanceDiscoveryEndpoint = this.instanceDiscoveryEndpoint
++                .replace("{host}", host);
++        this.instanceDiscoveryEndpoint = this.instanceDiscoveryEndpoint
++                .replace("{tenant}", tenant);
++    }
++
++    static boolean isAdfsAuthority(final String firstPath) {
++        return firstPath.compareToIgnoreCase("adfs") == 0;
++    }
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/main/java/com/microsoft/aad/adal4j/HttpHelper.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -22,17 +22,16 @@
+ // THE SOFTWARE.
+ 
+ package com.microsoft.aad.adal4j;
+ 
+ import javax.net.ssl.HttpsURLConnection;
+ import javax.net.ssl.SSLSocketFactory;
+ import java.io.*;
+ import java.net.HttpURLConnection;
+-import java.net.MalformedURLException;
+ import java.net.Proxy;
+ import java.net.URL;
+ import java.util.Map;
+ 
+ import org.slf4j.Logger;
+ 
+ class HttpHelper {
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -31,44 +31,44 @@
+ import java.net.Proxy;
+ import java.net.URL;
+ import java.util.Map;
+ 
+ import org.slf4j.Logger;
+ 
+ class HttpHelper {
+ 
+-    static String executeHttpGet(final Logger log, final String url,
++    static String executeHttpGet(final Logger log,  final Logger piiLog, final String url,
+             final Proxy proxy, final SSLSocketFactory sslSocketFactory)
+             throws Exception {
+-        return executeHttpGet(log, url, null, proxy, sslSocketFactory);
++        return executeHttpGet(log, piiLog, url, null, proxy, sslSocketFactory);
+     }
+ 
+-    static String executeHttpGet(final Logger log, final String url,
++    static String executeHttpGet(final Logger log, final Logger piiLog, final String url,
+             final Map<String, String> headers, final Proxy proxy,
+             final SSLSocketFactory sslSocketFactory) throws Exception {
+         final HttpsURLConnection conn = HttpHelper.openConnection(url, proxy,
+                 sslSocketFactory);
+-        return executeGetRequest(log, headers, conn);
++        return executeGetRequest(log, piiLog, headers, conn);
+     }
+ 
+-    static String executeHttpPost(final Logger log, final String url,
++    static String executeHttpPost(final Logger log, final Logger piiLog, final String url,
+             String postData, final Proxy proxy,
+             final SSLSocketFactory sslSocketFactory) throws Exception {
+-        return executeHttpPost(log, url, postData, null, proxy,
++        return executeHttpPost(log, piiLog, url, postData, null, proxy,
+                 sslSocketFactory);
+     }
+ 
+-    static String executeHttpPost(final Logger log, final String url,
++    static String executeHttpPost(final Logger log, final Logger piiLog, final String url,
+             String postData, final Map<String, String> headers,
+             final Proxy proxy, final SSLSocketFactory sslSocketFactory)
+             throws Exception {
+         final HttpsURLConnection conn = HttpHelper.openConnection(url, proxy,
+                 sslSocketFactory);
+-        return executePostRequest(log, postData, headers, conn);
++        return executePostRequest(log, piiLog, postData, headers, conn);
+     }
+ 
+     static String inputStreamToString(java.io.InputStream is) {
+         java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
+         return s.hasNext() ? s.next() : "";
+     }
+ 
+     static String readResponseFromConnection(final HttpsURLConnection conn)
+@@ -125,63 +125,66 @@
+         if (headers != null) {
+             for (final Map.Entry<String, String> entry : headers.entrySet()) {
+                 conn.setRequestProperty(entry.getKey(), entry.getValue());
+             }
+         }
+         return conn;
+     }
+ 
+-    static void verifyReturnedCorrelationId(Logger log,
++    static void verifyReturnedCorrelationId(Logger log, Logger piilog,
+             HttpsURLConnection conn, String sentCorrelationId) {
+         if (StringHelper
+                 .isBlank(conn
+                         .getHeaderField(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME))
+                 || !conn.getHeaderField(
+-                        ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME)
+-                        .equals(sentCorrelationId)) {
+-            log.info(LogHelper.createMessage(
++                ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME)
++                .equals(sentCorrelationId)) {
++
++            String msg = LogHelper.createMessage(
+                     String.format(
+                             "Sent (%s) Correlation Id is not same as received (%s).",
+                             sentCorrelationId,
+                             conn.getHeaderField(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME)),
+-                    sentCorrelationId));
++                    sentCorrelationId);
++            log.info(msg);
++            piilog.info(msg);
+         }
+     }
+ 
+-    private static String executeGetRequest(Logger log,
++    private static String executeGetRequest(Logger log, Logger piiLog,
+             Map<String, String> headers, HttpsURLConnection conn)
+             throws IOException {
+         configureAdditionalHeaders(conn, headers);
+-        return getResponse(log, headers, conn);
++        return getResponse(log, piiLog, headers, conn);
+     }
+ 
+-    private static String executePostRequest(Logger log, String postData,
++    private static String executePostRequest(Logger log, Logger piiLog, String postData,
+             Map<String, String> headers, HttpsURLConnection conn)
+             throws IOException {
+         configureAdditionalHeaders(conn, headers);
+         conn.setRequestMethod("POST");
+         conn.setDoOutput(true);
+         DataOutputStream wr = null;
+         try {
+             wr = new DataOutputStream(conn.getOutputStream());
+             wr.writeBytes(postData);
+             wr.flush();
+ 
+-            return getResponse(log, headers, conn);
++            return getResponse(log, piiLog, headers, conn);
+         }
+         finally {
+             if (wr != null) {
+                 wr.close();
+             }
+         }
+     }
+ 
+-    private static String getResponse(Logger log, Map<String, String> headers,
++    private static String getResponse(Logger log, Logger piiLog, Map<String, String> headers,
+             HttpsURLConnection conn) throws IOException {
+         String response = readResponseFromConnection(conn);
+         if (headers != null) {
+-            HttpHelper.verifyReturnedCorrelationId(log, conn, headers
++            HttpHelper.verifyReturnedCorrelationId(log, piiLog, conn, headers
+                     .get(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME));
+         }
+         return response;
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,189 +1,189 @@
+-// Copyright (c) Microsoft Corporation.
+-// All rights reserved.
+-//
+-// This code is licensed under the MIT License.
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files(the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions :
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-// THE SOFTWARE.
+-
+-package com.microsoft.aad.adal4j;
+-
+-import javax.net.ssl.HttpsURLConnection;
+-import javax.net.ssl.SSLSocketFactory;
+-import java.io.*;
+-import java.net.HttpURLConnection;
+-import java.net.Proxy;
+-import java.net.URL;
+-import java.util.Map;
+-
+-import org.slf4j.Logger;
+-
+-class HttpHelper {
+-
+-    static String executeHttpGet(final Logger log,  final Logger piiLog, final String url,
+-            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
+-            throws Exception {
+-        return executeHttpGet(log, piiLog, url, null, proxy, sslSocketFactory);
+-    }
+-
+-    static String executeHttpGet(final Logger log, final Logger piiLog, final String url,
+-            final Map<String, String> headers, final Proxy proxy,
+-            final SSLSocketFactory sslSocketFactory) throws Exception {
+-        final HttpsURLConnection conn = HttpHelper.openConnection(url, proxy,
+-                sslSocketFactory);
+-        return executeGetRequest(log, piiLog, headers, conn);
+-    }
+-
+-    static String executeHttpPost(final Logger log, final Logger piiLog, final String url,
+-            String postData, final Proxy proxy,
+-            final SSLSocketFactory sslSocketFactory) throws Exception {
+-        return executeHttpPost(log, piiLog, url, postData, null, proxy,
+-                sslSocketFactory);
+-    }
+-
+-    static String executeHttpPost(final Logger log, final Logger piiLog, final String url,
+-            String postData, final Map<String, String> headers,
+-            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
+-            throws Exception {
+-        final HttpsURLConnection conn = HttpHelper.openConnection(url, proxy,
+-                sslSocketFactory);
+-        return executePostRequest(log, piiLog, postData, headers, conn);
+-    }
+-
+-    static String inputStreamToString(java.io.InputStream is) {
+-        java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
+-        return s.hasNext() ? s.next() : "";
+-    }
+-
+-    static String readResponseFromConnection(final HttpsURLConnection conn)
+-            throws AuthenticationException, IOException {
+-        InputStream is = null;
+-        try {
+-            if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
+-                String msg = "Server returned HTTP response code: " + conn.getResponseCode() + " for URL : " +
+-                        conn.getURL();
+-                is = conn.getErrorStream();
+-                if (is != null) {
+-                    msg = msg + ", Error details : " + inputStreamToString(is);
+-                }
+-                throw new AuthenticationException(msg);
+-            }
+-
+-            is = conn.getInputStream();
+-            return inputStreamToString(is);
+-        }
+-        finally {
+-            if(is != null){
+-                is.close();
+-            }
+-        }
+-    }
+-
+-    static HttpsURLConnection openConnection(final URL finalURL,
+-            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
+-            throws IOException {
+-        HttpsURLConnection connection;
+-        if (proxy != null) {
+-            connection = (HttpsURLConnection) finalURL.openConnection(proxy);
+-        }
+-        else {
+-            connection = (HttpsURLConnection) finalURL.openConnection();
+-        }
+-
+-        if (sslSocketFactory != null) {
+-            connection.setSSLSocketFactory(sslSocketFactory);
+-        }
+-
+-        return connection;
+-    }
+-
+-    static HttpsURLConnection openConnection(final String url,
+-            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
+-            throws IOException {
+-        return openConnection(new URL(url), proxy, sslSocketFactory);
+-    }
+-
+-    static HttpsURLConnection configureAdditionalHeaders(
+-            final HttpsURLConnection conn, final Map<String, String> headers)
+-            throws IOException {
+-        if (headers != null) {
+-            for (final Map.Entry<String, String> entry : headers.entrySet()) {
+-                conn.setRequestProperty(entry.getKey(), entry.getValue());
+-            }
+-        }
+-        return conn;
+-    }
+-
+-    static void verifyReturnedCorrelationId(Logger log, Logger piilog,
+-            HttpsURLConnection conn, String sentCorrelationId) {
+-        if (StringHelper
+-                .isBlank(conn
+-                        .getHeaderField(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME))
+-                || !conn.getHeaderField(
+-                ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME)
+-                .equals(sentCorrelationId)) {
+-
+-            String msg = LogHelper.createMessage(
+-                    String.format(
+-                            "Sent (%s) Correlation Id is not same as received (%s).",
+-                            sentCorrelationId,
+-                            conn.getHeaderField(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME)),
+-                    sentCorrelationId);
+-            log.info(msg);
+-            piilog.info(msg);
+-        }
+-    }
+-
+-    private static String executeGetRequest(Logger log, Logger piiLog,
+-            Map<String, String> headers, HttpsURLConnection conn)
+-            throws IOException {
+-        configureAdditionalHeaders(conn, headers);
+-        return getResponse(log, piiLog, headers, conn);
+-    }
+-
+-    private static String executePostRequest(Logger log, Logger piiLog, String postData,
+-            Map<String, String> headers, HttpsURLConnection conn)
+-            throws IOException {
+-        configureAdditionalHeaders(conn, headers);
+-        conn.setRequestMethod("POST");
+-        conn.setDoOutput(true);
+-        DataOutputStream wr = null;
+-        try {
+-            wr = new DataOutputStream(conn.getOutputStream());
+-            wr.writeBytes(postData);
+-            wr.flush();
+-
+-            return getResponse(log, piiLog, headers, conn);
+-        }
+-        finally {
+-            if (wr != null) {
+-                wr.close();
+-            }
+-        }
+-    }
+-
+-    private static String getResponse(Logger log, Logger piiLog, Map<String, String> headers,
+-            HttpsURLConnection conn) throws IOException {
+-        String response = readResponseFromConnection(conn);
+-        if (headers != null) {
+-            HttpHelper.verifyReturnedCorrelationId(log, piiLog, conn, headers
+-                    .get(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME));
+-        }
+-        return response;
+-    }
+-}
++// Copyright (c) Microsoft Corporation.
++// All rights reserved.
++//
++// This code is licensed under the MIT License.
++//
++// Permission is hereby granted, free of charge, to any person obtaining a copy
++// of this software and associated documentation files(the "Software"), to deal
++// in the Software without restriction, including without limitation the rights
++// to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
++// copies of the Software, and to permit persons to whom the Software is
++// furnished to do so, subject to the following conditions :
++//
++// The above copyright notice and this permission notice shall be included in
++// all copies or substantial portions of the Software.
++//
++// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
++// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++// THE SOFTWARE.
++
++package com.microsoft.aad.adal4j;
++
++import javax.net.ssl.HttpsURLConnection;
++import javax.net.ssl.SSLSocketFactory;
++import java.io.*;
++import java.net.HttpURLConnection;
++import java.net.Proxy;
++import java.net.URL;
++import java.util.Map;
++
++import org.slf4j.Logger;
++
++class HttpHelper {
++
++    static String executeHttpGet(final Logger log,  final Logger piiLog, final String url,
++            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
++            throws Exception {
++        return executeHttpGet(log, piiLog, url, null, proxy, sslSocketFactory);
++    }
++
++    static String executeHttpGet(final Logger log, final Logger piiLog, final String url,
++            final Map<String, String> headers, final Proxy proxy,
++            final SSLSocketFactory sslSocketFactory) throws Exception {
++        final HttpsURLConnection conn = HttpHelper.openConnection(url, proxy,
++                sslSocketFactory);
++        return executeGetRequest(log, piiLog, headers, conn);
++    }
++
++    static String executeHttpPost(final Logger log, final Logger piiLog, final String url,
++            String postData, final Proxy proxy,
++            final SSLSocketFactory sslSocketFactory) throws Exception {
++        return executeHttpPost(log, piiLog, url, postData, null, proxy,
++                sslSocketFactory);
++    }
++
++    static String executeHttpPost(final Logger log, final Logger piiLog, final String url,
++            String postData, final Map<String, String> headers,
++            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
++            throws Exception {
++        final HttpsURLConnection conn = HttpHelper.openConnection(url, proxy,
++                sslSocketFactory);
++        return executePostRequest(log, piiLog, postData, headers, conn);
++    }
++
++    static String inputStreamToString(java.io.InputStream is) {
++        java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
++        return s.hasNext() ? s.next() : "";
++    }
++
++    static String readResponseFromConnection(final HttpsURLConnection conn)
++            throws AuthenticationException, IOException {
++        InputStream is = null;
++        try {
++            if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
++                String msg = "Server returned HTTP response code: " + conn.getResponseCode() + " for URL : " +
++                        conn.getURL();
++                is = conn.getErrorStream();
++                if (is != null) {
++                    msg = msg + ", Error details : " + inputStreamToString(is);
++                }
++                throw new AuthenticationException(msg);
++            }
++
++            is = conn.getInputStream();
++            return inputStreamToString(is);
++        }
++        finally {
++            if(is != null){
++                is.close();
++            }
++        }
++    }
++
++    static HttpsURLConnection openConnection(final URL finalURL,
++            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
++            throws IOException {
++        HttpsURLConnection connection;
++        if (proxy != null) {
++            connection = (HttpsURLConnection) finalURL.openConnection(proxy);
++        }
++        else {
++            connection = (HttpsURLConnection) finalURL.openConnection();
++        }
++
++        if (sslSocketFactory != null) {
++            connection.setSSLSocketFactory(sslSocketFactory);
++        }
++
++        return connection;
++    }
++
++    static HttpsURLConnection openConnection(final String url,
++            final Proxy proxy, final SSLSocketFactory sslSocketFactory)
++            throws IOException {
++        return openConnection(new URL(url), proxy, sslSocketFactory);
++    }
++
++    static HttpsURLConnection configureAdditionalHeaders(
++            final HttpsURLConnection conn, final Map<String, String> headers)
++            throws IOException {
++        if (headers != null) {
++            for (final Map.Entry<String, String> entry : headers.entrySet()) {
++                conn.setRequestProperty(entry.getKey(), entry.getValue());
++            }
++        }
++        return conn;
++    }
++
++    static void verifyReturnedCorrelationId(Logger log, Logger piilog,
++            HttpsURLConnection conn, String sentCorrelationId) {
++        if (StringHelper
++                .isBlank(conn
++                        .getHeaderField(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME))
++                || !conn.getHeaderField(
++                ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME)
++                .equals(sentCorrelationId)) {
++
++            String msg = LogHelper.createMessage(
++                    String.format(
++                            "Sent (%s) Correlation Id is not same as received (%s).",
++                            sentCorrelationId,
++                            conn.getHeaderField(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME)),
++                    sentCorrelationId);
++            log.info(msg);
++            piilog.info(msg);
++        }
++    }
++
++    private static String executeGetRequest(Logger log, Logger piiLog,
++            Map<String, String> headers, HttpsURLConnection conn)
++            throws IOException {
++        configureAdditionalHeaders(conn, headers);
++        return getResponse(log, piiLog, headers, conn);
++    }
++
++    private static String executePostRequest(Logger log, Logger piiLog, String postData,
++            Map<String, String> headers, HttpsURLConnection conn)
++            throws IOException {
++        configureAdditionalHeaders(conn, headers);
++        conn.setRequestMethod("POST");
++        conn.setDoOutput(true);
++        DataOutputStream wr = null;
++        try {
++            wr = new DataOutputStream(conn.getOutputStream());
++            wr.writeBytes(postData);
++            wr.flush();
++
++            return getResponse(log, piiLog, headers, conn);
++        }
++        finally {
++            if (wr != null) {
++                wr.close();
++            }
++        }
++    }
++
++    private static String getResponse(Logger log, Logger piiLog, Map<String, String> headers,
++            HttpsURLConnection conn) throws IOException {
++        String response = readResponseFromConnection(conn);
++        if (headers != null) {
++            HttpHelper.verifyReturnedCorrelationId(log, piiLog, conn, headers
++                    .get(ClientDataHttpHeaders.CORRELATION_ID_HEADER_NAME));
++        }
++        return response;
++    }
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/test/java/com/microsoft/aad/adal4j/TestConfiguration.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -70,10 +70,9 @@
+             + "TYzIiwib2lkIjoiNGY4NTk5ODktYTJmZi00MTFlLTkwNDgtYzMyMjI0N2FjNjJjIiwidXBuIjoiYWRtaW5AYWFsdGVzdHMub25taWNyb3NvZnQuY29"
+             + "tIiwidW5pcXVlX25hbWUiOiJhZG1pbkBhYWx0ZXN0cy5vbm1pY3Jvc29mdC5jb20iLCJzdWIiOiJCczVxVG4xQ3YtNC10VXIxTGxBb3pOS1NRd0Fjb"
+             + "m4ydHcyQjlmelduNlpJIiwiZmFtaWx5X25hbWUiOiJBZG1pbiIsImdpdmVuX25hbWUiOiJBREFMVGVzdHMifQ.\"}";
+ 
+     public final static String HTTP_ERROR_RESPONSE = "{\"error\":\"invalid_request\",\"error_description\":\"AADSTS90011: Request "
+             + "is ambiguous, multiple application identifiers found. Application identifiers: 'd09bb6da-4d46-4a16-880c-7885d8291fb9"
+             + ", 216ef81d-f3b2-47d4-ad21-a4df49b56dee'.\r\nTrace ID: 428a1f68-767d-4a1c-ae8e-f710eeaf4e9b\r\nCorrelation ID: 1e0955"
+             + "88-68e4-4bb4-a54e-71ad81e7f013\r\nTimestamp: 2014-03-11 20:19:02Z\"}";
+-
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -29,16 +29,17 @@
+     public final static String AAD_TENANT_NAME = "aaltests.onmicrosoft.com";
+     public final static String AAD_TENANT_ENDPOINT = "https://" + AAD_HOST_NAME
+             + "/" + AAD_TENANT_NAME + "/";
+     public final static String AAD_CLIENT_ID = "9083ccb8-8a46-43e7-8439-1d696df984ae";
+     public final static String AAD_CLIENT_SECRET = "client_secret";
+     public final static String AAD_RESOURCE_ID = "b7a671d8-a408-42ff-86e0-aaf447fd17c4";
+     public final static String AAD_CERTIFICATE_PATH = "/test-certificate.pfx";
+     public final static String AAD_MEX_RESPONSE_FILE = "/mex-response.xml";
++    public final static String AAD_MEX_RESPONSE_FILE_INTEGRATED = "/mex-response-integrated.xml";
+     public final static String AAD_MEX_2005_RESPONSE_FILE = "/mex-2005-response.xml";
+     public final static String AAD_TOKEN_ERROR_FILE = "/token-error.xml";
+     public final static String AAD_TOKEN_SUCCESS_FILE = "/token.xml";
+     public final static String AAD_CERTIFICATE_PASSWORD = "password";
+     public final static String AAD_DEFAULT_REDIRECT_URI = "https://non_existing_uri.windows.com/";
+     public final static String AAD_REDIRECT_URI_FOR_CONFIDENTIAL_CLIENT = "https://non_existing_uri_for_confidential_client.com/";
+ 
+     public final static String ADFS_HOST_NAME = "fs.ade2eadfs30.com";
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,79 +1,79 @@
+-// Copyright (c) Microsoft Corporation.
+-// All rights reserved.
+-//
+-// This code is licensed under the MIT License.
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files(the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions :
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+-// THE SOFTWARE.
+-
+-package com.microsoft.aad.adal4j;
+-
+-public final class TestConfiguration {
+-
+-    public final static String AAD_HOST_NAME = "login.windows.net";
+-    public final static String AAD_TENANT_NAME = "aaltests.onmicrosoft.com";
+-    public final static String AAD_TENANT_ENDPOINT = "https://" + AAD_HOST_NAME
+-            + "/" + AAD_TENANT_NAME + "/";
+-    public final static String AAD_CLIENT_ID = "9083ccb8-8a46-43e7-8439-1d696df984ae";
+-    public final static String AAD_CLIENT_SECRET = "client_secret";
+-    public final static String AAD_RESOURCE_ID = "b7a671d8-a408-42ff-86e0-aaf447fd17c4";
+-    public final static String AAD_CERTIFICATE_PATH = "/test-certificate.pfx";
+-    public final static String AAD_MEX_RESPONSE_FILE = "/mex-response.xml";
+-    public final static String AAD_MEX_RESPONSE_FILE_INTEGRATED = "/mex-response-integrated.xml";
+-    public final static String AAD_MEX_2005_RESPONSE_FILE = "/mex-2005-response.xml";
+-    public final static String AAD_TOKEN_ERROR_FILE = "/token-error.xml";
+-    public final static String AAD_TOKEN_SUCCESS_FILE = "/token.xml";
+-    public final static String AAD_CERTIFICATE_PASSWORD = "password";
+-    public final static String AAD_DEFAULT_REDIRECT_URI = "https://non_existing_uri.windows.com/";
+-    public final static String AAD_REDIRECT_URI_FOR_CONFIDENTIAL_CLIENT = "https://non_existing_uri_for_confidential_client.com/";
+-
+-    public final static String ADFS_HOST_NAME = "fs.ade2eadfs30.com";
+-    public final static String ADFS_TENANT_ENDPOINT = "https://"
+-            + ADFS_HOST_NAME + "/adfs/";
+-    public final static String AAD_UNKNOWN_TENANT_ENDPOINT = "https://lgn.windows.net/"
+-            + AAD_TENANT_NAME + "/";
+-
+-    public final static String HTTP_RESPONSE_FROM_AUTH_CODE = "{\"access_token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6I"
+-            + "k5HVEZ2ZEstZnl0aEV1THdqcHdBSk9NOW4tQSJ9.eyJhdWQiOiJiN2E2NzFkOC1hNDA4LTQyZmYtODZlMC1hYWY0NDdmZDE3YzQiLCJpc3MiOiJod"
+-            + "HRwczovL3N0cy53aW5kb3dzLm5ldC8zMGJhYTY2Ni04ZGY4LTQ4ZTctOTdlNi03N2NmZDA5OTU5NjMvIiwiaWF0IjoxMzkzODQ0NTA0LCJuYmYiOj"
+-            + "EzOTM4NDQ1MDQsImV4cCI6MTM5Mzg0ODQwNCwidmVyIjoiMS4wIiwidGlkIjoiMzBiYWE2NjYtOGRmOC00OGU3LTk3ZTYtNzdjZmQwOTk1OTYzIiwi"
+-            + "b2lkIjoiNGY4NTk5ODktYTJmZi00MTFlLTkwNDgtYzMyMjI0N2FjNjJjIiwidXBuIjoiYWRtaW5AYWFsdGVzdHMub25taWNyb3NvZnQuY29tIiwidW"
+-            + "5pcXVlX25hbWUiOiJhZG1pbkBhYWx0ZXN0cy5vbm1pY3Jvc29mdC5jb20iLCJzdWIiOiJqQ0ttUENWWEFzblN1MVBQUzRWblo4c2VONTR3U3F0cW1R"
+-            + "MkpGbW14SEF3IiwiZmFtaWx5X25hbWUiOiJBZG1pbiIsImdpdmVuX25hbWUiOiJBREFMVGVzdHMiLCJhcHBpZCI6IjkwODNjY2I4LThhNDYtNDNlNy"
+-            + "04NDM5LTFkNjk2ZGY5ODRhZSIsImFwcGlkYWNyIjoiMSIsInNjcCI6InVzZXJfaW1wZXJzb25hdGlvbiIsImFjciI6IjEifQ.lUfDlkLdNGuAGUukg"
+-            + "TnS_uWeSFXljbhId1l9PDrr7AwOSbOzogLvO14TaU294T6HeOQ8e0dUAvxEAMvsK_800A-AGNvbHK363xDjgmu464ye3CQvwq73GoHkzuxILCJKo0D"
+-            + "Uj0_XsCpQ4TdkPepuhzaGc-zYsfMU1POuIOB87pzW7e_VDpCdxcN1fuk-7CECPQb8nrO0L8Du8y-TZDdTSe-i_A0Alv48Zll-6tDY9cxfAR0Uy"
+-            + "YKl_Kf45kuHAphCWwPsjUxv4rGHhgXZPRlKFq7bkXP2Es4ixCQzb3bVLLrtQaZjkQ1yn37ngJro8NR63EbHHjHTA9lRmf8KIQ\",\"token_type\""
+-            + ":\"Bearer\",\"expires_in\":\"3600\",\"expires_on\":\"1393848404\",\"resource\":\"b7a671d8-a408-42ff-86e0-aaf447fd1"
+-            + "7c4\",\"refresh_token\":\"AwABAAAAvPM1KaPlrEqdFSBzjqfTGPW9BlsxWYtD0DS9hJNOPHPnq8QYbv6_FKJ3MxSHbPAIekKwJ04TnZI1NnRj"
+-            + "CMhphmsy5ZFjWtLy3WN2E67b3aW2MTQ9lN06B-HdRdU0Rxi9EalB8kAlgb92Ob0zuhB90zWm3RbxshOW0vkHS3lNAV6_LQ8fZKeLTB1AuuRgLXsy-9"
+-            + "2h0yYuEQw_Uvs80IbGx59j1z3hJrCMEMrqh-Hf42OnckN-uR113zMircfEOMm0qzhrQdtLleTHELS79B18647OiG6e8k8saVIvJmjpIuy79_aN-Bk5"
+-            + "PRkkab-QAwn_R68via4nK0zpKHBCl0xoEvK59mqerNDEKJNY168_FHDYPiZyECaZCdlWdEqd3dLohFlnKv9zc0CnuvB_QSQHHNScqWkX53s_Us9I45"
+-            + "QlRDaUPB89QXzQQaT2wZ8i3wTOb7mnEUMzrNrpsor6E4ckiviMx6WoepZmqQEZV-Yd-UUgAA\",\"scope\":\"user_impersonation\",\""
+-            + "id_token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJhdWQiOiI5MDgzY2NiOC04YTQ2LTQzZTctODQzOS0xZDY5NmRmOTg0YWUiLCJpc"
+-            + "3MiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC8zMGJhYTY2Ni04ZGY4LTQ4ZTctOTdlNi03N2NmZDA5OTU5NjMvIiwiaWF0IjoxMzkzODQ0NTA0LCJ"
+-            + "uYmYiOjEzOTM4NDQ1MDQsImV4cCI6MTM5Mzg0ODQwNCwidmVyIjoiMS4wIiwidGlkIjoiMzBiYWE2NjYtOGRmOC00OGU3LTk3ZTYtNzdjZmQwOTk1O"
+-            + "TYzIiwib2lkIjoiNGY4NTk5ODktYTJmZi00MTFlLTkwNDgtYzMyMjI0N2FjNjJjIiwidXBuIjoiYWRtaW5AYWFsdGVzdHMub25taWNyb3NvZnQuY29"
+-            + "tIiwidW5pcXVlX25hbWUiOiJhZG1pbkBhYWx0ZXN0cy5vbm1pY3Jvc29mdC5jb20iLCJzdWIiOiJCczVxVG4xQ3YtNC10VXIxTGxBb3pOS1NRd0Fjb"
+-            + "m4ydHcyQjlmelduNlpJIiwiZmFtaWx5X25hbWUiOiJBZG1pbiIsImdpdmVuX25hbWUiOiJBREFMVGVzdHMifQ.\"}";
+-
+-    public final static String HTTP_ERROR_RESPONSE = "{\"error\":\"invalid_request\",\"error_description\":\"AADSTS90011: Request "
+-            + "is ambiguous, multiple application identifiers found. Application identifiers: 'd09bb6da-4d46-4a16-880c-7885d8291fb9"
+-            + ", 216ef81d-f3b2-47d4-ad21-a4df49b56dee'.\r\nTrace ID: 428a1f68-767d-4a1c-ae8e-f710eeaf4e9b\r\nCorrelation ID: 1e0955"
+-            + "88-68e4-4bb4-a54e-71ad81e7f013\r\nTimestamp: 2014-03-11 20:19:02Z\"}";
+-}
++// Copyright (c) Microsoft Corporation.
++// All rights reserved.
++//
++// This code is licensed under the MIT License.
++//
++// Permission is hereby granted, free of charge, to any person obtaining a copy
++// of this software and associated documentation files(the "Software"), to deal
++// in the Software without restriction, including without limitation the rights
++// to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
++// copies of the Software, and to permit persons to whom the Software is
++// furnished to do so, subject to the following conditions :
++//
++// The above copyright notice and this permission notice shall be included in
++// all copies or substantial portions of the Software.
++//
++// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
++// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++// THE SOFTWARE.
++
++package com.microsoft.aad.adal4j;
++
++public final class TestConfiguration {
++
++    public final static String AAD_HOST_NAME = "login.windows.net";
++    public final static String AAD_TENANT_NAME = "aaltests.onmicrosoft.com";
++    public final static String AAD_TENANT_ENDPOINT = "https://" + AAD_HOST_NAME
++            + "/" + AAD_TENANT_NAME + "/";
++    public final static String AAD_CLIENT_ID = "9083ccb8-8a46-43e7-8439-1d696df984ae";
++    public final static String AAD_CLIENT_SECRET = "client_secret";
++    public final static String AAD_RESOURCE_ID = "b7a671d8-a408-42ff-86e0-aaf447fd17c4";
++    public final static String AAD_CERTIFICATE_PATH = "/test-certificate.pfx";
++    public final static String AAD_MEX_RESPONSE_FILE = "/mex-response.xml";
++    public final static String AAD_MEX_RESPONSE_FILE_INTEGRATED = "/mex-response-integrated.xml";
++    public final static String AAD_MEX_2005_RESPONSE_FILE = "/mex-2005-response.xml";
++    public final static String AAD_TOKEN_ERROR_FILE = "/token-error.xml";
++    public final static String AAD_TOKEN_SUCCESS_FILE = "/token.xml";
++    public final static String AAD_CERTIFICATE_PASSWORD = "password";
++    public final static String AAD_DEFAULT_REDIRECT_URI = "https://non_existing_uri.windows.com/";
++    public final static String AAD_REDIRECT_URI_FOR_CONFIDENTIAL_CLIENT = "https://non_existing_uri_for_confidential_client.com/";
++
++    public final static String ADFS_HOST_NAME = "fs.ade2eadfs30.com";
++    public final static String ADFS_TENANT_ENDPOINT = "https://"
++            + ADFS_HOST_NAME + "/adfs/";
++    public final static String AAD_UNKNOWN_TENANT_ENDPOINT = "https://lgn.windows.net/"
++            + AAD_TENANT_NAME + "/";
++
++    public final static String HTTP_RESPONSE_FROM_AUTH_CODE = "{\"access_token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6I"
++            + "k5HVEZ2ZEstZnl0aEV1THdqcHdBSk9NOW4tQSJ9.eyJhdWQiOiJiN2E2NzFkOC1hNDA4LTQyZmYtODZlMC1hYWY0NDdmZDE3YzQiLCJpc3MiOiJod"
++            + "HRwczovL3N0cy53aW5kb3dzLm5ldC8zMGJhYTY2Ni04ZGY4LTQ4ZTctOTdlNi03N2NmZDA5OTU5NjMvIiwiaWF0IjoxMzkzODQ0NTA0LCJuYmYiOj"
++            + "EzOTM4NDQ1MDQsImV4cCI6MTM5Mzg0ODQwNCwidmVyIjoiMS4wIiwidGlkIjoiMzBiYWE2NjYtOGRmOC00OGU3LTk3ZTYtNzdjZmQwOTk1OTYzIiwi"
++            + "b2lkIjoiNGY4NTk5ODktYTJmZi00MTFlLTkwNDgtYzMyMjI0N2FjNjJjIiwidXBuIjoiYWRtaW5AYWFsdGVzdHMub25taWNyb3NvZnQuY29tIiwidW"
++            + "5pcXVlX25hbWUiOiJhZG1pbkBhYWx0ZXN0cy5vbm1pY3Jvc29mdC5jb20iLCJzdWIiOiJqQ0ttUENWWEFzblN1MVBQUzRWblo4c2VONTR3U3F0cW1R"
++            + "MkpGbW14SEF3IiwiZmFtaWx5X25hbWUiOiJBZG1pbiIsImdpdmVuX25hbWUiOiJBREFMVGVzdHMiLCJhcHBpZCI6IjkwODNjY2I4LThhNDYtNDNlNy"
++            + "04NDM5LTFkNjk2ZGY5ODRhZSIsImFwcGlkYWNyIjoiMSIsInNjcCI6InVzZXJfaW1wZXJzb25hdGlvbiIsImFjciI6IjEifQ.lUfDlkLdNGuAGUukg"
++            + "TnS_uWeSFXljbhId1l9PDrr7AwOSbOzogLvO14TaU294T6HeOQ8e0dUAvxEAMvsK_800A-AGNvbHK363xDjgmu464ye3CQvwq73GoHkzuxILCJKo0D"
++            + "Uj0_XsCpQ4TdkPepuhzaGc-zYsfMU1POuIOB87pzW7e_VDpCdxcN1fuk-7CECPQb8nrO0L8Du8y-TZDdTSe-i_A0Alv48Zll-6tDY9cxfAR0Uy"
++            + "YKl_Kf45kuHAphCWwPsjUxv4rGHhgXZPRlKFq7bkXP2Es4ixCQzb3bVLLrtQaZjkQ1yn37ngJro8NR63EbHHjHTA9lRmf8KIQ\",\"token_type\""
++            + ":\"Bearer\",\"expires_in\":\"3600\",\"expires_on\":\"1393848404\",\"resource\":\"b7a671d8-a408-42ff-86e0-aaf447fd1"
++            + "7c4\",\"refresh_token\":\"AwABAAAAvPM1KaPlrEqdFSBzjqfTGPW9BlsxWYtD0DS9hJNOPHPnq8QYbv6_FKJ3MxSHbPAIekKwJ04TnZI1NnRj"
++            + "CMhphmsy5ZFjWtLy3WN2E67b3aW2MTQ9lN06B-HdRdU0Rxi9EalB8kAlgb92Ob0zuhB90zWm3RbxshOW0vkHS3lNAV6_LQ8fZKeLTB1AuuRgLXsy-9"
++            + "2h0yYuEQw_Uvs80IbGx59j1z3hJrCMEMrqh-Hf42OnckN-uR113zMircfEOMm0qzhrQdtLleTHELS79B18647OiG6e8k8saVIvJmjpIuy79_aN-Bk5"
++            + "PRkkab-QAwn_R68via4nK0zpKHBCl0xoEvK59mqerNDEKJNY168_FHDYPiZyECaZCdlWdEqd3dLohFlnKv9zc0CnuvB_QSQHHNScqWkX53s_Us9I45"
++            + "QlRDaUPB89QXzQQaT2wZ8i3wTOb7mnEUMzrNrpsor6E4ckiviMx6WoepZmqQEZV-Yd-UUgAA\",\"scope\":\"user_impersonation\",\""
++            + "id_token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJhdWQiOiI5MDgzY2NiOC04YTQ2LTQzZTctODQzOS0xZDY5NmRmOTg0YWUiLCJpc"
++            + "3MiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC8zMGJhYTY2Ni04ZGY4LTQ4ZTctOTdlNi03N2NmZDA5OTU5NjMvIiwiaWF0IjoxMzkzODQ0NTA0LCJ"
++            + "uYmYiOjEzOTM4NDQ1MDQsImV4cCI6MTM5Mzg0ODQwNCwidmVyIjoiMS4wIiwidGlkIjoiMzBiYWE2NjYtOGRmOC00OGU3LTk3ZTYtNzdjZmQwOTk1O"
++            + "TYzIiwib2lkIjoiNGY4NTk5ODktYTJmZi00MTFlLTkwNDgtYzMyMjI0N2FjNjJjIiwidXBuIjoiYWRtaW5AYWFsdGVzdHMub25taWNyb3NvZnQuY29"
++            + "tIiwidW5pcXVlX25hbWUiOiJhZG1pbkBhYWx0ZXN0cy5vbm1pY3Jvc29mdC5jb20iLCJzdWIiOiJCczVxVG4xQ3YtNC10VXIxTGxBb3pOS1NRd0Fjb"
++            + "m4ydHcyQjlmelduNlpJIiwiZmFtaWx5X25hbWUiOiJBZG1pbiIsImdpdmVuX25hbWUiOiJBREFMVGVzdHMifQ.\"}";
++
++    public final static String HTTP_ERROR_RESPONSE = "{\"error\":\"invalid_request\",\"error_description\":\"AADSTS90011: Request "
++            + "is ambiguous, multiple application identifiers found. Application identifiers: 'd09bb6da-4d46-4a16-880c-7885d8291fb9"
++            + ", 216ef81d-f3b2-47d4-ad21-a4df49b56dee'.\r\nTrace ID: 428a1f68-767d-4a1c-ae8e-f710eeaf4e9b\r\nCorrelation ID: 1e0955"
++            + "88-68e4-4bb4-a54e-71ad81e7f013\r\nTimestamp: 2014-03-11 20:19:02Z\"}";
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

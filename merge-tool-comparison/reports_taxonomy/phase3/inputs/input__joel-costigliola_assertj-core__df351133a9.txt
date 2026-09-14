@@ -1,0 +1,1444 @@
+UNIT joel-costigliola_assertj-core__df351133a9
+repo: joel-costigliola_assertj-core   merge: df351133a998388a13ecf8fe6e43916eaa9f13cb   stratum: B
+files shown: 13 of 15 intersecting Java files
+dropped (textual-conflict, not silent — excluded): src/main/java/org/assertj/core/api/AbstractObjectArrayAssert.java, src/main/java/org/assertj/core/api/Assertions.java
+truncation level: T3/cap5  (diffs at -U3; merged bodies omitted; hard-fit to the 30k budget: files capped at 5 largest merged-vs-dev diffs)
+
+=== FILE 1/13: src/main/java/org/assertj/core/api/AbstractIterableAssert.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -12,6 +12,8 @@
+  */
+ package org.assertj.core.api;
+ 
++import static java.util.stream.Collectors.toList;
++import static java.util.stream.StreamSupport.stream;
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.filter.Filters.filter;
+ import static org.assertj.core.extractor.Extractors.byName;
+@@ -28,6 +30,11 @@
+ import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.List;
++import java.util.function.Consumer;
++import java.util.function.Function;
++import java.util.function.Predicate;
++import java.util.stream.Collectors;
++import java.util.stream.Stream;
+ 
+ import org.assertj.core.api.filter.FilterOperator;
+ import org.assertj.core.api.filter.Filters;
+@@ -126,6 +133,62 @@
+   }
+ 
+   /**
++   * Verifies that the unique element of the {@link Iterable} satifies the given assertions expressed as a {@link Consumer}, 
++   * if it does not, only the first error is reported, use {@link SoftAssertions} to get all the errors. 
++   * <p>
++   * Example:
++   * <pre><code class='java'> List&lt;Jedi&gt; jedis = asList(new Jedi("Yoda", "red")); 
++   *     
++   * // assertions will pass
++   * 
++   * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> assertThat(yoda.getName()).startsWith("Y"));
++   * 
++   * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> {
++   *   assertThat(yoda.getName()).isEqualTo("Yoda");
++   *   assertThat(yoda.getLightSaberColor()).isEqualTo("red");
++   * });
++   * 
++   * // assertions will fail
++   * 
++   * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> assertThat(yoda.getName()).startsWith("Vad"));
++   * 
++   * // fail as one the assertions is not satisfied  
++   * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> {
++   *   assertThat(yoda.getName()).isEqualTo("Yoda");
++   *   assertThat(yoda.getLightSaberColor()).isEqualTo("purple");
++   * });
++   * 
++   * // fail but only report the first error 
++   * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> {
++   *   assertThat(yoda.getName()).isEqualTo("Luke");
++   *   assertThat(yoda.getLightSaberColor()).isEqualTo("green");
++   * });
++   * 
++   * // fail and reports the errors thanks to Soft assertions 
++   * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> {
++   *   SoftAssertions softly = new SoftAssertions();
++   *   softly.assertThat(yoda.getName()).isEqualTo("Luke");
++   *   softly.assertThat(yoda.getLightSaberColor()).isEqualTo("green");
++   *   softly.assertAll();
++   * });
++   * 
++   * // even if the assertion is correct, there are too many jedis !
++   * jedis.add(new Jedi("Luke", "green"));
++   * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> assertThat(yoda.getName()).startsWith("Yo"));</code></pre>
++   * 
++   * @return {@code this} assertion object.
++   * @param elementAssertions the assertions to perform on the unique element.
++   * @throws AssertionError if the {@link Iterable} does not have a unique element.
++   * @throws AssertionError if the {@link Iterable}'s unique element does not satifies the given assertions.
++   * 
++   * @since 3.5.0
++   */
++  public void hasOnlyOneElementSatisfying(Consumer<ELEMENT> elementAssertions) {
++    iterables.assertHasSize(info, actual, 1);
++    elementAssertions.accept(actual.iterator().next());
++  }
++
++  /**
+    * {@inheritDoc}
+    */
+   @Override
+@@ -844,18 +907,10 @@
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Gimli&quot;, 139, DWARF));
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Aragorn&quot;, 87, MAN);
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Boromir&quot;, 37, MAN));
+-   *
+-   * // this extracts the race
+-   * Extractor&lt;TolkienCharacter, Race&gt; race = new Extractor&lt;TolkienCharacter, Race&gt;() {
+-   *    &commat;Override
+-   *    public Race extract(TolkienCharacter input) {
+-   *        return input.getRace();
+-   *    }
+-   * }
+-   *
++   * 
+    * // fellowship has hobbitses, right, my presioussss?
+-   * assertThat(fellowshipOfTheRing).extracting(race).contains(HOBBIT);</code></pre>
+-   *
++   * assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getRace).contains(HOBBIT);</code></pre>
++   * 
+    * Note that the order of extracted property/field values is consistent with the iteration order of the Iterable under
+    * test, for example if it's a {@link HashSet}, you won't be able to make any assumptions on the extracted values
+    * order.
+@@ -884,24 +939,18 @@
+    * CartoonCharacter pebbles = new CartoonCharacter("Pebbles Flintstone");
+    * CartoonCharacter fred = new CartoonCharacter("Fred Flintstone");
+    * fred.getChildren().add(pebbles);
+-   *
+-   * Extractor&lt;CartoonCharacter, List&lt;CartoonCharacter&gt;&gt; childrenOf = new Extractor&lt;CartoonChildren, List&lt;CartoonChildren&gt;&gt;() {
+-   *    &commat;Override
+-   *    public List&lt;CartoonChildren&gt; extract(CartoonCharacter input) {
+-   *        return input.getChildren();
+-   *    }
+-   * }
+-   *
++   * 
+    * List&lt;CartoonCharacter&gt; parents = newArrayList(homer, fred);
+    * // check children
+-   * assertThat(parent).flatExtracting(childrenOf)
++   * assertThat(parent).flatExtracting(CartoonCharacter::getChildren)
+    *                   .containsOnly(bart, lisa, maggie, pebbles);</code></pre>
+-   *
+-   * The order of extracted values is consisted with both the order of the collection itself, as well as the extracted
++   * 
++   * The order of extracted values is consistent with both the order of the collection itself, as well as the extracted
+    * collections.
+-   *
+-   * @param extractor the object transforming input object to an Iterable of desired ones
++   * 
++   * @param extractor the object transforming input object to an {@code Iterable} of desired ones
+    * @return a new assertion object whose object under test is the list of values extracted
++   * @throws NullPointerException if one of the {@code Iterable}'s element is null.
+    */
+   public <V> ListAssert<V> flatExtracting(Extractor<? super ELEMENT, ? extends Collection<V>> extractor) {
+     List<V> result = newArrayList();
+@@ -911,6 +960,40 @@
+       result.addAll(iterable);
+     }
+ 
++    return new ListAssert<>(result);
++  }
++
++  /**
++   * Extract multiple values from each {@code Iterable}'s element according to the given {@code Extractor}s
++   * and concatenate/flatten the extracted values in a list that is used as the new object under test.
++   * <p>
++   * If extracted values were not flattened, instead of a simple list like (given 2 extractors) : 
++   * <pre>element1.value1, element1.value2, element2.value1, element2.value2, ...  </pre>
++   * we would get a list of list like : 
++   * <pre>list(element1.value1, element1.value2), list(element2.value1, element2.value2), ...  </pre>
++   * <p>
++   * Code example:
++   * <pre><code class='java'> // fellowshipOfTheRing is a List&lt;TolkienCharacter&gt;
++   * 
++   * // values are extracted in order and flattened : age1, name1, age2, name2, age3 ...  
++   * assertThat(fellowshipOfTheRing).flatExtracting(TolkienCharacter::getAge, 
++   *                                                TolkienCharacter::getName)
++   *                                .contains(33 ,"Frodo", 
++   *                                          1000, "Legolas",
++   *                                          87, "Aragorn");</code></pre>
++   * 
++   * The resulting extracted values list is ordered by {@code Iterable}'s element first and then extracted values, 
++   * this is why is in the example that age values come before names.
++   * 
++   * @param extractors all the extractors to apply on each actual {@code Iterable}'s elements
++   * @return a new assertion object whose object under test is a flattened list of all extracted values. 
++   */
++  @SafeVarargs
++  public final ListAssert<Object> flatExtracting(Extractor<? super ELEMENT, ? extends Object>... extractors) {
++    Stream<? extends ELEMENT> actualStream = stream(actual.spliterator(), false);
++    List<Object> result = actualStream.flatMap(element -> Stream.of(extractors)
++                                                                .map(extractor -> extractor.extract(element)))
++                                      .collect(Collectors.toList());
+     return new ListAssert<>(result);
+   }
+ 
+@@ -966,12 +1049,78 @@
+   }
+ 
+   /**
+-   * Extract the given properties/fields values from each {@code Iterable}'s element and
++   * Use the given {@link Function}s to extract the values from the {@link Iterable}'s elements into a new {@link Iterable}
++   * composed of {@link Tuple}s (a simple data structure containing the extracted values), this new {@link Iterable} becoming the
++   * object under test.
++   * <p>
++   * It allows you to test values from the {@link Iterable}'s elements instead of testing the elements themselves, which sometimes can be
++   * much less work!
++   * <p>
++   * The Tuple data corresponds to the extracted values from the Iterable's elements, for instance if you pass functions
++   * extracting "id", "name" and "email" values then each Tuple data will be composed of an id, a name and an email
++   * extracted from the element of the initial Iterable (the Tuple's data order is the same as the given functions
++   * order).
++   * <p>
++   * Let's take a look at an example to make things clearer :
++   * <pre><code class='java'> // Build a list of TolkienCharacter, a TolkienCharacter has a name, and age and a Race (a specific class)
++   * // they can be public field or properties, both can be extracted.
++   * List&lt;TolkienCharacter&gt; fellowshipOfTheRing = new ArrayList&lt;TolkienCharacter&gt;();
++   * 
++   * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Frodo&quot;, 33, HOBBIT));
++   * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Sam&quot;, 38, HOBBIT));
++   * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Gandalf&quot;, 2020, MAIA));
++   * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Legolas&quot;, 1000, ELF));
++   * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Pippin&quot;, 28, HOBBIT));
++   * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Gimli&quot;, 139, DWARF));
++   * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Aragorn&quot;, 87, MAN);
++   * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Boromir&quot;, 37, MAN));
++   * 
++   * // let's verify 'name', 'age' and Race of some TolkienCharacter in fellowshipOfTheRing :
++   * assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName,
++   *                                            character -> character.getAge(),
++   *                                            TolkienCharacter::getRace)
++   *                                .containsOnly(tuple(&quot;Frodo&quot;, 33, HOBBIT),
++   *                                              tuple(&quot;Sam&quot;, 38, HOBBIT),
++   *                                              tuple(&quot;Gandalf&quot;, 2020, MAIA),
++   *                                              tuple(&quot;Legolas&quot;, 1000, ELF),
++   *                                              tuple(&quot;Pippin&quot;, 28, HOBBIT),
++   *                                              tuple(&quot;Gimli&quot;, 139, DWARF),
++   *                                              tuple(&quot;Aragorn&quot;, 87, MAN),
++   *                                              tuple(&quot;Boromir&quot;, 37, MAN));</code></pre>
++   * You can use lambda expression or a method reference to extract the expected values.
++   * <p>
++   * Use {@link Tuple#tuple(Object...)} to initialize the expected values.
++   * <p>
++   * Note that the order of the extracted tuples list is consistent with the iteration order of the Iterable under test,
++   * for example if it's a {@link HashSet}, you won't be able to make any assumptions on the extracted tuples order.
++   * 
++   * @param extractors the extractor functions to extract a value from an element of the Iterable under test.
++   * @return a new assertion object whose object under test is the list of Tuples containing the extracted values.
++   */
++  @SafeVarargs
++  public final ListAssert<Tuple> extracting(Function<ELEMENT, ?>... extractors) {
++    // combine all extractors into one function
++    Function<ELEMENT, Tuple> tupleExtractor = objectToExtractValueFrom -> {
++      Tuple tuple = new Tuple();
++      for (Function<ELEMENT, ?> extractor : extractors) {
++        // extract value one by one
++        tuple.addData(extractor.apply(objectToExtractValueFrom));
++      }
++      return tuple;
++    };
++
++    List<Tuple> tuples = stream(actual.spliterator(), false).map(tupleExtractor)
++                                                            .collect(toList());
++    return new ListAssert<Tuple>(tuples);
++  }
++
++  /**
++   * Extract the given property/field values from each {@code Iterable}'s element and 
+    * flatten the extracted values in a list that is used as the new object under test.
+    * <p>
+-   * Given 2 properties, if the extracted values were not flattened, instead having a simple list like :
++   * Given 2 properties, if the extracted values were not flattened, instead having a simple list like : 
+    * <pre>element1.value1, element1.value2, element2.value1, element2.value2, ...  </pre>
+-   * ... we would get a list of list :
++   * ... we would get a list of list : 
+    * <pre>list(element1.value1, element1.value2), list(element2.value1, element2.value2), ...  </pre>
+    * <p>
+    * Code example:
+@@ -986,7 +1135,7 @@
+    * @param extractors all the extractors to apply on each actual {@code Iterable}'s elements
+    * @return a new assertion object whose object under test is a flattened list of all extracted values.
+    * @throws IllegalArgumentException if fieldOrPropertyNames vararg is null or empty
+-   * @since 2.5.0
++   * @since 2.5.0 / 3.5.0
+    */
+   public ListAssert<Object> flatExtracting(String... fieldOrPropertyNames) {
+     List<Object> extractedValues = newArrayList();
+@@ -1263,10 +1412,9 @@
+    * assertThat(fellowshipOfTheRing).filteredOn("race.name", "Man")
+    *                                .filteredOn("name", not("Boromir"))
+    *                                .containsOnly(aragorn);</code></pre>
+-   *
+-   * If you need more complex filter, use {@link #filteredOn(Condition)} and provide a {@link Condition} to specify the
+-   * filter to apply.
+-   *
++   * 
++   * If you need more complex filter, use {@link #filteredOn(Predicate)} or {@link #filteredOn(Condition)}.
++   * 
+    * @param propertyOrFieldName the name of the property or field to read
+    * @param expectedValue the value to compare element's property or field with
+    * @return a new assertion object with the filtered iterable under test
+@@ -1312,9 +1460,8 @@
+    * An {@link IntrospectionError} is thrown if the given propertyOrFieldName can't be found in one of the iterable
+    * elements.
+    * <p>
+-   * If you need more complex filter, use {@link #filteredOn(Condition)} and provide a {@link Condition} to specify the
+-   * filter to apply.
+-   *
++   * If you need more complex filter, use {@link #filteredOn(Predicate)} or {@link #filteredOn(Condition)}.
++   * 
+    * @param propertyOrFieldName the name of the property or field to read
+    * @return a new assertion object with the filtered iterable under test
+    * @throws IntrospectionError if the given propertyOrFieldName can't be found in one of the iterable elements.
+@@ -1381,10 +1528,9 @@
+    * assertThat(fellowshipOfTheRing).filteredOn("race.name", "Man")
+    *                                .filteredOn("name", not("Boromir"))
+    *                                .containsOnly(aragorn);</code></pre>
+-   *
+-   * If you need more complex filter, use {@link #filteredOn(Condition)} and provide a {@link Condition} to specify the
+-   * filter to apply.
+-   *
++   * 
++   * If you need more complex filter, use {@link #filteredOn(Predicate)} or {@link #filteredOn(Condition)}.
++   * 
+    * @param propertyOrFieldName the name of the property or field to read
+    * @param filterOperator the filter operator to apply
+    * @return a new assertion object with the filtered iterable under test
+@@ -1401,6 +1547,8 @@
+ 
+   /**
+    * Filter the iterable under test keeping only elements matching the given {@link Condition}.
++   * <p>
++   * If you prefer {@link Predicate} over {@link Condition}, use {@link #filteredOn(Predicate)}.
+    * <p>
+    * Example : check old employees whose age > 100:
+    * <pre><code class='java'> Employee yoda   = new Employee(1L, new Name("Yoda"), 800);
+@@ -1619,6 +1767,39 @@
+     return text.endsWith(ASSERT) ? text.substring(0, text.length() - ASSERT.length()) : text;
+   }
+ 
++  /**
++   * Filter the iterable under test keeping only elements matching the given {@link Predicate}.
++   * <p>
++   * Example : check old employees whose age > 100:
++   * 
++   * <pre><code class='java'> Employee yoda   = new Employee(1L, new Name("Yoda"), 800);
++   * Employee obiwan = new Employee(2L, new Name("Obiwan"), 800);
++   * Employee luke   = new Employee(3L, new Name("Luke", "Skywalker"), 26);
++   * 
++   * List&lt;Employee&gt; employees = newArrayList(yoda, luke, obiwan);
++   * 
++   * assertThat(employees).filteredOn(employee -> employee.getAge() > 100)
++   *                      .containsOnly(yoda, obiwan);</code></pre>
++   * 
++   * @param predicate the filter predicate
++   * @return a new assertion object with the filtered iterable under test
++   * @throws IllegalArgumentException if the given predicate is {@code null}.
++   */
++  @SuppressWarnings("unchecked")
++  public SELF filteredOn(Predicate<? super ELEMENT> predicate) {
++    if (predicate == null) throw new IllegalArgumentException("The filter predicate should not be null");
++    return (SELF) new ListAssert<>(stream(actual.spliterator(), false).filter(predicate).collect(toList()));
++  }
++
++  /**
++   * {@inheritDoc}
++   */
++  @Override
++  public SELF allMatch(Predicate<? super ELEMENT> predicate) {
++    iterables.assertAllMatch(info, actual, predicate);
++    return myself;
++  }
++
+   // override methods to avoid compilation error when chaining an AbstractAssert method with a AbstractIterableAssert
+   // one on raw types.
+ 
+@@ -1790,22 +1971,22 @@
+   /**
+    * Return an {@code Assert} object that allows to perform assertions on the size of the {@link Iterable} under test.
+    * <p>
+-   * Once this method is called, the object under test is no more the initial {@link Iterable} but its size,
+-   * to perform assertions on the initial {@link Iterable}, call {@link AbstractIterableSizeAssert#returnToIterable()}.
++   * Once this method is called, the object under test is no more the initial {@link Iterable} but its size, 
++   * to perform assertions on the initial {@link Iterable}, call {@link AbstractIterableSizeAssert#returnToIterable()}. 
+    * <p>
+    * Example:
+    * <pre><code class='java'> Iterable&lt;Ring&gt; elvesRings = newArrayList(vilya, nenya, narya);
+-   *
++   * 
+    * // assertion will pass:
+-   * assertThat(elvesRings).size().isGreaterThan(1)
+-   *                              .isLessThanOrEqualTo(3)
+-   *                       .returnToIterable().contains(narya)
++   * assertThat(elvesRings).size().isGreaterThan(1)                
++   *                              .isLessThanOrEqualTo(3)          
++   *                       .returnToIterable().contains(narya)       
+    *                                          .doesNotContain(oneRing);
+-   *
++   * 
+    * // assertion will fail:
+    * assertThat(elvesRings).size().isGreaterThan(3);</code></pre>
+-   *
+-   * @return AbstractIterableSizeAssert built with the {@code Iterable}'s size.
++   *   
++   * @return AbstractIterableSizeAssert built with the {@code Iterable}'s size. 
+    * @throws NullPointerException if the given {@code Iterable} is {@code null}.
+    */
+   @SuppressWarnings({ "rawtypes", "unchecked" })
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -25,9 +25,11 @@
+ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.Comparator;
++import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.List;
++import java.util.Map;
+ 
+ import org.assertj.core.api.filter.FilterOperator;
+ import org.assertj.core.api.filter.Filters;
+@@ -85,6 +87,9 @@
+ 
+   private static final String ASSERT = "Assert";
+ 
++  private Map<String, Comparator<?>> comparatorsForElementPropertyOrFieldNames = new HashMap<>();
++  private Map<Class<?>, Comparator<?>> comparatorsForElementPropertyOrFieldTypes = new HashMap<>();
++
+   protected Iterables iterables = Iterables.instance();
+ 
+   public AbstractIterableAssert(ACTUAL actual, Class<?> selfType) {
+@@ -1021,6 +1026,140 @@
+   }
+ 
+   /**
++   * Allows to set a comparator to compare properties or fields of elements with the given names.
++   * A typical usage is for comparing fields of numeric type at a given precision.
++   * <p>
++   * To be used, comparators need to be specified by this method <b>before</b> calling any of:
++   * <ul>
++   * <li>{@link #usingFieldByFieldElementComparator}</li>
++   * <li>{@link #usingElementComparatorOnFields}</li>
++   * <li>{@link #usingElementComparatorIgnoringFields}</li>
++   * <li>{@link #usingRecursiveFieldByFieldElementComparator}</li>
++   * </ul>
++   * <p>
++   * Comparators specified by this method have precedence over comparators specified by
++   * {@link #usingComparatorForElementFieldsWithType(Comparator, Class) usingComparatorForElementFieldsWithType}.
++   * <p>
++   * Example:
++   * <p>
++   * <pre><code class='java'> public class TolkienCharacter {
++   *   private String name;
++   *   private double height;
++   *   // constructor omitted
++   * }
++   *
++   * TolkienCharacter frodo = new TolkienCharacter(&quot;Frodo&quot;, 1.2);
++   * TolkienCharacter tallerFrodo = new TolkienCharacter(&quot;Frodo&quot;, 1.3);
++   * TolkienCharacter reallyTallFrodo = new TolkienCharacter(&quot;Frodo&quot;, 1.9);
++   *
++   * Comparator&lt;Double&gt; closeEnough = new Comparator&lt;Double&gt;() {
++   *   double precision = 0.5;
++   *   public int compare(Double d1, Double d2) {
++   *     return Math.abs(d1 - d2) <= precision ? 0 : 1;
++   *   }
++   * };
++   *
++   * // assertions will pass
++   * assertThat(asList(frodo)).usingComparatorForElementFieldsWithNames(closeEnough, &quot;height&quot;)
++   *                          .usingFieldByFieldElementComparator()
++   *                          .contains(tallerFrodo);
++   *
++   * assertThat(asList(frodo)).usingComparatorForElementFieldsWithNames(closeEnough, &quot;height&quot;)
++   *                          .usingElementComparatorOnFields(&quot;height&quot;)
++   *                          .contains(tallerFrodo);
++   *
++   * assertThat(asList(frodo)).usingComparatorForElementFieldsWithNames(closeEnough, &quot;height&quot;)
++   *                          .usingElementComparatorIgnoringFields(&quot;name&quot;)
++   *                          .contains(tallerFrodo);
++   *
++   * assertThat(asList(frodo)).usingComparatorForElementFieldsWithNames(closeEnough, &quot;height&quot;)
++   *                          .usingRecursiveFieldByFieldElementComparator()
++   *                          .contains(tallerFrodo);
++   *
++   * // assertion will fail
++   * assertThat(asList(frodo)).usingComparatorForElementFieldsWithNames(closeEnough, &quot;height&quot;)
++   *                          .usingFieldByFieldElementComparator()
++   *                          .containsExactly(reallyTallFrodo);</code></pre>
++   *
++   * @param comparator the {@link java.util.Comparator} to use
++   * @param elementPropertyOrFieldNames the names of the properties and/or fields of the elements the comparator should be used for
++   * @return {@code this} assertions object
++   * @since 2.5.0 / 3.5.0
++   */
++  public <T> SELF usingComparatorForElementFieldsWithNames(Comparator<T> comparator,
++                                                           String... elementPropertyOrFieldNames) {
++    for (String elementPropertyOrField : elementPropertyOrFieldNames) {
++      comparatorsForElementPropertyOrFieldNames.put(elementPropertyOrField, comparator);
++    }
++    return myself;
++  }
++
++  /**
++   * Allows to set a specific comparator to compare properties or fields of elements with the given type.
++   * A typical usage is for comparing fields of numeric type at a given precision.
++   * <p>
++   * To be used, comparators need to be specified by this method <b>before</b> calling any of:
++   * <ul>
++   * <li>{@link #usingFieldByFieldElementComparator}</li>
++   * <li>{@link #usingElementComparatorOnFields}</li>
++   * <li>{@link #usingElementComparatorIgnoringFields}</li>
++   * <li>{@link #usingRecursiveFieldByFieldElementComparator}</li>
++   * </ul>
++   * <p>
++   * Comparators specified by {@link #usingComparatorForElementFieldsWithNames(Comparator, String...) usingComparatorForElementFieldsWithNames}
++   * have precedence over comparators specified by this method.
++   * <p>
++   * Example:
++   * <pre><code class='java'> public class TolkienCharacter {
++   *   private String name;
++   *   private double height;
++   *   // constructor omitted
++   * }
++   * TolkienCharacter frodo = new TolkienCharacter(&quot;Frodo&quot;, 1.2);
++   * TolkienCharacter tallerFrodo = new TolkienCharacter(&quot;Frodo&quot;, 1.3);
++   * TolkienCharacter reallyTallFrodo = new TolkienCharacter(&quot;Frodo&quot;, 1.9);
++   *
++   * Comparator&lt;Double&gt; closeEnough = new Comparator&lt;Double&gt;() {
++   *   double precision = 0.5;
++   *   public int compare(Double d1, Double d2) {
++   *     return Math.abs(d1 - d2) <= precision ? 0 : 1;
++   *   }
++   * };
++   *
++   * // assertions will pass
++   * assertThat(Arrays.asList(frodo)).usingComparatorForElementFieldsWithType(closeEnough, Double.class)
++   *                                 .usingFieldByFieldElementComparator()
++   *                                 .contains(tallerFrodo);
++   *
++   * assertThat(Arrays.asList(frodo)).usingComparatorForElementFieldsWithType(closeEnough, Double.class)
++   *                                 .usingElementComparatorOnFields(&quot;height&quot;)
++   *                                 .contains(tallerFrodo);
++   *
++   * assertThat(Arrays.asList(frodo)).usingComparatorForElementFieldsWithType(closeEnough, Double.class)
++   *                                 .usingElementComparatorIgnoringFields(&quot;name&quot;)
++   *                                 .contains(tallerFrodo);
++   *
++   * assertThat(Arrays.asList(frodo)).usingComparatorForElementFieldsWithType(closeEnough, Double.class)
++   *                                 .usingRecursiveFieldByFieldElementComparator()
++   *                                 .contains(tallerFrodo);
++   *
++   * // assertion will fail
++   * assertThat(Arrays.asList(frodo)).usingComparatorForElementFieldsWithType(closeEnough, Double.class)
++   *                                 .usingFieldByFieldElementComparator()
++   *                                 .contains(reallyTallFrodo);</code></pre>
++   * </p>
++   *
++   * @param comparator the {@link java.util.Comparator} to use
++   * @param type the {@link java.lang.Class} of the type of the element fields the comparator should be used for
++   * @return {@code this} assertions object
++   * @since 2.5.0 / 3.5.0
++   */
++  public <T> SELF usingComparatorForElementFieldsWithType(Comparator<T> comparator, Class<T> type) {
++    comparatorsForElementPropertyOrFieldTypes.put(type, comparator);
++    return myself;
++  }
++
++  /**
+    * Use field/property by field/property comparison (including inherited fields/properties) instead of relying on
+    * actual type A <code>equals</code> method to compare group elements for incoming assertion checks. Private fields
+    * are included but this can be disabled using {@link Assertions#setAllowExtractingPrivateFields(boolean)}.
+@@ -1029,7 +1168,11 @@
+    * <p>
+    * Note that the comparison is <b>not</b> recursive, if one of the fields/properties is an Object, it will be compared
+    * to the other field/property using its <code>equals</code> method.
+-   * </p>
++   * <p>
++   * You can specify a custom comparator per name or type of element field with
++   * {@link #usingComparatorForElementFieldsWithNames(Comparator, String...)}
++   * and {@link #usingComparatorForElementFieldsWithType(Comparator, Class)}.
++   * <p>
+    * Example:
+    * <pre><code class='java'> TolkienCharacter frodo = new TolkienCharacter("Frodo", 33, HOBBIT);
+    * TolkienCharacter frodoClone = new TolkienCharacter("Frodo", 33, HOBBIT);
+@@ -1043,7 +1186,8 @@
+    * @return {@code this} assertion object.
+    */
+   public SELF usingFieldByFieldElementComparator() {
+-    return usingElementComparator(new FieldByFieldComparator());
++    return usingElementComparator(new FieldByFieldComparator(comparatorsForElementPropertyOrFieldNames,
++                                                             comparatorsForElementPropertyOrFieldTypes));
+   }
+ 
+   /**
+@@ -1052,12 +1196,17 @@
+    * assertion checks. This can be useful if actual's {@code equals} implementation does not suit you.
+    * <p>
+    * The recursive property/field comparison is <b>not</b> applied on fields having a custom {@code equals}
+-   * implementation, i.e. the overriden {@code equals} method will be used instead of a field/property by field/property comparison.
+-   * <p>
+-   * The recursive comparison handles cycle. {@code floats} are compared with a precision of 1.0E-6 and {@code doubles} with 1.0E-15.
+-   * <p>
+-   * The objects to compare can be of different types but must have the same properties/fields. For example if actual object has a
+-   * {@code name} String field, the other object must also have one.
++   * implementation, i.e. the overriden {@code equals} method will be used instead of a field/property by field/property
++   * comparison.
++   * <p>
++   * The recursive comparison handles cycles.
++   * <p>
++   * You can specify a custom comparator per (nested) name or type of element field with
++   * {@link #usingComparatorForElementFieldsWithNames(Comparator, String...) usingComparatorForElementFieldsWithNames}
++   * and {@link #usingComparatorForElementFieldsWithType(Comparator, Class) usingComparatorForElementFieldsWithType}.
++   * <p>
++   * The objects to compare can be of different types but must have the same properties/fields. For example if actual
++   * object has a {@code name} String field, the other object must also have one.
+    * <p>
+    * If an object has a field and a property with the same name, the property value will be used over the field.
+    * <p>
+@@ -1086,7 +1235,8 @@
+    * @since 2.5.0 / 3.5.0
+    */
+   public SELF usingRecursiveFieldByFieldElementComparator() {
+-    return usingElementComparator(new RecursiveFieldByFieldComparator());
++    return usingElementComparator(new RecursiveFieldByFieldComparator(comparatorsForElementPropertyOrFieldNames,
++                                                                      comparatorsForElementPropertyOrFieldTypes));
+   }
+ 
+   /**
+@@ -1096,6 +1246,10 @@
+    * {@link Assertions#setAllowExtractingPrivateFields(boolean)}.
+    * <p>
+    * This can be handy if <code>equals</code> method of the objects to compare does not suit you.
++   * <p>
++   * You can specify a custom comparator per name or type of element field with
++   * {@link #usingComparatorForElementFieldsWithNames(Comparator, String...)}
++   * and {@link #usingComparatorForElementFieldsWithType(Comparator, Class)}.
+    * <p>
+    * Note that the comparison is <b>not</b> recursive, if one of the fields/properties is an Object, it will be compared
+    * to the other field/property using its <code>equals</code> method.
+@@ -1113,7 +1267,8 @@
+    * @return {@code this} assertion object.
+    */
+   public SELF usingElementComparatorOnFields(String... fields) {
+-    return usingElementComparator(new OnFieldsComparator(fields));
++    return usingElementComparator(new OnFieldsComparator(comparatorsForElementPropertyOrFieldNames,
++                                                         comparatorsForElementPropertyOrFieldTypes, fields));
+   }
+ 
+   protected SELF usingComparisonStrategy(ComparisonStrategy comparisonStrategy) {
+@@ -1128,6 +1283,10 @@
+    * {@link Assertions#setAllowExtractingPrivateFields(boolean)}.
+    * <p>
+    * This can be handy if <code>equals</code> method of the objects to compare does not suit you.
++   * <p>
++   * You can specify a custom comparator per name or type of element field with
++   * {@link #usingComparatorForElementFieldsWithNames(Comparator, String...)}
++   * and {@link #usingComparatorForElementFieldsWithType(Comparator, Class)}.
+    * <p>
+    * Note that the comparison is <b>not</b> recursive, if one of the fields/properties is an Object, it will be compared
+    * to the other field/property using its <code>equals</code> method.
+@@ -1145,7 +1304,8 @@
+    * @return {@code this} assertion object.
+    */
+   public SELF usingElementComparatorIgnoringFields(String... fields) {
+-    return usingElementComparator(new IgnoringFieldsComparator(fields));
++    return usingElementComparator(new IgnoringFieldsComparator(comparatorsForElementPropertyOrFieldNames,
++                                                               comparatorsForElementPropertyOrFieldTypes, fields));
+   }
+ 
+   /**
+@@ -1608,7 +1768,7 @@
+   protected abstract ELEMENT_ASSERT toAssert(ELEMENT value, String description);
+ 
+   protected String navigationDescription(String propertyName) {
+-    String text = this.descriptionText();
++    String text = descriptionText();
+     if (Strings.isNullOrEmpty(text)) {
+       text = removeAssert(this.getClass().getSimpleName());
+     }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -31,12 +31,12 @@
+ import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.List;
++import java.util.Map;
+ import java.util.function.Consumer;
+ import java.util.function.Function;
+ import java.util.function.Predicate;
+ import java.util.stream.Collectors;
+ import java.util.stream.Stream;
+-import java.util.Map;
+ 
+ import org.assertj.core.api.filter.FilterOperator;
+ import org.assertj.core.api.filter.Filters;
+@@ -138,54 +138,54 @@
+   }
+ 
+   /**
+-   * Verifies that the unique element of the {@link Iterable} satifies the given assertions expressed as a {@link Consumer}, 
+-   * if it does not, only the first error is reported, use {@link SoftAssertions} to get all the errors. 
++   * Verifies that the unique element of the {@link Iterable} satifies the given assertions expressed as a {@link Consumer},
++   * if it does not, only the first error is reported, use {@link SoftAssertions} to get all the errors.
+    * <p>
+    * Example:
+-   * <pre><code class='java'> List&lt;Jedi&gt; jedis = asList(new Jedi("Yoda", "red")); 
+-   *     
++   * <pre><code class='java'> List&lt;Jedi&gt; jedis = asList(new Jedi("Yoda", "red"));
++   *
+    * // assertions will pass
+-   * 
++   *
+    * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> assertThat(yoda.getName()).startsWith("Y"));
+-   * 
++   *
+    * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> {
+    *   assertThat(yoda.getName()).isEqualTo("Yoda");
+    *   assertThat(yoda.getLightSaberColor()).isEqualTo("red");
+    * });
+-   * 
++   *
+    * // assertions will fail
+-   * 
++   *
+    * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> assertThat(yoda.getName()).startsWith("Vad"));
+-   * 
+-   * // fail as one the assertions is not satisfied  
++   *
++   * // fail as one the assertions is not satisfied
+    * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> {
+    *   assertThat(yoda.getName()).isEqualTo("Yoda");
+    *   assertThat(yoda.getLightSaberColor()).isEqualTo("purple");
+    * });
+-   * 
+-   * // fail but only report the first error 
++   *
++   * // fail but only report the first error
+    * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> {
+    *   assertThat(yoda.getName()).isEqualTo("Luke");
+    *   assertThat(yoda.getLightSaberColor()).isEqualTo("green");
+    * });
+-   * 
+-   * // fail and reports the errors thanks to Soft assertions 
++   *
++   * // fail and reports the errors thanks to Soft assertions
+    * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> {
+    *   SoftAssertions softly = new SoftAssertions();
+    *   softly.assertThat(yoda.getName()).isEqualTo("Luke");
+    *   softly.assertThat(yoda.getLightSaberColor()).isEqualTo("green");
+    *   softly.assertAll();
+    * });
+-   * 
++   *
+    * // even if the assertion is correct, there are too many jedis !
+    * jedis.add(new Jedi("Luke", "green"));
+    * assertThat(jedis).hasOnlyOneElementSatisfying(yoda -> assertThat(yoda.getName()).startsWith("Yo"));</code></pre>
+-   * 
++   *
+    * @return {@code this} assertion object.
+    * @param elementAssertions the assertions to perform on the unique element.
+    * @throws AssertionError if the {@link Iterable} does not have a unique element.
+    * @throws AssertionError if the {@link Iterable}'s unique element does not satifies the given assertions.
+-   * 
++   *
+    * @since 3.5.0
+    */
+   public void hasOnlyOneElementSatisfying(Consumer<ELEMENT> elementAssertions) {
+@@ -912,10 +912,10 @@
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Gimli&quot;, 139, DWARF));
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Aragorn&quot;, 87, MAN);
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Boromir&quot;, 37, MAN));
+-   * 
++   *
+    * // fellowship has hobbitses, right, my presioussss?
+    * assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getRace).contains(HOBBIT);</code></pre>
+-   * 
++   *
+    * Note that the order of extracted property/field values is consistent with the iteration order of the Iterable under
+    * test, for example if it's a {@link HashSet}, you won't be able to make any assumptions on the extracted values
+    * order.
+@@ -944,15 +944,15 @@
+    * CartoonCharacter pebbles = new CartoonCharacter("Pebbles Flintstone");
+    * CartoonCharacter fred = new CartoonCharacter("Fred Flintstone");
+    * fred.getChildren().add(pebbles);
+-   * 
++   *
+    * List&lt;CartoonCharacter&gt; parents = newArrayList(homer, fred);
+    * // check children
+    * assertThat(parent).flatExtracting(CartoonCharacter::getChildren)
+    *                   .containsOnly(bart, lisa, maggie, pebbles);</code></pre>
+-   * 
++   *
+    * The order of extracted values is consistent with both the order of the collection itself, as well as the extracted
+    * collections.
+-   * 
++   *
+    * @param extractor the object transforming input object to an {@code Iterable} of desired ones
+    * @return a new assertion object whose object under test is the list of values extracted
+    * @throws NullPointerException if one of the {@code Iterable}'s element is null.
+@@ -972,26 +972,26 @@
+    * Extract multiple values from each {@code Iterable}'s element according to the given {@code Extractor}s
+    * and concatenate/flatten the extracted values in a list that is used as the new object under test.
+    * <p>
+-   * If extracted values were not flattened, instead of a simple list like (given 2 extractors) : 
++   * If extracted values were not flattened, instead of a simple list like (given 2 extractors) :
+    * <pre>element1.value1, element1.value2, element2.value1, element2.value2, ...  </pre>
+-   * we would get a list of list like : 
++   * we would get a list of list like :
+    * <pre>list(element1.value1, element1.value2), list(element2.value1, element2.value2), ...  </pre>
+    * <p>
+    * Code example:
+    * <pre><code class='java'> // fellowshipOfTheRing is a List&lt;TolkienCharacter&gt;
+-   * 
+-   * // values are extracted in order and flattened : age1, name1, age2, name2, age3 ...  
+-   * assertThat(fellowshipOfTheRing).flatExtracting(TolkienCharacter::getAge, 
++   *
++   * // values are extracted in order and flattened : age1, name1, age2, name2, age3 ...
++   * assertThat(fellowshipOfTheRing).flatExtracting(TolkienCharacter::getAge,
+    *                                                TolkienCharacter::getName)
+-   *                                .contains(33 ,"Frodo", 
++   *                                .contains(33 ,"Frodo",
+    *                                          1000, "Legolas",
+    *                                          87, "Aragorn");</code></pre>
+-   * 
+-   * The resulting extracted values list is ordered by {@code Iterable}'s element first and then extracted values, 
++   *
++   * The resulting extracted values list is ordered by {@code Iterable}'s element first and then extracted values,
+    * this is why is in the example that age values come before names.
+-   * 
++   *
+    * @param extractors all the extractors to apply on each actual {@code Iterable}'s elements
+-   * @return a new assertion object whose object under test is a flattened list of all extracted values. 
++   * @return a new assertion object whose object under test is a flattened list of all extracted values.
+    */
+   @SafeVarargs
+   public final ListAssert<Object> flatExtracting(Extractor<? super ELEMENT, ? extends Object>... extractors) {
+@@ -1070,7 +1070,7 @@
+    * <pre><code class='java'> // Build a list of TolkienCharacter, a TolkienCharacter has a name, and age and a Race (a specific class)
+    * // they can be public field or properties, both can be extracted.
+    * List&lt;TolkienCharacter&gt; fellowshipOfTheRing = new ArrayList&lt;TolkienCharacter&gt;();
+-   * 
++   *
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Frodo&quot;, 33, HOBBIT));
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Sam&quot;, 38, HOBBIT));
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Gandalf&quot;, 2020, MAIA));
+@@ -1079,7 +1079,7 @@
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Gimli&quot;, 139, DWARF));
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Aragorn&quot;, 87, MAN);
+    * fellowshipOfTheRing.add(new TolkienCharacter(&quot;Boromir&quot;, 37, MAN));
+-   * 
++   *
+    * // let's verify 'name', 'age' and Race of some TolkienCharacter in fellowshipOfTheRing :
+    * assertThat(fellowshipOfTheRing).extracting(TolkienCharacter::getName,
+    *                                            character -> character.getAge(),
+@@ -1098,7 +1098,7 @@
+    * <p>
+    * Note that the order of the extracted tuples list is consistent with the iteration order of the Iterable under test,
+    * for example if it's a {@link HashSet}, you won't be able to make any assumptions on the extracted tuples order.
+-   * 
++   *
+    * @param extractors the extractor functions to extract a value from an element of the Iterable under test.
+    * @return a new assertion object whose object under test is the list of Tuples containing the extracted values.
+    */
+@@ -1120,12 +1120,12 @@
+   }
+ 
+   /**
+-   * Extract the given property/field values from each {@code Iterable}'s element and 
++   * Extract the given property/field values from each {@code Iterable}'s element and
+    * flatten the extracted values in a list that is used as the new object under test.
+    * <p>
+-   * Given 2 properties, if the extracted values were not flattened, instead having a simple list like : 
++   * Given 2 properties, if the extracted values were not flattened, instead having a simple list like :
+    * <pre>element1.value1, element1.value2, element2.value1, element2.value2, ...  </pre>
+-   * ... we would get a list of list : 
++   * ... we would get a list of list :
+    * <pre>list(element1.value1, element1.value2), list(element2.value1, element2.value2), ...  </pre>
+    * <p>
+    * Code example:
+@@ -1572,9 +1572,9 @@
+    * assertThat(fellowshipOfTheRing).filteredOn("race.name", "Man")
+    *                                .filteredOn("name", not("Boromir"))
+    *                                .containsOnly(aragorn);</code></pre>
+-   * 
++   *
+    * If you need more complex filter, use {@link #filteredOn(Predicate)} or {@link #filteredOn(Condition)}.
+-   * 
++   *
+    * @param propertyOrFieldName the name of the property or field to read
+    * @param expectedValue the value to compare element's property or field with
+    * @return a new assertion object with the filtered iterable under test
+@@ -1621,7 +1621,7 @@
+    * elements.
+    * <p>
+    * If you need more complex filter, use {@link #filteredOn(Predicate)} or {@link #filteredOn(Condition)}.
+-   * 
++   *
+    * @param propertyOrFieldName the name of the property or field to read
+    * @return a new assertion object with the filtered iterable under test
+    * @throws IntrospectionError if the given propertyOrFieldName can't be found in one of the iterable elements.
+@@ -1688,9 +1688,9 @@
+    * assertThat(fellowshipOfTheRing).filteredOn("race.name", "Man")
+    *                                .filteredOn("name", not("Boromir"))
+    *                                .containsOnly(aragorn);</code></pre>
+-   * 
++   *
+    * If you need more complex filter, use {@link #filteredOn(Predicate)} or {@link #filteredOn(Condition)}.
+-   * 
++   *
+    * @param propertyOrFieldName the name of the property or field to read
+    * @param filterOperator the filter operator to apply
+    * @return a new assertion object with the filtered iterable under test
+@@ -1931,16 +1931,16 @@
+    * Filter the iterable under test keeping only elements matching the given {@link Predicate}.
+    * <p>
+    * Example : check old employees whose age > 100:
+-   * 
++   *
+    * <pre><code class='java'> Employee yoda   = new Employee(1L, new Name("Yoda"), 800);
+    * Employee obiwan = new Employee(2L, new Name("Obiwan"), 800);
+    * Employee luke   = new Employee(3L, new Name("Luke", "Skywalker"), 26);
+-   * 
++   *
+    * List&lt;Employee&gt; employees = newArrayList(yoda, luke, obiwan);
+-   * 
++   *
+    * assertThat(employees).filteredOn(employee -> employee.getAge() > 100)
+    *                      .containsOnly(yoda, obiwan);</code></pre>
+-   * 
++   *
+    * @param predicate the filter predicate
+    * @return a new assertion object with the filtered iterable under test
+    * @throws IllegalArgumentException if the given predicate is {@code null}.
+@@ -2131,22 +2131,22 @@
+   /**
+    * Return an {@code Assert} object that allows to perform assertions on the size of the {@link Iterable} under test.
+    * <p>
+-   * Once this method is called, the object under test is no more the initial {@link Iterable} but its size, 
+-   * to perform assertions on the initial {@link Iterable}, call {@link AbstractIterableSizeAssert#returnToIterable()}. 
++   * Once this method is called, the object under test is no more the initial {@link Iterable} but its size,
++   * to perform assertions on the initial {@link Iterable}, call {@link AbstractIterableSizeAssert#returnToIterable()}.
+    * <p>
+    * Example:
+    * <pre><code class='java'> Iterable&lt;Ring&gt; elvesRings = newArrayList(vilya, nenya, narya);
+-   * 
++   *
+    * // assertion will pass:
+-   * assertThat(elvesRings).size().isGreaterThan(1)                
+-   *                              .isLessThanOrEqualTo(3)          
+-   *                       .returnToIterable().contains(narya)       
++   * assertThat(elvesRings).size().isGreaterThan(1)
++   *                              .isLessThanOrEqualTo(3)
++   *                       .returnToIterable().contains(narya)
+    *                                          .doesNotContain(oneRing);
+-   * 
++   *
+    * // assertion will fail:
+    * assertThat(elvesRings).size().isGreaterThan(3);</code></pre>
+-   *   
+-   * @return AbstractIterableSizeAssert built with the {@code Iterable}'s size. 
++   *
++   * @return AbstractIterableSizeAssert built with the {@code Iterable}'s size.
+    * @throws NullPointerException if the given {@code Iterable} is {@code null}.
+    */
+   @SuppressWarnings({ "rawtypes", "unchecked" })
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/13: src/test/java/org/assertj/core/api/objectarray/ObjectArrayAssert_usingRecursiveFieldByFieldElementComparator_Test.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -14,7 +14,6 @@
+ 
+ import static java.lang.String.format;
+ import static org.assertj.core.api.Assertions.assertThat;
+-import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
+ 
+ import org.assertj.core.api.ObjectArrayAssert;
+ import org.assertj.core.api.ObjectArrayAssertBaseTest;
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -14,7 +14,11 @@
+ 
+ import static java.lang.String.format;
+ import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.test.AlwaysEqualStringComparator.ALWAY_EQUALS;
+ import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
++import static org.assertj.core.util.Arrays.array;
++
++import java.util.Comparator;
+ 
+ import org.assertj.core.api.ObjectArrayAssert;
+ import org.assertj.core.api.ObjectArrayAssertBaseTest;
+@@ -47,22 +51,22 @@
+ 
+   @Test
+   public void successful_isEqualTo_assertion_using_recursive_field_by_field_element_comparator() {
+-    Foo [] array1 = { new Foo("id", new Bar(1)) };
+-    Foo [] array2 = { new Foo("id", new Bar(1)) };
++    Foo[] array1 = { new Foo("id", new Bar(1)) };
++    Foo[] array2 = { new Foo("id", new Bar(1)) };
+     assertThat(array1).usingRecursiveFieldByFieldElementComparator().isEqualTo(array2);
+   }
+ 
+   @Test
+   public void successful_isIn_assertion_using_recursive_field_by_field_element_comparator() {
+-    Foo [] array1 = { new Foo("id", new Bar(1)) };
+-    Foo [] array2 = { new Foo("id", new Bar(1)) };
+-    assertThat(array1).usingRecursiveFieldByFieldElementComparator().isIn(new Object[] {(array2)});
++    Foo[] array1 = { new Foo("id", new Bar(1)) };
++    Foo[] array2 = { new Foo("id", new Bar(1)) };
++    assertThat(array1).usingRecursiveFieldByFieldElementComparator().isIn(new Object[] { (array2) });
+   }
+ 
+   @Test
+   public void failed_isEqualTo_assertion_using_recursive_field_by_field_element_comparator() {
+-    Foo [] array1 = { new Foo("id", new Bar(1)) };
+-    Foo [] array2 = { new Foo("id", new Bar(2)) };
++    Foo[] array1 = { new Foo("id", new Bar(1)) };
++    Foo[] array2 = { new Foo("id", new Bar(2)) };
+     try {
+       assertThat(array1).usingRecursiveFieldByFieldElementComparator().isEqualTo(array2);
+     } catch (AssertionError e) {
+@@ -95,6 +99,48 @@
+     failBecauseExpectedAssertionErrorWasNotThrown();
+   }
+ 
++  @Test
++  public void should_be_able_to_use_a_comparator_for_specified_fields_of_elements_when_using_recursive_field_by_field_element_comparator() {
++    Foo actual = new Foo("1", new Bar(1));
++    Foo other = new Foo("1", new Bar(2));
++    final class AlwaysEqualIntegerComparator implements Comparator<Integer> {
++      @Override
++      public int compare(Integer o1, Integer o2) {
++        return 0;
++      }
++    }
++
++    assertThat(array(actual)).usingComparatorForElementFieldsWithNames(new AlwaysEqualIntegerComparator(), "bar.id")
++                             .usingRecursiveFieldByFieldElementComparator()
++                             .contains(other);
++  }
++
++  @Test
++  public void comparators_for_element_field_names_should_have_precedence_over_comparators_for_element_field_types_when_using_recursive_field_by_field_element_comparator() {
++    Comparator<String> comparator = new Comparator<String>() {
++      public int compare(String o1, String o2) {
++        return o1.compareTo(o2);
++      }
++    };
++    Foo actual = new Foo("1", new Bar(1));
++    Foo other = new Foo("2", new Bar(1));
++
++    assertThat(array(actual)).usingComparatorForElementFieldsWithNames(ALWAY_EQUALS, "id")
++                             .usingComparatorForElementFieldsWithType(comparator, String.class)
++                             .usingRecursiveFieldByFieldElementComparator()
++                             .contains(other);
++  }
++
++  @Test
++  public void should_be_able_to_use_a_comparator_for_element_fields_with_specified_type_when_using_recursive_field_by_field_element_comparator() {
++    Foo actual = new Foo("1", new Bar(1));
++    Foo other = new Foo("2", new Bar(1));
++
++    assertThat(array(actual)).usingComparatorForElementFieldsWithType(ALWAY_EQUALS, String.class)
++                             .usingRecursiveFieldByFieldElementComparator()
++                             .contains(other);
++  }
++
+   public static class Foo {
+     public String id;
+     public Bar bar;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -15,7 +15,9 @@
+ import static java.lang.String.format;
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.test.AlwaysEqualStringComparator.ALWAY_EQUALS;
++import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
+ import static org.assertj.core.util.Arrays.array;
++
+ import java.util.Comparator;
+ 
+ import org.assertj.core.api.ObjectArrayAssert;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/13: src/test/java/org/assertj/core/api/iterable/IterableAssert_usingFieldByFieldElementComparator_Test.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -16,7 +16,6 @@
+ import static java.util.Arrays.asList;
+ import static java.util.Collections.singletonList;
+ import static org.assertj.core.api.Assertions.assertThat;
+-import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
+ import static org.assertj.core.util.Lists.newArrayList;
+ 
+ import java.util.List;
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -16,9 +16,11 @@
+ import static java.util.Arrays.asList;
+ import static java.util.Collections.singletonList;
+ import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.test.AlwaysEqualStringComparator.ALWAY_EQUALS;
+ import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
+ import static org.assertj.core.util.Lists.newArrayList;
+ 
++import java.util.Comparator;
+ import java.util.List;
+ import java.util.Objects;
+ 
+@@ -27,6 +29,7 @@
+ import org.assertj.core.internal.ComparatorBasedComparisonStrategy;
+ import org.assertj.core.internal.IterableElementComparisonStrategy;
+ import org.assertj.core.internal.Iterables;
++import org.assertj.core.test.Jedi;
+ import org.junit.Before;
+ import org.junit.Test;
+ 
+@@ -100,7 +103,8 @@
+   public void successful_containsExactlyInAnyOrder_assertion_using_field_by_field_element_comparator_with_heterogeneous_list() {
+     Snake snake = new Snake(15);
+     List<Animal> list1 = newArrayList(new Bird("White"), snake, snake);
+-    assertThat(list1).usingFieldByFieldElementComparator().containsExactlyInAnyOrder(new Snake(15),new Bird("White"), new Snake(15));
++    assertThat(list1).usingFieldByFieldElementComparator().containsExactlyInAnyOrder(new Snake(15), new Bird("White"),
++                                                                                     new Snake(15));
+   }
+ 
+   @Test
+@@ -148,6 +152,42 @@
+     failBecauseExpectedAssertionErrorWasNotThrown();
+   }
+ 
++  @Test
++  public void should_be_able_to_use_a_comparator_for_specified_fields_of_elements_when_using_field_by_field_element_comparator() {
++    Jedi actual = new Jedi("Yoda", "green");
++    Jedi other = new Jedi("Luke", "green");
++
++    assertThat(singletonList(actual)).usingComparatorForElementFieldsWithNames(ALWAY_EQUALS, "name")
++                                     .usingFieldByFieldElementComparator()
++                                     .contains(other);
++  }
++
++  @Test
++  public void comparators_for_element_field_names_should_have_precedence_over_comparators_for_element_field_types_when_using_field_by_field_element_comparator() {
++    Comparator<String> comparator = new Comparator<String>() {
++      public int compare(String o1, String o2) {
++        return o1.compareTo(o2);
++      }
++    };
++    Jedi actual = new Jedi("Yoda", "green");
++    Jedi other = new Jedi("Luke", "green");
++
++    assertThat(singletonList(actual)).usingComparatorForElementFieldsWithNames(ALWAY_EQUALS, "name")
++                                     .usingComparatorForElementFieldsWithType(comparator, String.class)
++                                     .usingFieldByFieldElementComparator()
++                                     .contains(other);
++  }
++
++  @Test
++  public void should_be_able_to_use_a_comparator_for_element_fields_with_specified_type_when_using_field_by_field_element_comparator() {
++    Jedi actual = new Jedi("Yoda", "green");
++    Jedi other = new Jedi("Luke", "blue");
++
++    assertThat(singletonList(actual)).usingComparatorForElementFieldsWithType(ALWAY_EQUALS, String.class)
++                                     .usingFieldByFieldElementComparator()
++                                     .contains(other);
++  }
++
+   public static class Foo {
+     public final String id;
+     public final int bar;
+@@ -193,8 +233,8 @@
+     @Override
+     public String toString() {
+       return "Bird{" +
+-          "color='" + color + '\'' +
+-          '}';
++             "color='" + color + '\'' +
++             '}';
+     }
+   }
+ 
+@@ -214,8 +254,8 @@
+     @Override
+     public String toString() {
+       return "Snake{" +
+-          "length=" + length +
+-          '}';
++             "length=" + length +
++             '}';
+     }
+   }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -17,6 +17,7 @@
+ import static java.util.Collections.singletonList;
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.test.AlwaysEqualStringComparator.ALWAY_EQUALS;
++import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
+ import static org.assertj.core.util.Lists.newArrayList;
+ 
+ import java.util.Comparator;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/13: src/test/java/org/assertj/core/api/iterable/IterableAssert_usingRecursiveFieldByFieldElementComparator_Test.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -15,7 +15,6 @@
+ import static java.lang.String.format;
+ import static java.util.Collections.singletonList;
+ import static org.assertj.core.api.Assertions.assertThat;
+-import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
+ 
+ import java.util.List;
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -15,8 +15,10 @@
+ import static java.lang.String.format;
+ import static java.util.Collections.singletonList;
+ import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.test.AlwaysEqualStringComparator.ALWAY_EQUALS;
+ import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
+ 
++import java.util.Comparator;
+ import java.util.List;
+ 
+ import org.assertj.core.api.ConcreteIterableAssert;
+@@ -98,6 +100,48 @@
+     failBecauseExpectedAssertionErrorWasNotThrown();
+   }
+ 
++  @Test
++  public void should_be_able_to_use_a_comparator_for_specified_fields_of_elements_when_using_recursive_field_by_field_element_comparator() {
++    Foo actual = new Foo("1", new Bar(1));
++    Foo other = new Foo("1", new Bar(2));
++    final class AlwaysEqualIntegerComparator implements Comparator<Integer> {
++      @Override
++      public int compare(Integer o1, Integer o2) {
++        return 0;
++      }
++    }
++
++    assertThat(singletonList(actual)).usingComparatorForElementFieldsWithNames(new AlwaysEqualIntegerComparator(),
++                                                                               "bar.id")
++                                     .usingRecursiveFieldByFieldElementComparator().contains(other);
++  }
++
++  @Test
++  public void comparators_for_element_field_names_should_have_precedence_over_comparators_for_element_field_types_when_using_recursive_field_by_field_element_comparator() {
++    Comparator<String> comparator = new Comparator<String>() {
++      public int compare(String o1, String o2) {
++        return o1.compareTo(o2);
++      }
++    };
++    Foo actual = new Foo("1", new Bar(1));
++    Foo other = new Foo("2", new Bar(1));
++
++    assertThat(singletonList(actual)).usingComparatorForElementFieldsWithNames(ALWAY_EQUALS, "id")
++                                     .usingComparatorForElementFieldsWithType(comparator, String.class)
++                                     .usingRecursiveFieldByFieldElementComparator()
++                                     .contains(other);
++  }
++
++  @Test
++  public void should_be_able_to_use_a_comparator_for_element_fields_with_specified_type_when_using_recursive_field_by_field_element_comparator() {
++    Foo actual = new Foo("1", new Bar(1));
++    Foo other = new Foo("2", new Bar(1));
++
++    assertThat(singletonList(actual)).usingComparatorForElementFieldsWithType(ALWAY_EQUALS, String.class)
++                                     .usingRecursiveFieldByFieldElementComparator()
++                                     .contains(other);
++  }
++
+   public static class Foo {
+     public String id;
+     public Bar bar;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -16,6 +16,7 @@
+ import static java.util.Collections.singletonList;
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.test.AlwaysEqualStringComparator.ALWAY_EQUALS;
++import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
+ 
+ import java.util.Comparator;
+ import java.util.List;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/13: src/test/java/org/assertj/core/api/objectarray/ObjectArrayAssert_usingFieldByFieldElementComparator_Test.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -14,7 +14,6 @@
+ 
+ import static java.lang.String.format;
+ import static org.assertj.core.api.Assertions.assertThat;
+-import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
+ import static org.assertj.core.util.Arrays.array;
+ 
+ import java.util.Objects;
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -14,9 +14,11 @@
+ 
+ import static java.lang.String.format;
+ import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.test.AlwaysEqualStringComparator.ALWAY_EQUALS;
+ import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
+ import static org.assertj.core.util.Arrays.array;
+ 
++import java.util.Comparator;
+ import java.util.Objects;
+ 
+ import org.assertj.core.api.ObjectArrayAssert;
+@@ -24,6 +26,7 @@
+ import org.assertj.core.internal.ComparatorBasedComparisonStrategy;
+ import org.assertj.core.internal.ObjectArrayElementComparisonStrategy;
+ import org.assertj.core.internal.ObjectArrays;
++import org.assertj.core.test.Jedi;
+ import org.junit.Before;
+ import org.junit.Test;
+ 
+@@ -73,11 +76,11 @@
+   public void successful_contains_assertion_using_field_by_field_element_comparator_with_heterogeneous_array() {
+     Animal[] array1 = array(new Bird("White"), new Snake(15));
+     assertThat(array1).usingFieldByFieldElementComparator()
+-                     .contains(new Snake(15), new Bird("White"))
+-                     .contains(new Bird("White"), new Snake(15));
++                      .contains(new Snake(15), new Bird("White"))
++                      .contains(new Bird("White"), new Snake(15));
+     assertThat(array1).usingFieldByFieldElementComparator()
+-                     .containsOnly(new Snake(15), new Bird("White"))
+-                     .containsOnly(new Bird("White"), new Snake(15));
++                      .containsOnly(new Snake(15), new Bird("White"))
++                      .containsOnly(new Bird("White"), new Snake(15));
+   }
+ 
+   @Test
+@@ -97,7 +100,8 @@
+   public void successful_containsExactlyInAnyOrder_assertion_using_field_by_field_element_comparator_with_heterogeneous_array() {
+     Snake snake = new Snake(15);
+     Animal[] array1 = array(new Bird("White"), snake, snake);
+-    assertThat(array1).usingFieldByFieldElementComparator().containsExactlyInAnyOrder(new Snake(15),new Bird("White"), new Snake(15));
++    assertThat(array1).usingFieldByFieldElementComparator().containsExactlyInAnyOrder(new Snake(15), new Bird("White"),
++                                                                                      new Snake(15));
+   }
+ 
+   @Test
+@@ -174,6 +178,42 @@
+     failBecauseExpectedAssertionErrorWasNotThrown();
+   }
+ 
++  @Test
++  public void should_be_able_to_use_a_comparator_for_specified_fields_of_elements_when_using_field_by_field_element_comparator() {
++    Jedi actual = new Jedi("Yoda", "green");
++    Jedi other = new Jedi("Luke", "green");
++
++    assertThat(array(actual)).usingComparatorForElementFieldsWithNames(ALWAY_EQUALS, "name")
++                             .usingFieldByFieldElementComparator()
++                             .contains(other);
++  }
++
++  @Test
++  public void comparators_for_element_field_names_should_have_precedence_over_comparators_for_element_field_types_when_using_field_by_field_element_comparator() {
++    Comparator<String> comparator = new Comparator<String>() {
++      public int compare(String o1, String o2) {
++        return o1.compareTo(o2);
++      }
++    };
++    Jedi actual = new Jedi("Yoda", "green");
++    Jedi other = new Jedi("Luke", "green");
++
++    assertThat(array(actual)).usingComparatorForElementFieldsWithNames(ALWAY_EQUALS, "name")
++                             .usingComparatorForElementFieldsWithType(comparator, String.class)
++                             .usingFieldByFieldElementComparator()
++                             .contains(other);
++  }
++
++  @Test
++  public void should_be_able_to_use_a_comparator_for_element_fields_with_specified_type_when_using_field_by_field_element_comparator() {
++    Jedi actual = new Jedi("Yoda", "green");
++    Jedi other = new Jedi("Luke", "blue");
++
++    assertThat(array(actual)).usingComparatorForElementFieldsWithType(ALWAY_EQUALS, String.class)
++                             .usingFieldByFieldElementComparator()
++                             .contains(other);
++  }
++
+   public static class Foo {
+     public final String id;
+     public final int bar;
+@@ -231,4 +271,3 @@
+     }
+   }
+ }
+-
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -15,6 +15,7 @@
+ import static java.lang.String.format;
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.test.AlwaysEqualStringComparator.ALWAY_EQUALS;
++import static org.assertj.core.test.TestFailures.failBecauseExpectedAssertionErrorWasNotThrown;
+ import static org.assertj.core.util.Arrays.array;
+ 
+ import java.util.Comparator;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== REMAINING 8 FILES (elided at truncation T3; listed by path + merged-vs-dev diffstat) ===
+  src/test/java/org/assertj/core/api/SoftAssertionsTest.java  (merged-vs-dev +1 -1)
+  src/main/java/org/assertj/core/api/AbstractObjectAssert.java  (merged-vs-dev +0 -0)
+  src/main/java/org/assertj/core/api/ErrorCollector.java  (merged-vs-dev +0 -0)
+  src/main/java/org/assertj/core/internal/Objects.java  (merged-vs-dev +0 -0)
+  src/test/java/org/assertj/core/api/object/ObjectAssert_isEqualToIgnoringGivenFields_Test.java  (merged-vs-dev +0 -0)
+  src/test/java/org/assertj/core/api/object/ObjectAssert_isEqualToIgnoringNullFields_Test.java  (merged-vs-dev +0 -0)
+  src/test/java/org/assertj/core/api/object/ObjectAssert_usingComparator_Test.java  (merged-vs-dev +0 -0)
+  src/test/java/org/assertj/core/api/object/ObjectAssert_usingDefaultComparator_Test.java  (merged-vs-dev +0 -0)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

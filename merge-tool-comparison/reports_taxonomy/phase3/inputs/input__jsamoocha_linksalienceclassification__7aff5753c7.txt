@@ -1,0 +1,1599 @@
+UNIT jsamoocha_linksalienceclassification__7aff5753c7
+repo: jsamoocha_linksalienceclassification   merge: 7aff5753c70fc8c52cdc949c2a2712dd90bdc30c   stratum: B
+files shown: 4 of 5 intersecting Java files
+dropped (textual-conflict, not silent — excluded): src/test/java/com/xebia/graph/neo4j/plugins/LinkSalienceComputerTest.java
+truncation level: T0  (full inputs)
+
+=== FILE 1/4: src/main/java/com/xebia/graph/neo4j/plugins/LinkSalienceComputer.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,65 +1,66 @@
+ package com.xebia.graph.neo4j.plugins;
+ 
++import java.util.ArrayList;
+ import java.util.HashSet;
++import java.util.Iterator;
+ import java.util.List;
+ import java.util.Set;
+ 
++import org.neo4j.cypher.javacompat.ExecutionEngine;
++import org.neo4j.cypher.javacompat.ExecutionResult;
+ import org.neo4j.graphalgo.CostEvaluator;
+ import org.neo4j.graphalgo.GraphAlgoFactory;
+ import org.neo4j.graphalgo.PathFinder;
+ import org.neo4j.graphalgo.WeightedPath;
+ import org.neo4j.graphdb.Direction;
+ import org.neo4j.graphdb.GraphDatabaseService;
+ import org.neo4j.graphdb.Node;
+ import org.neo4j.graphdb.Path;
+ import org.neo4j.graphdb.PathExpander;
+ import org.neo4j.graphdb.Relationship;
+ import org.neo4j.graphdb.Transaction;
+ import org.neo4j.kernel.StandardExpander;
+ import org.neo4j.tooling.GlobalGraphOperations;
+ 
+-import com.google.common.collect.Lists;
+-
+ public class LinkSalienceComputer {
+ 	private ShortestPathTreeCreator sptCreator;
+ 	private GraphDatabaseService graphDb;
+ 	private int[] absoluteSalienceForEdges = new int[INCREMENT];
+ 	private static final int INCREMENT = 1000;
+ 
+ 	public LinkSalienceComputer(GraphDatabaseService graphDb) {
+ 		this.graphDb = graphDb;
+ 	}
+ 
+ 	public void computeLinkSalience(String weightProperty) {
+ 		sptCreator = new ShortestPathTreeCreator(weightProperty);
+-		
++
+ 		long numberOfNodesProcessed = 0;
+ 		for (Node currentNode : GlobalGraphOperations.at(graphDb).getAllNodes()) {
+ 			numberOfNodesProcessed++;
+ 			ShortestPathTree spt = sptCreator.createShortestPathTree(currentNode);
+ 
+ 			while (spt.hasMoreEndNodes()) {
+ 				Node currentSptEndNode = spt.nextEndNode();
+ 
+ 				for (Node predecessor : spt.getPredecessorNodesFor(currentSptEndNode)) {
+ 					increaseAbsoluteSalienceForEdgeBetween(predecessor, currentSptEndNode);
+ 				}
+ 			}
+ 		}
+ 
+-		computeSalience(numberOfNodesProcessed);
++		computeSalience(numberOfNodesProcessed - 1);
+ 	}
+ 
+ 	public void computeLinkSalienceWithDijkstra(String weightProperty) {
+-		CostEvaluator<Double> costEvaluator = new WeightCostEvaluator(
+-		    weightProperty);
+-		PathFinder<WeightedPath> pathPathFinder = GraphAlgoFactory.dijkstra(
+-		    (PathExpander<?>) StandardExpander.DEFAULT, costEvaluator);
++		CostEvaluator<Double> costEvaluator = new WeightCostEvaluator(weightProperty);
++		PathFinder<WeightedPath> pathPathFinder = GraphAlgoFactory.dijkstra((PathExpander<?>) StandardExpander.DEFAULT,
++				costEvaluator);
+ 
+ 		long numberOfNodesProcessed = 0;
+ 		for (Node currentNode : GlobalGraphOperations.at(graphDb).getAllNodes()) {
+ 			numberOfNodesProcessed++;
+ 			Set<Relationship> edgesInPaths = new HashSet<Relationship>();
+ 			for (Node otherNode : GlobalGraphOperations.at(graphDb).getAllNodes()) {
+ 				Path path = pathPathFinder.findSinglePath(currentNode, otherNode);
+ 				if (path != null) {
+@@ -68,28 +69,30 @@
+ 					}
+ 				}
+ 			}
+ 			for (Relationship edge : edgesInPaths) {
+ 				increaseAbsoluteSalienceFor(edge);
+ 			}
+ 		}
+ 
+-		computeSalience(numberOfNodesProcessed);
++		computeSalience(numberOfNodesProcessed - 1);
+ 	}
+ 
+ 	private void computeSalience(double nodeSize) {
+ 		Transaction tx = graphDb.beginTx();
+-		
++
+ 		try {
+-			for (Relationship edge : GlobalGraphOperations.at(graphDb).getAllRelationships()) {
+-				edge.setProperty("salience", 
+-						(double) absoluteSalienceForEdges[(int) edge.getId()] / ((double) nodeSize - 1));
++			for (int i = 0; i < absoluteSalienceForEdges.length; i++) {
++				if (absoluteSalienceForEdges[i] > 0) {
++					Relationship edge = graphDb.getRelationshipById(i);
++
++					edge.setProperty("salience", (double) absoluteSalienceForEdges[i] / ((double) nodeSize));
++				}
+ 			}
+-			
+ 			tx.success();
+ 		} catch (Exception e) {
+ 			tx.failure();
+ 		} finally {
+ 			tx.finish();
+ 		}
+ 	}
+ 
+@@ -106,39 +109,18 @@
+ 	}
+ 
+ 	private void increaseAbsoluteSalienceFor(Relationship edge) {
+ 		while (edge.getId() > absoluteSalienceForEdges.length) {
+ 			int[] tmp = new int[absoluteSalienceForEdges.length + INCREMENT];
+ 			System.arraycopy(absoluteSalienceForEdges, 0, tmp, 0, absoluteSalienceForEdges.length);
+ 			absoluteSalienceForEdges = tmp;
+ 		}
+-		
++
+ 		absoluteSalienceForEdges[(int) edge.getId()]++;
+-	}
+-	
+-	List<Node> readAllNodesFrom(GraphDatabaseService graphDb) {
+-		List<Node> nodes = Lists.newArrayList();
+-
+-		for (Node node : GlobalGraphOperations.at(graphDb).getAllNodes()) {
+-			nodes.add(node);
+-		}
+-
+-		return nodes;
+-	}
+-
+-	List<Relationship> readAllEdgesFrom(GraphDatabaseService graphDb) {
+-		List<Relationship> edges = Lists.newArrayList();
+-
+-		for (Relationship edge : GlobalGraphOperations.at(graphDb)
+-		    .getAllRelationships()) {
+-			edges.add(edge);
+-		}
+-
+-		return edges;
+ 	}
+ 
+ 	class WeightCostEvaluator implements CostEvaluator<Double> {
+ 		private String weightProperty;
+ 
+ 		public WeightCostEvaluator(String weightProperty) {
+ 			this.weightProperty = weightProperty;
+ 		}
+@@ -151,9 +133,47 @@
+ 			if (costProp instanceof Integer)
+ 				return 1.0 / Double.valueOf(((Integer) costProp).intValue());
+ 			else
+ 				return 1.0 / Double.valueOf(Double.parseDouble(costProp.toString()));
+ 		}
+ 
+ 	}
+ 
++	public void computeLinkSalienceForQueryResult(String query, String weightProperty) {
++		ExecutionEngine engine = new ExecutionEngine(graphDb);
++		ExecutionResult executionResult = engine.execute(query);
++		List<String> columns = executionResult.columns();
++		Iterator<Node> nodes = executionResult.columnAs(columns.get(0));
++
++		List<Long> nodesInSubGraph = new ArrayList<Long>();
++		while (nodes.hasNext()) {
++			nodesInSubGraph.add(nodes.next().getId());
++		}	
++		
++		sptCreator = new ShortestPathTreeCreator(weightProperty, nodesInSubGraph);
++
++		executionResult = engine.execute(query);
++		columns = executionResult.columns();
++		nodes = executionResult.columnAs(columns.get(0));
++		long numberOfNodesProcessed = 0;
++		while (nodes.hasNext()) {
++
++			Node currentNode = nodes.next();
++			if (currentNode.getId() != 0) {
++				numberOfNodesProcessed++;
++				ShortestPathTree spt = sptCreator.createShortestPathTree(currentNode);
++	
++				while (spt.hasMoreEndNodes()) {
++					Node currentSptEndNode = spt.nextEndNode();
++	
++					for (Node predecessor : spt.getPredecessorNodesFor(currentSptEndNode)) {
++						increaseAbsoluteSalienceForEdgeBetween(predecessor, currentSptEndNode);
++					}
++				}
++			}
++		}
++
++		computeSalience(numberOfNodesProcessed);
++
++	}
++
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -25,18 +25,22 @@
+ 	private GraphDatabaseService graphDb;
+ 	private int[] absoluteSalienceForEdges = new int[INCREMENT];
+ 	private static final int INCREMENT = 1000;
+ 
+ 	public LinkSalienceComputer(GraphDatabaseService graphDb) {
+ 		this.graphDb = graphDb;
+ 	}
+ 
+-	public void computeLinkSalience(String weightProperty) {
+-		sptCreator = new ShortestPathTreeCreator(weightProperty);
++	public void computeLinkSalience(String weightProperty, boolean treatGraphAsDirected) {
++	  if (treatGraphAsDirected) {
++	    sptCreator = new DirectedEdgeShortestPathTreeCreator(weightProperty);
++	  } else {
++	    sptCreator = new ShortestPathTreeCreator(weightProperty);
++	  }
+ 		
+ 		long numberOfNodesProcessed = 0;
+ 		for (Node currentNode : GlobalGraphOperations.at(graphDb).getAllNodes()) {
+ 			numberOfNodesProcessed++;
+ 			ShortestPathTree spt = sptCreator.createShortestPathTree(currentNode);
+ 
+ 			while (spt.hasMoreEndNodes()) {
+ 				Node currentSptEndNode = spt.nextEndNode();
+--- MERGED RESULT (mergiraf; full) ---
+package com.xebia.graph.neo4j.plugins;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
+import org.neo4j.cypher.javacompat.ExecutionEngine;
+import org.neo4j.cypher.javacompat.ExecutionResult;
+import org.neo4j.graphalgo.CostEvaluator;
+import org.neo4j.graphalgo.GraphAlgoFactory;
+import org.neo4j.graphalgo.PathFinder;
+import org.neo4j.graphalgo.WeightedPath;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.PathExpander;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.kernel.StandardExpander;
+import org.neo4j.tooling.GlobalGraphOperations;
+
+public class LinkSalienceComputer {
+	private ShortestPathTreeCreator sptCreator;
+	private GraphDatabaseService graphDb;
+	private int[] absoluteSalienceForEdges = new int[INCREMENT];
+	private static final int INCREMENT = 1000;
+
+	public LinkSalienceComputer(GraphDatabaseService graphDb) {
+		this.graphDb = graphDb;
+	}
+
+	public void computeLinkSalience(String weightProperty, boolean treatGraphAsDirected) {
+	  if (treatGraphAsDirected) {
+	    sptCreator = new DirectedEdgeShortestPathTreeCreator(weightProperty);
+	  } else {
+	    sptCreator = new ShortestPathTreeCreator(weightProperty);
+	  }
+		
+		long numberOfNodesProcessed = 0;
+		for (Node currentNode : GlobalGraphOperations.at(graphDb).getAllNodes()) {
+			numberOfNodesProcessed++;
+			ShortestPathTree spt = sptCreator.createShortestPathTree(currentNode);
+
+			while (spt.hasMoreEndNodes()) {
+				Node currentSptEndNode = spt.nextEndNode();
+
+				for (Node predecessor : spt.getPredecessorNodesFor(currentSptEndNode)) {
+					increaseAbsoluteSalienceForEdgeBetween(predecessor, currentSptEndNode);
+				}
+			}
+		}
+
+		computeSalience(numberOfNodesProcessed - 1);
+	}
+
+	public void computeLinkSalienceWithDijkstra(String weightProperty) {
+		CostEvaluator<Double> costEvaluator = new WeightCostEvaluator(weightProperty);
+		PathFinder<WeightedPath> pathPathFinder = GraphAlgoFactory.dijkstra((PathExpander<?>) StandardExpander.DEFAULT,
+				costEvaluator);
+
+		long numberOfNodesProcessed = 0;
+		for (Node currentNode : GlobalGraphOperations.at(graphDb).getAllNodes()) {
+			numberOfNodesProcessed++;
+			Set<Relationship> edgesInPaths = new HashSet<Relationship>();
+			for (Node otherNode : GlobalGraphOperations.at(graphDb).getAllNodes()) {
+				Path path = pathPathFinder.findSinglePath(currentNode, otherNode);
+				if (path != null) {
+					for (Relationship edge : path.relationships()) {
+						edgesInPaths.add(edge);
+					}
+				}
+			}
+			for (Relationship edge : edgesInPaths) {
+				increaseAbsoluteSalienceFor(edge);
+			}
+		}
+
+		computeSalience(numberOfNodesProcessed - 1);
+	}
+
+	private void computeSalience(double nodeSize) {
+		Transaction tx = graphDb.beginTx();
+
+		try {
+			for (int i = 0; i < absoluteSalienceForEdges.length; i++) {
+				if (absoluteSalienceForEdges[i] > 0) {
+					Relationship edge = graphDb.getRelationshipById(i);
+
+					edge.setProperty("salience", (double) absoluteSalienceForEdges[i] / ((double) nodeSize));
+				}
+			}
+			tx.success();
+		} catch (Exception e) {
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+	}
+
+	Relationship increaseAbsoluteSalienceForEdgeBetween(Node fromNode, Node toNode) {
+
+		for (Relationship edge : fromNode.getRelationships()) {
+			if (edge.getOtherNode(fromNode).equals(toNode)) {
+				increaseAbsoluteSalienceFor(edge);
+				return edge;
+			}
+		}
+
+		return null;
+	}
+
+	private void increaseAbsoluteSalienceFor(Relationship edge) {
+		while (edge.getId() > absoluteSalienceForEdges.length) {
+			int[] tmp = new int[absoluteSalienceForEdges.length + INCREMENT];
+			System.arraycopy(absoluteSalienceForEdges, 0, tmp, 0, absoluteSalienceForEdges.length);
+			absoluteSalienceForEdges = tmp;
+		}
+
+		absoluteSalienceForEdges[(int) edge.getId()]++;
+	}
+
+	class WeightCostEvaluator implements CostEvaluator<Double> {
+		private String weightProperty;
+
+		public WeightCostEvaluator(String weightProperty) {
+			this.weightProperty = weightProperty;
+		}
+
+		@Override
+		public Double getCost(Relationship relationship, Direction direction) {
+			Object costProp = relationship.getProperty(weightProperty);
+			if (costProp instanceof Double)
+				return 1.0 / (Double) costProp;
+			if (costProp instanceof Integer)
+				return 1.0 / Double.valueOf(((Integer) costProp).intValue());
+			else
+				return 1.0 / Double.valueOf(Double.parseDouble(costProp.toString()));
+		}
+
+	}
+
+	public void computeLinkSalienceForQueryResult(String query, String weightProperty) {
+		ExecutionEngine engine = new ExecutionEngine(graphDb);
+		ExecutionResult executionResult = engine.execute(query);
+		List<String> columns = executionResult.columns();
+		Iterator<Node> nodes = executionResult.columnAs(columns.get(0));
+
+		List<Long> nodesInSubGraph = new ArrayList<Long>();
+		while (nodes.hasNext()) {
+			nodesInSubGraph.add(nodes.next().getId());
+		}	
+		
+		sptCreator = new ShortestPathTreeCreator(weightProperty, nodesInSubGraph);
+
+		executionResult = engine.execute(query);
+		columns = executionResult.columns();
+		nodes = executionResult.columnAs(columns.get(0));
+		long numberOfNodesProcessed = 0;
+		while (nodes.hasNext()) {
+
+			Node currentNode = nodes.next();
+			if (currentNode.getId() != 0) {
+				numberOfNodesProcessed++;
+				ShortestPathTree spt = sptCreator.createShortestPathTree(currentNode);
+	
+				while (spt.hasMoreEndNodes()) {
+					Node currentSptEndNode = spt.nextEndNode();
+	
+					for (Node predecessor : spt.getPredecessorNodesFor(currentSptEndNode)) {
+						increaseAbsoluteSalienceForEdgeBetween(predecessor, currentSptEndNode);
+					}
+				}
+			}
+		}
+
+		computeSalience(numberOfNodesProcessed);
+
+	}
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -21,29 +21,38 @@
+ import org.neo4j.graphdb.Transaction;
+ import org.neo4j.kernel.StandardExpander;
+ import org.neo4j.tooling.GlobalGraphOperations;
+ 
+ public class LinkSalienceComputer {
+ 	private ShortestPathTreeCreator sptCreator;
+ 	private GraphDatabaseService graphDb;
+ 	private int[] absoluteSalienceForEdges = new int[INCREMENT];
++	private String weightProperty = "weight";
++	private boolean treatGraphAsDirected = false;
+ 	private static final int INCREMENT = 1000;
+ 
+ 	public LinkSalienceComputer(GraphDatabaseService graphDb) {
+ 		this.graphDb = graphDb;
+ 	}
+ 
+-	public void computeLinkSalience(String weightProperty, boolean treatGraphAsDirected) {
+-	  if (treatGraphAsDirected) {
+-	    sptCreator = new DirectedEdgeShortestPathTreeCreator(weightProperty);
+-	  } else {
+-	    sptCreator = new ShortestPathTreeCreator(weightProperty);
+-	  }
+-		
++	public LinkSalienceComputer(GraphDatabaseService graphDb, String weightProperty) {
++		this.graphDb = graphDb;
++		this.weightProperty = weightProperty;
++	}
++	
++	public LinkSalienceComputer(GraphDatabaseService graphDb, String weightProperty, boolean treatGraphAsDirected) {
++		this.graphDb = graphDb;
++		this.weightProperty = weightProperty;
++		this.treatGraphAsDirected = treatGraphAsDirected;
++	}
++	
++	public void computeLinkSalience() {
++		setShortestPathTreeCreator(null);
++
+ 		long numberOfNodesProcessed = 0;
+ 		for (Node currentNode : GlobalGraphOperations.at(graphDb).getAllNodes()) {
+ 			numberOfNodesProcessed++;
+ 			ShortestPathTree spt = sptCreator.createShortestPathTree(currentNode);
+ 
+ 			while (spt.hasMoreEndNodes()) {
+ 				Node currentSptEndNode = spt.nextEndNode();
+ 
+@@ -51,17 +60,25 @@
+ 					increaseAbsoluteSalienceForEdgeBetween(predecessor, currentSptEndNode);
+ 				}
+ 			}
+ 		}
+ 
+ 		computeSalience(numberOfNodesProcessed - 1);
+ 	}
+ 
+-	public void computeLinkSalienceWithDijkstra(String weightProperty) {
++	private void setShortestPathTreeCreator(List<Long> nodesInSubGraph) {
++		if (treatGraphAsDirected) {
++			sptCreator = new DirectedEdgeShortestPathTreeCreator(weightProperty, nodesInSubGraph);
++		} else {
++			sptCreator = new ShortestPathTreeCreator(weightProperty, nodesInSubGraph);
++		}
++	}
++
++	public void computeLinkSalienceWithDijkstra() {
+ 		CostEvaluator<Double> costEvaluator = new WeightCostEvaluator(weightProperty);
+ 		PathFinder<WeightedPath> pathPathFinder = GraphAlgoFactory.dijkstra((PathExpander<?>) StandardExpander.DEFAULT,
+ 				costEvaluator);
+ 
+ 		long numberOfNodesProcessed = 0;
+ 		for (Node currentNode : GlobalGraphOperations.at(graphDb).getAllNodes()) {
+ 			numberOfNodesProcessed++;
+ 			Set<Relationship> edgesInPaths = new HashSet<Relationship>();
+@@ -137,43 +154,43 @@
+ 			if (costProp instanceof Integer)
+ 				return 1.0 / Double.valueOf(((Integer) costProp).intValue());
+ 			else
+ 				return 1.0 / Double.valueOf(Double.parseDouble(costProp.toString()));
+ 		}
+ 
+ 	}
+ 
+-	public void computeLinkSalienceForQueryResult(String query, String weightProperty) {
++	public void computeLinkSalienceForQueryResult(String query) {
+ 		ExecutionEngine engine = new ExecutionEngine(graphDb);
+ 		ExecutionResult executionResult = engine.execute(query);
+ 		List<String> columns = executionResult.columns();
+ 		Iterator<Node> nodes = executionResult.columnAs(columns.get(0));
+ 
+ 		List<Long> nodesInSubGraph = new ArrayList<Long>();
+ 		while (nodes.hasNext()) {
+ 			nodesInSubGraph.add(nodes.next().getId());
+-		}	
+-		
+-		sptCreator = new ShortestPathTreeCreator(weightProperty, nodesInSubGraph);
++		}
++
++		setShortestPathTreeCreator(nodesInSubGraph);
+ 
+ 		executionResult = engine.execute(query);
+ 		columns = executionResult.columns();
+ 		nodes = executionResult.columnAs(columns.get(0));
+ 		long numberOfNodesProcessed = 0;
+ 		while (nodes.hasNext()) {
+ 
+ 			Node currentNode = nodes.next();
+ 			if (currentNode.getId() != 0) {
+ 				numberOfNodesProcessed++;
+ 				ShortestPathTree spt = sptCreator.createShortestPathTree(currentNode);
+-	
++
+ 				while (spt.hasMoreEndNodes()) {
+ 					Node currentSptEndNode = spt.nextEndNode();
+-	
++
+ 					for (Node predecessor : spt.getPredecessorNodesFor(currentSptEndNode)) {
+ 						increaseAbsoluteSalienceForEdgeBetween(predecessor, currentSptEndNode);
+ 					}
+ 				}
+ 			}
+ 		}
+ 
+ 		computeSalience(numberOfNodesProcessed);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/4: src/main/java/com/xebia/graph/neo4j/plugins/LinkSaliencePlugin.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -23,9 +23,20 @@
+ 	@Name("computeLinkSalienceWithDijkstra")
+ 	@PluginTarget(GraphDatabaseService.class)
+ 	public void computeLinkSalienceWithDijkstra(@Source GraphDatabaseService graphDb,
+ 			@Description("Name of the relationship property representing edge weight.") 
+ 				@Parameter(name="weightProperty") String weightProperty) {
+ 		LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
+ 		salienceComputer.computeLinkSalienceWithDijkstra(weightProperty);
+ 	}
++
++	@Name("computeLinkSalienceForQueryResult")
++	@PluginTarget(GraphDatabaseService.class)
++	public void computeLinkSalienceForQueryResult(@Source GraphDatabaseService graphDb,
++			@Description("Name of the cypher query to provide the subgraph.") 
++	@Parameter(name="query") String query,
++		@Description("Name of the relationship property representing edge weight.") 
++		@Parameter(name="weightProperty") String weightProperty) {
++		LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
++		salienceComputer.computeLinkSalienceForQueryResult(query, weightProperty);
++	}
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -5,27 +5,32 @@
+ import org.neo4j.server.plugins.Name;
+ import org.neo4j.server.plugins.Parameter;
+ import org.neo4j.server.plugins.PluginTarget;
+ import org.neo4j.server.plugins.ServerPlugin;
+ import org.neo4j.server.plugins.Source;
+ 
+ @Description("Computes link salience of each edge in a (sub-) graph")
+ public class LinkSaliencePlugin extends ServerPlugin {
+-	
+-	@Name("computeLinkSalience")
+-	@PluginTarget(GraphDatabaseService.class)
+-	public void computeLinkSalience(@Source GraphDatabaseService graphDb, 
+-			@Description("Name of the relationship property representing edge weight.") 
+-				@Parameter(name="weightProperty") String weightProperty) {
+-		LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
+-		salienceComputer.computeLinkSalience(weightProperty);
+-	}
+ 
+-	@Name("computeLinkSalienceWithDijkstra")
+-	@PluginTarget(GraphDatabaseService.class)
+-	public void computeLinkSalienceWithDijkstra(@Source GraphDatabaseService graphDb,
+-			@Description("Name of the relationship property representing edge weight.") 
+-				@Parameter(name="weightProperty") String weightProperty) {
+-		LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
+-		salienceComputer.computeLinkSalienceWithDijkstra(weightProperty);
+-	}
++  @Name("computeLinkSalience")
++  @PluginTarget(GraphDatabaseService.class)
++  public void computeLinkSalience(
++          @Source GraphDatabaseService graphDb,
++          @Description("Name of the relationship property representing edge weight.") 
++          @Parameter(name = "weightProperty") String weightProperty,
++          @Description("Indicates whether the graph should be treated as a directed graph. "
++                  + "False means edge direction is ignored in computing shortest paths.") 
++          @Parameter(name = "directed") Boolean treatGraphAsDirected) {
++    LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
++    salienceComputer.computeLinkSalience(weightProperty, treatGraphAsDirected);
++  }
++
++  @Name("computeLinkSalienceWithDijkstra")
++  @PluginTarget(GraphDatabaseService.class)
++  public void computeLinkSalienceWithDijkstra(
++          @Source GraphDatabaseService graphDb,
++          @Description("Name of the relationship property representing edge weight.") 
++          @Parameter(name = "weightProperty") String weightProperty) {
++    LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
++    salienceComputer.computeLinkSalienceWithDijkstra(weightProperty);
++  }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package com.xebia.graph.neo4j.plugins;
+
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.server.plugins.Description;
+import org.neo4j.server.plugins.Name;
+import org.neo4j.server.plugins.Parameter;
+import org.neo4j.server.plugins.PluginTarget;
+import org.neo4j.server.plugins.ServerPlugin;
+import org.neo4j.server.plugins.Source;
+
+@Description("Computes link salience of each edge in a (sub-) graph")
+public class LinkSaliencePlugin extends ServerPlugin {
+
+  @Name("computeLinkSalience")
+  @PluginTarget(GraphDatabaseService.class)
+  public void computeLinkSalience(
+          @Source GraphDatabaseService graphDb,
+          @Description("Name of the relationship property representing edge weight.") 
+          @Parameter(name = "weightProperty") String weightProperty,
+          @Description("Indicates whether the graph should be treated as a directed graph. "
+                  + "False means edge direction is ignored in computing shortest paths.") 
+          @Parameter(name = "directed") Boolean treatGraphAsDirected) {
+    LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
+    salienceComputer.computeLinkSalience(weightProperty, treatGraphAsDirected);
+  }
+
+  @Name("computeLinkSalienceWithDijkstra")
+  @PluginTarget(GraphDatabaseService.class)
+  public void computeLinkSalienceWithDijkstra(
+          @Source GraphDatabaseService graphDb,
+          @Description("Name of the relationship property representing edge weight.") 
+          @Parameter(name = "weightProperty") String weightProperty) {
+    LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
+    salienceComputer.computeLinkSalienceWithDijkstra(weightProperty);
+  }
+
+	@Name("computeLinkSalienceForQueryResult")
+	@PluginTarget(GraphDatabaseService.class)
+	public void computeLinkSalienceForQueryResult(@Source GraphDatabaseService graphDb,
+			@Description("Name of the cypher query to provide the subgraph.") 
+	@Parameter(name="query") String query,
+		@Description("Name of the relationship property representing edge weight.") 
+		@Parameter(name="weightProperty") String weightProperty) {
+		LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
+		salienceComputer.computeLinkSalienceForQueryResult(query, weightProperty);
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -6,42 +6,40 @@
+ import org.neo4j.server.plugins.Parameter;
+ import org.neo4j.server.plugins.PluginTarget;
+ import org.neo4j.server.plugins.ServerPlugin;
+ import org.neo4j.server.plugins.Source;
+ 
+ @Description("Computes link salience of each edge in a (sub-) graph")
+ public class LinkSaliencePlugin extends ServerPlugin {
+ 
+-  @Name("computeLinkSalience")
+-  @PluginTarget(GraphDatabaseService.class)
+-  public void computeLinkSalience(
+-          @Source GraphDatabaseService graphDb,
+-          @Description("Name of the relationship property representing edge weight.") 
+-          @Parameter(name = "weightProperty") String weightProperty,
+-          @Description("Indicates whether the graph should be treated as a directed graph. "
+-                  + "False means edge direction is ignored in computing shortest paths.") 
+-          @Parameter(name = "directed") Boolean treatGraphAsDirected) {
+-    LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
+-    salienceComputer.computeLinkSalience(weightProperty, treatGraphAsDirected);
+-  }
++	@Name("computeLinkSalience")
++	@PluginTarget(GraphDatabaseService.class)
++	public void computeLinkSalience(
++			@Source GraphDatabaseService graphDb,
++			@Description("Name of the relationship property representing edge weight.") @Parameter(name = "weightProperty") String weightProperty,
++			@Description("Indicates whether the graph should be treated as a directed graph. "
++					+ "False means edge direction is ignored in computing shortest paths.") @Parameter(name = "directed") Boolean treatGraphAsDirected) {
++		LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb, weightProperty, treatGraphAsDirected);
++		salienceComputer.computeLinkSalience();
++	}
+ 
+-  @Name("computeLinkSalienceWithDijkstra")
+-  @PluginTarget(GraphDatabaseService.class)
+-  public void computeLinkSalienceWithDijkstra(
+-          @Source GraphDatabaseService graphDb,
+-          @Description("Name of the relationship property representing edge weight.") 
+-          @Parameter(name = "weightProperty") String weightProperty) {
+-    LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
+-    salienceComputer.computeLinkSalienceWithDijkstra(weightProperty);
+-  }
++	@Name("computeLinkSalienceWithDijkstra")
++	@PluginTarget(GraphDatabaseService.class)
++	public void computeLinkSalienceWithDijkstra(
++			@Source GraphDatabaseService graphDb,
++			@Description("Name of the relationship property representing edge weight.") @Parameter(name = "weightProperty") String weightProperty) {
++		LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb, weightProperty);
++		salienceComputer.computeLinkSalienceWithDijkstra();
++	}
+ 
+ 	@Name("computeLinkSalienceForQueryResult")
+ 	@PluginTarget(GraphDatabaseService.class)
+-	public void computeLinkSalienceForQueryResult(@Source GraphDatabaseService graphDb,
+-			@Description("Name of the cypher query to provide the subgraph.") 
+-	@Parameter(name="query") String query,
+-		@Description("Name of the relationship property representing edge weight.") 
+-		@Parameter(name="weightProperty") String weightProperty) {
+-		LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb);
+-		salienceComputer.computeLinkSalienceForQueryResult(query, weightProperty);
++	public void computeLinkSalienceForQueryResult(
++			@Source GraphDatabaseService graphDb,
++			@Description("Name of the cypher query to provide the subgraph.") @Parameter(name = "query") String query,
++			@Description("Name of the relationship property representing edge weight.") @Parameter(name = "weightProperty") String weightProperty,
++			@Description("Indicates whether the graph should be treated as a directed graph. "
++					+ "False means edge direction is ignored in computing shortest paths.") @Parameter(name = "directed") Boolean treatGraphAsDirected) {
++		LinkSalienceComputer salienceComputer = new LinkSalienceComputer(graphDb, weightProperty, treatGraphAsDirected);
++		salienceComputer.computeLinkSalienceForQueryResult(query);
+ 	}
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/4: src/main/java/com/xebia/graph/neo4j/plugins/ShortestPathTreeCreator.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -14,69 +14,78 @@
+ import com.google.common.collect.Maps;
+ 
+ public class ShortestPathTreeCreator {
+ 	private Map<Node, List<Node>> predecessors = Maps.newHashMap();
+ 	private PriorityQueue<Node> queue = new PriorityQueue<Node>(13, new SptNodeComparator());
+ 	private Stack<Node> stack = new Stack<Node>();
+ 	private Map<Node, Double> sptNodeDistancesToRootNode = Maps.newHashMap();
+ 	private String weightPropertyName;
+-	
++	private List<Long> nodeIdsToProcess = null;
++
+ 	private class SptNodeComparator implements Comparator<Node> {
+ 
+ 		public int compare(Node n1, Node n2) {
+-	    return Double.compare(sptNodeDistancesToRootNode.get(n1), sptNodeDistancesToRootNode.get(n2));
+-    }
+-		
++			return Double.compare(sptNodeDistancesToRootNode.get(n1), sptNodeDistancesToRootNode.get(n2));
++		}
++
+ 	}
+-	
++
+ 	public ShortestPathTreeCreator(String weightPropertyName) {
+ 		this.weightPropertyName = weightPropertyName;
+ 	}
+ 
++	public ShortestPathTreeCreator(String weightPropertyName, List<Long> nodesInSubGraph) {
++		this.weightPropertyName = weightPropertyName;
++		this.nodeIdsToProcess = nodesInSubGraph;
++	}
++	
+ 	public ShortestPathTree createShortestPathTree(Node rootNode) {
+ 		initNodes(rootNode);
+-		
++
+ 		while (!queue.isEmpty()) {
+ 			Node minimumDistanceNode = queue.poll();
+-			stack.push(minimumDistanceNode);
+-			
+-			for (Relationship edge : minimumDistanceNode.getRelationships()) {
+-				Node potentialShortestPathNode = edge.getOtherNode(minimumDistanceNode);
+-				double connectionDistance = 1.0 / (Double) edge.getProperty(weightPropertyName);
+-				double minimumDistance = getDistance(minimumDistanceNode);
+-				double potentialShortestPathNodeDistance = getDistance(potentialShortestPathNode); 
+-				
+-				if (potentialShortestPathNodeDistance > minimumDistance + connectionDistance) {
+-					sptNodeDistancesToRootNode.put(potentialShortestPathNode, minimumDistance + connectionDistance);
+-					
+-					if (queue.contains(potentialShortestPathNode)) {
+-						queue.remove(potentialShortestPathNode);
++			if (nodeIdsToProcess == null || nodeIdsToProcess.contains(minimumDistanceNode.getId())) {
++				stack.push(minimumDistanceNode);
++
++				for (Relationship edge : minimumDistanceNode.getRelationships()) {
++					Node potentialShortestPathNode = edge.getOtherNode(minimumDistanceNode);
++					double connectionDistance = 1.0 / (Double) edge.getProperty(weightPropertyName);
++					double minimumDistance = getDistance(minimumDistanceNode);
++					double potentialShortestPathNodeDistance = getDistance(potentialShortestPathNode);
++
++					if (potentialShortestPathNodeDistance > minimumDistance + connectionDistance) {
++						sptNodeDistancesToRootNode.put(potentialShortestPathNode, minimumDistance + connectionDistance);
++
++						if (queue.contains(potentialShortestPathNode)) {
++							queue.remove(potentialShortestPathNode);
++						}
++
++						queue.add(potentialShortestPathNode);
++						predecessors.put(potentialShortestPathNode, new ArrayList<Node>());
+ 					}
+-					
+-					queue.add(potentialShortestPathNode);
+-					predecessors.put(potentialShortestPathNode, new ArrayList<Node>());
+-				}
+-				
+-				if (sptNodeDistancesToRootNode.get(potentialShortestPathNode) == minimumDistance + connectionDistance) {
+-					predecessors.get(potentialShortestPathNode).add(minimumDistanceNode);
++
++					if (sptNodeDistancesToRootNode.get(potentialShortestPathNode) == minimumDistance
++							+ connectionDistance) {
++						predecessors.get(potentialShortestPathNode).add(minimumDistanceNode);
++					}
+ 				}
+ 			}
+ 		}
+-		
+-	  return new ShortestPathTree(stack, predecessors);
+-  }
+-	
++
++		return new ShortestPathTree(stack, predecessors);
++	}
++
+ 	private double getDistance(Node node) {
+ 		Double distance = sptNodeDistancesToRootNode.get(node);
+ 		return (distance == null) ? Double.POSITIVE_INFINITY : distance.doubleValue();
+ 	}
+ 
+ 	void initNodes(Node rootNode) {
+ 		sptNodeDistancesToRootNode.clear();
+ 		predecessors.clear();
+-		
++
+ 		sptNodeDistancesToRootNode.put(rootNode, 0.0);
+-		predecessors.put(rootNode, Lists.<Node>newArrayList());
++		predecessors.put(rootNode, Lists.<Node> newArrayList());
+ 		queue.add(rootNode);
+ 	}
+-	
++
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -34,17 +34,17 @@
+ 
+ 	public ShortestPathTree createShortestPathTree(Node rootNode) {
+ 		initNodes(rootNode);
+ 		
+ 		while (!queue.isEmpty()) {
+ 			Node minimumDistanceNode = queue.poll();
+ 			stack.push(minimumDistanceNode);
+ 			
+-			for (Relationship edge : minimumDistanceNode.getRelationships()) {
++			for (Relationship edge : getEdgesConnectedTo(minimumDistanceNode)) {
+ 				Node potentialShortestPathNode = edge.getOtherNode(minimumDistanceNode);
+ 				double connectionDistance = 1.0 / (Double) edge.getProperty(weightPropertyName);
+ 				double minimumDistance = getDistance(minimumDistanceNode);
+ 				double potentialShortestPathNodeDistance = getDistance(potentialShortestPathNode); 
+ 				
+ 				if (potentialShortestPathNodeDistance > minimumDistance + connectionDistance) {
+ 					sptNodeDistancesToRootNode.put(potentialShortestPathNode, minimumDistance + connectionDistance);
+ 					
+@@ -60,16 +60,20 @@
+ 					predecessors.get(potentialShortestPathNode).add(minimumDistanceNode);
+ 				}
+ 			}
+ 		}
+ 		
+ 	  return new ShortestPathTree(stack, predecessors);
+   }
+ 	
++	protected Iterable<Relationship> getEdgesConnectedTo(Node node) {
++	  return node.getRelationships();
++	}
++	
+ 	private double getDistance(Node node) {
+ 		Double distance = sptNodeDistancesToRootNode.get(node);
+ 		return (distance == null) ? Double.POSITIVE_INFINITY : distance.doubleValue();
+ 	}
+ 
+ 	void initNodes(Node rootNode) {
+ 		sptNodeDistancesToRootNode.clear();
+ 		predecessors.clear();
+--- MERGED RESULT (mergiraf; full) ---
+package com.xebia.graph.neo4j.plugins;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Stack;
+
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
+public class ShortestPathTreeCreator {
+	private Map<Node, List<Node>> predecessors = Maps.newHashMap();
+	private PriorityQueue<Node> queue = new PriorityQueue<Node>(13, new SptNodeComparator());
+	private Stack<Node> stack = new Stack<Node>();
+	private Map<Node, Double> sptNodeDistancesToRootNode = Maps.newHashMap();
+	private String weightPropertyName;
+	private List<Long> nodeIdsToProcess = null;
+
+	private class SptNodeComparator implements Comparator<Node> {
+
+		public int compare(Node n1, Node n2) {
+			return Double.compare(sptNodeDistancesToRootNode.get(n1), sptNodeDistancesToRootNode.get(n2));
+		}
+
+	}
+
+	public ShortestPathTreeCreator(String weightPropertyName) {
+		this.weightPropertyName = weightPropertyName;
+	}
+
+	public ShortestPathTreeCreator(String weightPropertyName, List<Long> nodesInSubGraph) {
+		this.weightPropertyName = weightPropertyName;
+		this.nodeIdsToProcess = nodesInSubGraph;
+	}
+	
+	public ShortestPathTree createShortestPathTree(Node rootNode) {
+		initNodes(rootNode);
+
+		while (!queue.isEmpty()) {
+			Node minimumDistanceNode = queue.poll();
+			if (nodeIdsToProcess == null || nodeIdsToProcess.contains(minimumDistanceNode.getId())) {
+				stack.push(minimumDistanceNode);
+
+				for (Relationship edge : getEdgesConnectedTo(minimumDistanceNode)) {
+					Node potentialShortestPathNode = edge.getOtherNode(minimumDistanceNode);
+					double connectionDistance = 1.0 / (Double) edge.getProperty(weightPropertyName);
+					double minimumDistance = getDistance(minimumDistanceNode);
+					double potentialShortestPathNodeDistance = getDistance(potentialShortestPathNode);
+
+					if (potentialShortestPathNodeDistance > minimumDistance + connectionDistance) {
+						sptNodeDistancesToRootNode.put(potentialShortestPathNode, minimumDistance + connectionDistance);
+
+						if (queue.contains(potentialShortestPathNode)) {
+							queue.remove(potentialShortestPathNode);
+						}
+
+						queue.add(potentialShortestPathNode);
+						predecessors.put(potentialShortestPathNode, new ArrayList<Node>());
+					}
+
+					if (sptNodeDistancesToRootNode.get(potentialShortestPathNode) == minimumDistance
+							+ connectionDistance) {
+						predecessors.get(potentialShortestPathNode).add(minimumDistanceNode);
+					}
+				}
+			}
+		}
+
+		return new ShortestPathTree(stack, predecessors);
+	}
+	
+	protected Iterable<Relationship> getEdgesConnectedTo(Node node) {
+	  return node.getRelationships();
+	}
+	
+	private double getDistance(Node node) {
+		Double distance = sptNodeDistancesToRootNode.get(node);
+		return (distance == null) ? Double.POSITIVE_INFINITY : distance.doubleValue();
+	}
+
+	void initNodes(Node rootNode) {
+		sptNodeDistancesToRootNode.clear();
+		predecessors.clear();
+
+		sptNodeDistancesToRootNode.put(rootNode, 0.0);
+		predecessors.put(rootNode, Lists.<Node> newArrayList());
+		queue.add(rootNode);
+	}
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -32,22 +32,23 @@
+ 	public ShortestPathTreeCreator(String weightPropertyName) {
+ 		this.weightPropertyName = weightPropertyName;
+ 	}
+ 
+ 	public ShortestPathTreeCreator(String weightPropertyName, List<Long> nodesInSubGraph) {
+ 		this.weightPropertyName = weightPropertyName;
+ 		this.nodeIdsToProcess = nodesInSubGraph;
+ 	}
+-	
++
+ 	public ShortestPathTree createShortestPathTree(Node rootNode) {
+ 		initNodes(rootNode);
+ 
+ 		while (!queue.isEmpty()) {
+ 			Node minimumDistanceNode = queue.poll();
++
+ 			if (nodeIdsToProcess == null || nodeIdsToProcess.contains(minimumDistanceNode.getId())) {
+ 				stack.push(minimumDistanceNode);
+ 
+ 				for (Relationship edge : getEdgesConnectedTo(minimumDistanceNode)) {
+ 					Node potentialShortestPathNode = edge.getOtherNode(minimumDistanceNode);
+ 					double connectionDistance = 1.0 / (Double) edge.getProperty(weightPropertyName);
+ 					double minimumDistance = getDistance(minimumDistanceNode);
+ 					double potentialShortestPathNodeDistance = getDistance(potentialShortestPathNode);
+@@ -65,24 +66,23 @@
+ 
+ 					if (sptNodeDistancesToRootNode.get(potentialShortestPathNode) == minimumDistance
+ 							+ connectionDistance) {
+ 						predecessors.get(potentialShortestPathNode).add(minimumDistanceNode);
+ 					}
+ 				}
+ 			}
+ 		}
+-
+ 		return new ShortestPathTree(stack, predecessors);
+ 	}
+-	
++
+ 	protected Iterable<Relationship> getEdgesConnectedTo(Node node) {
+-	  return node.getRelationships();
++		return node.getRelationships();
+ 	}
+-	
++
+ 	private double getDistance(Node node) {
+ 		Double distance = sptNodeDistancesToRootNode.get(node);
+ 		return (distance == null) ? Double.POSITIVE_INFINITY : distance.doubleValue();
+ 	}
+ 
+ 	void initNodes(Node rootNode) {
+ 		sptNodeDistancesToRootNode.clear();
+ 		predecessors.clear();
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/4: src/test/java/com/xebia/graph/neo4j/plugins/TestGraphUtil.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -109,16 +109,52 @@
+ 			tx.failure();
+ 		} finally {
+ 			tx.finish();
+ 		}
+ 
+ 		return Lists.newArrayList(n1, n2, n3, n4);
+ 	}
+ 	
++	public static List<Node> createCypherTestNodes(GraphDatabaseService graphDb) {
++		Transaction tx = graphDb.beginTx();
++		Node n1 = null, n2 = null, n3 = null, n4 = null, n5 = null, n6 = null, n7 = null, n8 = null, n9 = null, n10 = null;
++
++		try {
++			n1 = graphDb.createNode();
++			n1.setProperty("name", "n1");
++			n2 = graphDb.createNode();
++			n2.setProperty("name", "n2");
++			n3 = graphDb.createNode();
++			n3.setProperty("name", "n3");
++			n4 = graphDb.createNode();
++			n4.setProperty("name", "n4");
++			n5 = graphDb.createNode();
++			n5.setProperty("name", "n5");
++			n6 = graphDb.createNode();
++			n6.setProperty("name", "n6");
++			n7 = graphDb.createNode();
++			n7.setProperty("name", "n7");
++			n8 = graphDb.createNode();
++			n8.setProperty("name", "n8");
++			n9 = graphDb.createNode();
++			n9.setProperty("name", "n9");
++			n10 = graphDb.createNode();
++			n10.setProperty("name", "n10");
++
++			tx.success();
++		} catch (Exception e) {
++			tx.failure();
++		} finally {
++			tx.finish();
++		}
++
++		return Lists.newArrayList(n1, n2, n3, n4, n5, n6, n7, n8, n9, n10);
++	}
++	
+ 	public static List<Relationship> createTestEdgesMakingSquareGraphWithUnbalancedWeight(Node n1, Node n2, Node n3, Node n4,
+ 			GraphDatabaseService graphDb) {
+ 		Transaction tx = graphDb.beginTx();
+ 		List<Relationship> testEdges = Lists.newArrayList();
+ 		
+ 		try {
+ 			Relationship e1 = n1.createRelationshipTo(n2, RelTypes.X);
+ 			e1.setProperty("weight", 3.0);
+@@ -145,9 +181,124 @@
+ 		} catch (Exception e) {
+ 			tx.failure();
+ 		} finally {
+ 			tx.finish();
+ 		}
+ 		
+ 		return testEdges;
+ 	}
++
++	public static List<Relationship> createTestEdgesMakingBrancheGraphWithUnbalancedWeight(Node n1, Node n2, Node n3, Node n4,
++			Node n5, GraphDatabaseService graphDb) {
++		Transaction tx = graphDb.beginTx();
++		List<Relationship> testEdges = Lists.newArrayList();
++		
++		try {
++			Relationship e1 = n1.createRelationshipTo(n2, RelTypes.X);
++			e1.setProperty("weight", 3.0);
++			
++			Relationship e2 = n1.createRelationshipTo(n3, RelTypes.X);
++			e2.setProperty("weight", 1.0);
++			
++			Relationship e3 = n2.createRelationshipTo(n4, RelTypes.X);
++			e3.setProperty("weight", 2.0);
++			
++			Relationship e4 = n3.createRelationshipTo(n4, RelTypes.X);
++			e4.setProperty("weight", 3.0);
++			
++			Relationship e5 = n4.createRelationshipTo(n5, RelTypes.X);
++			e5.setProperty("weight", 3.0);
++			
++			testEdges.add(e1);
++			testEdges.add(e2);
++			testEdges.add(e3);
++			testEdges.add(e4);
++			testEdges.add(e5);
++			
++			tx.success();
++		} catch (Exception e) {
++			tx.failure();
++		} finally {
++			tx.finish();
++		}
++		
++		return testEdges;
++	}
++
++	public static List<Relationship> createTestEdgesCypherGraph(Node n1, Node n2, Node n3, Node n4,
++			Node n5, Node n6, Node n7, Node n8, Node n9, Node n10, GraphDatabaseService graphDb) {
++		Transaction tx = graphDb.beginTx();
++		List<Relationship> testEdges = Lists.newArrayList();
++		
++		try {
++			// first same as triangle
++			Relationship e1 = n1.createRelationshipTo(n2, RelTypes.X);
++			e1.setProperty("weight", 3.0);
++
++			Relationship e2 = n1.createRelationshipTo(n3, RelTypes.X);
++			e2.setProperty("weight", 3.0);
++			
++			Relationship e3 = n2.createRelationshipTo(n3, RelTypes.X);
++			e3.setProperty("weight", 1.0);
++			
++			testEdges.add(e1);
++			testEdges.add(e2);
++			testEdges.add(e3);
++			
++			// second same as square
++			Relationship e4 = n7.createRelationshipTo(n8, RelTypes.X);
++			e4.setProperty("weight", 3.0);
++			
++			Relationship e5 = n7.createRelationshipTo(n9, RelTypes.X);
++			e5.setProperty("weight", 3.0);
++			
++			Relationship e6 = n8.createRelationshipTo(n9, RelTypes.X);
++			e6.setProperty("weight", 3.0);
++			
++			Relationship e7 = n8.createRelationshipTo(n10, RelTypes.X);
++			e7.setProperty("weight", 2.0);
++			
++			Relationship e8 = n9.createRelationshipTo(n10, RelTypes.X);
++			e8.setProperty("weight", 0.5);
++			
++			testEdges.add(e4);
++			testEdges.add(e5);
++			testEdges.add(e6);
++			testEdges.add(e7);
++			testEdges.add(e8);
++			
++			// last connect these two subgraphs
++			Relationship e9 = n1.createRelationshipTo(n4, RelTypes.X);
++			e9.setProperty("weight", 0.5);
++			
++			Relationship e10 = n4.createRelationshipTo(n7, RelTypes.X);
++			e10.setProperty("weight", 0.5);
++			
++			Relationship e11 = n2.createRelationshipTo(n5, RelTypes.X);
++			e11.setProperty("weight", 0.5);
++			
++			Relationship e12 = n5.createRelationshipTo(n9, RelTypes.X);
++			e12.setProperty("weight", 0.5);
++			
++			Relationship e13 = n3.createRelationshipTo(n6, RelTypes.X);
++			e13.setProperty("weight", 0.5);
++			
++			Relationship e14 = n6.createRelationshipTo(n8, RelTypes.X);
++			e14.setProperty("weight", 0.5);
++			
++			testEdges.add(e9);
++			testEdges.add(e10);
++			testEdges.add(e11);
++			testEdges.add(e12);
++			testEdges.add(e13);
++			testEdges.add(e14);
++			
++			tx.success();
++		} catch (Exception e) {
++			tx.failure();
++		} finally {
++			tx.finish();
++		}
++		
++		return testEdges;
++	}
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -60,26 +60,23 @@
+ 	
+ 	public static List<Relationship> createTestEdgesMakingTriangleGraphWithUnbalancedWeight(Node n1, Node n2, Node n3,
+ 			GraphDatabaseService graphDb) {
+ 		Transaction tx = graphDb.beginTx();
+ 		List<Relationship> testEdges = Lists.newArrayList();
+ 		
+ 		try {
+ 			Relationship e1 = n1.createRelationshipTo(n2, RelTypes.X);
+-//			e1.setProperty("absoluteSalience", 0);
+ 			e1.setProperty("weight", 3.0);
+ 			
+ 			Relationship e2 = n1.createRelationshipTo(n3, RelTypes.X);
+-//			e2.setProperty("absoluteSalience", 0);
+-			e2.setProperty("weight", 3.0);
++			e2.setProperty("weight", 1.0);
+ 			
+ 			Relationship e3 = n2.createRelationshipTo(n3, RelTypes.X);
+-//			e3.setProperty("absoluteSalience", 0);
+-			e3.setProperty("weight", 1.0);
++			e3.setProperty("weight", 3.0);
+ 			
+ 			testEdges.add(e1);
+ 			testEdges.add(e2);
+ 			testEdges.add(e3);
+ 			
+ 			tx.success();
+ 		} catch (Exception e) {
+ 			tx.failure();
+--- MERGED RESULT (mergiraf; full) ---
+package com.xebia.graph.neo4j.plugins;
+
+import java.util.List;
+
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.Transaction;
+
+import com.google.common.collect.Lists;
+
+public class TestGraphUtil {
+	private enum RelTypes implements RelationshipType {
+		X
+	}
+	
+	public static List<Node> createTestNodes(GraphDatabaseService graphDb) {
+		Transaction tx = graphDb.beginTx();
+		Node n1 = null, n2 = null, n3 = null;
+
+		try {
+			n1 = graphDb.createNode();
+			n1.setProperty("name", "n1");
+			n2 = graphDb.createNode();
+			n2.setProperty("name", "n2");
+			n3 = graphDb.createNode();
+			n3.setProperty("name", "n3");
+
+			tx.success();
+		} catch (Exception e) {
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+
+		return Lists.newArrayList(n1, n2, n3);
+	}
+	
+	public static List<Relationship> createTestEdgesLinearlyConnecting(List<Node> nodes, GraphDatabaseService graphDb) {
+		Transaction tx = graphDb.beginTx();
+		List<Relationship> testEdges = Lists.newArrayList();
+		
+		try {
+			for (int i = 0; i < nodes.size() - 1; i ++) {
+				Relationship edge = nodes.get(i).createRelationshipTo(nodes.get(i + 1), RelTypes.X);
+				//edge.setProperty("absoluteSalience", 0);
+				testEdges.add(edge);
+				
+				tx.success();
+			}
+		} catch (Exception e) {
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+		
+		return testEdges;
+	}
+	
+	public static List<Relationship> createTestEdgesMakingTriangleGraphWithUnbalancedWeight(Node n1, Node n2, Node n3,
+			GraphDatabaseService graphDb) {
+		Transaction tx = graphDb.beginTx();
+		List<Relationship> testEdges = Lists.newArrayList();
+		
+		try {
+			Relationship e1 = n1.createRelationshipTo(n2, RelTypes.X);
+			e1.setProperty("weight", 3.0);
+			
+			Relationship e2 = n1.createRelationshipTo(n3, RelTypes.X);
+			e2.setProperty("weight", 1.0);
+			
+			Relationship e3 = n2.createRelationshipTo(n3, RelTypes.X);
+			e3.setProperty("weight", 3.0);
+			
+			testEdges.add(e1);
+			testEdges.add(e2);
+			testEdges.add(e3);
+			
+			tx.success();
+		} catch (Exception e) {
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+		
+		return testEdges;
+	}
+
+	public static List<Node> createFourTestNodes(GraphDatabaseService graphDb) {
+		Transaction tx = graphDb.beginTx();
+		Node n1 = null, n2 = null, n3 = null, n4 = null;
+
+		try {
+			n1 = graphDb.createNode();
+			n1.setProperty("name", "n1");
+			n2 = graphDb.createNode();
+			n2.setProperty("name", "n2");
+			n3 = graphDb.createNode();
+			n3.setProperty("name", "n3");
+			n4 = graphDb.createNode();
+			n4.setProperty("name", "n4");
+
+			tx.success();
+		} catch (Exception e) {
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+
+		return Lists.newArrayList(n1, n2, n3, n4);
+	}
+	
+	public static List<Node> createCypherTestNodes(GraphDatabaseService graphDb) {
+		Transaction tx = graphDb.beginTx();
+		Node n1 = null, n2 = null, n3 = null, n4 = null, n5 = null, n6 = null, n7 = null, n8 = null, n9 = null, n10 = null;
+
+		try {
+			n1 = graphDb.createNode();
+			n1.setProperty("name", "n1");
+			n2 = graphDb.createNode();
+			n2.setProperty("name", "n2");
+			n3 = graphDb.createNode();
+			n3.setProperty("name", "n3");
+			n4 = graphDb.createNode();
+			n4.setProperty("name", "n4");
+			n5 = graphDb.createNode();
+			n5.setProperty("name", "n5");
+			n6 = graphDb.createNode();
+			n6.setProperty("name", "n6");
+			n7 = graphDb.createNode();
+			n7.setProperty("name", "n7");
+			n8 = graphDb.createNode();
+			n8.setProperty("name", "n8");
+			n9 = graphDb.createNode();
+			n9.setProperty("name", "n9");
+			n10 = graphDb.createNode();
+			n10.setProperty("name", "n10");
+
+			tx.success();
+		} catch (Exception e) {
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+
+		return Lists.newArrayList(n1, n2, n3, n4, n5, n6, n7, n8, n9, n10);
+	}
+	
+	public static List<Relationship> createTestEdgesMakingSquareGraphWithUnbalancedWeight(Node n1, Node n2, Node n3, Node n4,
+			GraphDatabaseService graphDb) {
+		Transaction tx = graphDb.beginTx();
+		List<Relationship> testEdges = Lists.newArrayList();
+		
+		try {
+			Relationship e1 = n1.createRelationshipTo(n2, RelTypes.X);
+			e1.setProperty("weight", 3.0);
+			
+			Relationship e2 = n1.createRelationshipTo(n3, RelTypes.X);
+			e2.setProperty("weight", 3.0);
+			
+			Relationship e3 = n2.createRelationshipTo(n3, RelTypes.X);
+			e3.setProperty("weight", 3.0);
+			
+			Relationship e4 = n2.createRelationshipTo(n4, RelTypes.X);
+			e4.setProperty("weight", 2.0);
+			
+			Relationship e5 = n3.createRelationshipTo(n4, RelTypes.X);
+			e5.setProperty("weight", 0.5);
+			
+			testEdges.add(e1);
+			testEdges.add(e2);
+			testEdges.add(e3);
+			testEdges.add(e4);
+			testEdges.add(e5);
+			
+			tx.success();
+		} catch (Exception e) {
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+		
+		return testEdges;
+	}
+
+	public static List<Relationship> createTestEdgesMakingBrancheGraphWithUnbalancedWeight(Node n1, Node n2, Node n3, Node n4,
+			Node n5, GraphDatabaseService graphDb) {
+		Transaction tx = graphDb.beginTx();
+		List<Relationship> testEdges = Lists.newArrayList();
+		
+		try {
+			Relationship e1 = n1.createRelationshipTo(n2, RelTypes.X);
+			e1.setProperty("weight", 3.0);
+			
+			Relationship e2 = n1.createRelationshipTo(n3, RelTypes.X);
+			e2.setProperty("weight", 1.0);
+			
+			Relationship e3 = n2.createRelationshipTo(n4, RelTypes.X);
+			e3.setProperty("weight", 2.0);
+			
+			Relationship e4 = n3.createRelationshipTo(n4, RelTypes.X);
+			e4.setProperty("weight", 3.0);
+			
+			Relationship e5 = n4.createRelationshipTo(n5, RelTypes.X);
+			e5.setProperty("weight", 3.0);
+			
+			testEdges.add(e1);
+			testEdges.add(e2);
+			testEdges.add(e3);
+			testEdges.add(e4);
+			testEdges.add(e5);
+			
+			tx.success();
+		} catch (Exception e) {
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+		
+		return testEdges;
+	}
+
+	public static List<Relationship> createTestEdgesCypherGraph(Node n1, Node n2, Node n3, Node n4,
+			Node n5, Node n6, Node n7, Node n8, Node n9, Node n10, GraphDatabaseService graphDb) {
+		Transaction tx = graphDb.beginTx();
+		List<Relationship> testEdges = Lists.newArrayList();
+		
+		try {
+			// first same as triangle
+			Relationship e1 = n1.createRelationshipTo(n2, RelTypes.X);
+			e1.setProperty("weight", 3.0);
+
+			Relationship e2 = n1.createRelationshipTo(n3, RelTypes.X);
+			e2.setProperty("weight", 3.0);
+			
+			Relationship e3 = n2.createRelationshipTo(n3, RelTypes.X);
+			e3.setProperty("weight", 1.0);
+			
+			testEdges.add(e1);
+			testEdges.add(e2);
+			testEdges.add(e3);
+			
+			// second same as square
+			Relationship e4 = n7.createRelationshipTo(n8, RelTypes.X);
+			e4.setProperty("weight", 3.0);
+			
+			Relationship e5 = n7.createRelationshipTo(n9, RelTypes.X);
+			e5.setProperty("weight", 3.0);
+			
+			Relationship e6 = n8.createRelationshipTo(n9, RelTypes.X);
+			e6.setProperty("weight", 3.0);
+			
+			Relationship e7 = n8.createRelationshipTo(n10, RelTypes.X);
+			e7.setProperty("weight", 2.0);
+			
+			Relationship e8 = n9.createRelationshipTo(n10, RelTypes.X);
+			e8.setProperty("weight", 0.5);
+			
+			testEdges.add(e4);
+			testEdges.add(e5);
+			testEdges.add(e6);
+			testEdges.add(e7);
+			testEdges.add(e8);
+			
+			// last connect these two subgraphs
+			Relationship e9 = n1.createRelationshipTo(n4, RelTypes.X);
+			e9.setProperty("weight", 0.5);
+			
+			Relationship e10 = n4.createRelationshipTo(n7, RelTypes.X);
+			e10.setProperty("weight", 0.5);
+			
+			Relationship e11 = n2.createRelationshipTo(n5, RelTypes.X);
+			e11.setProperty("weight", 0.5);
+			
+			Relationship e12 = n5.createRelationshipTo(n9, RelTypes.X);
+			e12.setProperty("weight", 0.5);
+			
+			Relationship e13 = n3.createRelationshipTo(n6, RelTypes.X);
+			e13.setProperty("weight", 0.5);
+			
+			Relationship e14 = n6.createRelationshipTo(n8, RelTypes.X);
+			e14.setProperty("weight", 0.5);
+			
+			testEdges.add(e9);
+			testEdges.add(e10);
+			testEdges.add(e11);
+			testEdges.add(e12);
+			testEdges.add(e13);
+			testEdges.add(e14);
+			
+			tx.success();
+		} catch (Exception e) {
+			tx.failure();
+		} finally {
+			tx.finish();
+		}
+		
+		return testEdges;
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

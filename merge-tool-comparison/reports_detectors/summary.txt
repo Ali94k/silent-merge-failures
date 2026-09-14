@@ -1,0 +1,33 @@
+# Detector cycle D1-D3 (ISSUES #31) — one-page summary
+# NEVER BLEND: fourth instrument — separate from taxonomy base rates, Stage-C R1/R2, Phase-2b.
+# Suite frozen 732d8ff; plan outputs/detector-cycle-plan.md (freeze 10b7528, Amendments 1-3).
+# Full narrative: FINDINGS.md | numbers: adjudication/causal_numbers.json | rulings: adjudication/sd6_rulings.csv
+
+HELD-OUT CAUSAL RECALL (n=110 units; adjudicated-causal only; Wilson 95%)
+  baseline arm (5 default lanes)      4/110 =  3.6% [ 1.4,  9.0]
+  experimental arm (full 7-lane)     18/110 = 16.4% [10.6, 24.4]
+  added (experimental-only)          14/110 = 12.7% [ 7.7, 20.2]
+  POOLED NAME-BINDING FAMILY (n=37) — PRIMARY CITABLE
+  baseline 2/37 = 5.4% [1.5, 17.7]  ->  experimental 16/37 = 43.2% [28.7, 59.1]
+  family added recall                14/37 = 37.8% [24.1, 53.9]
+  D1 own category (pruned-import)    13/14 = 92.9% [68.5, 98.7]
+  (machine flag rates beside the causal numbers: 5/110, 20/110, 16/37 — labeled in FINDINGS)
+
+PER-LANE PRECISION (held-out flagged units, GD4 rulings)
+  ImportPruneUsage (D1)     14/14   RM2RenameConflict 3/4   UR[Joern] 3/3
+  UR[D3-widened] 0/1 (same-package residual, measured)      SignatureStaleCall: 0 flags (honest ceiling)
+
+ZERO-FP RECORD (gated)
+  100 tune + 197 eval-controls + 66 spgroup-clean = 363 control units, ZERO adjudicated FPs.
+  Two flags raised, both Ali-ruled INCIDENTAL-BUT-TRUE 2026-07-20:
+    jgralab (eval-control): 0.17.0-reproduced merge uncompilable — control label = mergiraf-version skew
+    jOOQ DSL.java (spgroup-clean): developer's own merge broken; their "Grr Git" commit restores the imports
+  GD3(ii)+(iii) re-judged PASS with findings recorded. GD4 PASS (20/20 adjudicated).
+
+DERIVATION SPLIT — TUNING-TAINTED, descriptive only, never citable:
+  machine 11/165 -> 39/165; family 5/48 -> 30/48 (added 25/48); D3-widened 7 catches there vs 0-causal/1-FP held-out.
+  (corrected 2026-07-26: family cells previously read 4/48 -> 28/48, a stale mid-run snapshot — FINDINGS §7 correction note)
+
+spgroup positives (17): 0 flags (descriptive; benchmark interference is behavioral #1/#2 — outside all lanes).
+AWS cycle: c7i.2xlarge ~40 h ~$17 (Joern-bound; 2.4x Stage-C workload); env known-answer 42/42.
+Lanes remain behind SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS=1 (plan §2 N2; default-enabling deferred).

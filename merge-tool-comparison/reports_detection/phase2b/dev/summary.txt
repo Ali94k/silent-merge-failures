@@ -1,0 +1,42 @@
+# Detection-validation pilot (detectors at driver commit f964354; NOTE: an uncommitted working tree still reports the last commit)
+# spec: outputs/p1-detection-validation-plan.md §4–§5 | merged_source=developer
+
+## positives (externally labeled interference) — R2 (detection rate)
+  merges materialized      : 17  (17 files)
+  files MERGE_DIVERGED     : 0  
+  merges all-files-diverged: 0 (leave the sample — granularity finding)
+  merges scored            : 17
+  blocked                  : 0/17 = 0.000 [0.000, 0.184]
+    via detector FLAG      : 0
+    via fail-closed only   : 0
+
+## controls (externally labeled interference-free) — R1 (block rate on good merges)
+  merges materialized      : 66  (66 files)
+  files MERGE_DIVERGED     : 0  
+  merges all-files-diverged: 0 (leave the sample — granularity finding)
+  merges scored            : 66
+  blocked                  : 0/66 = 0.000 [0.000, 0.055]
+    via detector FLAG      : 0
+    via fail-closed only   : 0
+
+## Per-category recall (positives, unit-level)
+  1-atomic-updates         recall 0/6 = 0.000 [0.000, 0.390] (flag 0, fail-closed 0)
+  2-cfi-short-circuit      recall 0/6 = 0.000 [0.000, 0.390] (flag 0, fail-closed 0)
+  3-dfi-stale-read         recall 0/1 = 0.000 [0.000, 0.793] (flag 0, fail-closed 0)
+  6-rename-family          recall 0/1 = 0.000 [0.000, 0.793] (flag 0, fail-closed 0)
+  none-of-7                recall 0/3 = 0.000 [0.000, 0.562] (flag 0, fail-closed 0)
+
+## Per-detector breakdown (clean-merged files only)
+  detector                      FLAG  UNANALYZ  CLEAN  mean_rt_s  median_rt_s
+  JoernDataFlowInterference        0         0     83       24.2         23.5
+  JoernUnresolvedReference         0         0     83       23.3         22.7
+  JoernInfiniteLoop                0         0     83       23.7         23.1
+  JoernInvalidLoopBounds           0         0     83        8.2          8.0
+  RM2RenameConflict                0         0     83        2.7          2.5
+
+## G0 calibration
+  median per-merge runtime : 80s (abort threshold 1200s)
+  UNANALYZABLE file frac   : 0/83 = 0.00 (abort threshold 0.3)
+
+## FLAGged files — adjudicate every one, written rationale (plan §4.6): 0
+

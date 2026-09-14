@@ -1,0 +1,44 @@
+TAXONOMY-REFRESH FINDINGS SNAPSHOT (ISSUES #30, closed 2026-07-12)
+====================================================================
+Population: 308-census (mergiraf==Tests_failed, has-Java) -> 275 scored
+            (164 A / 111 B; 17 not materialized + 16 divergence-dropped).
+Instrument: frozen 8-category codebook + 3 escape hatches (commit 3e7d9b4),
+            double claude-opus-4-8 closed coding, disagreements ruled by Ali.
+
+BASE RATES (primary, pooled n=275, Wilson 95%):
+  attributed to a named mechanism ........ 119  43.3% [37.5,49.2]
+    stale-usage-of-pruned-import ......... 35   12.7% [9.3,17.2]
+    stale-caller-of-changed-signature .... 28   10.2% [7.1,14.3]
+    overlapping-edit-interleaving ........ 18    6.5% [4.2,10.1]
+    stale-ref-to-renamed-or-relocated .... 16    5.8% [3.6,9.2]
+    stale-expectation-of-changed-behavior   7    2.5% [1.2,5.2]
+    stale-ref-to-removed-declaration .....  6    2.2% [1.0,4.7]
+    duplicate-concurrent-addition ........  6    2.2% [1.0,4.7]
+    insertion-anchored-to-relocated-code .  3    1.1% [0.4,3.2]
+    residual-other .......................  0    0.0% [0.0,1.4]
+  escape (not-cleanly-merge-attributable)  156  56.7% [50.8,62.5]
+    none-identified 88 (32.0%) / indeterminate 66 (24.0%) / flaky 2 (0.7%)
+
+HEADLINES:
+  * Name-binding family = 85/119 = 71.4% [62.7,78.7] of attributed
+    (30.9% of all scored) -- corroborates Stage C + Phase 1 independently.
+  * Escape mass 56.7% is a first-class stratum (merge-level test signal);
+    attribution rate is stratum-robust (A 43.3% vs B 43.2%) and does not
+    collapse under truncation (T0 40.6% / T2 54.0% / T3 42.3%).
+  * residual-other = 0: the frozen codebook covered every attributed unit,
+    including all 110 held-out units.
+  * Tool-artifact categories (interleaving + anchoring + duplication) ~10%:
+    the dominant failure is semantically-stale composition of two sound
+    changes, not wrong weaving.
+
+GATES:
+  G3.1 stability  v1 78.9%/k0.741/58dis = YELLOW -> Amendment 2 (approved,
+                  escape-boundary clarification only) -> rerun both passes
+                  v2 82.9% [78.0,86.9] / k0.788 / 47 dis = PASS.
+  G3.2 reliability 12/12 sampled agreements accepted = 100% [75.8,100] PASS;
+                  47 disagreements ruled (22 pass-a / 25 pass-b / 0 third);
+                  0% override on sampled agreements.
+
+NEVER blend with Stage-C R1/R2 or Phase-2b oracle numbers (different
+instruments/questions/populations). Held-out contents stay out of prose.
+Full detail: reports_taxonomy/FINDINGS.md; numbers: phase3/findings_stats.json.

@@ -1,0 +1,480 @@
+UNIT atam4j_atam4j__71fcecb071
+repo: atam4j_atam4j   merge: 71fcecb071270981bc92b14d2cc3b0e56828c011   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: acceptance-tests/src/test/java/me/atam/atam4jsampleapp/PassingTestAcceptanceTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,58 +1,53 @@
+ package me.atam.atam4jsampleapp;
+ 
+-import me.atam.atam4j.PollingPredicate;
+-import me.atam.atam4j.dummytests.PassingTest;
++import me.atam.atam4j.dummytests.PassingTestWithNoCategory;
+ import me.atam.atam4jdomain.IndividualTestResult;
+ import me.atam.atam4jdomain.TestsRunResult;
+ import me.atam.atam4jsampleapp.testsupport.AcceptanceTest;
+ import me.atam.atam4jsampleapp.testsupport.Atam4jApplicationStarter;
+ import org.junit.Test;
+ 
+ import javax.ws.rs.core.Response;
+ 
+-import static me.atam.atam4jsampleapp.testsupport.AcceptanceTestTimeouts.MAX_ATTEMPTS;
+-import static me.atam.atam4jsampleapp.testsupport.AcceptanceTestTimeouts.RETRY_POLL_INTERVAL;
+ import static me.atam.atam4jsampleapp.testsupport.AcceptanceTestTimeouts.TEN_SECONDS_IN_MILLIS;
+ import static org.hamcrest.CoreMatchers.hasItem;
+ import static org.hamcrest.CoreMatchers.is;
+ import static org.junit.Assert.assertThat;
+-import static org.junit.Assert.assertTrue;
+ 
+ public class PassingTestAcceptanceTest extends AcceptanceTest {
+ 
+     @Test
+-    public void givenSampleApplicationStartedWithPassingTest_whenHealthCheckCalledBeforeTestRun_thenTooEarlyMessageReceived(){
+-
++    public void givenPassingTest_whenTestsEndpointCalledBeforeTestRun_thenTooEarlyMessageReceived(){
++        //given
+         dropwizardTestSupportAppConfig = Atam4jApplicationStarter
+-                                            .startApplicationWith(TEN_SECONDS_IN_MILLIS, PassingTest.class);
+-
+-        Response testRunResultFromServer = getTestRunResultFromServer();
++                                            .startApplicationWith(TEN_SECONDS_IN_MILLIS, PassingTestWithNoCategory.class);
++        //when
++        Response testRunResultFromServer = getTestRunResultFromServer(getTestsURI());
++        //then
+         assertThat(testRunResultFromServer.getStatus(), is(Response.Status.OK.getStatusCode()));
+         assertThat(
+                 testRunResultFromServer.readEntity(TestsRunResult.class).getStatus(),
+                 is(TestsRunResult.Status.TOO_EARLY)
+         );
+     }
+ 
+     @Test
+-    public void givenSampleApplicationStartedWithPassingTest_whenHealthCheckCalledAfterTestRUn_thenOKMessageReceived(){
+-
+-        dropwizardTestSupportAppConfig = Atam4jApplicationStarter.startApplicationWith(0, PassingTest.class);
+-
+-        PollingPredicate<Response> responsePollingPredicate = new PollingPredicate<>(
+-                MAX_ATTEMPTS,
+-                RETRY_POLL_INTERVAL,
+-                response -> response.readEntity(TestsRunResult.class).getStatus().equals(TestsRunResult.Status.ALL_OK),
+-                this::getTestRunResultFromServer);
+-
+-        assertTrue(responsePollingPredicate.pollUntilPassedOrMaxAttemptsExceeded());
+-        Response response = getTestRunResultFromServer();
++    public void givenPassingTest_whenTestsEndpointCalledAfterTestRun_thenOKMessageReceived(){
++        //given
++        dropwizardTestSupportAppConfig = Atam4jApplicationStarter.startApplicationWith(0, PassingTestWithNoCategory.class);
++        //when
++        Response response = getResponseFromTestsEndpointOnceTestsRunHasCompleted();
+         TestsRunResult testRunResult = response.readEntity(TestsRunResult.class);
++        //then
+         assertThat(response.getStatus(), is(Response.Status.OK.getStatusCode()));
+         assertThat(testRunResult.getTests().size(), is(1));
+         assertThat(
+                 testRunResult.getTests(),
+-                hasItem(new IndividualTestResult(PassingTest.class.getName(), "testThatPasses", "priority-1", true))
++                hasItem(new IndividualTestResult(PassingTestWithNoCategory.class.getName(), "testThatPasses", true))
+         );
+     }
++
++
++
++
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -30,16 +30,30 @@
+         assertThat(testRunResultFromServer.getStatus(), is(Response.Status.OK.getStatusCode()));
+         assertThat(
+                 testRunResultFromServer.readEntity(TestsRunResult.class).getStatus(),
+                 is(TestsRunResult.Status.TOO_EARLY)
+         );
+     }
+ 
+     @Test
++    public void givenSampleApplicationStartedWithPassingTest_whenCriticalHealthCheckCalledBeforeTestRun_thenTooEarlyMessageReceived(){
++
++        dropwizardTestSupportAppConfig = Atam4jApplicationStarter
++                .startApplicationWith(TEN_SECONDS_IN_MILLIS, PassingTest.class);
++
++        Response testRunResultFromServer = getCriticalTestRunResultFromServer();
++        assertThat(testRunResultFromServer.getStatus(), is(Response.Status.OK.getStatusCode()));
++        assertThat(
++                testRunResultFromServer.readEntity(TestsRunResult.class).getStatus(),
++                is(TestsRunResult.Status.TOO_EARLY)
++        );
++    }
++
++    @Test
+     public void givenSampleApplicationStartedWithPassingTest_whenHealthCheckCalledAfterTestRUn_thenOKMessageReceived(){
+ 
+         dropwizardTestSupportAppConfig = Atam4jApplicationStarter.startApplicationWith(0, PassingTest.class);
+ 
+         PollingPredicate<Response> responsePollingPredicate = new PollingPredicate<>(
+                 MAX_ATTEMPTS,
+                 RETRY_POLL_INTERVAL,
+                 response -> response.readEntity(TestsRunResult.class).getStatus().equals(TestsRunResult.Status.ALL_OK),
+@@ -50,9 +64,9 @@
+         TestsRunResult testRunResult = response.readEntity(TestsRunResult.class);
+         assertThat(response.getStatus(), is(Response.Status.OK.getStatusCode()));
+         assertThat(testRunResult.getTests().size(), is(1));
+         assertThat(
+                 testRunResult.getTests(),
+                 hasItem(new IndividualTestResult(PassingTest.class.getName(), "testThatPasses", "priority-1", true))
+         );
+     }
+-}
++}
+--- MERGED RESULT (mergiraf; full) ---
+package me.atam.atam4jsampleapp;
+
+import me.atam.atam4j.dummytests.PassingTestWithNoCategory;
+import me.atam.atam4jdomain.IndividualTestResult;
+import me.atam.atam4jdomain.TestsRunResult;
+import me.atam.atam4jsampleapp.testsupport.AcceptanceTest;
+import me.atam.atam4jsampleapp.testsupport.Atam4jApplicationStarter;
+import org.junit.Test;
+
+import javax.ws.rs.core.Response;
+
+import static me.atam.atam4jsampleapp.testsupport.AcceptanceTestTimeouts.TEN_SECONDS_IN_MILLIS;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+
+public class PassingTestAcceptanceTest extends AcceptanceTest {
+
+    @Test
+    public void givenPassingTest_whenTestsEndpointCalledBeforeTestRun_thenTooEarlyMessageReceived(){
+        //given
+        dropwizardTestSupportAppConfig = Atam4jApplicationStarter
+                                            .startApplicationWith(TEN_SECONDS_IN_MILLIS, PassingTestWithNoCategory.class);
+        //when
+        Response testRunResultFromServer = getTestRunResultFromServer(getTestsURI());
+        //then
+        assertThat(testRunResultFromServer.getStatus(), is(Response.Status.OK.getStatusCode()));
+        assertThat(
+                testRunResultFromServer.readEntity(TestsRunResult.class).getStatus(),
+                is(TestsRunResult.Status.TOO_EARLY)
+        );
+    }
+
+    @Test
+    public void givenSampleApplicationStartedWithPassingTest_whenCriticalHealthCheckCalledBeforeTestRun_thenTooEarlyMessageReceived(){
+
+        dropwizardTestSupportAppConfig = Atam4jApplicationStarter
+                .startApplicationWith(TEN_SECONDS_IN_MILLIS, PassingTest.class);
+
+        Response testRunResultFromServer = getCriticalTestRunResultFromServer();
+        assertThat(testRunResultFromServer.getStatus(), is(Response.Status.OK.getStatusCode()));
+        assertThat(
+                testRunResultFromServer.readEntity(TestsRunResult.class).getStatus(),
+                is(TestsRunResult.Status.TOO_EARLY)
+        );
+    }
+
+    @Test
+    public void givenPassingTest_whenTestsEndpointCalledAfterTestRun_thenOKMessageReceived(){
+        //given
+        dropwizardTestSupportAppConfig = Atam4jApplicationStarter.startApplicationWith(0, PassingTestWithNoCategory.class);
+        //when
+        Response response = getResponseFromTestsEndpointOnceTestsRunHasCompleted();
+        TestsRunResult testRunResult = response.readEntity(TestsRunResult.class);
+        //then
+        assertThat(response.getStatus(), is(Response.Status.OK.getStatusCode()));
+        assertThat(testRunResult.getTests().size(), is(1));
+        assertThat(
+                testRunResult.getTests(),
+                hasItem(new IndividualTestResult(PassingTestWithNoCategory.class.getName(), "testThatPasses", true))
+        );
+    }
+
+
+
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -27,30 +27,16 @@
+         assertThat(testRunResultFromServer.getStatus(), is(Response.Status.OK.getStatusCode()));
+         assertThat(
+                 testRunResultFromServer.readEntity(TestsRunResult.class).getStatus(),
+                 is(TestsRunResult.Status.TOO_EARLY)
+         );
+     }
+ 
+     @Test
+-    public void givenSampleApplicationStartedWithPassingTest_whenCriticalHealthCheckCalledBeforeTestRun_thenTooEarlyMessageReceived(){
+-
+-        dropwizardTestSupportAppConfig = Atam4jApplicationStarter
+-                .startApplicationWith(TEN_SECONDS_IN_MILLIS, PassingTest.class);
+-
+-        Response testRunResultFromServer = getCriticalTestRunResultFromServer();
+-        assertThat(testRunResultFromServer.getStatus(), is(Response.Status.OK.getStatusCode()));
+-        assertThat(
+-                testRunResultFromServer.readEntity(TestsRunResult.class).getStatus(),
+-                is(TestsRunResult.Status.TOO_EARLY)
+-        );
+-    }
+-
+-    @Test
+     public void givenPassingTest_whenTestsEndpointCalledAfterTestRun_thenOKMessageReceived(){
+         //given
+         dropwizardTestSupportAppConfig = Atam4jApplicationStarter.startApplicationWith(0, PassingTestWithNoCategory.class);
+         //when
+         Response response = getResponseFromTestsEndpointOnceTestsRunHasCompleted();
+         TestsRunResult testRunResult = response.readEntity(TestsRunResult.class);
+         //then
+         assertThat(response.getStatus(), is(Response.Status.OK.getStatusCode()));
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: acceptance-tests/src/test/java/me/atam/atam4jsampleapp/testsupport/AcceptanceTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,27 +1,56 @@
+ package me.atam.atam4jsampleapp.testsupport;
+ 
+ import io.dropwizard.testing.DropwizardTestSupport;
++import me.atam.atam4j.PollingPredicate;
++import me.atam.atam4jdomain.TestsRunResult;
+ import me.atam.atam4jsampleapp.ApplicationConfiguration;
+ import org.glassfish.jersey.client.JerseyClientBuilder;
+ import org.junit.After;
+ 
+ import javax.ws.rs.core.Response;
+ 
++import static me.atam.atam4jsampleapp.testsupport.AcceptanceTestTimeouts.MAX_ATTEMPTS;
++import static me.atam.atam4jsampleapp.testsupport.AcceptanceTestTimeouts.RETRY_POLL_INTERVAL;
++import static org.junit.Assert.assertTrue;
++
+ public abstract class AcceptanceTest {
+ 
+     protected DropwizardTestSupport<ApplicationConfiguration> dropwizardTestSupportAppConfig;
+-
+ 
+     @After
+     public void stopApplication() {
+         dropwizardTestSupportAppConfig.after();
+     }
+ 
+-    public Response getTestRunResultFromServer(){
++    public Response getTestRunResultFromServer(String testsURI){
+         return new JerseyClientBuilder().build().target(
+-                String.format("http://localhost:%d/tests", dropwizardTestSupportAppConfig.getLocalPort()))
++                testsURI)
+                 .request()
+                 .get();
+     }
+ 
++    public String getTestsURI() {
++        return String.format("http://localhost:%d/tests", dropwizardTestSupportAppConfig.getLocalPort());
++    }
++
++    public Response getResponseFromTestsWithCategoryOnceTestRunHasCompleted(String category) {
++        waitUntilTestRunHasCompleted();
++        return getTestRunResultFromServer(getTestsURI() + "/" + category);
++    }
++
++    public Response getResponseFromTestsEndpointOnceTestsRunHasCompleted() {
++        waitUntilTestRunHasCompleted();
++        return getTestRunResultFromServer(getTestsURI());
++    }
++
++    private void waitUntilTestRunHasCompleted() {
++        PollingPredicate<Response> responsePollingPredicate = new PollingPredicate<>(
++                MAX_ATTEMPTS,
++                RETRY_POLL_INTERVAL,
++                response -> !response.readEntity(TestsRunResult.class).getStatus().equals(TestsRunResult.Status.TOO_EARLY),
++                () ->  getTestRunResultFromServer(getTestsURI()));
++
++        assertTrue(responsePollingPredicate.pollUntilPassedOrMaxAttemptsExceeded());
++    }
++
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,27 +1,32 @@
+ package me.atam.atam4jsampleapp.testsupport;
+ 
+ import io.dropwizard.testing.DropwizardTestSupport;
+ import me.atam.atam4jsampleapp.ApplicationConfiguration;
+ import org.glassfish.jersey.client.JerseyClientBuilder;
+ import org.junit.After;
+ 
++import javax.ws.rs.client.Client;
+ import javax.ws.rs.core.Response;
+ 
+ public abstract class AcceptanceTest {
+ 
++    private static final Client client = new JerseyClientBuilder().build();
+     protected DropwizardTestSupport<ApplicationConfiguration> dropwizardTestSupportAppConfig;
+-
+ 
+     @After
+     public void stopApplication() {
+         dropwizardTestSupportAppConfig.after();
+     }
+ 
+-    public Response getTestRunResultFromServer(){
+-        return new JerseyClientBuilder().build().target(
+-                String.format("http://localhost:%d/tests", dropwizardTestSupportAppConfig.getLocalPort()))
++    public Response getTestRunResultFromServer() {
++        return client.target(String.format("http://localhost:%d/tests", dropwizardTestSupportAppConfig.getLocalPort()))
++                     .request()
++                     .get();
++    }
++
++    public Response getCriticalTestRunResultFromServer() {
++        return client.target(String.format("http://localhost:%d/tests/priority-1", dropwizardTestSupportAppConfig.getLocalPort()))
+                 .request()
+                 .get();
+     }
+-
+-}
++}
+--- MERGED RESULT (mergiraf; full) ---
+package me.atam.atam4jsampleapp.testsupport;
+
+import io.dropwizard.testing.DropwizardTestSupport;
+import me.atam.atam4j.PollingPredicate;
+import me.atam.atam4jdomain.TestsRunResult;
+import me.atam.atam4jsampleapp.ApplicationConfiguration;
+import org.glassfish.jersey.client.JerseyClientBuilder;
+import org.junit.After;
+
+import javax.ws.rs.client.Client;
+import javax.ws.rs.core.Response;
+
+import static me.atam.atam4jsampleapp.testsupport.AcceptanceTestTimeouts.MAX_ATTEMPTS;
+import static me.atam.atam4jsampleapp.testsupport.AcceptanceTestTimeouts.RETRY_POLL_INTERVAL;
+import static org.junit.Assert.assertTrue;
+
+public abstract class AcceptanceTest {
+
+    private static final Client client = new JerseyClientBuilder().build();
+    protected DropwizardTestSupport<ApplicationConfiguration> dropwizardTestSupportAppConfig;
+
+    @After
+    public void stopApplication() {
+        dropwizardTestSupportAppConfig.after();
+    }
+
+    public Response getTestRunResultFromServer(String testsURI) {
+        return client.target(
+                testsURI)
+                     .request()
+                     .get();
+    }
+
+    public Response getCriticalTestRunResultFromServer() {
+        return client.target(String.format("http://localhost:%d/tests/priority-1", dropwizardTestSupportAppConfig.getLocalPort()))
+                .request()
+                .get();
+    }
+
+    public String getTestsURI() {
+        return String.format("http://localhost:%d/tests", dropwizardTestSupportAppConfig.getLocalPort());
+    }
+
+    public Response getResponseFromTestsWithCategoryOnceTestRunHasCompleted(String category) {
+        waitUntilTestRunHasCompleted();
+        return getTestRunResultFromServer(getTestsURI() + "/" + category);
+    }
+
+    public Response getResponseFromTestsEndpointOnceTestsRunHasCompleted() {
+        waitUntilTestRunHasCompleted();
+        return getTestRunResultFromServer(getTestsURI());
+    }
+
+    private void waitUntilTestRunHasCompleted() {
+        PollingPredicate<Response> responsePollingPredicate = new PollingPredicate<>(
+                MAX_ATTEMPTS,
+                RETRY_POLL_INTERVAL,
+                response -> !response.readEntity(TestsRunResult.class).getStatus().equals(TestsRunResult.Status.TOO_EARLY),
+                () ->  getTestRunResultFromServer(getTestsURI()));
+
+        assertTrue(responsePollingPredicate.pollUntilPassedOrMaxAttemptsExceeded());
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -2,42 +2,34 @@
+ 
+ import io.dropwizard.testing.DropwizardTestSupport;
+ import me.atam.atam4j.PollingPredicate;
+ import me.atam.atam4jdomain.TestsRunResult;
+ import me.atam.atam4jsampleapp.ApplicationConfiguration;
+ import org.glassfish.jersey.client.JerseyClientBuilder;
+ import org.junit.After;
+ 
+-import javax.ws.rs.client.Client;
+ import javax.ws.rs.core.Response;
+ 
+ import static me.atam.atam4jsampleapp.testsupport.AcceptanceTestTimeouts.MAX_ATTEMPTS;
+ import static me.atam.atam4jsampleapp.testsupport.AcceptanceTestTimeouts.RETRY_POLL_INTERVAL;
+ import static org.junit.Assert.assertTrue;
+ 
+ public abstract class AcceptanceTest {
+ 
+-    private static final Client client = new JerseyClientBuilder().build();
+     protected DropwizardTestSupport<ApplicationConfiguration> dropwizardTestSupportAppConfig;
+ 
+     @After
+     public void stopApplication() {
+         dropwizardTestSupportAppConfig.after();
+     }
+ 
+-    public Response getTestRunResultFromServer(String testsURI) {
+-        return client.target(
++    public Response getTestRunResultFromServer(String testsURI){
++        return new JerseyClientBuilder().build().target(
+                 testsURI)
+-                     .request()
+-                     .get();
+-    }
+-
+-    public Response getCriticalTestRunResultFromServer() {
+-        return client.target(String.format("http://localhost:%d/tests/priority-1", dropwizardTestSupportAppConfig.getLocalPort()))
+                 .request()
+                 .get();
+     }
+ 
+     public String getTestsURI() {
+         return String.format("http://localhost:%d/tests", dropwizardTestSupportAppConfig.getLocalPort());
+     }
+ 
+@@ -55,9 +47,10 @@
+         PollingPredicate<Response> responsePollingPredicate = new PollingPredicate<>(
+                 MAX_ATTEMPTS,
+                 RETRY_POLL_INTERVAL,
+                 response -> !response.readEntity(TestsRunResult.class).getStatus().equals(TestsRunResult.Status.TOO_EARLY),
+                 () ->  getTestRunResultFromServer(getTestsURI()));
+ 
+         assertTrue(responsePollingPredicate.pollUntilPassedOrMaxAttemptsExceeded());
+     }
++
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package javax.ws.rs.client does not exist
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

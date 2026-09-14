@@ -1,0 +1,1123 @@
+{
+  "entries": [
+    {
+      "slug": "timebox-escape-rule-2x",
+      "title": "Timebox escape rule: a 2\u00d7 overrun stops work until a STATUS.md revisit note is written",
+      "date_from": "2026-04-21",
+      "date_to": "2026-05-16",
+      "decision": "Any phase that exceeds its effort estimate by 2\u00d7 stops, and a revisit note is written to STATUS.md before work continues. Applied concretely to phase 3a (if its infrastructure exceeds 5 days, invoke the escape rule and consider falling back to 3e or 3b) and to Tier E, which is timeboxed to ~4-5 days wall time with a 2\u00d7 escape budget of 8-10 days.",
+      "rationale_recorded": true,
+      "rationale": "Stated in both plan documents as preventing open-ended phase creep \"when 'one more edge case' keeps moving the finish line\"; the Tier E budget line records the same 2\u00d7 multiplier applied to a specific phase estimate without restating the reason.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the rule was in force \u2014 it is the same 2\u00d7 escape rule the integration plans adopted (gates-freeze D-240/D-248, both adopted), and the sibling pause-trigger discipline demonstrably fired and was honoured (ISSUES.md #2:84 'Plan \u00a73 pause trigger fires'). No 2\u00d7-overrun revisit note exists in STATUS.md, i.e. the timebox branch itself never fired \u2014 a rule can be adopted and never triggered.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-07",
+        "preA:pre-rm2-integration-12",
+        "preB:pre-comparator-3e-tier-e-transforms-19"
+      ],
+      "evidence": [
+        {
+          "text": "**Timebox escape rule.** If any phase exceeds its estimate by 2\u00d7, stop and write a revisit note to [`STATUS.md`](../../STATUS.md) before continuing.",
+          "line": 28,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "Prevents open-ended phase creep when \"one more edge case\" keeps moving the finish line.",
+          "line": 28,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "\u2248 **4-5 days** wall time. Timebox-escape budget: 2\u00d7 = 8-10 days.",
+          "line": 251,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "STATUS.md",
+        "docs/plans/comparator-3e-tier-e-transforms.md"
+      ],
+      "actors": "unclear",
+      "actors_note": "Sources disagree: one pass attributed the mergiraf-plan statement to Ali, the other two sources record no actor. The plan documents state the rule in a settled voice without naming who set it, so authorship is not on the record.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "phase-0-plan-validation-memo",
+      "title": "Validate the plan against the code in a Phase 0 memo before entering plan mode",
+      "date_from": "2026-05-18",
+      "date_to": null,
+      "decision": "Before any code edits or EnterPlanMode, read the authoritative plan docs AND the code they make claims about, answer seven itemized questions from the source, and deliver a written findings memo covering plan-vs-code discrepancies, the recommended approach with deviations, the RM2-cost design decision, and risks/open questions. Because that deep read covered every critical file end-to-end, redundant Explore passes and agent-based re-derivation are then skipped and the plan is written directly.",
+      "rationale_recorded": true,
+      "rationale": "rm2-integration.md is \"a hypothesis written 2026-04-24, not ground truth\" \u2014 in the immediately prior cycle two sibling plan docs were found materially stale against the real code, so the plan must be assumed possibly wrong and validated against the source (CODE wins per CLAUDE.md). The corollary was argued on the strength of the read itself: the Phase 0 deep-read was \"stronger than excerpt-level Explore\" and had already traced every code path.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:20b53f98-01",
+        "a:20b53f98-27"
+      ],
+      "evidence": [
+        {
+          "text": "PHASE 0 \u2014 CRITICAL CODE REVIEW & PLAN VALIDATION (mandatory; do this BEFORE",
+          "line": 24,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "2026-04-24, not ground truth \u2014 in the immediately prior cycle two sibling plan",
+          "line": 6,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "My Phase 0 deep-read already covered every critical file end-to-end (stronger than excerpt-level Explore), so I'll skip redundant exploration.",
+          "line": 152,
+          "file": "2026-05-18_20b53f98.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/rm2-integration.md",
+        "docs/plans/execution-sequence.md",
+        "merge-tool-comparison/ISSUES.md"
+      ],
+      "actors": "ali",
+      "actors_note": "The sources disagree: the Phase 0 mandate is Ali's instruction (a:20b53f98-01), while the corollary decision to skip Explore/subagent re-derivation was Claude's own call within that mandate (a:20b53f98-27). Attributed to Ali because the constraint on future work is his.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "from-dict-known-field-filter",
+      "title": "Make MergeScenario.from_dict filter to known fields, accepting a silent-failure cost",
+      "date_from": "2026-05-18",
+      "date_to": null,
+      "decision": "Add a single `refactorings` dict field to MergeScenario, update to_dict, and change from_dict to filter incoming JSON keys to known dataclass fields instead of constructing via cls(**data); round-trip tests stay green. The known downside \u2014 a misspelled JSON key such as \"catgory\" is now silently ignored and the field defaults, where it previously raised TypeError \u2014 is accepted and logged rather than mitigated.",
+      "rationale_recorded": true,
+      "rationale": "cls(**data) raises TypeError on any JSON key without a matching dataclass field, so the plan's \"backwards-compatible\" claim is false unless from_dict is made schema-tolerant; filtering kills that brittleness permanently. The cost was recorded in the same session as a trade rather than pure upside: \"from_dict filtering trades a loud failure for a silent one... Forwards-compat win, but I sold it as pure upside.\"",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:20b53f98-13",
+        "b:20b53f98-08"
+      ],
+      "evidence": [
+        {
+          "text": "make `from_dict` **filter to known fields** (kills the `cls(**data)` brittleness permanently)",
+          "line": 128,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "**`from_dict` filtering trades a loud failure for a silent one.** A misspelled JSON key (`\"catgory\"`) previously raised `TypeError`; now it's silently ignored and `category` defaults. Forwards-compat win, but I sold it as pure upside.",
+          "line": 257,
+          "file": "2026-05-18_20b53f98.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/core/interfaces.py",
+        "merge-tool-comparison/tests/test_interfaces.py",
+        "cbac926"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "no-silent-reconciliation",
+      "title": "Surface doc/data inconsistencies and honesty nuances instead of reconciling them silently",
+      "date_from": "2026-05-18",
+      "date_to": "2026-05-27",
+      "decision": "On finding a doc-vs-data inconsistency, report it and ask whether to fix the docstring or record the discrepancy in ISSUES #27 rather than silently reconciling it. Correspondingly, self-audit findings judged not worth acting on \u2014 the from_dict loud\u2192silent trade-off and the repeated tiny-n F1 contrasts \u2014 remain logged observations in the conversation rather than triggering code changes or a rewrite of committed history.",
+      "rationale_recorded": true,
+      "rationale": "Reported as following Ali's standing preference against silent reconciliation. For the two nuances, the argument was that every citation already carries an adjacent sub-Wilson-CI hedge so it is defensible, and the remainder is doc/commit-message wording \"not worth rewriting committed history, but I'd correct the overstatement if I touch those docs again\" \u2014 so the items are neither acted on nor hidden.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:20b53f98-24",
+        "a:3302d287-04"
+      ],
+      "evidence": [
+        {
+          "text": "Per your standing preference I haven't reconciled it silently.",
+          "line": 47,
+          "file": "2026-05-27_3302d287.txt"
+        },
+        {
+          "text": "The two honesty nuances I judged not worth acting on",
+          "line": 295,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "not worth rewriting committed history, but I'd correct the overstatement if I touch those docs again",
+          "line": 266,
+          "file": "2026-05-18_20b53f98.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/ISSUES.md #27"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "docker-free-cli-wiring-test",
+      "title": "Cover the CLI classification wiring with a Docker-free unit test",
+      "date_from": "2026-05-18",
+      "date_to": null,
+      "decision": "Add tests/test_cli.py covering the scenario.refactorings \u2192 cluster_of \u2192 categories wiring (Extract Method \u2192 MIGRATE_DECL; untagged \u2192 NONE not unknown; union+precedence \u2192 SYMBOL_CASCADE), built from in-memory MergeScenarios and a fake results dict so no Docker is required.",
+      "rationale_recorded": true,
+      "rationale": "The integration changed in R2 had zero test coverage \u2014 only cluster_of was tested in isolation, and ISSUES #14 notes no CLI tests exist \u2014 so the wiring had been validated only by a manual results.csv regeneration.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:20b53f98-22"
+      ],
+      "evidence": [
+        {
+          "text": "the integration I changed has zero test coverage.",
+          "line": 247,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "New `tests/test_cli.py` covers the `_classify_results` wiring I changed",
+          "line": 290,
+          "file": "2026-05-18_20b53f98.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tests/test_cli.py",
+        "eabaddd"
+      ],
+      "actors": "joint",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "fresh-session-artifact-handoff",
+      "title": "Hand work to fresh sessions with self-contained prompts and artifact-only handoff",
+      "date_from": "2026-05-26",
+      "date_to": "2026-07-25",
+      "decision": "When a session is loaded or a stage is closed, the next piece of work moves to a fresh session carrying a written, self-contained kickoff prompt that points at the current committed docs (ISSUES, STATUS, CLAUDE.md, report dirs, plan \u00a78), lists what is already established as DO-NOT-REDO, names the gaps to attack, and hands over tooling and env knobs. Stage boundaries are declared explicitly (D2's build stage closed at the GD2 PASS stop point, commits 6523ab0 and 83d3a23, with S-D5/S-D6 recorded as scheduled rather than outstanding), and the same seam is used for the decision-record v2 build (S0 instrument, S1..S7 extract, S8 consolidate, S9 audit). No context is carried between sessions: each session commits its artifacts and the next reads from disk.",
+      "rationale_recorded": true,
+      "rationale": "Argued from context limits and grounding: the originating session was \"quite loaded\", and the prompt points at current docs \"so the new session grounds itself rather than trusting a cold summary\" instead of leaning on a handoff summary. For v2 the same argument was made quantitatively \u2014 one session physically cannot hold the corpus, and in v1 the degradation from reading to grepping happened at the ~60% mark because the remaining budget did not fit the remaining files, so \"the grep shortcut was a symptom of running one session, not a separate mistake\". Handoff discipline is Ali's own #30 rule: \"handoff between sessions is committed artifacts only.\" Stage closure was justified by every exit criterion in the plan being met and recorded.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-33",
+        "a:acf7e1d0-19",
+        "a:c4c4d030-17",
+        "b:c4c4d030-15"
+      ],
+      "evidence": [
+        {
+          "text": "It points at the now-current docs (so the new session grounds itself rather than trusting a cold summary), states what's already ruled out",
+          "line": 1438,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "The only D2 items still open are *scheduled* ones, not leftovers",
+          "line": 501,
+          "file": "2026-07-16_acf7e1d0.txt"
+        },
+        {
+          "text": "**The grep shortcut was a symptom of running one session, not a separate mistake.**",
+          "line": 176,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "Use your own #30 rule \u2014 *\"handoff between sessions is committed artifacts only.\"* Each extraction session commits its JSON; S8 reads from disk.",
+          "line": 195,
+          "file": "2026-07-25_c4c4d030.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/ISSUES.md #27",
+        "ISSUES #31",
+        "#30",
+        "6523ab0",
+        "83d3a23",
+        "merge-tool-comparison/tools/select_materialize.py"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the Spork-niche handoff was Ali's instruction, the D2 closure and the v2 session split were recommendations Ali accepted, and the artifact-only handoff rule was Claude restating Ali's #30 rule. Recorded as joint because in each case options were put and Ali chose.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "sd6-same-session-override",
+      "title": "Run S-D6 in the current session at Ali's direction, overriding the fresh-session rule",
+      "date_from": "2026-07-22",
+      "date_to": null,
+      "decision": "After the rulings CSV was saved to reports_detectors/adjudication/sd6_rulings.csv, Ali directed that S-D6 (applying the rulings, causal recall, FINDINGS, #31 close-out) proceed in the current session rather than as its own fresh session with the \u00a78 kickoff prompt, as had been recommended.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "Claude's recommendation that S-D6 run as its own fresh session per plan session discipline"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-21"
+      ],
+      "evidence": [
+        {
+          "text": "is S-D6's job, ideally as its own fresh session with the \u00a78 kickoff prompt.",
+          "line": 709,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "file saved, check it and start S-D6",
+          "line": 712,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detectors/adjudication/sd6_rulings.csv"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "mandatory-ambiguity-check-gate",
+      "title": "Open every session prompt with a mandatory ambiguity check that must stop and ask",
+      "date_from": "2026-07-15",
+      "date_to": "2026-07-22",
+      "decision": "All six detector-cycle session prompts (S-D1..S-D6) open, after the STATE block, with an ambiguity check: if anything is ambiguous, contradictory or underspecified across plan, repo and prompt, ask Ali concrete questions and WAIT \u2014 never improvise. Material resolutions become dated \u00a712 amendments; trivial clarifications go to the session log and close-out. The gate was exercised in S-D5: after reviewing plan \u00a78/\u00a73, ISSUES #31, the frozen instrument, the harness and populations, no material ambiguities were declared and work proceeded without waiting, with four trivial clarifications logged for close-out.",
+      "rationale_recorded": true,
+      "rationale": "\"a fresh session that hits ambiguity has only two options, improvise or ask, and the plan should force 'ask.'\" The material/trivial split keeps both paths ending in committed artifacts, \"keeping the cross-session alignment loop closed\". In the S-D5 application the reviewed authority docs, instrument, harness and artifacts were judged to leave no material ambiguity, so the remaining items were recordable in the session log.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-34",
+        "a:06ec13eb-01"
+      ],
+      "evidence": [
+        {
+          "text": "add for every session prompt to ask questions to validate if anything is causes ambiguity",
+          "line": 1813,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "> **FIRST \u2014 AMBIGUITY CHECK:** after reading the authority doc and ISSUES #31, if anything is ambiguous, contradictory, or underspecified",
+          "line": 1819,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "**No material ambiguities \u2014 proceeding without waiting.** Trivial clarifications for the session log (close-out will record them):",
+          "line": 32,
+          "file": "2026-07-22_06ec13eb.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md \u00a78",
+        "ISSUES.md #31"
+      ],
+      "actors": "ali",
+      "actors_note": "Sources disagree: the gate itself is Ali's instruction (a:4c7b0828-34); the S-D5 judgment that no material ambiguity existed, and therefore not to wait, was Claude's (a:06ec13eb-01). Attributed to Ali because the standing constraint is his.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "finder-agent-brief-contract",
+      "title": "Brief finder agents on one angle, capped at six findings each with a failure scenario",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Each code-review finder subagent is briefed on exactly one angle (cross-file tracer, removed-behavior auditor, simplification, altitude) with the specific paths and questions it must answer, and must return at most 6 candidate findings as a JSON array with keys file, line, summary and failure_scenario (concrete inputs/state \u2192 wrong output, or concrete cost); candidates without a nameable failure scenario are not reported, fewer than 6 is explicitly acceptable, and the final message contains only the JSON array. For the removed-behavior angle the method is fixed: for every line the diff deletes or replaces, name the invariant that line enforced and verify the new code re-establishes it, answering pre-set invariant questions (fixture byte-identity, LANES/_SMOKES key-set match, smoke-gate ordering before scoring, behavior change for the pre-existing lane invocation).",
+      "rationale_recorded": true,
+      "rationale": "Only the removed-behavior brief recorded a reason: the D1 smoke fixture's exact content mattered because it was the anti-vacuous-run gate for lane ImportPruneUsage, so the audit is framed around whether each removed line's invariant survives rather than around whether the new code looks correct. The one-angle scoping, the six-candidate cap and the JSON-only output format are stated as instructions without a recorded rationale.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-agent-a9ce95-03",
+        "a:82dd479f-sub-sub-agent-aca92e-02",
+        "a:acf7e1d0-sub-agent-a88268-01",
+        "a:acf7e1d0-sub-sub-agent-ac303e-02",
+        "a:acf7e1d0-sub-sub-agent-af9ecb-01"
+      ],
+      "evidence": [
+        {
+          "text": "Return up to 6 candidate findings, each as: file, line, one-line summary, concrete failure_scenario (inputs/state \u2192 wrong output). Only candidates with a nameable failure scenario. If fewer than 6 exist, return fewer.",
+          "line": 13,
+          "file": "2026-07-16_acf7e1d0_sub-agent-ac303e.txt"
+        },
+        {
+          "text": "For every deleted/replaced line, name the invariant it enforced and check the new code re-establishes it",
+          "line": 5,
+          "file": "2026-07-16_acf7e1d0_sub-agent-af9ecb.txt"
+        },
+        {
+          "text": "Only flag items where a concretely better altitude exists within the stated constraints; name it. Return up to 6 candidates: file, line, summary, failure_scenario = concrete fragility cost. Fewer is fine.",
+          "line": 7,
+          "file": "2026-07-16_acf7e1d0_sub-agent-a88268.txt"
+        },
+        {
+          "text": "You are a code-review finder agent (angle: cross-file tracer).",
+          "line": 3,
+          "file": "2026-07-16_82dd479f_sub-agent-a9ce95.txt"
+        }
+      ],
+      "artifacts": [
+        "scratchpad/sd4_diff.txt",
+        "semantic_merge_driver/core/plugin_loader.py",
+        "merge-tool-comparison/tools/detector_tune_run.py",
+        "semantic_merge_driver/config/strategies.yaml"
+      ],
+      "actors": "unclear",
+      "actors_note": "Sources disagree (some passes recorded ali, others claude). The briefs appear as user-role messages inside subagent transcripts, so the record does not settle whether a brief was authored by Ali or by the orchestrating Claude session; left unclear rather than assigned by majority.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "review-scope-defect-risk-only",
+      "title": "Bar style-level and micro-optimization findings from review, and never pad to the cap",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Review angles are scoped to exclude style: the simplification angle may flag only items that plausibly reduce defect risk or represent notable waste, because verbose comment-heavy detector code is accepted project idiom; the efficiency angle must judge against realistic inputs (Java files up to a few thousand lines, 0-3 candidate names per file), must not flag micro-optimizations with no measurable effect at that scale, and must name the cheaper alternative for anything flagged. Applied: the efficiency review returned a single candidate with the rest listed under an explicit \"considered and deliberately not flagged\" section, and the changed hunks in tools/detector_tune_run.py were held out of scope entirely.",
+      "rationale_recorded": true,
+      "rationale": "\"this codebase accepts verbose, comment-heavy detector code as its idiom\", so style-level verbosity is not a defect. On the efficiency side the two RM2 Docker runs dominate runtime by ~1000\u00d7 and the text helpers are already cached, so remaining items fall below the measurability bar and padding the list was declined; detector_tune_run.py is \"a one-shot dev/eval tool (each `_smoke_positive` runs Docker once by design); nothing in the diff is a hot path\".",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-aca92e-01",
+        "a:acf7e1d0-sub-agent-af6a03-01",
+        "a:acf7e1d0-sub-agent-af6a03-03",
+        "a:acf7e1d0-sub-agent-af6a03-06"
+      ],
+      "evidence": [
+        {
+          "text": "Only flag simplifications that plausibly reduce defect risk or notable waste \u2014 this codebase accepts verbose, comment-heavy detector code as its idiom.",
+          "line": 8,
+          "file": "2026-07-16_82dd479f_sub-agent-aca92e.txt"
+        },
+        {
+          "text": "Judge against realistic inputs: Java files up to a few thousand lines, usually 0\u20133 candidate names per file. Do NOT flag micro-optimizations with no measurable effect at that scale; name the cheaper alternative for anything you flag.",
+          "line": 5,
+          "file": "2026-07-16_acf7e1d0_sub-agent-af6a03.txt"
+        },
+        {
+          "text": "Most remaining items are below the measurability bar at 0\u20133 candidate names / few-thousand-line files, and I'm declining to pad the list with those.",
+          "line": 15,
+          "file": "2026-07-16_acf7e1d0_sub-agent-af6a03.txt"
+        },
+        {
+          "text": "This is a one-shot dev/eval tool (each `_smoke_positive` runs Docker once by design); nothing in the diff is a hot path and I found no efficiency issue worth flagging.",
+          "line": 35,
+          "file": "2026-07-16_acf7e1d0_sub-agent-af6a03.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py",
+        "merge-tool-comparison/tools/detector_tune_run.py"
+      ],
+      "actors": "claude",
+      "actors_note": "One source (the efficiency brief, a:acf7e1d0-sub-agent-af6a03-01) was recorded as ali because the brief appears as a user-role message in the subagent transcript; the three review judgments it governs are Claude's. Attributed to Claude with that caveat noted.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "review-severity-false-flag-first",
+      "title": "Rank detector review findings false-flag first, then crash, then silent FN",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Candidate findings for the SignatureStaleCall lane are triaged and reported in a fixed severity order: a bug that can produce a FALSE FLAG on legal Java is most severe, a crash/exception in analyze() second, silent false negatives contrary to the documented design third. Findings were returned ordered false-flag first.",
+      "rationale_recorded": true,
+      "rationale": "The detector is FP-averse by design \u2014 any uncertainty must suppress the flag (the FN direction) \u2014 so bugs that push toward flagging legal Java violate the design contract, whereas FNs are the sanctioned failure direction.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:acf7e1d0-sub-sub-agent-ac303e-01"
+      ],
+      "evidence": [
+        {
+          "text": "It is FP-averse by design: any uncertainty must suppress the flag (FN direction). A bug that can produce a FALSE FLAG on legal Java is the most severe class; a crash/exception in analyze() is second; silent FNs contrary to the documented design are third.",
+          "line": 9,
+          "file": "2026-07-16_acf7e1d0_sub-agent-ac303e.txt"
+        },
+        {
+          "text": "Here are the candidate findings from the line-by-line scan, ordered by severity (false-flag first).",
+          "line": 21,
+          "file": "2026-07-16_acf7e1d0_sub-agent-ac303e.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "empirical-contract-verification",
+      "title": "Verify borrowed-helper contracts by running probes, not by reading the code",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Contract verification for borrowed helpers goes beyond the static trace the brief asked for: run the new tests and construct concrete base/ours/theirs probes (label collision, `case FOO, MODE:`, `static class Ev` removal with a retained `Ev cached;`), and mark each reported finding \"Empirically confirmed\" rather than inferred from reading.",
+      "rationale_recorded": true,
+      "rationale": "Stated as the need to \"verify behavior empirically\" and to probe contract edge cases rather than rely on the static cross-file trace alone.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-agent-a9ce95-04"
+      ],
+      "evidence": [
+        {
+          "text": "Now let me verify behavior empirically \u2014 run the new tests and probe a few contract edge cases.",
+          "line": 11,
+          "file": "2026-07-16_82dd479f_sub-agent-a9ce95.txt"
+        },
+        {
+          "text": "Empirically confirmed: base declares field 'retry', ours removes it, theirs adds",
+          "line": 20,
+          "file": "2026-07-16_82dd479f_sub-agent-a9ce95.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "one-source-cross-lane-grammar",
+      "title": "Give cross-lane grammar and predicates a single source of truth",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Four recommendations, one rule: stop copying grammar and classifiers between detector lanes. (1) Delete the private `_method_call_sites` re-implementation in unresolved_reference.py and call `_ssc._call_sites(view, name, False, view.stripped)` instead, since arity is ignored and `_call_sites` keeps arity-None sites. (2) Hoist one module-level type-declaration pattern into import_prune_usage and have `declares_type` and `_declared_type_names` both use it instead of a third/fourth copy. (3) Put the lambda-declared-name alternation in one place \u2014 a shared pattern fragment or a small enumerator both lanes call \u2014 rather than duplicating rename_conflict._DECL_GUARD as _ARROW_DECL_RE. (4) Extract an `_is_method_decl(s, name_off, after_paren)` predicate in _ssc and have both `_declared_method_names` (D3) and `_declared_arities` use it.",
+      "rationale_recorded": true,
+      "rationale": "Every case is argued as drift surface with a named FP consequence: if D2's `_call_sites` gains a site-classification fix during GD3 tuning, D3's private copy keeps the old semantics and the two lanes classify the same call site differently, producing a control FP; a regex fix landing in `_ipu.declares_type` but not in the copy makes the lane \"emit a false 'removed type' flag on a file where the type demonstrably still exists \u2014 a zero-FP-gate breach from pure regex drift\"; the lambda alternation \"exists precisely because it was a measured Stage-C FP fix\", so drift reintroduces the var-kind FP class the round-2 fix retired; and divergent method-decl classifiers produce a phantom keeper/remover split that passes the absorption/attribution guards and emits a method-kind FP.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): ruled and largely landed \u2014 unresolved_reference.py imports signature_stale_call as _ssc (:13) and _method_call_sites is now a thin wrapper over _ssc._call_sites (:591-602); the shared tail was factored (finish(), :719); shared grammar (_TYPE_HEADER_RE, _is_decl_tail, _absorbable_spans) is used across lanes. One rec was explicitly declined with a recorded reason: ISSUES.md #31 'regex-copy hoisting \u2014 tripwire over touching more gated lanes'. Nothing pending.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-aca92e-03",
+        "a:82dd479f-sub-sub-agent-aca92e-04",
+        "a:82dd479f-sub-sub-agent-aca92e-05",
+        "b:82dd479f-sub-sub-agent-aca92e-08"
+      ],
+      "evidence": [
+        {
+          "text": "REUSE: _method_call_sites is a near-verbatim re-implementation of _ssc._call_sites(view, name, is_ctor=False, arity_text) minus the arity computation",
+          "line": 20,
+          "file": "2026-07-16_82dd479f_sub-agent-aca92e.txt"
+        },
+        {
+          "text": "the lane emits a false 'removed type' flag on a file where the type demonstrably still exists \u2014 a zero-FP-gate breach from pure regex drift.",
+          "line": 27,
+          "file": "2026-07-16_82dd479f_sub-agent-aca92e.txt"
+        },
+        {
+          "text": "The grammar itself (`what counts as a lambda-declared name`) should live once, e.g. a shared pattern fragment or a tiny enumerator both lanes call, since that alternation exists precisely because it was a measured Stage-C FP fix.",
+          "line": 32,
+          "file": "2026-07-16_82dd479f_sub-agent-aca92e.txt"
+        },
+        {
+          "text": "Extracting a `_is_method_decl(s, name_off, after_paren)` predicate in _ssc and having both call it would keep the two lanes' notion of 'this name(-site is a method declaration' provably identical",
+          "line": 50,
+          "file": "2026-07-16_82dd479f_sub-agent-aca92e.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py",
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py",
+        "semantic_merge_driver/strategies/rm2_strategies/rename_conflict.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "no-hand-maintained-parallel-state",
+      "title": "Derive or assert parallel state instead of hand-maintaining it, and drop dead guards",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Four recommendations making invariants structural rather than copy-maintained: replace the three triplicated per-kind loops in `_widened_issues` with a driver taking (kind, names_by_version, usage_fn, suppressions) so the absorption/attribution/emit tail is written once; in detector_tune_run.py either derive `FULL_SUITE = tuple(LANES)` or assert `set(FULL_SUITE) == set(LANES)` next to it; collapse the parallel `changes`/`sigs` dicts in signature_stale_call.py analyze() into one `sig_lists: Dict[str, Dict[str, List[_SigChange]]]`, deriving the pair-set and representative _SigChange at read time; and reduce `if change.varargs or change.old_arity == change.new_arity: continue` to `if change.varargs: continue`, since `_extract_arity_changes` already skips equal-arity records.",
+      "rationale_recorded": true,
+      "rationale": "Each is argued from a concrete failure of hand-maintained duplication: a semantics fix to the shared loop tail \"needs three synchronized edits; missing one... leaves one kind with divergent guard semantics\"; a lane registered in LANES but forgotten in FULL_SUITE means `--lane FULL` \"silently omits the new lane, the run PASSes, and a vacuous 0-flag result for an untested lane gets recorded in the manifest as gate evidence\"; \"the two dicts must be kept in lockstep by hand\", so a future abstention edit touching one and not the other silently desyncs presence/ambiguity checks; and \"the dead check misrepresents the invariant that `_extract_arity_changes` actually enforces\", inviting a maintainer to loosen the real guard believing the dead disjunct is the backstop.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): landed \u2014 'assert set(FULL_SUITE) == set(LANES)' is verbatim at detector_tune_run.py:81, the FP-critical absorption/attribution/emit tail is written once as finish() (unresolved_reference.py:719, 'structural for every kind'), and ISSUES.md #31 records the sig_lists collapse and dead-guard removal for D2.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-aca92e-06",
+        "a:82dd479f-sub-sub-agent-aca92e-07",
+        "a:acf7e1d0-sub-agent-afc4ad-02",
+        "a:acf7e1d0-sub-agent-afc4ad-03"
+      ],
+      "evidence": [
+        {
+          "text": "A driver taking (kind, names_by_version, usage_fn, suppressions) would make the invariant 'absorption and attribution are checked identically for every kind' structural instead of copy-maintained.",
+          "line": 38,
+          "file": "2026-07-16_82dd479f_sub-agent-aca92e.txt"
+        },
+        {
+          "text": "silently omits the new lane, the run PASSes, and a vacuous 0-flag result for an untested lane gets recorded in the manifest as gate evidence.",
+          "line": 45,
+          "file": "2026-07-16_82dd479f_sub-agent-aca92e.txt"
+        },
+        {
+          "text": "the two dicts must be kept in lockstep by hand",
+          "line": 28,
+          "file": "2026-07-16_acf7e1d0_sub-agent-afc4ad.txt"
+        },
+        {
+          "text": "The dead check misrepresents the invariant that `_extract_arity_changes` actually enforces.",
+          "line": 41,
+          "file": "2026-07-16_acf7e1d0_sub-agent-afc4ad.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py:547",
+        "merge-tool-comparison/tools/detector_tune_run.py:72",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py:210-223",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py:244"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "duplications-deliberately-kept",
+      "title": "Two duplications deliberately kept: coupled helper signature and the tune-tool fixture",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Documented exceptions to the deduplication line: no refactor is proposed for the redundant `_prev_token(s, name_off)` scan performed both directly and inside `_type_ish_before`, and the hand-rewritten P1 base/ours/theirs/merged Notifier fixture in detector_tune_run.py `_smoke_signature_stale_call` is accepted as intentional duplication of the test file's P1 shape, reported only as a low-confidence watch-item.",
+      "rationale_recorded": true,
+      "rationale": "For `_prev_token`, sharing the pre-computed (kind, tok, idx) would require changing `_type_ish_before`'s signature and coupling two helpers \u2014 \"Lower priority precisely because sharing it couples two helpers\" \u2014 a worse trade than one redundant token scan. For the fixture, \"This is intentional (the tune tool can't import pytest fixtures), so I'm flagging it as a watch-item, not a defect\", with the known cost that if the canonical P1 shape is later adjusted \"the smoke copy drifts silently\".",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): both acceptances were ruled and recorded \u2014 ISSUES.md #31's non-fix list carries '_prev_token double-compute (coupling cost > benefit)' and 'P1 fixture test\u2194smoke duplication intentional (tune tool cannot import test fixtures)' verbatim.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:acf7e1d0-sub-agent-afc4ad-04",
+        "a:acf7e1d0-sub-agent-afc4ad-05"
+      ],
+      "evidence": [
+        {
+          "text": "**Simpler form:** none that's clean without changing `_type_ish_before`'s signature to accept the pre-computed `(kind, tok, idx)`. Lower priority precisely because sharing it couples two helpers.",
+          "line": 52,
+          "file": "2026-07-16_acf7e1d0_sub-agent-afc4ad.txt"
+        },
+        {
+          "text": "This is intentional (the tune tool can't import pytest fixtures), so I'm flagging it as a watch-item, not a defect.",
+          "line": 59,
+          "file": "2026-07-16_acf7e1d0_sub-agent-afc4ad.txt"
+        },
+        {
+          "text": "if the P1 canonical shape is later adjusted (e.g. to probe a new RM2 rendering), the smoke copy drifts silently",
+          "line": 61,
+          "file": "2026-07-16_acf7e1d0_sub-agent-afc4ad.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py:523-524",
+        "merge-tool-comparison/tools/detector_tune_run.py:150-207",
+        "semantic_merge_driver/tests/test_signature_stale_call.py:123-187"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "empirical-clusters-primary-scheme",
+      "title": "Keep the empirical clusters as the primary codebook scheme over the four-family view",
+      "date_from": "2026-07-10",
+      "date_to": null,
+      "decision": "The state / control-flow / data-flow / name-binding four-family view is rejected as the primary organizing scheme and demoted to a secondary axis; the empirical clusters stay primary. Within them, `stale-reference-to-renamed-or-relocated-declaration` (cat 3) and `stale-caller-of-changed-signature` (cat 4) stay separate, decided by the test \"does the old name still resolve in the merged code?\", with the both-renamed-and-re-signatured case resolved by primary = whichever failure the use trips on first (if the name does not resolve it is cat 3 and the signature mismatch is never evaluated) plus an optional secondary label; and `overlapping-edit-interleaving` (cat 6) is retained unsplit despite spanning compile-time and runtime anchors, with the jdupl moved-declaration-dropped anchor staying there rather than in cat 7.",
+      "rationale_recorded": true,
+      "rationale": "Resolution is the argument throughout: the four-family scheme \"would lump 75% into one family\" (the 45/60 name-binding units); cats 3 and 4 differ on all three axes that matter for coding \u2014 trigger, compiler error and fix \u2014 and merging them \"makes a single 21-unit bucket (~35% of attributed) that erases a real, decidable line\"; the boundary rule keeps the pair decidable in the rare overlap case because the coding arity allows a secondary label; and cat 6 \"is coherent as a **mechanism**... which is what the codebook is supposed to cluster on\".",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:6296f4f6-08",
+        "a:6296f4f6-13",
+        "b:6296f4f6-17",
+        "a:6296f4f6-14"
+      ],
+      "evidence": [
+        {
+          "text": "**Four-family view rejected** as a primary scheme (would lump 75% into one family) \u2014 kept the empirical clusters.",
+          "line": 161,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "**My recommendation: keep them separate.** They're 7 + 14 = 21 units; merging them makes a single 21-unit bucket (~35% of attributed) that erases a real, decidable line",
+          "line": 304,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "The codebook handles it with the boundary rule (primary = whichever the *use* trips on first \u2014 if the name doesn't resolve, it's cat 3; the signature mismatch never even gets evaluated) plus the option of a secondary label.",
+          "line": 306,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "It's coherent as a **mechanism** (the unifying thread is \"structured merge interleaves two divergent same-region rewrites\"), which is what the codebook is supposed to cluster on.",
+          "line": 329,
+          "file": "2026-07-10_6296f4f6.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/phase2/codebook_draft.md",
+        "reports_taxonomy/phase2/codebook_frozen.md"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree (claude, joint, unclear). Recorded as joint because each recommendation was put to Ali with a rationale and Ali ruled \u2014 the review table records ACCEPT / \"keep (3/4 stay split \u2713)\" rulings.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "codebook-ids-and-crosswalk",
+      "title": "Rename the two `vs` category ids and record the old\u2192new crosswalk gaps explicitly",
+      "date_from": "2026-07-10",
+      "date_to": null,
+      "decision": "Rename `import-pruning-vs-concurrent-usage` \u2192 `stale-usage-of-pruned-import` and `changed-behavior-vs-stale-expectation` \u2192 `stale-expectation-of-changed-behavior` so all 8 categories read in one relational style (id + name only, no semantic change). In the old\u2192new mapping, Atomic Updates and Loop Semantics are recorded as having no empirical counterpart; DFI/Stale Read, Control-Flow Interference and Scope Capture get no standalone category (Exception Handling folds into stale-caller-of-changed-signature); Method Rename splits three ways.",
+      "rationale_recorded": true,
+      "rationale": "On naming: \"the naming isn't consistent across the 8\" \u2014 only two ids used an explicit `vs` while the others expressed the same A-meets-B structure relationally, so the change is cosmetic. On the crosswalk: the empty cells are \"Consistent with Stage-C's #3/#5 = 0\" \u2014 those historical categories carried zero mass in the 60 attributed merges.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:6296f4f6-11",
+        "b:6296f4f6-09"
+      ],
+      "evidence": [
+        {
+          "text": "the naming isn't consistent across the 8.",
+          "line": 267,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "lets rename 'vs's",
+          "line": 273,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "- Old\u2192new: **Atomic Updates & Loop Semantics = no empirical counterpart**; DFI/CFI/Scope-Capture = no standalone category; Method Rename splits three ways.",
+          "line": 160,
+          "file": "2026-07-10_6296f4f6.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/phase2/codebook_draft.md",
+        "reports_taxonomy/phase2/codebook_frozen.md"
+      ],
+      "actors": "joint",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "phantom-unit-ids-withdrawn",
+      "title": "Withdraw the phantom-unit_id suspicion after a mechanical manifest check",
+      "date_from": "2026-07-10",
+      "date_to": null,
+      "decision": "The earlier suspicion that cited unit_ids/SHAs in the draft were hallucinated is withdrawn: the only apparent phantom was the table header row `unit_id`, and all 25 anchor ids plus all 60 coverage ids are genuine derivation units.",
+      "rationale_recorded": true,
+      "rationale": "The suspicion arose from reading only a truncated slice of the manifest; the mechanical check showed the model had transcribed real unit_ids correctly.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the earlier claim that several cited unit_ids/SHAs may not match the real derivation units"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:6296f4f6-07"
+      ],
+      "evidence": [
+        {
+          "text": "False alarm \u2014 the only \"phantom\" was the table header row `unit_id`.",
+          "line": 116,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "my earlier suspicion came from reading only a truncated slice of the manifest",
+          "line": 116,
+          "file": "2026-07-10_6296f4f6.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/phase2/codebook_draft.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "deterministic-transcript-distillation",
+      "title": "Distil the transcripts with a deterministic script and spend no model on it",
+      "date_from": "2026-07-25",
+      "date_to": null,
+      "decision": "Build the decision record from a distilled corpus: 32 Claude Code .jsonl sessions (73.7 MB) reduced to 1.52 MB (2.1%) by stripping tool_use, tool_result, thinking blocks and system reminders, keeping only human\u2194assistant deliberation text, one distilled .txt per session in the scratchpad. The reduction is implemented as a Python script with no model judgment involved.",
+      "rationale_recorded": true,
+      "rationale": "The deliberation text is \"the part that actually contains decisions, and it's small enough to read end to end\"; and because the reduction is deterministic a model adds nothing \u2014 \"The 73.7 MB \u2192 1.52 MB step is deterministic. Don't spend a model on it.\"",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:c4c4d030-01",
+        "a:c4c4d030-09"
+      ],
+      "evidence": [
+        {
+          "text": "distilled to 1.52 MB (2.1%) by stripping tool calls, tool results, thinking blocks and system reminders",
+          "line": 25,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "The 73.7 MB \u2192 1.52 MB step is deterministic. Don't spend a model on it.",
+          "line": 91,
+          "file": "2026-07-25_c4c4d030.txt"
+        }
+      ],
+      "artifacts": [
+        "~/.claude/projects/-Users-alikarimli-JupyterProjectsOfMine-my-data-project/"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "coverage-claim-withdrawn",
+      "title": "Withdraw the read-end-to-end claim and put measured 61.5% coverage on the record",
+      "date_from": "2026-07-25",
+      "date_to": null,
+      "decision": "The claim that the distilled corpus was read end to end is withdrawn. Measured coverage is 9,442 of 15,354 lines read in full (61.5%), with 38.5% keyword-grepped only; the unread files are named individually (4c7b0828, 2e726dc0, 9e4b6896 lines 500-1257, acf7e1d0, 82dd479f) and both the audited numbers and the named gaps are stated in the document's coverage section.",
+      "rationale_recorded": true,
+      "rationale": "The judgment that the unread files were non-decision-bearing, made from their user prompts, proved unreliable: spot-checking the two highest-risk files surfaced four decisions the record was missing, so \"the gap is on the record rather than hidden\".",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the earlier claim that the distilled corpus was read \"end to end\" (implied 100% reading coverage)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:c4c4d030-05"
+      ],
+      "evidence": [
+        {
+          "text": "I told you I read the distilled corpus \"end to end.\" **That was wrong.**",
+          "line": 56,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "**9,442 of 15,354 lines read in full = 61.5%. 38.5% was keyword-grepped only.**",
+          "line": 58,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "The coverage section states the audited numbers and names every file not read in full, so the gap is on the record rather than hidden.",
+          "line": 73,
+          "file": "2026-07-25_c4c4d030.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/DECISIONS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "v2-two-pass-extraction-protocol",
+      "title": "Run v2 extraction as two independent passes with a frozen decision definition",
+      "date_from": "2026-07-25",
+      "date_to": null,
+      "decision": "The v2 decision-record instrument: fix the distiller to glob `<session>/subagents/*.jsonl` as well as top-level files (21 files, 5.4 MB never processed) and to stop dropping isSidechain messages, emitting one .txt per session plus a manifest with per-file line counts; extract each session twice independently, diff the two decision lists per session, report an agreement rate and route every disagreement to a review queue for Ali; freeze a definition of \"a decision\" as anything that constrains future work, explicitly including tool/approach rejections, carve-outs to standing rules, mandated processes, coverage boundaries, accepted known costs and corrections to earlier claims, and explicitly excluding status updates, restatements and results without a choice attached; require date, one-line title, decision, rationale-as-argued, status and at least one verbatim quote per decision, machine-check every quote as a substring of its source file, and say \"rationale not recorded\" rather than invent one; size batches at ~2,000-2,500 distilled lines and never split a transcript file across batches.",
+      "rationale_recorded": true,
+      "rationale": "The two-pass design \"is exactly your own G3 protocol from #30, pointed at a different corpus\" and \"converts 'did it miss something?' from a question you can't answer into a measured number, and it's the one design that would have caught D-65/D-66/D-67 automatically\". The decision definition is set by the v1 misses (Joern rejection, GD2 tune-run carve-out, triple review, coverage boundaries), which were \"exactly these non-obvious shapes, stated in prose that no keyword search would find\". The quote/rationale discipline addresses the failure mode that matters: \"a confidently-worded rationale that nobody said\". The distiller fix follows from v1 globbing top-level files only, so 21 subagent transcripts were never processed. Batches must not split a file because \"you lose the thread of an argument that spans it\".",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): executed in full by the rebuild \u2014 the distiller globs subagent transcripts (21 files in the corpus) and keeps isSidechain turns (817), per-file manifest line counts exist, extraction ran twice independently with the agreement rates reported (73.6% / 80.7%), and disagreements went to the union + corroboration tiers rather than silently into the document (PROTOCOL \u00a72, \u00a78 Amendments 1-3; this record's own preflight re-derives it).",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:c4c4d030-06",
+        "a:c4c4d030-08",
+        "a:c4c4d030-13",
+        "a:c4c4d030-14",
+        "a:c4c4d030-18"
+      ],
+      "evidence": [
+        {
+          "text": "**make it a two-pass job with a stability diff** \u2014 which is exactly your own G3 protocol from #30, pointed at a different corpus.",
+          "line": 83,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "A DECISION is anything that constrains future work. It includes shapes that do",
+          "line": 126,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "transcript records a decision without one, say \"rationale not recorded\".",
+          "line": 142,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "the extractor globs top-level `*.jsonl` only, so **21 subagent transcripts (5.4 MB)** under `<session>/subagents/` were never processed",
+          "line": 52,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "never split a transcript file across batches** \u2014 you lose the thread of an argument that spans it.",
+          "line": 189,
+          "file": "2026-07-25_c4c4d030.txt"
+        }
+      ],
+      "artifacts": [
+        "#30",
+        "*/subagents/*.jsonl",
+        "docs/DECISIONS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "standalone-oss-comparison-review",
+      "title": "Review the file standalone against open-source prior art, making no changes",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "A second review pass judges import_prune_usage.py as self-contained standalone code with project context deliberately ignored, researching comparable open-source implementations, and making no edits. The companion prior-art consultation is likewise scoped as web+docs research only, covering exactly four tools (Error Prone, SpotBugs, IntelliJ IDEA, Checkstyle) with a specific doc page, source file or issue URL cited for each.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:734e4529-05",
+        "a:82dd479f-sub-sub-agent-aadfd1-01"
+      ],
+      "evidence": [
+        {
+          "text": "review it independently from project as a sand alone code. Research other similar open source implementation. dont make any changes, review only",
+          "line": 26,
+          "file": "2026-07-16_734e4529.txt"
+        },
+        {
+          "text": "Standalone review below \u2014 project context deliberately ignored",
+          "line": 30,
+          "file": "2026-07-16_734e4529.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "four-parallel-read-only-explorers",
+      "title": "Reconstruct the project's identity from four parallel read-only explorations",
+      "date_from": "2026-07-18",
+      "date_to": null,
+      "decision": "Run four read-only sub-agent explorations in parallel \u2014 driver code, comparator findings, detection/taxonomy evidence, root self-assessment docs \u2014 each briefed to report back in compact prose on headline numbers, the comparator gap, routing refutations and the measured-best config, and anything contradicting the original narrative, with conclusions only and no file dumps; framing options are synthesised only after all four report.",
+      "rationale_recorded": true,
+      "rationale": "Needed to base the framing on the actual code and measured artifacts rather than on documentation, per Ali's instruction; the brief's \"conclusions only, no file dumps\" constraint is stated without a recorded reason.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:dc3bc182-02",
+        "b:dc3bc182-sub-sub-agent-ab4c4f-11"
+      ],
+      "evidence": [
+        {
+          "text": "Four explorers are running over the driver code, comparator findings, detection/taxonomy evidence, and root self-assessment docs. I'll synthesize framing approaches once they report back.",
+          "line": 30,
+          "file": "2026-07-18_dc3bc182.txt"
+        },
+        {
+          "text": "Conclusions only, no file dumps.",
+          "line": 12,
+          "file": "2026-07-18_dc3bc182_sub-agent-ab4c4f.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "claude",
+      "actors_note": "The sources disagree: the fan-out decision is Claude's (a:dc3bc182-02), while the exploration brief was recorded as ali because it appears as a user-role message inside the subagent transcript. Attributed to Claude, who chose the method under Ali's instruction to ground framing in the code.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "serialized-detector-cycle-wip-one",
+      "title": "Serialize the detector cycle at a WIP limit of one while writing has priority",
+      "date_from": "2026-07-15",
+      "date_to": null,
+      "decision": "While the write-up is in the foreground, the detector cycle runs serially \u2014 one implementation stage in flight, evaluation batched into a single cycle at the end \u2014 with two fixed ~30-60 minute touchpoints per week; parallel builds are explicitly declined.",
+      "rationale_recorded": true,
+      "rationale": "\"Parallel builds save calendar time but double your touchpoints; while writing has priority, serialize.\" The cost is accepted explicitly: \"the detector cycle takes ~2\u20133 calendar weeks instead of one \u2014 and costs you roughly two hours of attention per week. That's the trade you want.\"",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the cycle ran serially as proposed \u2014 S-D0 through S-D8 executed as strictly sequential sessions with one implementation stage in flight (ISSUES.md #31 session records; the S-D7/S-D8 follow-ons likewise serialized), while the write-up planning proceeded in parallel sessions. The two-fixed-touchpoints cadence is not verifiable from the repo.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-41"
+      ],
+      "evidence": [
+        {
+          "text": "**WIP limit = one implementation stage in flight.**",
+          "line": 1637,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "Parallel builds save calendar time but double your touchpoints; while writing has priority, serialize.",
+          "line": 1637,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    }
+  ],
+  "not_promoted": [
+    {
+      "uid": "a:6a84a6b3-03",
+      "reason": "Session next-step/status report (tree clean at 83d3a23, paste the \u00a78 S-D4 prompt); the sequencing decision it states \u2014 S-D4 before re-running S-D5 \u2014 is carried by fresh-session-artifact-handoff via a:acf7e1d0-19."
+    },
+    {
+      "uid": "b:acf7e1d0-sub-sub-agent-ad3e5a-06",
+      "reason": "Verbatim restatement of the \u22646-candidates-with-failure_scenario output contract already consolidated in finder-agent-brief-contract, for a fourth review angle."
+    }
+  ],
+  "cross_theme": [
+    {
+      "slug": "docker-free-cli-wiring-test",
+      "other_theme": "testing",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The test was built specifically so it needs no Docker; if the testing theme carries a general \"unit tests must not require Docker\" rule, this entry is an instance of it and should point there."
+    },
+    {
+      "slug": "codebook-ids-and-crosswalk",
+      "other_theme": "taxonomy/codebook",
+      "other_uid": "a:6296f4f6-12",
+      "relation": "depends-on",
+      "note": "The also-placed decision to apply category renames as RENAME rulings inside the freeze commit (rather than mid-review, which would orphan saved UI rulings) governs WHEN these renames took effect; it is owned by another theme."
+    },
+    {
+      "slug": "empirical-clusters-primary-scheme",
+      "other_theme": "taxonomy/codebook",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "These four rulings shape the frozen 8-category codebook, whose definition and freeze are likely owned by a taxonomy theme; reconcile so the category list is stated once."
+    },
+    {
+      "slug": "one-source-cross-lane-grammar",
+      "other_theme": "detector implementation",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The shared helpers (_ssc._call_sites, _ipu._FileView.declares_type, rename_conflict._DECL_GUARD) and the zero-FP gate these refactors protect are owned by the detector theme; whether the refactors landed is visible there, not here."
+    },
+    {
+      "slug": "no-hand-maintained-parallel-state",
+      "other_theme": "detector implementation",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "Same review; the FULL_SUITE/LANES item touches the GD-gate evidence chain, which another theme likely owns."
+    },
+    {
+      "slug": "finder-agent-brief-contract",
+      "other_theme": "review process",
+      "other_uid": "a:82dd479f-sub-sub-agent-a46641-01",
+      "relation": "duplicates",
+      "note": "The also-placed a46641-01 states the same invariant-naming angle and 6-finding JSON cap for the S-D4 diff review; if another theme carries a triple-review / Amendment-3 entry, these should be reconciled into one statement of the review protocol."
+    },
+    {
+      "slug": "standalone-oss-comparison-review",
+      "other_theme": "review process",
+      "other_uid": "a:82dd479f-sub-sub-agent-aadfd1-01",
+      "relation": "depends-on",
+      "note": "The prior-art research brief cited here as corroboration is placed in another theme; only the standalone-review instruction (a:734e4529-05) is counted for this theme's coverage."
+    },
+    {
+      "slug": "serialized-detector-cycle-wip-one",
+      "other_theme": "planning/sequencing",
+      "other_uid": "a:fb0fa5c5-30",
+      "relation": "depends-on",
+      "note": "The earlier compute-vs-desk-work sequencing decision (land P3 code, run compute unattended, then P4) is the same serialization argument one cycle earlier and sits in another theme."
+    },
+    {
+      "slug": "timebox-escape-rule-2x",
+      "other_theme": "process/planning",
+      "other_uid": null,
+      "relation": "duplicates",
+      "note": "The 2\u00d7 escape rule appears in at least three plan documents; if a process theme also carries it, merge there and keep only one statement."
+    }
+  ],
+  "notes": "Density: 57 promoted primary sources across 24 entries (~2.4 per entry), below the corpus signal of 5-9. That is a property of the theme rather than under-consolidation: 'other' contains at least five unrelated clusters \u2014 the 2026-05-18 rm2-integration Phase-0/interfaces work, the 2026-07-10 codebook review, the 2026-07-16 multi-angle subagent code review (23 sources on its own), the decision-record v1/v2 methodology, and a handful of genuine one-offs (timebox rule, standalone OSS review, WIP limit, session overrides). Merging across those clusters would have flattened distinctions the passes worked to preserve; within each cluster I merged hard (four refactor proposals into one dedup entry, four into one parallel-state entry, five briefs into one finder-agent contract, four rulings into one codebook-structure entry).\n\nStatus downgrade: timebox-escape-rule-2x was reported adopted by both passes but every source is a pre-transcript plan document with no pre-commits- or transcript-era confirmation in this slice, so it is recorded as proposed per the plan-sourced rule.\n\nActor caveat worth S10z's attention: in subagent transcripts the orchestrating session's brief appears as a user-role message, and the two extraction passes split on whether to attribute such briefs to Ali or Claude (a88268-01, af6a03-01, aadfd1-01, ab4c4f-11, a46641-01 all show this). I used 'unclear' where the entry's centre is brief text and 'claude' where the entry's centre is Claude's own review judgment, with actors_note in each case. If S10z can establish the convention corpus-wide, these should be harmonised.\n\nStatus mixing: fresh-session-artifact-handoff merges three adopted sources with one proposed restatement (b:c4c4d030-15); the entry is adopted on the strength of the adopted sources, with the v2 application noted inside. mandatory-ambiguity-check-gate and phase-0-plan-validation-memo each merge Ali's standing mandate with Claude's application of it \u2014 flagged in actors_note rather than split, to avoid two entries for one rule.",
+  "theme": "other",
+  "slice_primary_total": 59
+}

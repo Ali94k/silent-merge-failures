@@ -1,0 +1,912 @@
+UNIT sandergielisse_enderstone__febdb02eb3
+repo: sandergielisse_enderstone   merge: febdb02eb304ada845e62272290b13d31e533cf2   stratum: B
+files shown: 6 of 6 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/6: src/org/enderstone/server/entity/EnderPlayer.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -53,17 +53,17 @@
+ import org.enderstone.server.packet.play.PacketOutSpawnPlayer;
+ import org.enderstone.server.packet.play.PacketOutTabComplete;
+ import org.enderstone.server.packet.play.PacketOutUpdateHealth;
+ import org.enderstone.server.regions.EnderChunk;
+ import org.enderstone.server.regions.EnderWorld.ChunkInformer;
+ 
+ public class EnderPlayer extends Entity implements CommandSender {
+ 
+-	private static final int MAX_CHUNKS_EVERY_UPDATE = 8;
++	private static final int MAX_CHUNKS_EVERY_UPDATE = 16;
+ 
+ 	public final InventoryHandler handler = new InventoryHandler(this);
+ 	public final ClientSettings clientSettings = new ClientSettings();
+ 	public final NetworkManager networkManager;
+ 	public final String playerName;
+ 	public HashSet<String> visiblePlayers = new HashSet<>();
+ 	public HashSet<Entity> canSeeEntity = new HashSet<>();
+ 	/**
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -27,18 +27,20 @@
+ import org.enderstone.server.Location;
+ import org.enderstone.server.Main;
+ import org.enderstone.server.Utill;
+ import org.enderstone.server.chat.ChatColor;
+ import org.enderstone.server.chat.Message;
+ import org.enderstone.server.chat.SimpleMessage;
+ import org.enderstone.server.commands.Command;
+ import org.enderstone.server.commands.CommandSender;
+-import org.enderstone.server.inventory.Inventory;
++import org.enderstone.server.inventory.DefaultInventory;
+ import org.enderstone.server.inventory.InventoryHandler;
++import org.enderstone.server.inventory.ItemStack;
++import org.enderstone.server.inventory.PlayerInventory;
+ import org.enderstone.server.packet.NetworkManager;
+ import org.enderstone.server.packet.Packet;
+ import org.enderstone.server.packet.play.PacketInTabComplete;
+ import org.enderstone.server.packet.play.PacketOutChatMessage;
+ import org.enderstone.server.packet.play.PacketOutChunkData;
+ import org.enderstone.server.packet.play.PacketOutEntityDestroy;
+ import org.enderstone.server.packet.play.PacketOutEntityHeadLook;
+ import org.enderstone.server.packet.play.PacketOutEntityLook;
+@@ -48,24 +50,26 @@
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.Action;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionAddPlayer;
+ import org.enderstone.server.packet.play.PacketOutPlayerListItem.ActionRemovePlayer;
+ import org.enderstone.server.packet.play.PacketOutPlayerPositionLook;
+ import org.enderstone.server.packet.play.PacketOutSoundEffect;
+ import org.enderstone.server.packet.play.PacketOutSpawnPlayer;
+ import org.enderstone.server.packet.play.PacketOutTabComplete;
+ import org.enderstone.server.packet.play.PacketOutUpdateHealth;
++import org.enderstone.server.regions.BlockId;
+ import org.enderstone.server.regions.EnderChunk;
++import org.enderstone.server.regions.EnderWorld;
+ import org.enderstone.server.regions.EnderWorld.ChunkInformer;
+ 
+ public class EnderPlayer extends Entity implements CommandSender {
+ 
+ 	private static final int MAX_CHUNKS_EVERY_UPDATE = 8;
+ 
+-	public final InventoryHandler handler = new InventoryHandler(this);
++	private final InventoryHandler inventoryHandler = new InventoryHandler(this);
+ 	public final ClientSettings clientSettings = new ClientSettings();
+ 	public final NetworkManager networkManager;
+ 	public final String playerName;
+ 	public HashSet<String> visiblePlayers = new HashSet<>();
+ 	public HashSet<Entity> canSeeEntity = new HashSet<>();
+ 	/**
+ 	 * If this is above 0, then the server is waiting for a correction on the
+ 	 * last teleport the server sended
+@@ -82,18 +86,25 @@
+ 	public boolean isSprinting = false;
+ 	public boolean isEating = false;
+ 	private boolean isInvisible = false;
+ 
+ 	public volatile boolean isOnGround = true;
+ 	public double yLocation;
+ 	public short food = 20;
+ 	public float foodSaturation = 0;
+-	public Inventory inventory;
+-
++	
++	/**
++	 * Inventory of the player
++	 * @deprecated Use getInventoryHandler().getPlayerInventory() instead
++	 */
++	@Deprecated
++	private final PlayerInventory inventory = inventoryHandler.getPlayerInventory();
++
++	public EnderWorld world = Main.getInstance().mainWorld;
+ 	private final String textureValue;
+ 	private final String textureSignature;
+ 	public int keepAliveID = 0;
+ 
+ 	public ChunkInformer chunkInformer = new ChunkInformer() {
+ 
+ 		List<EnderChunk> cache = new ArrayList<>();
+ 
+@@ -177,16 +188,22 @@
+ 	public ProfileProperty[] getProfileProperties() {
+ 		ProfileProperty[] list = new ProfileProperty[1];
+ 		list[0] = getTextureProperty();
+ 		return list;
+ 	}
+ 
+ 	@Override
+ 	public void onSpawn() {
++		this.inventoryHandler.tryPickup(new ItemStack(BlockId.GLASS.getId(), (byte) 1, (short) 0));
++		this.inventoryHandler.tryPickup(new ItemStack(BlockId.DAYLIGHT_DETECTOR.getId(), (byte) 1, (short) 0));
++		this.inventoryHandler.tryPickup(new ItemStack(BlockId.BLAZE_ROD.getId(), (byte) 1, (short) 0));
++		this.inventoryHandler.tryPickup(new ItemStack(BlockId.DIRT.getId(), (byte) 1, (short) 0));
++		this.inventoryHandler.tryPickup(new ItemStack(BlockId.COBBLESTONE.getId(), (byte) 1, (short) 0));
++		this.inventoryHandler.tryPickup(new ItemStack(BlockId.BAKED_POTATO.getId(), (byte) 1, (short) 0));
+ 		this.updateDataWatcher();
+ 
+ 		PacketOutPlayerListItem packet = new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(this.uuid, this.getPlayerName(), getProfileProperties(), GameMode.SURVIVAL.getId(), 1, false, "") });
+ 		for (EnderPlayer player : Main.getInstance().onlinePlayers) {
+ 			player.getNetworkManager().sendPacket(packet);
+ 			this.getNetworkManager().sendPacket(new PacketOutPlayerListItem(new Action[] { new ActionAddPlayer(player.uuid, player.getPlayerName(), player.getProfileProperties(), GameMode.SURVIVAL.getId(), 1, false, "") }));
+ 		}
+ 		Main.getInstance().broadcastMessage(new SimpleMessage(ChatColor.YELLOW + this.getPlayerName() + " joined the game!"));
+@@ -513,16 +530,23 @@
+ 	}
+ 
+ 	@Override
+ 	public boolean isValid() {
+ 		return this.isOnline;
+ 	}
+ 
+ 	/**
++	 * @return the inventoryHandler
++	 */
++	public InventoryHandler getInventoryHandler() {
++		return inventoryHandler;
++	}
++
++	/**
+ 	 * Class used to store the client side settings from the user, the reason I
+ 	 * included setters and getters is that we can add a event or simulair to
+ 	 * the code later on
+ 	 *
+ 	 * @author ferrybig
+ 	 */
+ 	public final class ClientSettings {
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/6: src/org/enderstone/server/inventory/ItemStack.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -17,18 +17,16 @@
+  */
+ package org.enderstone.server.inventory;
+ 
+ import java.io.ByteArrayInputStream;
+ import java.io.ByteArrayOutputStream;
+ import java.io.IOException;
+ import java.util.HashMap;
+ import java.util.Map;
+-import java.util.logging.Level;
+-import java.util.logging.Logger;
+ import org.enderstone.server.regions.BlockId;
+ import org.jnbt.ByteTag;
+ import org.jnbt.CompoundTag;
+ import org.jnbt.NBTInputStream;
+ import org.jnbt.NBTOutputStream;
+ import org.jnbt.ShortTag;
+ import org.jnbt.StringTag;
+ import org.jnbt.Tag;
+@@ -39,26 +37,26 @@
+  */
+ public class ItemStack implements Cloneable {
+ 
+ 	private short blockId;
+ 	private byte amount;
+ 	private short damage;
+ 	private CompoundTag compoundTag;
+ 
+-	public ItemStack(short blockId, byte amount, short damage) {
+-		this(blockId, amount, damage, null);
++	public ItemStack(short blockId, byte amount, short damage, boolean generateNBT) {
++		this(blockId, amount, damage, null, generateNBT);
+ 	}
+ 
+-	public ItemStack(short blockId, byte amount, short damage, CompoundTag compoundTag) {
++	public ItemStack(short blockId, byte amount, short damage, CompoundTag compoundTag, boolean generateNBT) {
+ 		this.blockId = blockId;
+ 		this.amount = amount;
+ 		this.damage = damage;
+ 		this.compoundTag = compoundTag;
+-		if (compoundTag == null) {
++		if (compoundTag == null && generateNBT) {
+ 			this.updateNBTData();
+ 		}
+ 	}
+ 
+ 	public void updateNBTData() {
+ 		Map<String, Tag> map = new HashMap<>();
+ 		map.put("Count", new ByteTag("Count", this.getAmount()));
+ 		map.put("Damage", new ShortTag("Damage", this.getDamage()));
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -17,16 +17,17 @@
+  */
+ package org.enderstone.server.inventory;
+ 
+ import java.io.ByteArrayInputStream;
+ import java.io.ByteArrayOutputStream;
+ import java.io.IOException;
+ import java.util.HashMap;
+ import java.util.Map;
++import java.util.Objects;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ import org.enderstone.server.regions.BlockId;
+ import org.jnbt.ByteTag;
+ import org.jnbt.CompoundTag;
+ import org.jnbt.NBTInputStream;
+ import org.jnbt.NBTOutputStream;
+ import org.jnbt.ShortTag;
+@@ -55,19 +56,17 @@
+ 		this.compoundTag = compoundTag;
+ 		if (compoundTag == null) {
+ 			this.updateNBTData();
+ 		}
+ 	}
+ 
+ 	public void updateNBTData() {
+ 		Map<String, Tag> map = new HashMap<>();
+-		map.put("Count", new ByteTag("Count", this.getAmount()));
+-		map.put("Damage", new ShortTag("Damage", this.getDamage()));
+-		map.put("id", new StringTag("id", "minecraft:grass"));
++		if (map.isEmpty()) return;
+ 		this.compoundTag = new CompoundTag("Item", map);
+ 		//this.compoundTag = null;
+ 	}
+ 
+ 	public short getBlockId() {
+ 		return blockId;
+ 	}
+ 
+@@ -93,33 +92,55 @@
+ 
+ 	public CompoundTag getCompoundTag() {
+ 		return compoundTag;
+ 	}
+ 
+ 	public void setCompoundTag(CompoundTag compoundTag) {
+ 		this.compoundTag = compoundTag;
+ 	}
+-	
++
+ 	@Override
+ 	@SuppressWarnings("CloneDeclaresCloneNotSupported")
+-	public ItemStack clone() { //TODO Faster clone and what if compoundtag == null? 
++	public ItemStack clone() {
+ 		try {
+ 			ItemStack s = (ItemStack) super.clone();
++			if (compoundTag == null) return s;
+ 			ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+ 			new NBTOutputStream(bytes).writeTag(compoundTag);
+-			s.setCompoundTag((CompoundTag)new NBTInputStream(new ByteArrayInputStream(bytes.toByteArray())).readTag());
++			s.setCompoundTag((CompoundTag) new NBTInputStream(new ByteArrayInputStream(bytes.toByteArray())).readTag());
+ 			return s;
+ 		} catch (CloneNotSupportedException | IOException err) {
+ 			throw new AssertionError(err);
+ 		}
+ 	}
+-	
+-	public BlockId getId()
+-	{
++
++	public BlockId getId() {
+ 		return BlockId.byId(this.blockId);
+ 	}
+-	
+-	public boolean materialTypeMatches(ItemStack other)
+-	{
+-		return other.blockId == this.blockId; // TODO do this better (also compare item damages)
++
++	public boolean materialTypeMatches(ItemStack other) {
++		return other.blockId == this.blockId
++				&& other.damage == this.damage
++				&& (other.compoundTag == null ? this.compoundTag == null : other.compoundTag.equals(this.compoundTag));
++	}
++
++	@Override
++	public int hashCode() {
++		int hash = 3;
++		hash = 23 * hash + this.blockId;
++		hash = 23 * hash + this.amount;
++		hash = 23 * hash + this.damage;
++		hash = 23 * hash + Objects.hashCode(this.compoundTag);
++		return hash;
++	}
++
++	@Override
++	public boolean equals(Object obj) {
++		if (obj == null) return false;
++		if (getClass() != obj.getClass()) return false;
++		final ItemStack other = (ItemStack) obj;
++		if (this.blockId != other.blockId) return false;
++		if (this.amount != other.amount) return false;
++		if (this.damage != other.damage) return false;
++		return Objects.equals(this.compoundTag, other.compoundTag);
+ 	}
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -18,16 +18,18 @@
+ package org.enderstone.server.inventory;
+ 
+ import java.io.ByteArrayInputStream;
+ import java.io.ByteArrayOutputStream;
+ import java.io.IOException;
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.Objects;
++import java.util.logging.Level;
++import java.util.logging.Logger;
+ import org.enderstone.server.regions.BlockId;
+ import org.jnbt.ByteTag;
+ import org.jnbt.CompoundTag;
+ import org.jnbt.NBTInputStream;
+ import org.jnbt.NBTOutputStream;
+ import org.jnbt.ShortTag;
+ import org.jnbt.StringTag;
+ import org.jnbt.Tag;
+@@ -38,31 +40,31 @@
+  */
+ public class ItemStack implements Cloneable {
+ 
+ 	private short blockId;
+ 	private byte amount;
+ 	private short damage;
+ 	private CompoundTag compoundTag;
+ 
+-	public ItemStack(short blockId, byte amount, short damage, boolean generateNBT) {
+-		this(blockId, amount, damage, null, generateNBT);
++	public ItemStack(short blockId, byte amount, short damage) {
++		this(blockId, amount, damage, null);
+ 	}
+ 
+-	public ItemStack(short blockId, byte amount, short damage, CompoundTag compoundTag, boolean generateNBT) {
++	public ItemStack(short blockId, byte amount, short damage, CompoundTag compoundTag) {
+ 		this.blockId = blockId;
+ 		this.amount = amount;
+ 		this.damage = damage;
+ 		this.compoundTag = compoundTag;
+-		if (compoundTag == null && generateNBT) {
++		if (compoundTag == null) {
+ 			this.updateNBTData();
+ 		}
+ 	}
+ 
+-	public void updateNBTData() {
++	private void updateNBTData() {
+ 		Map<String, Tag> map = new HashMap<>();
+ 		if (map.isEmpty()) return;
+ 		this.compoundTag = new CompoundTag("Item", map);
+ 		//this.compoundTag = null;
+ 	}
+ 
+ 	public short getBlockId() {
+ 		return blockId;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/6: src/org/enderstone/server/packet/NetworkManager.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -40,16 +40,18 @@
+ import org.enderstone.server.Location;
+ import org.enderstone.server.Main;
+ import org.enderstone.server.chat.Message;
+ import org.enderstone.server.chat.SimpleMessage;
+ import org.enderstone.server.entity.EnderPlayer;
+ import org.enderstone.server.entity.GameMode;
+ import org.enderstone.server.entity.PlayerTextureStore;
+ import org.enderstone.server.packet.codec.DiscardingReader;
++import org.enderstone.server.packet.codec.MinecraftCompressionCodex;
++import org.enderstone.server.packet.codec.MinecraftDecompressionCodex;
+ import org.enderstone.server.packet.codec.MinecraftServerCodex;
+ import org.enderstone.server.packet.login.PacketOutLoginSucces;
+ import org.enderstone.server.packet.play.PacketOutJoinGame;
+ import org.enderstone.server.packet.play.PacketOutPlayerAbilities;
+ import org.enderstone.server.packet.play.PacketOutPlayerPositionLook;
+ import org.enderstone.server.packet.play.PacketOutSpawnPosition;
+ import org.enderstone.server.packet.play.PacketOutUpdateHealth;
+ import org.enderstone.server.packet.play.PacketOutUpdateTime;
+@@ -59,17 +61,17 @@
+ 
+ 	public ChannelHandlerContext ctx;
+ 	public EnderPlayer player;
+ 	public String wantedName;
+ 	private EncryptionSettings encryptionSettings;
+ 	public UUID uuid;
+ 	public PlayerTextureStore skinBlob;
+ 	public int clientVersion;
+-
++	
+ 	public PacketHandshake latestHandshakePacket;
+ 	public volatile int handShakeStatus = -1;
+ 
+ 	private final Queue<Packet> packets = new LinkedList<>();
+ 	private volatile boolean isConnected = true;
+ 
+ 	public EncryptionSettings getEncryptionSettings() {
+ 		return encryptionSettings;
+@@ -92,17 +94,17 @@
+ 		Main.random.nextBytes(encryptionSettings.verifyToken);
+ 	}
+ 
+ 	public void forcePacketFlush() {
+ 		synchronized (packets) {
+ 			Packet p;
+ 			while ((p = packets.poll()) != null) {
+ 				ctx.write(p);
+-				// EnderLogger.debug("Out: "+p.toString());
++				//EnderLogger.debug("Out: "+p.toString());
+ 				p.onSend(this);
+ 			}
+ 			ctx.flush();
+ 		}
+ 	}
+ 
+ 	@Override
+ 	public void channelRead(ChannelHandlerContext ctx, Object msg) {
+@@ -313,9 +315,14 @@
+ 			EnderLogger.exception(ex);
+ 		}
+ 		finally
+ 		{
+ 			this.onDisconnect();
+ 			ctx.close();
+ 		}
+ 	}
++	
++	public void enableCompression(){
++		this.ctx.pipeline().addBefore("packet_rw_converter", "packet_r_decompressor", new MinecraftDecompressionCodex());
++		this.ctx.pipeline().addBefore("packet_rw_converter", "packet_w_compressor", new MinecraftCompressionCodex());
++	}
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -18,25 +18,27 @@
+ package org.enderstone.server.packet;
+ 
+ import io.netty.buffer.ByteBuf;
+ import io.netty.channel.ChannelHandlerAdapter;
+ import io.netty.channel.ChannelHandlerContext;
+ import io.netty.handler.codec.MessageToByteEncoder;
+ import io.netty.handler.codec.MessageToMessageDecoder;
+ import java.io.IOException;
++import java.net.InetSocketAddress;
+ import java.security.GeneralSecurityException;
+ import java.security.Key;
+ import java.security.KeyPair;
+ import java.security.KeyPairGenerator;
+ import java.security.NoSuchAlgorithmException;
+ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Queue;
+ import java.util.UUID;
++import java.util.logging.Level;
+ import javax.crypto.Cipher;
+ import javax.crypto.SecretKey;
+ import javax.crypto.ShortBufferException;
+ import javax.crypto.spec.IvParameterSpec;
+ import org.enderstone.server.EnderLogger;
+ import org.enderstone.server.Location;
+ import org.enderstone.server.Main;
+ import org.enderstone.server.chat.Message;
+@@ -288,34 +290,61 @@
+ 			return keyPair;
+ 		}
+ 
+ 		public byte[] getVerifyToken() {
+ 			return verifyToken;
+ 		}
+ 	}
+ 
++	/**
++	 * Disconnected the player with the specified warning
++	 * @param message the disconnect message
++	 * @deprecated This method doesn't know the real cause of the disconnect, use disconnect(Message, boolean) instead
++	 */
++	@Deprecated
+ 	public void disconnect(String message) {
+-		this.disconnect(new SimpleMessage(message));
+-	}
+-
++		this.disconnect(message, true);
++	}
++	
++	public void disconnect(String message, boolean byError) {
++		this.disconnect(new SimpleMessage(message), byError);
++	}
++	
++	@Deprecated
+ 	public void disconnect(Message message) {
++		this.disconnect(message, true);
++	}
++
++	/**
++	 * Disconnects the player
++	 * @param message the message to kick the player
++	 * @param byError if true, then the reason of the kick is printed in the console
++	 */
++	public void disconnect(Message message, boolean byError) {
+ 		try {
+ 			this.ctx.channel().pipeline().addFirst("packet_r_disconnected", new DiscardingReader());
++			Level level = byError ? Level.WARNING : Level.INFO;
+ 			if (this.player == null)
+-				EnderLogger.info("Kicking unregistered channel (" + this.wantedName + "" + this.uuid + "): " + message.toPlainText());
++				EnderLogger.logger.log(level, "Kicking unregistered channel " + this.digitalName() + ": " + message.toPlainText());
+ 			else
+-				EnderLogger.info("Kicking (" + this.wantedName + "," + this.uuid + "): " + message.toPlainText());
++				EnderLogger.logger.log(level, "Kicking " + this.digitalName() +": " + message.toPlainText());
+ 			Packet p = codex.getDisconnectionPacket(message);
+-			System.out.println(p);
++			EnderLogger.warn("Kicking ");
+ 			this.ctx.channel().pipeline().addFirst(new DiscardingReader());
+ 			if (p != null)
+ 				ctx.write(p);
+ 		} catch (Exception ex) {
+ 			EnderLogger.exception(ex);
+ 		}
+ 		finally
+ 		{
+ 			this.onDisconnect();
+ 			ctx.close();
+ 		}
+ 	}
++	
++	public String digitalName()
++	{
++		InetSocketAddress address = (InetSocketAddress)ctx.channel().remoteAddress();
++		return "["+address.getAddress()+"|"+address.getPort()+"]-("+String.valueOf(this.wantedName)+"";
++	}
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -343,15 +343,14 @@
+ 			ctx.close();
+ 		}
+ 	}
+ 	
+ 	public void enableCompression(){
+ 		this.ctx.pipeline().addBefore("packet_rw_converter", "packet_r_decompressor", new MinecraftDecompressionCodex());
+ 		this.ctx.pipeline().addBefore("packet_rw_converter", "packet_w_compressor", new MinecraftCompressionCodex());
+ 	}
+-
+ 	public String digitalName()
+ 	{
+ 		InetSocketAddress address = (InetSocketAddress)ctx.channel().remoteAddress();
+ 		return "["+address.getAddress()+"|"+address.getPort()+"]-("+String.valueOf(this.wantedName)+"";
+ 	}
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/6: src/org/enderstone/server/packet/Packet.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -136,17 +136,17 @@
+ 	}
+ 
+ 	public static ItemStack readItemStack(ByteBuf buf) {
+ 		short blockId = buf.readShort();
+ 		if (blockId == -1) {
+ 			return null;
+ 		}
+ 
+-		ItemStack stack = new ItemStack(blockId, (byte) -1, (short) -1);
++		ItemStack stack = new ItemStack(blockId, (byte) -1, (short) -1, false);
+ 
+ 		stack.setAmount(buf.readByte());
+ 		stack.setDamage(buf.readShort());
+ 
+ 		int index = buf.readerIndex();
+ 		if (buf.readByte() == 0) {
+ 			return stack;
+ 		}
+@@ -282,26 +282,27 @@
+ 	public static int getItemStackSize(ItemStack stack) {
+ 		int total = 0;
+ 		if (stack == null) {
+ 			total += 1;
+ 			return total;
+ 		}
+ 		total += (getShortSize() * 2) + 1;
+ 		if (stack.getCompoundTag() == null) {
+-			return total++;
++			total++;
++			return total;
+ 		}
+ 		try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+ 			try (NBTOutputStream outStream = new NBTOutputStream(new DataOutputStream(out))) {
+ 				outStream.writeTag(stack.getCompoundTag());
+ 			} catch (Exception e) {
+ 				e.printStackTrace();
+ 			}
+ 			total += out.toByteArray().length;
+-		}catch(Exception e){
++		} catch (Exception e) {
+ 			e.printStackTrace();
+ 		}
+ 		return total;
+ 	}
+ 
+ 	public static int getFloatSize() {
+ 		return 4;
+ 	}
+@@ -340,21 +341,21 @@
+ 		}
+ 	}
+ 
+ 	public static Location readLocation(ByteBuf buf) {
+ 		long value = buf.readLong();
+ 		long x = value >> 38;
+ 		long y = value << 26 >> 52;
+ 		long z = value << 38 >> 38;
+-		return new Location("", x,y,z,0F,0F);
+-	}
+-	
+-	public static void writeLocation(Location loc , ByteBuf buf){
+-		buf.writeLong(((long)loc.getBlockX() & 0x3FFFFFF) << 38 | ((long)loc.getBlockY() & 0xFFF) << 26 | (loc.getBlockZ() & 0x3FFFFFF));
++		return new Location("", x, y, z, 0F, 0F);
++	}
++
++	public static void writeLocation(Location loc, ByteBuf buf) {
++		buf.writeLong(((long) loc.getBlockX() & 0x3FFFFFF) << 38 | ((long) loc.getBlockY() & 0xFFF) << 26 | (loc.getBlockZ() & 0x3FFFFFF));
+ 	}
+ 
+ 	public static int getLocationSize() {
+ 		return getLongSize();
+ 	}
+ 
+ 	public static UUID readUUID(ByteBuf buf) {
+ 		return new UUID(buf.readLong(), buf.readLong());
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -277,22 +277,22 @@
+ 			}
+ 		}
+ 		return total;
+ 	}
+ 
+ 	public static int getItemStackSize(ItemStack stack) {
+ 		int total = 0;
+ 		if (stack == null) {
+-			total += 1;
++			total += getShortSize();
+ 			return total;
+ 		}
+ 		total += (getShortSize() * 2) + 1;
+ 		if (stack.getCompoundTag() == null) {
+-			return total++;
++			return ++total;
+ 		}
+ 		try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+ 			try (NBTOutputStream outStream = new NBTOutputStream(new DataOutputStream(out))) {
+ 				outStream.writeTag(stack.getCompoundTag());
+ 			} catch (Exception e) {
+ 				e.printStackTrace();
+ 			}
+ 			total += out.toByteArray().length;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -136,17 +136,17 @@
+ 	}
+ 
+ 	public static ItemStack readItemStack(ByteBuf buf) {
+ 		short blockId = buf.readShort();
+ 		if (blockId == -1) {
+ 			return null;
+ 		}
+ 
+-		ItemStack stack = new ItemStack(blockId, (byte) -1, (short) -1, false);
++		ItemStack stack = new ItemStack(blockId, (byte) -1, (short) -1);
+ 
+ 		stack.setAmount(buf.readByte());
+ 		stack.setDamage(buf.readShort());
+ 
+ 		int index = buf.readerIndex();
+ 		if (buf.readByte() == 0) {
+ 			return stack;
+ 		}
+@@ -282,18 +282,17 @@
+ 	public static int getItemStackSize(ItemStack stack) {
+ 		int total = 0;
+ 		if (stack == null) {
+ 			total += getShortSize();
+ 			return total;
+ 		}
+ 		total += (getShortSize() * 2) + 1;
+ 		if (stack.getCompoundTag() == null) {
+-			 ++total;
+-			return total;
++			return ++total;
+ 		}
+ 		try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+ 			try (NBTOutputStream outStream = new NBTOutputStream(new DataOutputStream(out))) {
+ 				outStream.writeTag(stack.getCompoundTag());
+ 			} catch (Exception e) {
+ 				e.printStackTrace();
+ 			}
+ 			total += out.toByteArray().length;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/6: src/org/enderstone/server/packet/login/PacketInEncryptionResponse.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -62,17 +62,17 @@
+ 	public byte getId() {
+ 		return 0x01;
+ 	}
+ 
+ 	@Override
+ 	public void onRecieve(final NetworkManager networkManager) {
+ 		NetworkManager.EncryptionSettings ec = networkManager.getEncryptionSettings();
+ 		this.verifyToken = NetworkEncrypter.decrypt(ec.getKeyPair().getPrivate(), this.verifyToken);
+-		this.sharedSecret = NetworkEncrypter.toCiphdecrypttKeyPair().getPrivate(), this.sharedSecret);
++		this.sharedSecret = NetworkEncrypter.decrypt(ec.getKeyPair().getPrivate(), this.sharedSecret);
+ 		SecretKey key = new SecretKeySpec(sharedSecret, "AES");
+ 		try {
+ 			String hash = new BigInteger(NetworkEncrypter.createHash(ec.getServerid(), ec.getKeyPair().getPublic(), key)).toString(16);
+ 			String url = "https://sessionserver.mojang.com/session/minecraft/hasJoined?username=" + networkManager.wantedName + "&serverId=" + hash;
+ 			ServerRequest r = new ServerRequest(url);
+ 			JSONObject json = r.get();
+ 			if (json == null) {
+ 				networkManager.disconnect("invalid encryption token");
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -62,17 +62,17 @@
+ 	public byte getId() {
+ 		return 0x01;
+ 	}
+ 
+ 	@Override
+ 	public void onRecieve(final NetworkManager networkManager) {
+ 		NetworkManager.EncryptionSettings ec = networkManager.getEncryptionSettings();
+ 		this.verifyToken = NetworkEncrypter.decrypt(ec.getKeyPair().getPrivate(), this.verifyToken);
+-		this.sharedSecret = NetworkEncrypter.toCiphdecrypttKeyPair().getPrivate(), this.sharedSecret);
++		this.sharedSecret = NetworkEncrypter.decrypt(ec.getKeyPair().getPrivate(), this.sharedSecret);
+ 		SecretKey key = new SecretKeySpec(sharedSecret, "AES");
+ 		try {
+ 			String hash = new BigInteger(NetworkEncrypter.createHash(ec.getServerid(), ec.getKeyPair().getPublic(), key)).toString(16);
+ 			String url = "https://sessionserver.mojang.com/session/minecraft/hasJoined?username=" + networkManager.wantedName + "&serverId=" + hash;
+ 			ServerRequest r = new ServerRequest(url);
+ 			JSONObject json = r.get();
+ 			if (json == null) {
+ 				networkManager.disconnect("invalid encryption token");
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/6: src/org/enderstone/server/packet/play/PacketInPlayerDigging.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -65,17 +65,17 @@
+ 				int z = getLocation().getBlockZ();
+ 				
+ 				short blockId = Main.getInstance().mainWorld.getBlockIdAt(x, y, z).getId();
+ 				if (getStatus() == 2) {
+ 					if (networkManager.player.getLocation().isInRange(6, loc)) {
+ 						Main.getInstance().mainWorld.setBlockAt(x, y, z, BlockId.AIR, (byte) 0);
+ 					}
+ 					Main.getInstance().mainWorld.broadcastSound("dig.grass", x, y, z, 1F, (byte) 63, loc, networkManager.player);
+-					Main.getInstance().mainWorld.addEntity(new EntityItem(loc, new ItemStack(blockId, (byte) 1, (short) 0)));
++					Main.getInstance().mainWorld.addEntity(new EntityItem(loc, new ItemStack(blockId, (byte) 1, (short) 0, false)));
+ 				}
+ 			}
+ 		});
+ 	}
+ 
+ 	public byte getStatus() {
+ 		return status;
+ 	}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -50,41 +50,56 @@
+ 		return 2 + getLocationSize() + getVarIntSize(getId());
+ 	}
+ 
+ 	@Override
+ 	public byte getId() {
+ 		return 0x07;
+ 	}
+ 
++	@Override
+ 	public void onRecieve(final NetworkManager networkManager) {
+ 		Main.getInstance().sendToMainThread(new Runnable() {
+ 
+ 			@Override
+ 			public void run() {
+ 				int x = getLocation().getBlockX();
+ 				int y = getLocation().getBlockY();
+ 				int z = getLocation().getBlockZ();
+-				
++
+ 				short blockId = Main.getInstance().mainWorld.getBlockIdAt(x, y, z).getId();
+-				if (getStatus() == 2) {
+-					if (networkManager.player.getLocation().isInRange(6, loc)) {
+-						Main.getInstance().mainWorld.setBlockAt(x, y, z, BlockId.AIR, (byte) 0);
++				switch (getStatus()) {
++					case 2: {
++						if (networkManager.player.getLocation().isInRange(6, loc)) {
++							Main.getInstance().mainWorld.setBlockAt(x, y, z, BlockId.AIR, (byte) 0);
++						}
++						Main.getInstance().mainWorld.broadcastSound("dig.grass", x, y, z, 1F, (byte) 63, loc, networkManager.player);
++						Main.getInstance().mainWorld.addEntity(new EntityItem(loc, new ItemStack(blockId, (byte) 1, (short) networkManager.player.world.getBlockDataAt(x, y, z))));
+ 					}
+-					Main.getInstance().mainWorld.broadcastSound("dig.grass", x, y, z, 1F, (byte) 63, loc, networkManager.player);
+-					Main.getInstance().mainWorld.addEntity(new EntityItem(loc, new ItemStack(blockId, (byte) 1, (short) 0)));
++					break;
++					case 3:
++					case 4:
++					{
++						networkManager.player.getInventoryHandler().recievePacket(PacketInPlayerDigging.this);
++					}
++					break;
+ 				}
+ 			}
+ 		});
+ 	}
+ 
+ 	public byte getStatus() {
+ 		return status;
+ 	}
+ 
+-	public Location getLocation(){
++	public Location getLocation() {
+ 		return loc;
+ 	}
+ 
+ 	public byte getFace() {
+ 		return face;
+ 	}
++
++	@Override
++	public String toString() {
++		return "PacketInPlayerDigging{" + "status=" + status + ", loc=" + loc + ", face=" + face + '}';
++	}
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -67,17 +67,17 @@
+ 
+ 				short blockId = Main.getInstance().mainWorld.getBlockIdAt(x, y, z).getId();
+ 				switch (getStatus()) {
+ 					case 2: {
+ 						if (networkManager.player.getLocation().isInRange(6, loc)) {
+ 							Main.getInstance().mainWorld.setBlockAt(x, y, z, BlockId.AIR, (byte) 0);
+ 						}
+ 						Main.getInstance().mainWorld.broadcastSound("dig.grass", x, y, z, 1F, (byte) 63, loc, networkManager.player);
+-						Main.getInstance().mainWorld.addEntity(new EntityItem(loc, new ItemStack(blockId, (byte) 1, (short) networkManager.player.world.getBlockDataAt(x, y, z), false)));
++						Main.getInstance().mainWorld.addEntity(new EntityItem(loc, new ItemStack(blockId, (byte) 1, (short) networkManager.player.world.getBlockDataAt(x, y, z))));
+ 					}
+ 					break;
+ 					case 3:
+ 					case 4:
+ 					{
+ 						networkManager.player.getInventoryHandler().recievePacket(PacketInPlayerDigging.this);
+ 					}
+ 					break;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

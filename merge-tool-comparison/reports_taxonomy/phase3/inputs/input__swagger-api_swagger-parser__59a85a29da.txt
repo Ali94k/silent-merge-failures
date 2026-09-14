@@ -1,0 +1,635 @@
+UNIT swagger-api_swagger-parser__59a85a29da
+repo: swagger-api_swagger-parser   merge: 59a85a29da74a1c374af370f0eac64ec04814134   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: modules/swagger-parser-v3/src/test/java/io/swagger/v3/parser/test/OpenAPIV3ParserTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -2748,9 +2748,22 @@
+     @Test
+     public void testDiscriminatorSeparateFileExternalMapping() throws Exception {
+         OpenAPI openAPI = new OpenAPIV3Parser().read("./discriminator-mapping-resolution/main-external-mapping-3files.yaml");
+         Assert.assertNotNull(openAPI);
+         Schema cat = openAPI.getComponents().getSchemas().get("Cat");
+         Assert.assertNotNull(cat);
+     }
+ 
++    // Relative external refs failed on windows due to \ issue
++    @Test
++    public void testRelativePathIssue1543() {
++        OpenAPIV3Parser parser = new OpenAPIV3Parser();
++        ParseOptions options = new ParseOptions();
++        options.setResolveFully(true);
++        options.setResolve(true);
++        SwaggerParseResult readResult = parser.readLocation("src/test/resources/issue-1543/openapi.yaml", null, options);
++
++        if (readResult.getMessages().size() > 0) {
++        	Assert.assertFalse(readResult.getMessages().get(0).contains("end -1"));
++        }
++    }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -48,16 +48,17 @@
+ import io.swagger.v3.oas.models.security.SecurityScheme;
+ import io.swagger.v3.parser.OpenAPIResolver;
+ import io.swagger.v3.parser.OpenAPIV3Parser;
+ import io.swagger.v3.parser.core.models.AuthorizationValue;
+ import io.swagger.v3.parser.core.models.ParseOptions;
+ import io.swagger.v3.parser.core.models.SwaggerParseResult;
+ import mockit.Injectable;
+ import org.apache.commons.io.FileUtils;
++import org.apache.commons.lang3.StringUtils;
+ import org.hamcrest.CoreMatchers;
+ import org.testng.Assert;
+ import org.testng.annotations.AfterClass;
+ import org.testng.annotations.BeforeClass;
+ import org.testng.annotations.Test;
+ import org.testng.reporters.Files;
+ 
+ import static java.util.Arrays.asList;
+@@ -2748,9 +2749,24 @@
+     @Test
+     public void testDiscriminatorSeparateFileExternalMapping() throws Exception {
+         OpenAPI openAPI = new OpenAPIV3Parser().read("./discriminator-mapping-resolution/main-external-mapping-3files.yaml");
+         Assert.assertNotNull(openAPI);
+         Schema cat = openAPI.getComponents().getSchemas().get("Cat");
+         Assert.assertNotNull(cat);
+     }
+ 
++    @Test
++    public void testIssue1540() throws Exception{
++        OpenAPI openAPI = new OpenAPIV3Parser().read("./issue-1540/a.json");
++        Assert.assertNotNull(openAPI);
++        Map<String, Object> extensions = openAPI.getExtensions();
++        Assert.assertNotNull(extensions);
++        Assert.assertTrue(!extensions.isEmpty());
++        Assert.assertNotNull(extensions.get("x-setting"));
++        Map<String, Object> testPutExtensions = openAPI.getPaths().get("/test").getPut().getExtensions();
++        Assert.assertNotNull(testPutExtensions);
++        Assert.assertTrue(!testPutExtensions.isEmpty());
++        Assert.assertNotNull(testPutExtensions.get("x-order"));
++        Assert.assertEquals((String)testPutExtensions.get("x-order"),"2147483647");
++    }
++
+ }
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package io.swagger.v3.parser.test;
+        // ... 2 lines elided ...
+import java.io.File;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.net.HttpURLConnection;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import io.swagger.v3.core.util.Json;
+import io.swagger.v3.core.util.Yaml;
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
+import io.swagger.v3.oas.models.Paths;
+import io.swagger.v3.oas.models.examples.Example;
+import io.swagger.v3.oas.models.headers.Header;
+import io.swagger.v3.oas.models.links.Link;
+import io.swagger.v3.oas.models.media.ArraySchema;
+import io.swagger.v3.oas.models.media.ByteArraySchema;
+import io.swagger.v3.oas.models.media.ComposedSchema;
+import io.swagger.v3.oas.models.media.Content;
+import io.swagger.v3.oas.models.media.IntegerSchema;
+import io.swagger.v3.oas.models.media.MapSchema;
+import io.swagger.v3.oas.models.media.MediaType;
+import io.swagger.v3.oas.models.media.ObjectSchema;
+import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.StringSchema;
+import io.swagger.v3.oas.models.parameters.HeaderParameter;
+import io.swagger.v3.oas.models.parameters.Parameter;
+import io.swagger.v3.oas.models.parameters.PathParameter;
+import io.swagger.v3.oas.models.parameters.QueryParameter;
+import io.swagger.v3.oas.models.parameters.RequestBody;
+import io.swagger.v3.oas.models.responses.ApiResponse;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.parser.OpenAPIResolver;
+import io.swagger.v3.parser.OpenAPIV3Parser;
+import io.swagger.v3.parser.core.models.AuthorizationValue;
+import io.swagger.v3.parser.core.models.ParseOptions;
+import io.swagger.v3.parser.core.models.SwaggerParseResult;
+import mockit.Injectable;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.hamcrest.CoreMatchers;
+import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
+import org.testng.reporters.Files;
+
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThat;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
+
+
+public class OpenAPIV3ParserTest {
+    protected int serverPort = getDynamicPort();
+    protected WireMockServer wireMockServer;
+
+    @Test
+    public void testIssue251() throws IOException {
+        String pathFile = FileUtils.readFileToString(new File("src/test/resources/domain.yaml"), "UTF-8");
+        WireMock.stubFor(get(urlPathMatching("/domain"))
+                .willReturn(aResponse()
+                        .withStatus(HttpURLConnection.HTTP_OK)
+                        .withHeader("Content-type", "application/json")
+                        .withBody(pathFile
+                                .getBytes(StandardCharsets.UTF_8))));
+
+        // ... 15 lines elided ...
+    public void testCantReadDeepProperties() {
+        // ... 11 lines elided ...
+    public void testIssueSameRefsDifferentModel() throws IOException {
+        // ... 23 lines elided ...
+    public void testIssueSameRefsDifferentModelValid() {
+        // ... 11 lines elided ...
+    public void testIssue1398() {
+        // ... 6 lines elided ...
+    public void testIssue1367() {
+        // ... 12 lines elided ...
+    public void testDeserializeExampleFlag() {
+        // ... 24 lines elided ...
+    public void testIssueFlattenAdditionalPropertiesSchemaInlineModelTrue() {
+        // ... 18 lines elided ...
+    public void testIssueFlattenArraySchemaItemsInlineModelFalse() {
+        // ... 27 lines elided ...
+    public void testIssueFlattenArraySchemaItemsInlineModelTrue() {
+        // ... 34 lines elided ...
+    public void testCamelCaseFlattenNamingFalse() {
+        // ... 13 lines elided ...
+    public void testIssueFlattenComposedSchemaInlineModel() {
+        // ... 14 lines elided ...
+    public void testIssueFlattenComposedSchemaInlineModelFlagFalse() {
+        // ... 13 lines elided ...
+    public void testIssue1309() {
+        // ... 10 lines elided ...
+    public void testIssue1316() {
+        // ... 11 lines elided ...
+    public void testIssue_1292() {
+        // ... 13 lines elided ...
+    public void testIssue_505() {
+        // ... 14 lines elided ...
+    public void testFlattenComposedSchema() {
+        // ... 13 lines elided ...
+    public void testNotFlattenComposedSchema() {
+        // ... 13 lines elided ...
+    public void testCodegenIssue8601() {
+        // ... 16 lines elided ...
+    public void testCodegenIssue9773() {
+        // ... 11 lines elided ...
+    public void testIssueResolveCallBacks() {
+        // ... 10 lines elided ...
+    public void testIssue1190() {
+        // ... 11 lines elided ...
+    public void testIssue1147() {
+        // ... 10 lines elided ...
+    public void testIssue1148_Flatten_Dot() {
+        // ... 9 lines elided ...
+    public void testIssue1169() {
+        // ... 9 lines elided ...
+    public void testIssue339() throws Exception {
+        // ... 11 lines elided ...
+    public void testIssue1119() {
+        // ... 8 lines elided ...
+    public void testIssue1108() {
+        // ... 7 lines elided ...
+    public void testRemoteParameterIssue1094(@Injectable final List<AuthorizationValue> auths) throws Exception{
+        // ... 6 lines elided ...
+    public void testIssue1071() {
+        // ... 11 lines elided ...
+    public void testIssue1071True() {
+        // ... 12 lines elided ...
+    public void testIssue1071False() {
+        // ... 12 lines elided ...
+    public void testIssue1039() {
+        // ... 9 lines elided ...
+    public void testIssue1015() {
+        // ... 13 lines elided ...
+    public void testIssueIntegerDefault() {
+        // ... 12 lines elided ...
+    public void testIssue983() {
+        // ... 9 lines elided ...
+    public void testIssue913() {
+        // ... 10 lines elided ...
+    public void testIssue901_2() {
+        // ... 11 lines elided ...
+    public void testIssue901() {
+        // ... 10 lines elided ...
+    public void testIssue853() {
+        // ... 21 lines elided ...
+    public void testIssue837() {
+        // ... 16 lines elided ...
+    public void testIssue1131() {
+        // ... 30 lines elided ...
+    public void testIssue834() {
+        // ... 22 lines elided ...
+    public void testIssue811_RefSchema_ToRefSchema() {
+        // ... 9 lines elided ...
+    public void testIssue811() {
+        // ... 9 lines elided ...
+    public void testIssue719() {
+        // ... 7 lines elided ...
+    public void issue682() throws Exception {
+        // ... 11 lines elided ...
+    public void issue941() throws Exception {
+        // ... 8 lines elided ...
+    public void issueRelativeRefs2() throws Exception {
+        // ... 13 lines elided ...
+    public void testPattern() {
+        // ... 6 lines elided ...
+    private void setUpWireMockServer() throws IOException {
+        // ... 108 lines elided ...
+    private void tearDownWireMockServer() {
+        // ... 4 lines elided ...
+    public void test30(@Injectable final List<AuthorizationValue> auths) throws Exception{
+        // ... 15 lines elided ...
+    public void testResolveFully() throws Exception{
+        // ... 14 lines elided ...
+    public void issue1455_testResolveFullyV2_shouldNotThrowNPE() throws Exception{
+        // ... 15 lines elided ...
+    public void testResolveEmpty(@Injectable final List<AuthorizationValue> auths) throws Exception{
+        // ... 11 lines elided ...
+    public void testResolveFullyExample() throws Exception{
+        // ... 16 lines elided ...
+    public void testInlineModelResolver(@Injectable final List<AuthorizationValue> auths) throws Exception{
+        // ... 25 lines elided ...
+    public void testRemotePathItemIssue1103(@Injectable final List<AuthorizationValue> auths) throws Exception{
+        // ... 7 lines elided ...
+    public void testRemoteParameterIssue1103(@Injectable final List<AuthorizationValue> auths) throws Exception{
+        // ... 6 lines elided ...
+    public void test30NoOptions(@Injectable final List<AuthorizationValue> auths) throws Exception{
+        // ... 12 lines elided ...
+    public void testShellMethod(@Injectable final List<AuthorizationValue> auths){
+        // ... 9 lines elided ...
+    public void testInlineModelResolverByUrl(){
+        // ... 24 lines elided ...
+    public void testIssue1105() throws Exception {
+        // ... 6 lines elided ...
+    public void testRefAdditionalProperties() throws Exception {
+        // ... 10 lines elided ...
+    public void testRefAndInlineAllOf(@Injectable final List<AuthorizationValue> auths) throws Exception {
+        // ... 13 lines elided ...
+    public void testComposedRefResolvingIssue628(@Injectable final List<AuthorizationValue> auths) throws Exception {
+        // ... 15 lines elided ...
+    public void testComposedSchemaAdjacent(@Injectable final List<AuthorizationValue> auths) throws Exception {
+        // ... 14 lines elided ...
+    public void testOneOfExternalRefConflictName() throws Exception {
+        // ... 9 lines elided ...
+    public void int64ExampleWithoutOverflow() throws Exception {
+        // ... 6 lines elided ...
+    public void testRefPaths() throws Exception {
+        // ... 19 lines elided ...
+    public void testModelParameters() throws Exception {
+        // ... 25 lines elided ...
+    public void testParseSharedPathParameters() throws Exception {
+        // ... 37 lines elided ...
+    public void testParseRefPathParameters() throws Exception {
+        // ... 41 lines elided ...
+    public void testUniqueParameters() throws Exception {
+        // ... 59 lines elided ...
+    public void testLoadRelativeFileTree_Json() throws Exception {
+        // ... 4 lines elided ...
+    public void testLoadExternalNestedDefinitions() throws Exception {
+        // ... 12 lines elided ...
+    public void testLoadExternalNestedDefinitionsWithReferenceWithinSubfolder() throws Exception {
+        // ... 20 lines elided ...
+    public void testLoadExternalNestedDefinitionsWithReferenceWithinSameFolder() throws Exception {
+        // ... 20 lines elided ...
+    public void testLoadExternalNestedDefinitionsWithReferenceOnDifferentFolderLevels() throws Exception {
+        // ... 20 lines elided ...
+    public void testPetstore() throws Exception {
+        // ... 37 lines elided ...
+    public void testFileReferenceWithVendorExt() throws Exception {
+        // ... 10 lines elided ...
+    public void testTroublesomeFile() throws Exception {
+        // ... 5 lines elided ...
+    public void testLoadRelativeFileTree_Yaml() throws Exception {
+        // ... 8 lines elided ...
+    public void testLoadRecursiveExternalDef() throws Exception {
+        // ... 10 lines elided ...
+    public void testLoadNestedItemsReferences() {
+        // ... 11 lines elided ...
+    public void testIssue75() {
+        // ... 13 lines elided ...
+    public void testIssue62() {
+        // ... 6 lines elided ...
+    public void testIssue146() {
+        // ... 9 lines elided ...
+    public void testParameterRequired() {
+        // ... 8 lines elided ...
+    public void testIssue108() {
+        // ... 6 lines elided ...
+    public void testIssue() {
+        // ... 28 lines elided ...
+    public void testIssue292WithCSVCollectionFormat() {
+        // ... 30 lines elided ...
+    public void testIssue255() {
+        // ... 6 lines elided ...
+    public void testIssue286() {
+        // ... 9 lines elided ...
+    public void testIssue360() {
+        // ... 43 lines elided ...
+    public void testRelativePath() {
+        // ... 8 lines elided ...
+    public void testRelativePath2() {
+        // ... 7 lines elided ...
+    private OpenAPI doRelativeFileTest(String location) {
+        // ... 59 lines elided ...
+    private void expectedPropertiesInModel(Schema model, String... expectedProperties) {
+        // ... 6 lines elided ...
+    private void assertResponse(OpenAPI openAPI, Map<String, ApiResponse> responsesMap, String responseCode,String mediaType,
+        // ... 9 lines elided ...
+    private void assertParamDetails(List<Parameter> parameters, int index, Class<?> expectedType,
+        // ... 8 lines elided ...
+    public void testNestedReferences() {
+        // ... 10 lines elided ...
+    public void testCodegenPetstore() {
+        // ... 25 lines elided ...
+    public void testCodegenIssue4555() throws Exception {
+        // ... 35 lines elided ...
+    public void testConverterIssue17() throws Exception {
+        // ... 39 lines elided ...
+    public void testIssue393() {
+        // ... 28 lines elided ...
+    public void testBadFormat() throws Exception {
+        // ... 38 lines elided ...
+    public void testIssue357() {
+        // ... 22 lines elided ...
+    public void testIssue358() {
+        // ... 10 lines elided ...
+    public void testIncompatibleRefs() {
+        // ... 33 lines elided ...
+    public void testIssue243() {
+        // ... 25 lines elided ...
+    public void testIssue594() {
+        // ... 30 lines elided ...
+    public void testIssue450() {
+        // ... 42 lines elided ...
+    public void testIssue480() {
+        // ... 17 lines elided ...
+    public void checkAllOfAreTaken() {
+        // ... 5 lines elided ...
+    public void checkPathParameterRequiredValue() {
+        // ... 10 lines elided ...
+    public void checkAllOfWithRelativeReferencesAreFound() {
+        // ... 5 lines elided ...
+    public void checkAllOfWithRelativeReferencesIssue604() {
+        // ... 5 lines elided ...
+    public void readingSpecStringShouldNotOverQuotingStringExample() throws Exception {
+        // ... 10 lines elided ...
+    public void readingSpecNodeShouldNotOverQuotingStringExample() throws Exception {
+        // ... 10 lines elided ...
+    public void shouldParseRequestBody() {
+        // ... 13 lines elided ...
+    public void testIssue915() {
+        // ... 9 lines elided ...
+    public void testIssue931() {
+        // ... 10 lines elided ...
+    public void testIssue948() {
+        // ... 8 lines elided ...
+    public void shouldParseParameters() {
+        // ... 10 lines elided ...
+    public void testIssue884() {
+        // ... 11 lines elided ...
+    public void testLinkIssue() {
+        // ... 9 lines elided ...
+    private Map<String, Schema> issue975ExtractPropertiesFromTestResource() {
+        // ... 8 lines elided ...
+    public void testIssue975_property() {
+        // ... 5 lines elided ...
+    public void testIssue975_array() {
+        // ... 6 lines elided ...
+    public void testIssue975_map() {
+        // ... 6 lines elided ...
+    public void testIssue975_array_map() {
+        // ... 7 lines elided ...
+    public void testIssue975_map_array() {
+        // ... 6 lines elided ...
+    public void testIssue975_array_array() {
+        // ... 7 lines elided ...
+    public void testIssue975_map_map() {
+        // ... 7 lines elided ...
+    public void testIssue975_oneOf() {
+        // ... 6 lines elided ...
+    public void testIssue975_anyOf() {
+        // ... 6 lines elided ...
+    public void testIssue975_allOf() {
+        // ... 6 lines elided ...
+    public void testValidationIssue() {
+        // ... 7 lines elided ...
+    public void shouldParseExternalSchemaModelHavingReferenceToItsLocalModel() {
+        // ... 17 lines elided ...
+    public void testIssue1003_ExtensionsClassloader() {
+        // ... 15 lines elided ...
+    public void shouldParseApiWithMultipleParameterReferences() {
+        // ... 20 lines elided ...
+    public void shouldParseApiWithParametersUsingContentvsSchema() {
+        // ... 62 lines elided ...
+    public void testIssue1063() {
+        // ... 19 lines elided ...
+    public void testIssue1177(@Injectable final List<AuthorizationValue> auths) {
+        // ... 26 lines elided ...
+    public void testResolveFullyMap() {
+        // ... 14 lines elided ...
+    public void testParseOptionsSkipMatchesFalse() {
+        // ... 20 lines elided ...
+    public void testParseOptionsSkipMatchesTrue() {
+        // ... 18 lines elided ...
+    public void testIssue1335() {
+        // ... 9 lines elided ...
+    public void testEmptyQueryParameterExample() {
+        // ... 9 lines elided ...
+    public void testBlankQueryParameterExample() {
+        // ... 9 lines elided ...
+    public void testRegressionIssue1236() {
+        // ... 10 lines elided ...
+    public void testSampleParser() {
+        // ... 17 lines elided ...
+    public void testDuplicateHttpStatusCodesJson() {
+        // ... 15 lines elided ...
+    public void testDuplicateHttpStatusCodesYaml() {
+        // ... 14 lines elided ...
+    private static int getDynamicPort() {
+        // ... 4 lines elided ...
+    public void testDiscriminatorSingleFileNoMapping() throws Exception {
+        // ... 7 lines elided ...
+    public void testDiscriminatorSeparateFileNoMapping() throws Exception {
+        // ... 7 lines elided ...
+    public void testDiscriminatorSingleFilePlainMapping() throws Exception {
+        // ... 6 lines elided ...
+    @Test
+    public void testDiscriminatorSeparateFilePlainMapping() throws Exception {
+        OpenAPI openAPI = new OpenAPIV3Parser().read("./discriminator-mapping-resolution/main-plain-mapping.yaml");
+        Assert.assertNotNull(openAPI);
+        Schema cat = openAPI.getComponents().getSchemas().get("Cat");
+        Assert.assertNotNull(cat);
+    }
+
+    @Test
+    public void testDiscriminatorSingleFileInternalMapping() throws Exception {
+        OpenAPI openAPI = new OpenAPIV3Parser().read("./discriminator-mapping-resolution/single-file-internal-mapping.yaml");
+        Assert.assertNotNull(openAPI);
+        Schema cat = openAPI.getComponents().getSchemas().get("Cat");
+        Assert.assertNotNull(cat);
+    }
+
+    @Test
+    public void testDiscriminatorSeparateFileInternalMapping() throws Exception {
+        OpenAPI openAPI = new OpenAPIV3Parser().read("./discriminator-mapping-resolution/main-internal-mapping.yaml");
+        Assert.assertNotNull(openAPI);
+        Schema cat = openAPI.getComponents().getSchemas().get("Cat");
+        Assert.assertNotNull(cat);
+    }
+
+    @Test
+    public void testDiscriminatorSameFileExternalMapping() throws Exception {
+        OpenAPI openAPI = new OpenAPIV3Parser().read("./discriminator-mapping-resolution/main-external-mapping.yaml");
+        Assert.assertNotNull(openAPI);
+        Schema cat = openAPI.getComponents().getSchemas().get("Cat");
+        Assert.assertNotNull(cat);
+    }
+
+    @Test
+    public void testDiscriminatorSeparateFileExternalMapping() throws Exception {
+        OpenAPI openAPI = new OpenAPIV3Parser().read("./discriminator-mapping-resolution/main-external-mapping-3files.yaml");
+        Assert.assertNotNull(openAPI);
+        Schema cat = openAPI.getComponents().getSchemas().get("Cat");
+        Assert.assertNotNull(cat);
+    }
+
+    @Test
+    public void testIssue1540() throws Exception{
+        OpenAPI openAPI = new OpenAPIV3Parser().read("./issue-1540/a.json");
+        Assert.assertNotNull(openAPI);
+        Map<String, Object> extensions = openAPI.getExtensions();
+        Assert.assertNotNull(extensions);
+        Assert.assertTrue(!extensions.isEmpty());
+        Assert.assertNotNull(extensions.get("x-setting"));
+        Map<String, Object> testPutExtensions = openAPI.getPaths().get("/test").getPut().getExtensions();
+        Assert.assertNotNull(testPutExtensions);
+        Assert.assertTrue(!testPutExtensions.isEmpty());
+        Assert.assertNotNull(testPutExtensions.get("x-order"));
+        Assert.assertEquals((String)testPutExtensions.get("x-order"),"2147483647");
+    }
+
+    // Relative external refs failed on windows due to \ issue
+    @Test
+    public void testRelativePathIssue1543() {
+        OpenAPIV3Parser parser = new OpenAPIV3Parser();
+        ParseOptions options = new ParseOptions();
+        options.setResolveFully(true);
+        options.setResolve(true);
+        SwaggerParseResult readResult = parser.readLocation("src/test/resources/issue-1543/openapi.yaml", null, options);
+
+        if (readResult.getMessages().size() > 0) {
+        	Assert.assertFalse(readResult.getMessages().get(0).contains("end -1"));
+        }
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -2749,37 +2749,38 @@
+     @Test
+     public void testDiscriminatorSeparateFileExternalMapping() throws Exception {
+         OpenAPI openAPI = new OpenAPIV3Parser().read("./discriminator-mapping-resolution/main-external-mapping-3files.yaml");
+         Assert.assertNotNull(openAPI);
+         Schema cat = openAPI.getComponents().getSchemas().get("Cat");
+         Assert.assertNotNull(cat);
+     }
+ 
++
++    // Relative external refs failed on windows due to \ issue
++    @Test
++    public void testRelativePathIssue1543() {
++        OpenAPIV3Parser parser = new OpenAPIV3Parser();
++        ParseOptions options = new ParseOptions();
++        options.setResolveFully(true);
++        options.setResolve(true);
++        SwaggerParseResult readResult = parser.readLocation("src/test/resources/issue-1543/openapi.yaml", null, options);
++
++        if (readResult.getMessages().size() > 0) {
++        	Assert.assertFalse(readResult.getMessages().get(0).contains("end -1"));
++        }
++    }
++
+     @Test
+     public void testIssue1540() throws Exception{
+         OpenAPI openAPI = new OpenAPIV3Parser().read("./issue-1540/a.json");
+         Assert.assertNotNull(openAPI);
+         Map<String, Object> extensions = openAPI.getExtensions();
+         Assert.assertNotNull(extensions);
+         Assert.assertTrue(!extensions.isEmpty());
+         Assert.assertNotNull(extensions.get("x-setting"));
+         Map<String, Object> testPutExtensions = openAPI.getPaths().get("/test").getPut().getExtensions();
+         Assert.assertNotNull(testPutExtensions);
+         Assert.assertTrue(!testPutExtensions.isEmpty());
+         Assert.assertNotNull(testPutExtensions.get("x-order"));
+         Assert.assertEquals((String)testPutExtensions.get("x-order"),"2147483647");
+     }
+-
+-    // Relative external refs failed on windows due to \ issue
+-    @Test
+-    public void testRelativePathIssue1543() {
+-        OpenAPIV3Parser parser = new OpenAPIV3Parser();
+-        ParseOptions options = new ParseOptions();
+-        options.setResolveFully(true);
+-        options.setResolve(true);
+-        SwaggerParseResult readResult = parser.readLocation("src/test/resources/issue-1543/openapi.yaml", null, options);
+-
+-        if (readResult.getMessages().size() > 0) {
+-        	Assert.assertFalse(readResult.getMessages().get(0).contains("end -1"));
+-        }
+-    }
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

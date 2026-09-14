@@ -1,0 +1,1129 @@
+UNIT driesschulten_dozer-model__c7260c73f5
+repo: driesschulten_dozer-model   merge: c7260c73f58d242b6181dfb05d588bbd0b23d5a1   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: src/main/java/nl/dries/wicket/hibernate/dozer/helper/Attacher.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -2,24 +2,25 @@
+ 
+ import java.io.Serializable;
+ 
+ import nl.dries.wicket.hibernate.dozer.SessionFinder;
+ import nl.dries.wicket.hibernate.dozer.properties.AbstractPropertyDefinition;
+ import nl.dries.wicket.hibernate.dozer.properties.CollectionPropertyDefinition;
+ import nl.dries.wicket.hibernate.dozer.properties.SimplePropertyDefinition;
+ 
++import org.hibernate.EntityMode;
+ import org.hibernate.LockMode;
+-import org.hibernate.collection.spi.PersistentCollection;
+-import org.hibernate.engine.internal.Versioning;
+-import org.hibernate.engine.spi.EntityKey;
+-import org.hibernate.engine.spi.PersistenceContext;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.engine.spi.SessionImplementor;
+-import org.hibernate.engine.spi.Status;
++import org.hibernate.collection.PersistentCollection;
++import org.hibernate.engine.EntityKey;
++import org.hibernate.engine.PersistenceContext;
++import org.hibernate.engine.SessionFactoryImplementor;
++import org.hibernate.engine.SessionImplementor;
++import org.hibernate.engine.Status;
++import org.hibernate.engine.Versioning;
+ import org.hibernate.metadata.ClassMetadata;
+ import org.hibernate.persister.collection.CollectionPersister;
+ import org.hibernate.persister.entity.EntityPersister;
+ import org.hibernate.type.TypeHelper;
+ 
+ /**
+  * Hibernate object (re-)attacher
+  * 
+@@ -55,17 +56,17 @@
+ 	protected Object attach(SimplePropertyDefinition def)
+ 	{
+ 		SessionImplementor sessionImpl = (SessionImplementor) sessionFinder.getHibernateSession(def
+ 			.getHibernateProperty().getEntityClass());
+ 
+ 		EntityPersister persister = getPersister(def.getHibernateProperty(), sessionImpl);
+ 		PersistenceContext persistenceContext = sessionImpl.getPersistenceContext();
+ 
+-		EntityKey key = new EntityKey(def.getHibernateProperty().getId(), persister, sessionImpl.getTenantIdentifier());
++		EntityKey key = new EntityKey(def.getHibernateProperty().getId(), persister, EntityMode.POJO);
+ 
+ 		// Check existing instance
+ 		Object instance = persistenceContext.getEntity(key);
+ 
+ 		// No instance found
+ 		if (instance == null)
+ 		{
+ 			// Also no proxy found, generate new one
+@@ -105,23 +106,22 @@
+ 
+ 		PersistentCollection collection = def.getCollectionType().createCollection(sessionImpl);
+ 		collection.setOwner(def.getOwner());
+ 		collection.setSnapshot(identifier, def.getRole(), null); // Sort of 'fake' state...
+ 
+ 		persistenceContext.addUninitializedCollection(persister, collection, identifier);
+ 
+ 		// Possibly re-attach owner
+-		EntityKey key = new EntityKey(identifier, getOwnPersister(def.getOwner(), sessionImpl),
+-			sessionImpl.getTenantIdentifier());
++		EntityKey key = new EntityKey(identifier, getOwnPersister(def.getOwner(), sessionImpl), EntityMode.POJO);
+ 		if (!persistenceContext.containsEntity(key))
+ 		{
+ 			EntityPersister ownPersister = getOwnPersister(def.getOwner(), sessionImpl);
+ 
+-			Object[] values = ownPersister.getPropertyValues(def.getOwner());
++			Object[] values = ownPersister.getPropertyValues(def.getOwner(), EntityMode.POJO);
+ 			TypeHelper.deepCopy(
+ 				values,
+ 				ownPersister.getPropertyTypes(),
+ 				ownPersister.getPropertyUpdateability(),
+ 				values,
+ 				sessionImpl
+ 				);
+ 			Object version = Versioning.getVersion(values, ownPersister);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -28,26 +28,32 @@
+ public class Attacher
+ {
+ 	/** The Hibernate session */
+ 	private final SessionFinder sessionFinder;
+ 
+ 	/** The property to attach */
+ 	private final AbstractPropertyDefinition propertyDefinition;
+ 
++	/** The proxy, that will be replaced by attaching */
++	private final Object proxy;
++
+ 	/**
+ 	 * Construct
+ 	 * 
+ 	 * @param def
+ 	 *            the {@link AbstractPropertyDefinition}
+-	 */
+-	public Attacher(AbstractPropertyDefinition def)
++	 * @param proxy
++	 *            the current, proxied, value
++	 */
++	public Attacher(AbstractPropertyDefinition def, Object proxy)
+ 	{
+ 		this.propertyDefinition = def;
+ 		this.sessionFinder = def.getModelCallback().getSessionFinder();
++		this.proxy = proxy;
+ 	}
+ 
+ 	/**
+ 	 * Attach a property
+ 	 * 
+ 	 * @param def
+ 	 *            the {@link SimplePropertyDefinition}
+ 	 * @return the value of the property
+@@ -135,16 +141,19 @@
+ 				LockMode.NONE,
+ 				true,
+ 				ownPersister,
+ 				false,
+ 				true // will be ignored, using the existing Entry instead
+ 				);
+ 		}
+ 
++		// Remove proxy from the Hibernate context
++		persistenceContext.getCollectionEntries().remove(proxy);
++
+ 		// Return value
+ 		return collection;
+ 	}
+ 
+ 	/**
+ 	 * Returns a {@link EntityPersister} for the given entity class
+ 	 * 
+ 	 * @param val
+--- MERGED RESULT (mergiraf; full) ---
+package nl.dries.wicket.hibernate.dozer.helper;
+
+import java.io.Serializable;
+
+import nl.dries.wicket.hibernate.dozer.SessionFinder;
+import nl.dries.wicket.hibernate.dozer.properties.AbstractPropertyDefinition;
+import nl.dries.wicket.hibernate.dozer.properties.CollectionPropertyDefinition;
+import nl.dries.wicket.hibernate.dozer.properties.SimplePropertyDefinition;
+
+import org.hibernate.EntityMode;
+import org.hibernate.LockMode;
+import org.hibernate.collection.PersistentCollection;
+import org.hibernate.engine.EntityKey;
+import org.hibernate.engine.PersistenceContext;
+import org.hibernate.engine.SessionFactoryImplementor;
+import org.hibernate.engine.SessionImplementor;
+import org.hibernate.engine.Status;
+import org.hibernate.engine.Versioning;
+import org.hibernate.metadata.ClassMetadata;
+import org.hibernate.persister.collection.CollectionPersister;
+import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.type.TypeHelper;
+
+/**
+ * Hibernate object (re-)attacher
+ * 
+ * @author dries
+ */
+public class Attacher
+{
+	/** The Hibernate session */
+	private final SessionFinder sessionFinder;
+
+	/** The property to attach */
+	private final AbstractPropertyDefinition propertyDefinition;
+
+	/** The proxy, that will be replaced by attaching */
+	private final Object proxy;
+
+	/**
+	 * Construct
+	 * 
+	 * @param def
+	 *            the {@link AbstractPropertyDefinition}
+	 * @param proxy
+	 *            the current, proxied, value
+	 */
+	public Attacher(AbstractPropertyDefinition def, Object proxy)
+	{
+		this.propertyDefinition = def;
+		this.sessionFinder = def.getModelCallback().getSessionFinder();
+		this.proxy = proxy;
+	}
+
+	/**
+	 * Attach a property
+	 * 
+	 * @param def
+	 *            the {@link SimplePropertyDefinition}
+	 * @return the value of the property
+	 */
+	protected Object attach(SimplePropertyDefinition def)
+	{
+		SessionImplementor sessionImpl = (SessionImplementor) sessionFinder.getHibernateSession(def
+			.getHibernateProperty().getEntityClass());
+
+		EntityPersister persister = getPersister(def.getHibernateProperty(), sessionImpl);
+		PersistenceContext persistenceContext = sessionImpl.getPersistenceContext();
+
+		EntityKey key = new EntityKey(def.getHibernateProperty().getId(), persister, EntityMode.POJO);
+
+		// Check existing instance
+		Object instance = persistenceContext.getEntity(key);
+
+		// No instance found
+		if (instance == null)
+		{
+			// Also no proxy found, generate new one
+			Object existing = persistenceContext.getProxy(key);
+			if (existing == null)
+			{
+				instance = persister.createProxy(def.getHibernateProperty().getId(), sessionImpl);
+				persistenceContext.getBatchFetchQueue().addBatchLoadableEntityKey(key);
+				persistenceContext.addProxy(key, instance);
+			}
+			else
+			{
+				instance = existing;
+			}
+		}
+
+		// Set the property to te real value, or a proxy
+		return instance;
+	}
+
+	/**
+	 * Attach a collection
+	 * 
+	 * @param def
+	 *            the {@link CollectionPropertyDefinition}
+	 */
+	protected Object attach(CollectionPropertyDefinition def)
+	{
+		SessionImplementor sessionImpl = (SessionImplementor) sessionFinder.getHibernateSession(def.getOwner()
+			.getClass());
+
+		CollectionPersister persister = getCollectionPersister(def, sessionImpl);
+		PersistenceContext persistenceContext = sessionImpl.getPersistenceContext();
+
+		ClassMetadata metadata = sessionImpl.getFactory().getClassMetadata(def.getOwner().getClass());
+		Serializable identifier = metadata.getIdentifier(def.getOwner(), sessionImpl);
+
+		PersistentCollection collection = def.getCollectionType().createCollection(sessionImpl);
+		collection.setOwner(def.getOwner());
+		collection.setSnapshot(identifier, def.getRole(), null); // Sort of 'fake' state...
+
+		persistenceContext.addUninitializedCollection(persister, collection, identifier);
+
+		// Possibly re-attach owner
+		EntityKey key = new EntityKey(identifier, getOwnPersister(def.getOwner(), sessionImpl), EntityMode.POJO);
+		if (!persistenceContext.containsEntity(key))
+		{
+			EntityPersister ownPersister = getOwnPersister(def.getOwner(), sessionImpl);
+
+			Object[] values = ownPersister.getPropertyValues(def.getOwner(), EntityMode.POJO);
+			TypeHelper.deepCopy(
+				values,
+				ownPersister.getPropertyTypes(),
+				ownPersister.getPropertyUpdateability(),
+				values,
+				sessionImpl
+				);
+			Object version = Versioning.getVersion(values, ownPersister);
+
+			persistenceContext.addEntity(
+				def.getOwner(),
+				(ownPersister.isMutable() ? Status.MANAGED : Status.READ_ONLY),
+				values,
+				key,
+				version,
+				LockMode.NONE,
+				true,
+				ownPersister,
+				false,
+				true // will be ignored, using the existing Entry instead
+				);
+		}
+
+		// Remove proxy from the Hibernate context
+		persistenceContext.getCollectionEntries().remove(proxy);
+
+		// Return value
+		return collection;
+	}
+
+	/**
+	 * Returns a {@link EntityPersister} for the given entity class
+	 * 
+	 * @param val
+	 *            the {@link HibernateProperty}
+	 * @return {@link EntityPersister}
+	 */
+	protected EntityPersister getPersister(HibernateProperty val, SessionImplementor sessionImpl)
+	{
+		SessionFactoryImplementor factory = sessionImpl.getFactory();
+		return factory.getEntityPersister(val.getEntityClass().getName());
+	}
+
+	/**
+	 * Returns a {@link CollectionPersister} for the given entity class
+	 * 
+	 * @param def
+	 *            the {@link AbstractPropertyDefinition}
+	 * @return a {@link CollectionPersister}
+	 */
+	protected CollectionPersister getCollectionPersister(CollectionPropertyDefinition def,
+		SessionImplementor sessionImpl)
+	{
+		SessionFactoryImplementor factory = sessionImpl.getFactory();
+		return factory.getCollectionPersister(def.getRole());
+	}
+
+	/**
+	 * @param owner
+	 *            the owner
+	 * @return the {@link EntityPersister} for the object to attach
+	 */
+	protected EntityPersister getOwnPersister(Object owner, SessionImplementor sessionImpl)
+	{
+		SessionFactoryImplementor factory = sessionImpl.getFactory();
+		return factory.getEntityPersister(owner.getClass().getName());
+	}
+
+	/**
+	 * Attach driver
+	 * 
+	 * @return the attached object
+	 */
+	public Object attach()
+	{
+		if (propertyDefinition instanceof SimplePropertyDefinition)
+		{
+			return attach((SimplePropertyDefinition) propertyDefinition);
+		}
+
+		return attach((CollectionPropertyDefinition) propertyDefinition);
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/main/java/nl/dries/wicket/hibernate/dozer/helper/HibernateCollectionType.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -5,22 +5,22 @@
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.TreeSet;
+ 
+-import org.hibernate.collection.internal.PersistentBag;
+-import org.hibernate.collection.internal.PersistentMap;
+-import org.hibernate.collection.internal.PersistentSet;
+-import org.hibernate.collection.internal.PersistentSortedSet;
+-import org.hibernate.collection.spi.PersistentCollection;
+-import org.hibernate.engine.spi.SessionImplementor;
++import org.hibernate.collection.PersistentBag;
++import org.hibernate.collection.PersistentCollection;
++import org.hibernate.collection.PersistentMap;
++import org.hibernate.collection.PersistentSet;
++import org.hibernate.collection.PersistentSortedSet;
++import org.hibernate.engine.SessionImplementor;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ /**
+  * Hibernate collection types
+  * 
+  * @author dries
+  */
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -138,25 +138,25 @@
+ 	 * @param sourceFieldValue
+ 	 *            the input {@link PersistentCollection}
+ 	 * @return {@link HibernateCollectionType}
+ 	 */
+ 	public static HibernateCollectionType determineType(PersistentCollection sourceFieldValue)
+ 	{
+ 		final HibernateCollectionType type;
+ 
+-		if (sourceFieldValue instanceof PersistentSortedSet)
++		if (sourceFieldValue.getValue() instanceof PersistentSortedSet)
+ 		{
+ 			type = HibernateCollectionType.SORTED_SET;
+ 		}
+-		else if (sourceFieldValue instanceof PersistentSet)
++		else if (sourceFieldValue.getValue() instanceof PersistentSet)
+ 		{
+ 			type = HibernateCollectionType.SET;
+ 		}
+-		else if (sourceFieldValue instanceof PersistentBag)
++		else if (sourceFieldValue.getValue() instanceof PersistentBag)
+ 		{
+ 			type = HibernateCollectionType.LIST;
+ 		}
+ 		else
+ 		{
+ 			type = HibernateCollectionType.MAP;
+ 		}
+ 
+--- MERGED RESULT (mergiraf; full) ---
+package nl.dries.wicket.hibernate.dozer.helper;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+
+import org.hibernate.collection.PersistentBag;
+import org.hibernate.collection.PersistentCollection;
+import org.hibernate.collection.PersistentMap;
+import org.hibernate.collection.PersistentSet;
+import org.hibernate.collection.PersistentSortedSet;
+import org.hibernate.engine.SessionImplementor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Hibernate collection types
+ * 
+ * @author dries
+ */
+public enum HibernateCollectionType
+{
+	/** */
+	LIST(PersistentBag.class, ArrayList.class, List.class),
+	/** */
+	SET(PersistentSet.class, HashSet.class, Set.class),
+	/** */
+	SORTED_SET(PersistentSortedSet.class, TreeSet.class, Set.class),
+	/** */
+	MAP(PersistentMap.class, HashMap.class, Map.class);
+
+	/** Logger */
+	private static final Logger LOG = LoggerFactory.getLogger(HibernateCollectionType.class);
+
+	/** Specific Hibernate collection class */
+	private Class<? extends PersistentCollection> hibernateCollectionClass;
+
+	/** Plain 'Java collections' type */
+	private Class<?> plainTypeClass;
+
+	/** Plain interface collection type */
+	private Class<?> plainInterface;
+
+	/**
+	 * Construct
+	 * 
+	 * @param hibernateCollectionClass
+	 * @param plainTypeClass
+	 */
+	private HibernateCollectionType(Class<? extends PersistentCollection> hibernateCollectionClass,
+		Class<?> plainTypeClass, Class<?> plainInterface)
+	{
+		this.hibernateCollectionClass = hibernateCollectionClass;
+		this.plainTypeClass = plainTypeClass;
+		this.plainInterface = plainInterface;
+	}
+
+	/**
+	 * @return the plainInterface
+	 */
+	public Class<?> getPlainInterface()
+	{
+		return plainInterface;
+	}
+
+	/**
+	 * Creates a instance of the {@link PersistentCollection} defined by this type
+	 * 
+	 * @param sessionImpl
+	 *            {@link SessionImplementor}
+	 * @return {@link PersistentCollection} instance
+	 */
+	public PersistentCollection createCollection(SessionImplementor sessionImpl)
+	{
+		PersistentCollection collection = null;
+
+		try
+		{
+			Constructor<? extends PersistentCollection> constructor = hibernateCollectionClass
+				.getConstructor(SessionImplementor.class);
+			collection = constructor.newInstance(sessionImpl);
+		}
+		catch (NoSuchMethodException | SecurityException e)
+		{
+			LOG.error("Persistent collection type {} has no SessionImplementor constructor", hibernateCollectionClass);
+		}
+		catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+			| InvocationTargetException e)
+		{
+			LOG.error("Cannot create collection instance of type " + hibernateCollectionClass, e);
+		}
+
+		return collection;
+	}
+
+	/**
+	 * Creates a plain Java collection instance based on a {@link PersistentCollection} one
+	 * 
+	 * @param persistentCollection
+	 *            the {@link PersistentCollection}
+	 * @return plain collection
+	 */
+	public Object createPlainCollection(PersistentCollection persistentCollection)
+	{
+		Object collection = null;
+		try
+		{
+			if (Map.class.isAssignableFrom(plainTypeClass))
+			{
+				collection = plainTypeClass.newInstance();
+			}
+			else
+			{
+				collection = plainTypeClass.newInstance();
+			}
+		}
+		catch (SecurityException e)
+		{
+			LOG.error("Colection type {} has no empty constructor", plainTypeClass);
+		}
+		catch (InstantiationException | IllegalAccessException | IllegalArgumentException e)
+		{
+			LOG.error("Cannot create collection instance of type " + plainTypeClass, e);
+		}
+
+		return collection;
+	}
+
+	/**
+	 * Determine collection type based on input value
+	 * 
+	 * @param sourceFieldValue
+	 *            the input {@link PersistentCollection}
+	 * @return {@link HibernateCollectionType}
+	 */
+	public static HibernateCollectionType determineType(PersistentCollection sourceFieldValue)
+	{
+		final HibernateCollectionType type;
+
+		if (sourceFieldValue.getValue() instanceof PersistentSortedSet)
+		{
+			type = HibernateCollectionType.SORTED_SET;
+		}
+		else if (sourceFieldValue.getValue() instanceof PersistentSet)
+		{
+			type = HibernateCollectionType.SET;
+		}
+		else if (sourceFieldValue.getValue() instanceof PersistentBag)
+		{
+			type = HibernateCollectionType.LIST;
+		}
+		else
+		{
+			type = HibernateCollectionType.MAP;
+		}
+
+		return type;
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/main/java/nl/dries/wicket/hibernate/dozer/proxy/ProxyBuilder.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -11,17 +11,17 @@
+ import javassist.util.proxy.ProxyFactory;
+ import javassist.util.proxy.ProxyObject;
+ import nl.dries.wicket.hibernate.dozer.helper.Attacher;
+ import nl.dries.wicket.hibernate.dozer.helper.ObjectHelper;
+ import nl.dries.wicket.hibernate.dozer.properties.AbstractPropertyDefinition;
+ import nl.dries.wicket.hibernate.dozer.properties.SimplePropertyDefinition;
+ 
+ import org.hibernate.HibernateException;
+-import org.hibernate.engine.spi.SessionImplementor;
++import org.hibernate.engine.SessionImplementor;
+ import org.hibernate.proxy.HibernateProxy;
+ import org.hibernate.proxy.LazyInitializer;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ /**
+  * Creates proxies
+  * 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -8,19 +8,21 @@
+ import java.util.List;
+ 
+ import javassist.util.proxy.MethodHandler;
+ import javassist.util.proxy.ProxyFactory;
+ import javassist.util.proxy.ProxyObject;
+ import nl.dries.wicket.hibernate.dozer.helper.Attacher;
+ import nl.dries.wicket.hibernate.dozer.helper.ObjectHelper;
+ import nl.dries.wicket.hibernate.dozer.properties.AbstractPropertyDefinition;
++import nl.dries.wicket.hibernate.dozer.properties.CollectionPropertyDefinition;
+ import nl.dries.wicket.hibernate.dozer.properties.SimplePropertyDefinition;
+ 
+ import org.hibernate.HibernateException;
++import org.hibernate.collection.spi.PersistentCollection;
+ import org.hibernate.engine.spi.SessionImplementor;
+ import org.hibernate.proxy.HibernateProxy;
+ import org.hibernate.proxy.LazyInitializer;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ /**
+  * Creates proxies
+@@ -56,20 +58,23 @@
+ 		{
+ 			factory.setSuperclass(property.getPropertyType());
+ 		}
+ 		else
+ 		{
+ 			interfaces.add(superType);
+ 		}
+ 
+-		// Normal property: HibernateProxy
+ 		if (property instanceof SimplePropertyDefinition)
+ 		{
+ 			interfaces.add(HibernateProxy.class);
++		}
++		else if (property instanceof CollectionPropertyDefinition)
++		{
++			interfaces.add(PersistentCollection.class);
+ 		}
+ 
+ 		factory.setInterfaces(interfaces.toArray(new Class[] {}));
+ 		Class<?> proxyClass = factory.createClass();
+ 		Object proxy = null;
+ 		try
+ 		{
+ 			proxy = proxyClass.newInstance();
+@@ -124,17 +129,17 @@
+ 				return null;
+ 			}
+ 			else if (method.getName().equals("getHibernateLazyInitializer"))
+ 			{
+ 				return new ProxiedHibernateInitializer((SimplePropertyDefinition) propertyDefinition);
+ 			}
+ 
+ 			// Attach the 'real' value
+-			Object realValue = new Attacher(propertyDefinition).attach();
++			Object realValue = new Attacher(propertyDefinition, self).attach();
+ 
+ 			// Set the value in the original object, thus replacing the proxy
+ 			ObjectHelper.setValue(propertyDefinition.getOwner(), propertyDefinition.getProperty(), realValue);
+ 
+ 			// Invoke the requested method on the real value
+ 			return method.invoke(realValue, args);
+ 		}
+ 	}
+@@ -251,17 +256,17 @@
+ 
+ 		/**
+ 		 * @see org.hibernate.proxy.LazyInitializer#getImplementation()
+ 		 */
+ 		@Override
+ 		public Object getImplementation()
+ 		{
+ 			// Attach the 'real' value
+-			Object realValue = new Attacher(property).attach();
++			Object realValue = new Attacher(property, null).attach();
+ 
+ 			// The resulting object may as well be a newly created Hibernate proxy...
+ 			if (realValue instanceof HibernateProxy)
+ 			{
+ 				realValue = ((HibernateProxy) realValue).getHibernateLazyInitializer().getImplementation();
+ 			}
+ 
+ 			// Set the value in the original object, thus replacing the proxy
+--- MERGED RESULT (mergiraf; full) ---
+package nl.dries.wicket.hibernate.dozer.proxy;
+
+import java.io.ObjectStreamException;
+import java.io.Serializable;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import javassist.util.proxy.MethodHandler;
+import javassist.util.proxy.ProxyFactory;
+import javassist.util.proxy.ProxyObject;
+import nl.dries.wicket.hibernate.dozer.helper.Attacher;
+import nl.dries.wicket.hibernate.dozer.helper.ObjectHelper;
+import nl.dries.wicket.hibernate.dozer.properties.AbstractPropertyDefinition;
+import nl.dries.wicket.hibernate.dozer.properties.CollectionPropertyDefinition;
+import nl.dries.wicket.hibernate.dozer.properties.SimplePropertyDefinition;
+
+import org.hibernate.HibernateException;
+import org.hibernate.engine.SessionImplementor;
+import org.hibernate.collection.spi.PersistentCollection;
+import org.hibernate.proxy.HibernateProxy;
+import org.hibernate.proxy.LazyInitializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Creates proxies
+ * 
+ * @author dries
+ */
+public class ProxyBuilder
+{
+	/** Logger */
+	private static final Logger LOG = LoggerFactory.getLogger(ProxyBuilder.class);
+
+	/** Private construct */
+	private ProxyBuilder()
+	{
+	}
+
+	/**
+	 * Create a proxy based on a detachable Hibernate property
+	 * 
+	 * @param property
+	 *            the {@link AbstractPropertyDefinition}
+	 * @return the created proxy
+	 */
+	public static Object buildProxy(AbstractPropertyDefinition property)
+	{
+		ProxyFactory factory = new ProxyFactory();
+
+		Class<?> superType = property.getPropertyType();
+
+		List<Class<?>> interfaces = new ArrayList<>(Arrays.asList(Serializable.class, Proxied.class));
+
+		if (!superType.isInterface())
+		{
+			factory.setSuperclass(property.getPropertyType());
+		}
+		else
+		{
+			interfaces.add(superType);
+		}
+
+		if (property instanceof SimplePropertyDefinition)
+		{
+			interfaces.add(HibernateProxy.class);
+		}
+		else if (property instanceof CollectionPropertyDefinition)
+		{
+			interfaces.add(PersistentCollection.class);
+		}
+
+		factory.setInterfaces(interfaces.toArray(new Class[] {}));
+		Class<?> proxyClass = factory.createClass();
+		Object proxy = null;
+		try
+		{
+			proxy = proxyClass.newInstance();
+		}
+		catch (InstantiationException | IllegalAccessException e)
+		{
+			LOG.error("Error creating Javassist proxy", e);
+		}
+		((ProxyObject) proxy).setHandler(new LoaderCallback(property));
+
+		return proxy;
+	}
+
+	/**
+	 * Proxy method handler callback
+	 * 
+	 * @author dries
+	 */
+	private static class LoaderCallback implements MethodHandler, Serializable
+	{
+		/** Default */
+		private static final long serialVersionUID = 1L;
+
+		/** */
+		private final AbstractPropertyDefinition propertyDefinition;
+
+		/**
+		 * Construct
+		 * 
+		 * @param propertyDefinition
+		 */
+		public LoaderCallback(AbstractPropertyDefinition propertyDefinition)
+		{
+			this.propertyDefinition = propertyDefinition;
+		}
+
+		/**
+		 * @see javassist.util.proxy.MethodHandler#invoke(java.lang.Object, java.lang.reflect.Method,
+		 *      java.lang.reflect.Method, java.lang.Object[])
+		 */
+		@Override
+		public Object invoke(Object self, Method method, Method proceed, Object[] args) throws Throwable
+		{
+			LOG.trace("Intercept: " + method.getName());
+
+			if ("writeReplace".equals(method.getName()))
+			{
+				return new ProxyReplacement(propertyDefinition);
+			}
+			else if ("finalize".equals(method.getName()))
+			{
+				return null;
+			}
+			else if (method.getName().equals("getHibernateLazyInitializer"))
+			{
+				return new ProxiedHibernateInitializer((SimplePropertyDefinition) propertyDefinition);
+			}
+
+			// Attach the 'real' value
+			Object realValue = new Attacher(propertyDefinition, self).attach();
+
+			// Set the value in the original object, thus replacing the proxy
+			ObjectHelper.setValue(propertyDefinition.getOwner(), propertyDefinition.getProperty(), realValue);
+
+			// Invoke the requested method on the real value
+			return method.invoke(realValue, args);
+		}
+	}
+
+	/**
+	 * Holder while serializing the proxy
+	 * 
+	 * @author dries
+	 */
+	private static class ProxyReplacement implements Serializable
+	{
+		/** Default */
+		private static final long serialVersionUID = 1L;
+
+		/** */
+		private final AbstractPropertyDefinition propertyDefinition;
+
+		/**
+		 * Construct
+		 * 
+		 * @param propertyDefinition
+		 */
+		public ProxyReplacement(AbstractPropertyDefinition propertyDefinition)
+		{
+			this.propertyDefinition = propertyDefinition;
+		}
+
+		/**
+		 * @return newly created proxy
+		 * @throws ObjectStreamException
+		 */
+		private Object readResolve() throws ObjectStreamException
+		{
+			return buildProxy(propertyDefinition);
+		}
+	}
+
+	/**
+	 * 'Fake' Hibernate {@link LazyInitializer} to make our proxies {@link HibernateProxy}s
+	 * 
+	 * @author schulten
+	 */
+	private static class ProxiedHibernateInitializer implements Serializable, LazyInitializer
+	{
+		/** Default */
+		private static final long serialVersionUID = 1L;
+
+		/** The detached property */
+		private final SimplePropertyDefinition property;
+
+		/**
+		 * Construct
+		 * 
+		 * @param property
+		 */
+		public ProxiedHibernateInitializer(SimplePropertyDefinition property)
+		{
+			this.property = property;
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#initialize()
+		 */
+		@Override
+		public void initialize() throws HibernateException
+		{
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#getIdentifier()
+		 */
+		@Override
+		public Serializable getIdentifier()
+		{
+			return property.getHibernateProperty().getId();
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#setIdentifier(java.io.Serializable)
+		 */
+		@Override
+		public void setIdentifier(Serializable id)
+		{
+			// No support?
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#getEntityName()
+		 */
+		@Override
+		public String getEntityName()
+		{
+			return property.getHibernateProperty().getEntityClass().getName();
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#getPersistentClass()
+		 */
+		@SuppressWarnings("rawtypes")
+		@Override
+		public Class getPersistentClass()
+		{
+			return property.getHibernateProperty().getEntityClass();
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#isUninitialized()
+		 */
+		@Override
+		public boolean isUninitialized()
+		{
+			return true;
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#getImplementation()
+		 */
+		@Override
+		public Object getImplementation()
+		{
+			// Attach the 'real' value
+			Object realValue = new Attacher(property, null).attach();
+
+			// The resulting object may as well be a newly created Hibernate proxy...
+			if (realValue instanceof HibernateProxy)
+			{
+				realValue = ((HibernateProxy) realValue).getHibernateLazyInitializer().getImplementation();
+			}
+
+			// Set the value in the original object, thus replacing the proxy
+			ObjectHelper.setValue(property.getOwner(), property.getProperty(), realValue);
+
+			return realValue;
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#getImplementation(org.hibernate.engine.spi.SessionImplementor)
+		 */
+		@Override
+		public Object getImplementation(SessionImplementor session) throws HibernateException
+		{
+			return getImplementation();
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#setImplementation(java.lang.Object)
+		 */
+		@Override
+		public void setImplementation(Object target)
+		{
+			// Ignore?
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#isReadOnlySettingAvailable()
+		 */
+		@Override
+		public boolean isReadOnlySettingAvailable()
+		{
+			return false;
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#isReadOnly()
+		 */
+		@Override
+		public boolean isReadOnly()
+		{
+			return false;
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#setReadOnly(boolean)
+		 */
+		@Override
+		public void setReadOnly(boolean readOnly)
+		{
+			// Ignore
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#getSession()
+		 */
+		@Override
+		public SessionImplementor getSession()
+		{
+			return (SessionImplementor) property.getModelCallback().getSessionFinder()
+				.getHibernateSession(getPersistentClass());
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#setSession(org.hibernate.engine.spi.SessionImplementor)
+		 */
+		@Override
+		public void setSession(SessionImplementor session) throws HibernateException
+		{
+			// Not used
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#unsetSession()
+		 */
+		@Override
+		public void unsetSession()
+		{
+			// Also ignore
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#setUnwrap(boolean)
+		 */
+		@Override
+		public void setUnwrap(boolean unwrap)
+		{
+			// Ignore
+		}
+
+		/**
+		 * @see org.hibernate.proxy.LazyInitializer#isUnwrap()
+		 */
+		@Override
+		public boolean isUnwrap()
+		{
+			return false;
+		}
+
+	}
+
+	/**
+	 * Tag interface
+	 * 
+	 * @author dries
+	 */
+	public static interface Proxied
+	{
+		/**
+		 * @return object that will replace this object in serialized state
+		 * @throws ObjectStreamException
+		 */
+		Object writeReplace() throws ObjectStreamException;
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -12,18 +12,18 @@
+ import javassist.util.proxy.ProxyObject;
+ import nl.dries.wicket.hibernate.dozer.helper.Attacher;
+ import nl.dries.wicket.hibernate.dozer.helper.ObjectHelper;
+ import nl.dries.wicket.hibernate.dozer.properties.AbstractPropertyDefinition;
+ import nl.dries.wicket.hibernate.dozer.properties.CollectionPropertyDefinition;
+ import nl.dries.wicket.hibernate.dozer.properties.SimplePropertyDefinition;
+ 
+ import org.hibernate.HibernateException;
++import org.hibernate.collection.PersistentCollection;
+ import org.hibernate.engine.SessionImplementor;
+-import org.hibernate.collection.spi.PersistentCollection;
+ import org.hibernate.proxy.HibernateProxy;
+ import org.hibernate.proxy.LazyInitializer;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ /**
+  * Creates proxies
+  * 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package org.hibernate.collection.spi does not exist
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

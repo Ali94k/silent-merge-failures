@@ -1,0 +1,158 @@
+UNIT skyscreamer_nevado__cdc23cde46
+repo: skyscreamer_nevado   merge: cdc23cde46c079ff30c9c1ca4758e54fed153620   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: nevado-jms/src/main/java/org/skyscreamer/nevado/jms/connector/amazonaws/AmazonAwsSQSConnectorFactory.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -5,30 +5,41 @@
+ 
+ /**
+  * Connectory factory for Amazon AWS connector.
+  *
+  * @author Carter Page <carter@skyscreamer.org>
+  */
+ public class AmazonAwsSQSConnectorFactory extends AbstractSQSConnectorFactory {
+     protected boolean _useAsyncSend = false;
+-    
++    protected boolean _skipConnectionTest = false;
++
+     @Override
+     public AmazonAwsSQSConnector getInstance(String awsAccessKey, String awsSecretKey, String awsSQSEndpoint, String awsSNSEndpoint) {
+         AmazonAwsSQSConnector amazonAwsSQSConnector = new AmazonAwsSQSConnector(awsAccessKey, awsSecretKey, _isSecure,
+-                _receiveCheckIntervalMs, _useAsyncSend);
++                _receiveCheckIntervalMs, _useAsyncSend, _skipConnectionTest);
+         if (StringUtils.isNotEmpty(awsSQSEndpoint)) {
+             amazonAwsSQSConnector.getAmazonSQS().setEndpoint(awsSQSEndpoint);
+         }
+         if (StringUtils.isNotEmpty(awsSNSEndpoint)) {
+             amazonAwsSQSConnector.getAmazonSNS().setEndpoint(awsSNSEndpoint);
+         }
+         return amazonAwsSQSConnector;
+     }
+-    
++
+     public void setUseAsyncSend(boolean useAsyncSend) {
+         _useAsyncSend = useAsyncSend;
+     }
+-    
++
+     public boolean isUseAsyncSend() {
+         return _useAsyncSend;
+     }
++
++    public boolean isSkipConnectionTest() {
++        return _skipConnectionTest;
++    }
++
++    public void setSkipConnectionTest(boolean _skipConnectionTest) {
++        this._skipConnectionTest = _skipConnectionTest;
++    }
++
++
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -8,27 +8,30 @@
+  *
+  * @author Carter Page <carter@skyscreamer.org>
+  */
+ public class AmazonAwsSQSConnectorFactory extends AbstractSQSConnectorFactory {
+     protected boolean _useAsyncSend = false;
+     
+     @Override
+     public AmazonAwsSQSConnector getInstance(String awsAccessKey, String awsSecretKey, String awsSQSEndpoint, String awsSNSEndpoint) {
+-        AmazonAwsSQSConnector amazonAwsSQSConnector = new AmazonAwsSQSConnector(awsAccessKey, awsSecretKey, _isSecure,
+-                _receiveCheckIntervalMs, _useAsyncSend);
++        AmazonAwsSQSConnector amazonAwsSQSConnector = createConnector(awsAccessKey, awsSecretKey);
+         if (StringUtils.isNotEmpty(awsSQSEndpoint)) {
+             amazonAwsSQSConnector.getAmazonSQS().setEndpoint(awsSQSEndpoint);
+         }
+         if (StringUtils.isNotEmpty(awsSNSEndpoint)) {
+             amazonAwsSQSConnector.getAmazonSNS().setEndpoint(awsSNSEndpoint);
+         }
+         return amazonAwsSQSConnector;
+     }
+-    
++
++    protected AmazonAwsSQSConnector createConnector(String awsAccessKey, String awsSecretKey) {
++        return new AmazonAwsSQSConnector(awsAccessKey, awsSecretKey, _isSecure, _receiveCheckIntervalMs, _useAsyncSend);
++    }
++
+     public void setUseAsyncSend(boolean useAsyncSend) {
+         _useAsyncSend = useAsyncSend;
+     }
+     
+     public boolean isUseAsyncSend() {
+         return _useAsyncSend;
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package org.skyscreamer.nevado.jms.connector.amazonaws;
+
+import org.apache.commons.lang.StringUtils;
+import org.skyscreamer.nevado.jms.connector.AbstractSQSConnectorFactory;
+
+/**
+ * Connectory factory for Amazon AWS connector.
+ *
+ * @author Carter Page <carter@skyscreamer.org>
+ */
+public class AmazonAwsSQSConnectorFactory extends AbstractSQSConnectorFactory {
+    protected boolean _useAsyncSend = false;
+    protected boolean _skipConnectionTest = false;
+
+    @Override
+    public AmazonAwsSQSConnector getInstance(String awsAccessKey, String awsSecretKey, String awsSQSEndpoint, String awsSNSEndpoint) {
+        AmazonAwsSQSConnector amazonAwsSQSConnector = createConnector(awsAccessKey, awsSecretKey);
+        if (StringUtils.isNotEmpty(awsSQSEndpoint)) {
+            amazonAwsSQSConnector.getAmazonSQS().setEndpoint(awsSQSEndpoint);
+        }
+        if (StringUtils.isNotEmpty(awsSNSEndpoint)) {
+            amazonAwsSQSConnector.getAmazonSNS().setEndpoint(awsSNSEndpoint);
+        }
+        return amazonAwsSQSConnector;
+    }
+
+    protected AmazonAwsSQSConnector createConnector(String awsAccessKey, String awsSecretKey) {
+        return new AmazonAwsSQSConnector(awsAccessKey, awsSecretKey, _isSecure, _receiveCheckIntervalMs, _useAsyncSend, _skipConnectionTest);
+    }
+
+    public void setUseAsyncSend(boolean useAsyncSend) {
+        _useAsyncSend = useAsyncSend;
+    }
+
+    public boolean isUseAsyncSend() {
+        return _useAsyncSend;
+    }
+
+    public boolean isSkipConnectionTest() {
+        return _skipConnectionTest;
+    }
+
+    public void setSkipConnectionTest(boolean _skipConnectionTest) {
+        this._skipConnectionTest = _skipConnectionTest;
+    }
+
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

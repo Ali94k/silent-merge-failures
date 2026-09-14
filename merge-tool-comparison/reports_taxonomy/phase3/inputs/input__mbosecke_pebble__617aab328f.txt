@@ -1,0 +1,770 @@
+UNIT mbosecke_pebble__617aab328f
+repo: mbosecke_pebble   merge: 617aab328f6db451163955d3829d814fa2652618   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/main/java/com/mitchellbosecke/pebble/extension/core/CoreExtension.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -40,16 +40,17 @@
+ import com.mitchellbosecke.pebble.node.expression.UnaryNotExpression;
+ import com.mitchellbosecke.pebble.node.expression.UnaryPlusExpression;
+ import com.mitchellbosecke.pebble.operator.Associativity;
+ import com.mitchellbosecke.pebble.operator.BinaryOperator;
+ import com.mitchellbosecke.pebble.operator.BinaryOperatorImpl;
+ import com.mitchellbosecke.pebble.operator.UnaryOperator;
+ import com.mitchellbosecke.pebble.operator.UnaryOperatorImpl;
+ import com.mitchellbosecke.pebble.tokenParser.BlockTokenParser;
++import com.mitchellbosecke.pebble.tokenParser.CacheTokenParser;
+ import com.mitchellbosecke.pebble.tokenParser.ExtendsTokenParser;
+ import com.mitchellbosecke.pebble.tokenParser.FilterTokenParser;
+ import com.mitchellbosecke.pebble.tokenParser.FlushTokenParser;
+ import com.mitchellbosecke.pebble.tokenParser.ForTokenParser;
+ import com.mitchellbosecke.pebble.tokenParser.IfTokenParser;
+ import com.mitchellbosecke.pebble.tokenParser.ImportTokenParser;
+ import com.mitchellbosecke.pebble.tokenParser.IncludeTokenParser;
+ import com.mitchellbosecke.pebble.tokenParser.MacroTokenParser;
+@@ -68,16 +69,17 @@
+         parsers.add(new FlushTokenParser());
+         parsers.add(new ForTokenParser());
+         parsers.add(new IfTokenParser());
+         parsers.add(new ImportTokenParser());
+         parsers.add(new IncludeTokenParser());
+         parsers.add(new MacroTokenParser());
+         parsers.add(new ParallelTokenParser());
+         parsers.add(new SetTokenParser());
++        parsers.add(new CacheTokenParser());
+ 
+         // verbatim tag is implemented directly in the LexerImpl
+         return parsers;
+     }
+ 
+     @Override
+     public List<UnaryOperator> getUnaryOperators() {
+         ArrayList<UnaryOperator> operators = new ArrayList<>();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -11,17 +11,17 @@
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ 
+ import com.mitchellbosecke.pebble.extension.AbstractExtension;
+ import com.mitchellbosecke.pebble.extension.Filter;
+ import com.mitchellbosecke.pebble.extension.Function;
+-import com.mitchellbosecke.pebble.extension.NodeVisitor;
++import com.mitchellbosecke.pebble.extension.NodeVisitorFactory;
+ import com.mitchellbosecke.pebble.extension.Test;
+ import com.mitchellbosecke.pebble.node.expression.AddExpression;
+ import com.mitchellbosecke.pebble.node.expression.AndExpression;
+ import com.mitchellbosecke.pebble.node.expression.ConcatenateExpression;
+ import com.mitchellbosecke.pebble.node.expression.ContainsExpression;
+ import com.mitchellbosecke.pebble.node.expression.DivideExpression;
+ import com.mitchellbosecke.pebble.node.expression.EqualsExpression;
+ import com.mitchellbosecke.pebble.node.expression.FilterExpression;
+@@ -128,16 +128,17 @@
+         filters.put("numberformat", new NumberFormatFilter());
+         filters.put("slice", new SliceFilter());
+         filters.put("sort", new SortFilter());
+         filters.put("rsort", new RsortFilter());
+         filters.put("title", new TitleFilter());
+         filters.put("trim", new TrimFilter());
+         filters.put("upper", new UpperFilter());
+         filters.put("urlencode", new UrlEncoderFilter());
++        filters.put("length", new LengthFilter());
+         return filters;
+     }
+ 
+     @Override
+     public Map<String, Test> getTests() {
+         Map<String, Test> tests = new HashMap<>();
+         tests.put("empty", new EmptyTest());
+         tests.put("even", new EvenTest());
+@@ -164,15 +165,15 @@
+         return functions;
+     }
+ 
+     @Override
+     public Map<String, Object> getGlobalVariables() {
+         return null;
+     }
+ 
+-    public List<NodeVisitor> getNodeVisitors() {
+-        List<NodeVisitor> visitors = new ArrayList<>();
+-        visitors.add(new MacroAndBlockRegistrantNodeVisitor());
++    public List<NodeVisitorFactory> getNodeVisitors() {
++        List<NodeVisitorFactory> visitors = new ArrayList<>();
++        visitors.add(new MacroAndBlockRegistrantNodeVisitorFactory());
+         return visitors;
+     }
+ 
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*******************************************************************************
+ * This file is part of Pebble.
+ *
+ * Copyright (c) 2014 by Mitchell Bösecke
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ ******************************************************************************/
+package com.mitchellbosecke.pebble.extension.core;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.mitchellbosecke.pebble.extension.AbstractExtension;
+import com.mitchellbosecke.pebble.extension.Filter;
+import com.mitchellbosecke.pebble.extension.Function;
+import com.mitchellbosecke.pebble.extension.NodeVisitorFactory;
+import com.mitchellbosecke.pebble.extension.Test;
+import com.mitchellbosecke.pebble.node.expression.AddExpression;
+import com.mitchellbosecke.pebble.node.expression.AndExpression;
+import com.mitchellbosecke.pebble.node.expression.ConcatenateExpression;
+import com.mitchellbosecke.pebble.node.expression.ContainsExpression;
+import com.mitchellbosecke.pebble.node.expression.DivideExpression;
+import com.mitchellbosecke.pebble.node.expression.EqualsExpression;
+import com.mitchellbosecke.pebble.node.expression.FilterExpression;
+import com.mitchellbosecke.pebble.node.expression.GreaterThanEqualsExpression;
+import com.mitchellbosecke.pebble.node.expression.GreaterThanExpression;
+import com.mitchellbosecke.pebble.node.expression.LessThanEqualsExpression;
+import com.mitchellbosecke.pebble.node.expression.LessThanExpression;
+import com.mitchellbosecke.pebble.node.expression.ModulusExpression;
+import com.mitchellbosecke.pebble.node.expression.MultiplyExpression;
+import com.mitchellbosecke.pebble.node.expression.NegativeTestExpression;
+import com.mitchellbosecke.pebble.node.expression.NotEqualsExpression;
+import com.mitchellbosecke.pebble.node.expression.OrExpression;
+import com.mitchellbosecke.pebble.node.expression.PositiveTestExpression;
+import com.mitchellbosecke.pebble.node.expression.SubtractExpression;
+import com.mitchellbosecke.pebble.node.expression.UnaryMinusExpression;
+import com.mitchellbosecke.pebble.node.expression.UnaryNotExpression;
+import com.mitchellbosecke.pebble.node.expression.UnaryPlusExpression;
+import com.mitchellbosecke.pebble.operator.Associativity;
+import com.mitchellbosecke.pebble.operator.BinaryOperator;
+import com.mitchellbosecke.pebble.operator.BinaryOperatorImpl;
+import com.mitchellbosecke.pebble.operator.UnaryOperator;
+import com.mitchellbosecke.pebble.operator.UnaryOperatorImpl;
+import com.mitchellbosecke.pebble.tokenParser.BlockTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.CacheTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.ExtendsTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.FilterTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.FlushTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.ForTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.IfTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.ImportTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.IncludeTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.MacroTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.ParallelTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.SetTokenParser;
+import com.mitchellbosecke.pebble.tokenParser.TokenParser;
+
+public class CoreExtension extends AbstractExtension {
+
+    @Override
+    public List<TokenParser> getTokenParsers() {
+        ArrayList<TokenParser> parsers = new ArrayList<>();
+        parsers.add(new BlockTokenParser());
+        parsers.add(new ExtendsTokenParser());
+        parsers.add(new FilterTokenParser());
+        parsers.add(new FlushTokenParser());
+        parsers.add(new ForTokenParser());
+        parsers.add(new IfTokenParser());
+        parsers.add(new ImportTokenParser());
+        parsers.add(new IncludeTokenParser());
+        parsers.add(new MacroTokenParser());
+        parsers.add(new ParallelTokenParser());
+        parsers.add(new SetTokenParser());
+        parsers.add(new CacheTokenParser());
+
+        // verbatim tag is implemented directly in the LexerImpl
+        return parsers;
+    }
+
+    @Override
+    public List<UnaryOperator> getUnaryOperators() {
+        ArrayList<UnaryOperator> operators = new ArrayList<>();
+        operators.add(new UnaryOperatorImpl("not", 5, UnaryNotExpression.class));
+        operators.add(new UnaryOperatorImpl("+", 500, UnaryPlusExpression.class));
+        operators.add(new UnaryOperatorImpl("-", 500, UnaryMinusExpression.class));
+        return operators;
+    }
+
+    @Override
+    public List<BinaryOperator> getBinaryOperators() {
+        ArrayList<BinaryOperator> operators = new ArrayList<>();
+        operators.add(new BinaryOperatorImpl("or", 10, OrExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("and", 15, AndExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("is", 20, PositiveTestExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("is not", 20, NegativeTestExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("contains", 20, ContainsExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("==", 30, EqualsExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("equals", 30, EqualsExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("!=", 30, NotEqualsExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl(">", 30, GreaterThanExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("<", 30, LessThanExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl(">=", 30, GreaterThanEqualsExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("<=", 30, LessThanEqualsExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("+", 40, AddExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("-", 40, SubtractExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("*", 60, MultiplyExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("/", 60, DivideExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("%", 60, ModulusExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("|", 100, FilterExpression.class, Associativity.LEFT));
+        operators.add(new BinaryOperatorImpl("~", 110, ConcatenateExpression.class, Associativity.LEFT));
+
+        return operators;
+    }
+
+    @Override
+    public Map<String, Filter> getFilters() {
+        Map<String, Filter> filters = new HashMap<>();
+        filters.put("abbreviate", new AbbreviateFilter());
+        filters.put("abs", new AbsFilter());
+        filters.put("capitalize", new CapitalizeFilter());
+        filters.put("date", new DateFilter());
+        filters.put("default", new DefaultFilter());
+        filters.put("first", new FirstFilter());
+        filters.put("join", new JoinFilter());
+        filters.put("last", new LastFilter());
+        filters.put("lower", new LowerFilter());
+        filters.put("numberformat", new NumberFormatFilter());
+        filters.put("slice", new SliceFilter());
+        filters.put("sort", new SortFilter());
+        filters.put("rsort", new RsortFilter());
+        filters.put("title", new TitleFilter());
+        filters.put("trim", new TrimFilter());
+        filters.put("upper", new UpperFilter());
+        filters.put("urlencode", new UrlEncoderFilter());
+        filters.put("length", new LengthFilter());
+        return filters;
+    }
+
+    @Override
+    public Map<String, Test> getTests() {
+        Map<String, Test> tests = new HashMap<>();
+        tests.put("empty", new EmptyTest());
+        tests.put("even", new EvenTest());
+        tests.put("iterable", new IterableTest());
+        tests.put("map", new MapTest());
+        tests.put("null", new NullTest());
+        tests.put("odd", new OddTest());
+        tests.put("defined", new DefinedTest());
+        return tests;
+    }
+
+    @Override
+    public Map<String, Function> getFunctions() {
+        Map<String, Function> functions = new HashMap<>();
+
+        /*
+         * For efficiency purposes, some core functions are individually parsed
+         * by our expression parser and compiled in their own unique way. This
+         * includes the block and parent functions.
+         */
+
+        functions.put("max", new MaxFunction());
+        functions.put("min", new MinFunction());
+        return functions;
+    }
+
+    @Override
+    public Map<String, Object> getGlobalVariables() {
+        return null;
+    }
+
+    public List<NodeVisitorFactory> getNodeVisitors() {
+        List<NodeVisitorFactory> visitors = new ArrayList<>();
+        visitors.add(new MacroAndBlockRegistrantNodeVisitorFactory());
+        return visitors;
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/com/mitchellbosecke/pebble/CoreTagsTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -490,16 +490,82 @@
+     @Test
+     public void testMacroBeingFiltered() throws PebbleException, IOException {
+         PebbleTemplate template = pebble.getTemplate("template.macro3.peb");
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer);
+         assertEquals("HELLO" + LINE_SEPARATOR, writer.toString());
+     }
++    
++    @Test
++    public void testCache() throws PebbleException, IOException {
++        Loader<?> loader = new StringLoader();
++        PebbleEngine pebble = new PebbleEngine(loader);
++
++        String source = "{% cache test %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
++        PebbleTemplate template = pebble.getTemplate(source);
++
++        Map<String, Object> context = new HashMap<>();
++        context.put("foobar", true);
++
++        Writer writer = new StringWriter();
++        template.evaluate(writer, context);
++        assertEquals("true", writer.toString());
++        
++        //Value should be cached
++        context.put("foobar", false);
++        writer = new StringWriter();
++        template.evaluate(writer, context);
++        assertEquals("true", writer.toString());
++    }
++    
++    /**
++     * The template used to fail if the user wrapped the block name in quotes.
++     *
++     * @throws PebbleException
++     * @throws IOException
++     */
++    @Test
++    public void testCacheWithStringLiteralName() throws PebbleException, IOException {
++        Loader<?> loader = new StringLoader();
++        PebbleEngine pebble = new PebbleEngine(loader);
++
++        String source = "{% cache 'test' %}{% if foobar %}true{% else %}false{% endif %}{% endcache 'test' %}";
++        PebbleTemplate template = pebble.getTemplate(source);
++
++        Map<String, Object> context = new HashMap<>();
++        context.put("foobar", true);
++
++        Writer writer = new StringWriter();
++        template.evaluate(writer, context);
++        assertEquals("true", writer.toString());
++        
++        //Value should be cached
++        context.put("foobar", false);
++        writer = new StringWriter();
++        template.evaluate(writer, context);
++        assertEquals("true", writer.toString());
++    }
++    
++    @Test(expected = PebbleException.class)
++    public void testCacheWithNoName() throws PebbleException, IOException {
++        Loader<?> loader = new StringLoader();
++        PebbleEngine pebble = new PebbleEngine(loader);
++
++        String source = "{% cache %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
++        PebbleTemplate template = pebble.getTemplate(source);
++
++        Map<String, Object> context = new HashMap<>();
++        context.put("foobar", true);
++
++        Writer writer = new StringWriter();
++        template.evaluate(writer, context);
++        assertEquals("true", writer.toString());
++    }
+ 
+     public static class SimpleObjectA {
+ 
+         private String value;
+ 
+         public String getValue() {
+             return value;
+         }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -213,17 +213,17 @@
+ 
+         Writer writer = new StringWriter();
+         template.evaluate(writer, context);
+         assertEquals("[3]02Alex11Bob[3]20John", writer.toString());
+     }
+ 
+     @Test
+     public void testForWithMap() throws PebbleException, IOException {
+-        Loader loader = new StringLoader();
++        Loader<?> loader = new StringLoader();
+         PebbleEngine pebble = new PebbleEngine(loader);
+ 
+         Map<String, Integer> data = new LinkedHashMap<>();
+         data.put("One", 1);
+         data.put("Two", 2);
+         data.put("Three", 3);
+ 
+         String source = "{% for entry in data %}{{ entry.key }} {{ entry.value }}{% endfor %}";
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+package com.mitchellbosecke.pebble;
+        // ... 1 lines elided ...
+import com.mitchellbosecke.pebble.error.PebbleException;
+import com.mitchellbosecke.pebble.extension.InvocationCountingFunction;
+import com.mitchellbosecke.pebble.extension.TestingExtension;
+import com.mitchellbosecke.pebble.loader.Loader;
+import com.mitchellbosecke.pebble.loader.StringLoader;
+import com.mitchellbosecke.pebble.template.PebbleTemplate;
+import org.junit.Test;
+        // ... 1 lines elided ...
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.util.*;
+import java.util.concurrent.Executors;
+        // ... 1 lines elided ...
+import static org.junit.Assert.assertEquals;
+        // ... 1 lines elided ...
+public class CoreTagsTest extends AbstractTest {
+        // ... 4 lines elided ...
+    public void testBlock() throws PebbleException, IOException {
+        // ... 13 lines elided ...
+    public void skipGenerationBlock() throws PebbleException, IOException {
+        // ... 13 lines elided ...
+    public void testBlockWithStringLiteralName() throws PebbleException, IOException {
+        // ... 13 lines elided ...
+    public void testIf() throws PebbleException, IOException {
+        // ... 16 lines elided ...
+    public void testExceptionWithIfStatement() throws PebbleException, IOException {
+        // ... 23 lines elided ...
+    public void testIfThenElse() throws PebbleException, IOException {
+        // ... 17 lines elided ...
+    public void testIfWithDirectProperty() throws PebbleException, IOException {
+        // ... 21 lines elided ...
+    public void testIfTestAgainstNullVar() throws PebbleException, IOException {
+        // ... 23 lines elided ...
+        assertEquals("true", writer.toString());
+    }
+
+    @Test
+    public void testFlush() throws PebbleException, IOException {
+        Loader<?> loader = new StringLoader();
+        PebbleEngine pebble = new PebbleEngine(loader);
+
+        String source = "start{% flush %}end";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        FlushAwareWriter writer = new FlushAwareWriter();
+        template.evaluate(writer);
+        List<String> flushedBuffers = writer.getFlushedBuffers();
+
+        assertEquals("start", flushedBuffers.get(0));
+        assertEquals("startend", flushedBuffers.get(1));
+    }
+
+    @Test
+    public void testFor() throws PebbleException, IOException {
+        Loader<?> loader = new StringLoader();
+        PebbleEngine pebble = new PebbleEngine(loader);
+
+        String source = "{% for user in users %}{% if loop.first %}[{{ loop.length }}]{% endif %}{% if loop.last %}[{{ loop.length }}]{% endif %}{{ loop.index }}{{ loop.revindex }}{{ user.username }}{% endfor %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Map<String, Object> context = new HashMap<>();
+        List<User> users = new ArrayList<>();
+        users.add(new User("Alex"));
+        users.add(new User("Bob"));
+        users.add(new User("John"));
+        context.put("users", users);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("[3]02Alex11Bob[3]20John", writer.toString());
+    }
+
+    @Test
+    public void testForWithMap() throws PebbleException, IOException {
+        Loader<?> loader = new StringLoader();
+        PebbleEngine pebble = new PebbleEngine(loader);
+
+        Map<String, Integer> data = new LinkedHashMap<>();
+        data.put("One", 1);
+        data.put("Two", 2);
+        data.put("Three", 3);
+
+        String source = "{% for entry in data %}{{ entry.key }} {{ entry.value }}{% endfor %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+        Map<String, Object> context = new HashMap<>();
+        context.put("data", data);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("One 1Two 2Three 3", writer.toString());
+    }
+
+    @Test
+    public void testFilterTag() throws PebbleException, IOException {
+        Loader<?> loader = new StringLoader();
+        PebbleEngine pebble = new PebbleEngine(loader);
+
+        String source = "{% filter upper %}hello{% endfilter %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        assertEquals("HELLO", writer.toString());
+    }
+
+    @Test
+    public void testChainedFilterTag() throws PebbleException, IOException {
+        Loader<?> loader = new StringLoader();
+        PebbleEngine pebble = new PebbleEngine(loader);
+
+        String source = "{% filter lower | escape %}HELLO<br>{% endfilter %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        // ... 10 lines elided ...
+    public void testForIteratingOverProperty() throws PebbleException, IOException {
+        // ... 19 lines elided ...
+    public void testForWithNullIterable() throws PebbleException, IOException {
+        // ... 15 lines elided ...
+    public void testForWithArray() throws PebbleException, IOException {
+        // ... 20 lines elided ...
+    public void testForWithArrayOfPrimitives() throws PebbleException, IOException {
+        // ... 26 lines elided ...
+    public void multipleForLoops() throws PebbleException, IOException {
+        // ... 19 lines elided ...
+    public void testForElse() throws PebbleException, IOException {
+        // ... 15 lines elided ...
+    public void testMacro() throws PebbleException, IOException {
+        // ... 15 lines elided ...
+    public void skipGenerationMacro() throws PebbleException, IOException {
+        // ... 7 lines elided ...
+    public void testMacrosWithSameName() throws PebbleException, IOException {
+        // ... 11 lines elided ...
+    public void testMacroWithDefaultArgument() throws PebbleException, IOException {
+        // ... 18 lines elided ...
+    public void testMacroInvokedTwice() throws PebbleException, IOException {
+        // ... 8 lines elided ...
+    public void testFunctionInMacroInvokedTwice() throws PebbleException, IOException {
+        Loader<?> loader = new StringLoader();
+        PebbleEngine pebble = new PebbleEngine(loader);
+
+        TestingExtension extension = new TestingExtension();
+        pebble.addExtension(extension);
+        PebbleTemplate template = pebble
+                .getTemplate("{{ test() }}{% macro test() %}{{ invocationCountingFunction() }}{% endmacro %}");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+
+        InvocationCountingFunction function = extension.getInvocationCountingFunction();
+        assertEquals(1, function.getInvocationCount());
+    }
+
+    @Test
+    public void testMacroInvocationWithoutAllArguments() throws PebbleException, IOException {
+        Loader<?> loader = new StringLoader();
+        PebbleEngine pebble = new PebbleEngine(loader);
+        PebbleTemplate template = pebble
+                .getTemplate("{{ test('1') }}{% macro test(one,two) %}{{ one }}{{ two }}{% endmacro %}");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        assertEquals("1", writer.toString());
+    }
+
+    /**
+     * I was once writing macro output directly to writer which was preventing
+     * output from being filtered. I have fixed this now.
+     *
+     * @throws PebbleException
+     */
+    @Test
+    public void testMacroBeingFiltered() throws PebbleException, IOException {
+        PebbleTemplate template = pebble.getTemplate("template.macro3.peb");
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer);
+        assertEquals("HELLO" + LINE_SEPARATOR, writer.toString());
+    }
+    
+    @Test
+    public void testCache() throws PebbleException, IOException {
+        Loader<?> loader = new StringLoader();
+        PebbleEngine pebble = new PebbleEngine(loader);
+
+        String source = "{% cache test %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("foobar", true);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("true", writer.toString());
+        
+        //Value should be cached
+        context.put("foobar", false);
+        writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("true", writer.toString());
+    }
+    
+    /**
+     * The template used to fail if the user wrapped the block name in quotes.
+     *
+     * @throws PebbleException
+     * @throws IOException
+     */
+    @Test
+    public void testCacheWithStringLiteralName() throws PebbleException, IOException {
+        Loader<?> loader = new StringLoader();
+        PebbleEngine pebble = new PebbleEngine(loader);
+
+        String source = "{% cache 'test' %}{% if foobar %}true{% else %}false{% endif %}{% endcache 'test' %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("foobar", true);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("true", writer.toString());
+        
+        //Value should be cached
+        context.put("foobar", false);
+        writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("true", writer.toString());
+    }
+    
+    @Test(expected = PebbleException.class)
+    public void testCacheWithNoName() throws PebbleException, IOException {
+        Loader<?> loader = new StringLoader();
+        PebbleEngine pebble = new PebbleEngine(loader);
+
+        String source = "{% cache %}{% if foobar %}true{% else %}false{% endif %}{% endcache %}";
+        PebbleTemplate template = pebble.getTemplate(source);
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("foobar", true);
+
+        Writer writer = new StringWriter();
+        template.evaluate(writer, context);
+        assertEquals("true", writer.toString());
+    }
+
+    public static class SimpleObjectA {
+
+        private String value;
+
+        public String getValue() {
+            return value;
+        }
+
+        public void setValue(String value) {
+            this.value = value;
+        }
+    }
+
+    /**
+     * It is important that this object has an identical method signature as
+     * SimpleObjectA for the following tests.
+     *
+     * @author mbosecke
+     *
+     */
+    public static class SimpleObjectB {
+
+        private String value;
+
+        public String getValue() {
+            return value;
+        }
+
+        public void setValue(String value) {
+            this.value = value;
+        }
+    }
+
+    /**
+     * Gets the attribute of an object once so that the attribute is cached
+     * within the GetAttributeExpression then evaluates the exact same template
+     * but with a null object.
+     *
+        // ... 6 lines elided ...
+    public void testMemberCacheWithNullObject() throws PebbleException, IOException {
+        // ... 32 lines elided ...
+    public void testMemberCacheWithDifferingObjectTypes() throws PebbleException, IOException {
+        // ... 26 lines elided ...
+    public void testImportWithinBlock() throws PebbleException, IOException {
+        // ... 8 lines elided ...
+    public void testImportFile() throws PebbleException, IOException {
+        // ... 8 lines elided ...
+    public void testImportInChildTemplateOutsideOfBlock() throws PebbleException, IOException {
+        // ... 8 lines elided ...
+    public void testNonExistingMacroOrFunction() throws PebbleException, IOException {
+        // ... 9 lines elided ...
+    public void testInclude() throws PebbleException, IOException {
+        // ... 16 lines elided ...
+    public void testIncludeInheritance() throws PebbleException, IOException {
+        // ... 8 lines elided ...
+    public void testIncludeWithinBlock() throws PebbleException, IOException {
+        // ... 14 lines elided ...
+    public void testIncludePropagatesContext() throws PebbleException, IOException {
+        // ... 16 lines elided ...
+    public void testIncludeOverridesBlocks() throws PebbleException, IOException {
+        // ... 8 lines elided ...
+    public void testSet() throws PebbleException, IOException {
+        // ... 14 lines elided ...
+    public void testSetInChildTemplateOutsideOfBlock() throws PebbleException, IOException {
+        // ... 8 lines elided ...
+    public void testVerbatim() throws PebbleException, IOException {
+        // ... 12 lines elided ...
+    public void testParallel() throws PebbleException, IOException {
+        // ... 24 lines elided ...
+    public void testParallelTagWhileEvaluationContextIsChanging() throws PebbleException, IOException {
+        // ... 22 lines elided ...
+    public void testNestedParallel() throws PebbleException, IOException {
+        // ... 21 lines elided ...
+    public void testIncludeWithinParallelTag() throws PebbleException, IOException {
+        // ... 15 lines elided ...
+    public void testParallelWithoutExecutorService() throws PebbleException, IOException {
+        // ... 13 lines elided ...
+    public class SlowObject {
+        // ... 1 lines elided ...
+        public String first() {
+        // ... 9 lines elided ...
+        public String second() {
+        // ... 9 lines elided ...
+        public String third() {
+        // ... 9 lines elided ...
+        public String fourth() {
+        // ... 10 lines elided ...
+    public class User {
+        // ... 7 lines elided ...
+        public String getUsername() {
+        // ... 4 lines elided ...
+    public class Classroom {
+        // ... 3 lines elided ...
+        public List<User> getUsers() {
+        // ... 3 lines elided ...
+        public void setUsers(List<User> users) {
+        // ... 4 lines elided ...
+    public class FlushAwareWriter extends StringWriter {
+        // ... 4 lines elided ...
+        public void flush() {
+        // ... 4 lines elided ...
+        public List<String> getFlushedBuffers() {
+        // ... 4 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

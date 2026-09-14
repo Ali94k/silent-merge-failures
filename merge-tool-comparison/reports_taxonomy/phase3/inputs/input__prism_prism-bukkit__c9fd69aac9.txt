@@ -1,0 +1,879 @@
+UNIT prism_prism-bukkit__c9fd69aac9
+repo: prism_prism-bukkit   merge: c9fd69aac937051cc93bbc7b62a22245e0ea33cd   stratum: B
+files shown: 4 of 4 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/4: src/main/java/me/botsko/prism/Prism.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -50,19 +50,22 @@
+ import org.bukkit.Material;
+ import org.bukkit.World;
+ import org.bukkit.block.Block;
+ import org.bukkit.command.PluginCommand;
+ import org.bukkit.configuration.ConfigurationSection;
+ import org.bukkit.configuration.file.FileConfiguration;
+ import org.bukkit.entity.EntityType;
+ import org.bukkit.entity.Player;
++import org.bukkit.plugin.PluginDescriptionFile;
+ import org.bukkit.plugin.java.JavaPlugin;
++import org.bukkit.plugin.java.JavaPluginLoader;
+ import org.bukkit.scheduler.BukkitTask;
+ 
++import java.io.File;
+ import java.sql.Connection;
+ import java.sql.SQLException;
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Map.Entry;
+ import java.util.Objects;
+@@ -124,16 +127,20 @@
+     private String pluginVersion;
+     // private ScheduledFuture<?> scheduledPurgeExecutor;
+     private PurgeManager purgeManager;
+ 
+     public Prism() {
+         instance = this;
+     }
+ 
++    protected Prism(JavaPluginLoader loader, PluginDescriptionFile description, File dataFolder, File file) {
++        super(loader, description, dataFolder, file);
++    }
++
+     public static PrismDataSource getPrismDataSource() {
+         return prismDataSource;
+     }
+ 
+     public static String getPasteKey() {
+         return pasteKey;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -321,76 +321,87 @@
+             if (pasteKey != null && (pasteKey.startsWith("API key") || pasteKey.length() < 6)) {
+                 pasteKey = null;
+             } else {
+                 Prism.log("PasteApi is configured and available");
+             }
+         } else {
+             pasteKey = null;
+         }
++        final List<String> worldNames = getServer().getWorlds().stream()
++                .map(World::getName).collect(Collectors.toList());
++
++        final String[] playerNames = Bukkit.getServer().getOnlinePlayers().stream()
++                .map(Player::getName).toArray(String[]::new);
++
+         // init db async then call back to complete enable.
++        final BukkitTask updating = Bukkit.getScheduler().runTaskTimerAsynchronously(instance, () -> {
++            if (!isEnabled()) {
++                warn("Prism is loading and updating the database; logging is NOT enabled");
++            }
++        },100,200);
++
+         Bukkit.getScheduler().runTaskAsynchronously(instance, () -> {
+             prismDataSource = PrismDatabaseFactory.createDataSource(config);
+             Connection testConnection;
+             if (prismDataSource != null) {
+                 testConnection = prismDataSource.getConnection();
+-                if (testConnection != null) {
+-                    try {
+-                        testConnection.close();
+-                    } catch (final SQLException e) {
+-                        prismDataSource.handleDataSourceException(e);
+-                    }
++                if (testConnection == null) {
++                    notifyDisabled();
++                    Bukkit.getScheduler().runTask(instance, () -> instance.onDisable());
++                    updating.cancel();
++                    return;
++                }
++                try {
++                    testConnection.close();
++                } catch (final SQLException e) {
++                    prismDataSource.handleDataSourceException(e);
+                 }
+             } else {
+                 notifyDisabled();
+                 Bukkit.getScheduler().runTask(instance, () -> instance.onDisable());
++                updating.cancel();
+                 return;
+             }
+-            if (testConnection == null) {
+-                notifyDisabled();
+-                Bukkit.getScheduler().runTask(instance, () -> instance.onDisable());
+-                return;
+-            }
++
++            // Info needed for setup, init these here
++            handlerRegistry = new HandlerRegistry();
++            actionRegistry = new ActionRegistry();
++
++            // Setup databases
++            prismDataSource.setupDatabase(actionRegistry);
++
++            // Cache world IDs
++            prismDataSource.cacheWorldPrimaryKeys(prismWorlds);
++            PlayerIdentification.cacheOnlinePlayerPrimaryKeys(playerNames);
++
++            // ensure current worlds are added
++            for (final String w : worldNames) {
++                if (!Prism.prismWorlds.containsKey(w)) {
++                    prismDataSource.addWorldName(w);
++                }
++            }
++            // Apply any updates
++            final Updater up = new Updater(this);
++            up.applyUpdates();
+             Bukkit.getScheduler().runTask(instance, () -> instance.enabled());
++            updating.cancel();
+         });
+     }
+ 
+     private void notifyDisabled() {
+         final String[] dbDisabled = new String[3];
+         dbDisabled[0] = "Prism will disable itself because it couldn't connect to a database.";
+         dbDisabled[1] = "If you're using MySQL, check your config. Be sure MySQL is running.";
+         dbDisabled[2] = "For help - try our Discord Channel or the Wiki on Github.";
+         logSection(dbDisabled);
+     }
+ 
+     private void enabled() {
+         if (isEnabled()) {
+-
+-            // Info needed for setup, init these here
+-            handlerRegistry = new HandlerRegistry();
+-            actionRegistry = new ActionRegistry();
+-
+-            // Setup databases
+-            prismDataSource.setupDatabase(actionRegistry);
+-
+-            // Cache world IDs
+-            prismDataSource.cacheWorldPrimaryKeys(prismWorlds);
+-            PlayerIdentification.cacheOnlinePlayerPrimaryKeys();
+-
+-            // ensure current worlds are added
+-            for (final World w : getServer().getWorlds()) {
+-                if (!Prism.prismWorlds.containsKey(w.getName())) {
+-                    prismDataSource.addWorldName(w.getName());
+-                }
+-            }
+-
+-            // Apply any updates
+-            final Updater up = new Updater(this);
+-            up.applyUpdates();
+-
+             eventTimer = new TimeTaken(this);
+             queueStats = new QueueStats();
+             ignore = new Ignore(this);
+ 
+             // Assign event listeners
+             getServer().getPluginManager().registerEvents(new PrismBlockEvents(this), this);
+             getServer().getPluginManager().registerEvents(new PrismEntityEvents(this), this);
+             getServer().getPluginManager().registerEvents(new PrismWorldEvents(), this);
+@@ -532,16 +543,17 @@
+         }
+     }
+ 
+     /**
+      * Check if a dependency so names is available.
+      *
+      * @return true
+      */
++    @Deprecated
+     public boolean dependencyEnabled(String pluginName) {
+         return ApiHandler.checkDependency(pluginName);
+     }
+ 
+     /**
+      * PurgeManager.
+      *
+      * @return PurgeManager
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/4: src/main/java/me/botsko/prism/actions/BlockAction.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -2,20 +2,20 @@
+ 
+ import me.botsko.prism.Prism;
+ import me.botsko.prism.actionlibs.QueryParameters;
+ import me.botsko.prism.appliers.ChangeResult;
+ import me.botsko.prism.appliers.ChangeResultType;
+ import me.botsko.prism.appliers.PrismProcessType;
+ import me.botsko.prism.commandlibs.Flag;
+ import me.botsko.prism.events.BlockStateChange;
+-import me.botsko.prism.utils.BlockUtils;
+ import me.botsko.prism.utils.EntityUtils;
+ import me.botsko.prism.utils.MaterialTag;
+ import me.botsko.prism.utils.TypeUtils;
++import me.botsko.prism.utils.block.Utilities;
+ import org.bukkit.Bukkit;
+ import org.bukkit.Nameable;
+ import org.bukkit.Tag;
+ import org.bukkit.block.Block;
+ import org.bukkit.block.BlockFace;
+ import org.bukkit.block.BlockState;
+ import org.bukkit.block.CommandBlock;
+ import org.bukkit.block.CreatureSpawner;
+@@ -261,17 +261,17 @@
+         BlockStateChange stateChange;
+ 
+         // Ensure block action is allowed to place a block here.
+         // (essentially liquid/air).
+ 
+         final boolean cancelIfBadPlace = !getActionType().requiresHandler(BlockChangeAction.class)
+                 && !getActionType().requiresHandler(PrismRollbackAction.class) && !parameters.hasFlag(Flag.OVERWRITE);
+ 
+-        if (cancelIfBadPlace && !BlockUtils.isAcceptableForBlockPlace(block.getType())) {
++        if (cancelIfBadPlace && !Utilities.isAcceptableForBlockPlace(block.getType())) {
+             Prism.debug("Block skipped due to being unacceptable for block place.: " + block.getType().name());
+             return new ChangeResult(ChangeResultType.SKIPPED, null);
+         }
+ 
+         // On the blacklist (except an undo)
+         if (Prism.getIllegalBlocks().contains(getMaterial())
+                 && !parameters.getProcessType().equals(PrismProcessType.UNDO)) {
+             Prism.debug("Block skipped because it's not allowed to be placed unless its an UNDO."
+@@ -323,17 +323,17 @@
+                 if (below.getType().equals(WATER) || below.getType().equals(AIR)) {
+                     below.setType(WATER);
+                 } else {
+                     // Prism.debug("Lilypad skipped because no water exists below.");
+                     return new ChangeResult(ChangeResultType.SKIPPED, null);
+                 }
+                 break;
+             case NETHER_PORTAL: // Only way is to set the portal on fire.
+-                final Block obsidian = BlockUtils.getFirstBlockOfMaterialBelow(OBSIDIAN, block.getLocation());
++                final Block obsidian = Utilities.getFirstBlockOfMaterialBelow(OBSIDIAN, block.getLocation());
+                 if (obsidian != null) {
+                     final Block above = obsidian.getRelative(BlockFace.UP);
+                     if (!(above.getType() == NETHER_PORTAL)) {
+                         above.setType(FIRE);
+                         return new ChangeResult(ChangeResultType.APPLIED, null);
+                     }
+                 }
+                 break;
+@@ -395,35 +395,35 @@
+ 
+         // -----------------------------
+         // Sibling logic marker
+ 
+         // If the material is a crop that needs soil, we must restore the soil
+         // This may need to go before setting the block, but I prefer the BlockUtil logic to use materials.
+         BlockState sibling = null;
+ 
+-        if (BlockUtils.materialRequiresSoil(getMaterial())) {
++        if (Utilities.materialRequiresSoil(getMaterial())) {
+             sibling = block.getRelative(BlockFace.DOWN).getState();
+ 
+             if (cancelIfBadPlace && !MaterialTag.SOIL_CANDIDATES.isTagged(sibling.getType())) {
+                 Prism.debug(parameters.getProcessType().name() + " skipped due to lack of soil for "
+                         + getMaterial().name());
+                 return new ChangeResult(ChangeResultType.SKIPPED, null);
+             }
+             sibling.setType(FARMLAND);
+         }
+ 
+         // Chest sides can be broken independently, ignore them
+         if (newState.getType() != CHEST && newState.getType() != TRAPPED_CHEST) {
+-            final Block s = BlockUtils.getSiblingForDoubleLengthBlock(newState);
++            final Block s = Utilities.getSiblingForDoubleLengthBlock(state);
+ 
+             if (s != null) {
+                 sibling = s.getState();
+ 
+-                if (cancelIfBadPlace && !BlockUtils.isAcceptableForBlockPlace(sibling.getType())) {
++                if (cancelIfBadPlace && !Utilities.isAcceptableForBlockPlace(sibling.getType())) {
+                     Prism.debug(parameters.getProcessType().name() + " skipped due to lack of wrong sibling type for "
+                             + getMaterial().name());
+                     return new ChangeResult(ChangeResultType.SKIPPED, null);
+                 }
+ 
+                 sibling.setType(block.getType());
+ 
+                 BlockData siblingData = getBlockData().clone();
+@@ -477,18 +477,18 @@
+ 
+     private ChangeResult removeBlock(Player player, QueryParameters parameters, boolean isPreview, Block block) {
+ 
+         BlockStateChange stateChange;
+ 
+         if (!block.getType().equals(AIR)) {
+ 
+             // Ensure it's acceptable to remove the current block
+-            if (!BlockUtils.isAcceptableForBlockPlace(block.getType())
+-                    && !BlockUtils.areBlockIdsSameCoreItem(block.getType(), getMaterial())
++            if (!Utilities.isAcceptableForBlockPlace(block.getType())
++                    && !Utilities.areBlockIdsSameCoreItem(block.getType(), getMaterial())
+                     && !parameters.hasFlag(Flag.OVERWRITE)) {
+                 return new ChangeResult(ChangeResultType.SKIPPED, null);
+             }
+             // Capture the block before we change it
+ 
+             final BlockState originalBlock = block.getState();
+             if (!isPreview) {
+                 // Set
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -7,16 +7,17 @@
+ import me.botsko.prism.appliers.PrismProcessType;
+ import me.botsko.prism.commandlibs.Flag;
+ import me.botsko.prism.events.BlockStateChange;
+ import me.botsko.prism.utils.BlockUtils;
+ import me.botsko.prism.utils.EntityUtils;
+ import me.botsko.prism.utils.MaterialTag;
+ import me.botsko.prism.utils.TypeUtils;
+ import org.bukkit.Bukkit;
++import org.bukkit.ChatColor;
+ import org.bukkit.Nameable;
+ import org.bukkit.Tag;
+ import org.bukkit.block.Block;
+ import org.bukkit.block.BlockFace;
+ import org.bukkit.block.BlockState;
+ import org.bukkit.block.CommandBlock;
+ import org.bukkit.block.CreatureSpawner;
+ import org.bukkit.block.Sign;
+@@ -196,17 +197,17 @@
+             if (ad.lines != null && ad.lines.length > 0) {
+                 name += " (" + TypeUtils.join(ad.lines, ", ") + ")";
+             }
+         } else if (blockActionData instanceof CommandActionData) {
+             final CommandActionData ad = (CommandActionData) blockActionData;
+             name += " (" + ad.command + ")";
+         }
+         if (blockActionData.customName != null) {
+-            name += " (" + blockActionData.customName + ") ";
++            name += ChatColor.RESET + " (" + blockActionData.customName + ChatColor.RESET + ") ";
+         }
+         if (getActionType().getName().equals("crop-trample") && getMaterial() == AIR) {
+             return "empty soil";
+         }
+         return name;
+     }
+ 
+     @Override
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/4: src/main/java/me/botsko/prism/actions/BlockChangeAction.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,17 +1,17 @@
+ package me.botsko.prism.actions;
+ 
+ import me.botsko.prism.Prism;
+ import me.botsko.prism.actionlibs.QueryParameters;
+ import me.botsko.prism.appliers.ChangeResult;
+ import me.botsko.prism.appliers.ChangeResultType;
+ import me.botsko.prism.appliers.PrismProcessType;
+ import me.botsko.prism.commandlibs.Flag;
+-import me.botsko.prism.utils.BlockUtils;
++import me.botsko.prism.utils.block.Utilities;
+ import org.bukkit.Material;
+ import org.bukkit.block.Block;
+ import org.bukkit.block.data.BlockData;
+ import org.bukkit.entity.Player;
+ 
+ public class BlockChangeAction extends BlockAction {
+ 
+     @Override
+@@ -76,18 +76,18 @@
+             return b.placeBlock(player, parameters, isPreview, block, isDeferred);
+         }
+         return new ChangeResult(ChangeResultType.SKIPPED, null);
+     }
+ 
+     private ChangeResult processChange(Player player, QueryParameters parameters, boolean isPreview,
+                                        Material originalMaterial, Material replacedMaterial, BlockData replacedData,
+                                        Block currentBlock, boolean isDeferred, BlockAction action) {
+-        if (BlockUtils.isAcceptableForBlockPlace(currentBlock.getType())
+-                || BlockUtils.areBlockIdsSameCoreItem(currentBlock.getType(), originalMaterial) || isPreview
++        if (Utilities.isAcceptableForBlockPlace(currentBlock.getType())
++                || Utilities.areBlockIdsSameCoreItem(currentBlock.getType(), originalMaterial) || isPreview
+                 || parameters.hasFlag(Flag.OVERWRITE)) {
+             action.setMaterial(replacedMaterial);
+             action.setBlockData(replacedData);
+             return action.placeBlock(player, parameters, isPreview, currentBlock, isDeferred);
+         } else {
+             Prism.debug("Skipped Change for " + parameters.getProcessType().name() + " because current-> "
+                     + currentBlock.getType() + " != " + originalMaterial.name() + " <- what we think we will replace.");
+             return new ChangeResult(ChangeResultType.SKIPPED, null);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -11,21 +11,21 @@
+ import org.bukkit.block.Block;
+ import org.bukkit.block.data.BlockData;
+ import org.bukkit.entity.Player;
+ 
+ public class BlockChangeAction extends BlockAction {
+ 
+     @Override
+     public String getNiceName() {
+-        String name = "";
++        String name;
+         if (this.getActionType().getName().equals("block-fade")) {
+-            name += Prism.getItems().getAlias(getOldMaterial(), getOldBlockData());
++            name = Prism.getItems().getAlias(getOldMaterial(), getOldBlockData());
+         } else {
+-            name += Prism.getItems().getAlias(getMaterial(), getBlockData());
++            name = super.getNiceName();
+         }
+         return name;
+     }
+ 
+     @Override
+     public ChangeResult applyRollback(Player player, QueryParameters parameters, boolean isPreview) {
+         final Block block = getWorld().getBlockAt(getLoc());
+         return placeBlock(player, parameters, isPreview, getActionType().getName(), getOldMaterial(), getOldBlockData(),
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/4: src/main/java/me/botsko/prism/utils/MaterialAliases.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,13 +1,14 @@
+ package me.botsko.prism.utils;
+ 
+ import me.botsko.prism.Prism;
+ import me.botsko.prism.database.IdMapQuery;
+ import me.botsko.prism.database.sql.SqlIdMapQuery;
++import me.botsko.prism.utils.block.Utilities;
+ import org.bukkit.Bukkit;
+ import org.bukkit.Material;
+ import org.bukkit.block.data.BlockData;
+ import org.bukkit.configuration.ConfigurationSection;
+ import org.bukkit.configuration.file.FileConfiguration;
+ import org.bukkit.configuration.file.YamlConfiguration;
+ import org.bukkit.inventory.ItemStack;
+ 
+@@ -81,17 +82,17 @@
+     public void initMaterials(Material... materials) {
+         SqlIdMapQuery query = new SqlIdMapQuery(Prism.getPrismDataSource());
+ 
+         for (Material m : materials) {
+             String matName = m.name().toLowerCase(Locale.ENGLISH);
+             String dataString;
+ 
+             try {
+-                dataString = BlockUtils.dataString(Bukkit.createBlockData(m));
++                dataString = Utilities.dataString(Bukkit.createBlockData(m));
+             } catch (IllegalArgumentException e) {
+                 continue;
+             }
+ 
+             query.findIds(m.name().toLowerCase(Locale.ENGLISH), dataString, (i, d) -> storeCache(
+                     m, dataString, i, d), () -> {
+                     int id = query.mapAutoId(matName, dataString);
+                     storeCache(m, dataString, id, 0);
+@@ -244,17 +245,17 @@
+      * .
+      * @param material Material
+      * @param partialBlockData String
+      * @return Set of IntPair
+      * @throws IllegalArgumentException exception
+      */
+     public Set<IntPair> partialBlockDataIds(Material material, String partialBlockData)
+             throws IllegalArgumentException {
+-        String fullBlockData = BlockUtils.dataString(Bukkit.createBlockData(material, partialBlockData));
++        String fullBlockData = Utilities.dataString(Bukkit.createBlockData(material, partialBlockData));
+ 
+         String[] parts = fullBlockData.substring(1, fullBlockData.length() - 1).toLowerCase(Locale.ENGLISH).split(",");
+ 
+         StringBuilder likeString = new StringBuilder("%");
+ 
+         for (String string : parts) {
+             if (partialBlockData.contains(string)) {
+                 likeString.append(string).append('%');
+@@ -298,17 +299,17 @@
+ 
+     /**
+      * .
+      * @param material Material
+      * @param data BlockData
+      * @return String
+      */
+     public String getAlias(Material material, BlockData data) {
+-        String dataString = BlockUtils.dataString(data);
++        String dataString = Utilities.dataString(data);
+ 
+         String itemName = null;
+         if (!itemAliases.isEmpty()) {
+             String key = material.name().toLowerCase() + dataString;
+             itemName = itemAliases.get(key);
+         }
+         if (itemName == null) {
+             itemName = material.name().toLowerCase().replace("_", " ");
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -19,22 +19,22 @@
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.Map;
+ import java.util.Map.Entry;
+ import java.util.Set;
+ 
+ public class MaterialAliases {
+-    public static final int SUBID_WILDCARD = -1;
++    private static final int SUBID_WILDCARD = -1;
+     private final Map<String, String> matCache = new HashMap<>();
+     private final Map<String, String> idCache = new HashMap<>();
+     private final Map<Material, Set<IntPair>> allIdsCache = new HashMap<>();
+ 
+-    protected HashMap<String, String> itemAliases = new HashMap<>();
++    private final HashMap<String, String> itemAliases = new HashMap<>();
+ 
+     /**
+      * Load the yml file and save config to hashmap.
+      */
+     public MaterialAliases() {
+         FileConfiguration items = null;
+         InputStream defConfigStream = this.getClass().getResourceAsStream("/items.yml");
+         if (defConfigStream != null) {
+@@ -71,37 +71,40 @@
+     }
+ 
+     public void initAllMaterials() {
+         initMaterials(Material.values());
+     }
+ 
+     /**
+      * Initialize the library.
++     *
+      * @param materials Materials ...
+      */
+     public void initMaterials(Material... materials) {
+-        SqlIdMapQuery query = new SqlIdMapQuery(Prism.getPrismDataSource());
+-
+-        for (Material m : materials) {
+-            String matName = m.name().toLowerCase(Locale.ENGLISH);
+-            String dataString;
+-
+-            try {
+-                dataString = BlockUtils.dataString(Bukkit.createBlockData(m));
+-            } catch (IllegalArgumentException e) {
+-                continue;
+-            }
+-
+-            query.findIds(m.name().toLowerCase(Locale.ENGLISH), dataString, (i, d) -> storeCache(
+-                    m, dataString, i, d), () -> {
+-                    int id = query.mapAutoId(matName, dataString);
+-                    storeCache(m, dataString, id, 0);
+-                });
+-        }
++        Bukkit.getScheduler().runTaskAsynchronously(Prism.getInstance(), () -> {
++            SqlIdMapQuery query = new SqlIdMapQuery(Prism.getPrismDataSource());
++            for (Material m : materials) {
++                String matName = m.name().toLowerCase(Locale.ENGLISH);
++                String dataString;
++
++                try {
++                    dataString = BlockUtils.dataString(Bukkit.createBlockData(m));
++                } catch (IllegalArgumentException e) {
++                    continue;
++                }
++
++                query.findIds(m.name().toLowerCase(Locale.ENGLISH), dataString, (i, d) ->
++                        storeCache(m, dataString, i, d), () -> {
++                          int id = query.mapAutoId(matName, dataString);
++                          storeCache(m, dataString, id, 0);
++                    });
++            }
++        });
++
+     }
+ 
+     private Set<IntPair> getIdsOf(Material material) {
+         Set<IntPair> ids = allIdsCache.get(material);
+         if (ids != null) {
+             return ids;
+         }
+ 
+@@ -143,18 +146,19 @@
+             return new IntPair(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+         }
+ 
+         return null;
+     }
+ 
+     /**
+      * .
+-     * @param blockId int
+-     * @param blockSubId logMaterialErrorsint
++     *
++     * @param blockId           int
++     * @param blockSubId        logMaterialErrorsint
+      * @param logMaterialErrors boolean.
+      * @return MaterialState
+      */
+     public MaterialState idsToMaterial(int blockId, int blockSubId, Boolean logMaterialErrors) {
+         MaterialState cachedMaterial = fromCache(blockId, blockSubId);
+ 
+         if (cachedMaterial != null) {
+             return cachedMaterial;
+@@ -179,29 +183,31 @@
+             return null;
+         }
+ 
+         return result;
+     }
+ 
+     /**
+      * Create IntPair.
++     *
+      * @param material Material
+-     * @param state State
++     * @param state    State
+      * @return IntPair
+      */
+     public IntPair materialToIds(Material material, String state) {
+         int blockSubId;
+ 
+         // For tools, where durability doesn't mean a different item (different cached
+         // value) but is still important
+         int durability = 0;
+         try {
+             durability = Integer.parseInt(state);
+         } catch (NumberFormatException ignored) {
++            //ignored
+         }
+ 
+         if (material.getMaxDurability() > 0) {
+             blockSubId = 0;
+         } else {
+             blockSubId = durability;
+         }
+ 
+@@ -214,40 +220,39 @@
+         IntPair result = new IntPair(0, 0);
+         SqlIdMapQuery query = new SqlIdMapQuery(Prism.getPrismDataSource());
+         String materialName = material.name().toLowerCase(Locale.ENGLISH);
+ 
+         synchronized (this) {
+             query.findIds(materialName, state, (queryId, querySubId) -> {
+                 result.first = queryId;
+                 result.second = querySubId;
+-
+                 storeCache(material, state, queryId, querySubId);
+-            }, () -> {
+-                    int blockId = query.mapAutoId(materialName, state);
+-
+-                    result.first = blockId;
+-
+-                    storeCache(material, state, blockId, 0);
+-                });
++            },
++                  () -> {
++                      int blockId = query.mapAutoId(materialName, state);
++                      result.first = blockId;
++                      storeCache(material, state, blockId, 0);
++                  });
+         }
+ 
+         if (blockSubId != durability) {
+             result.second = durability;
+         }
+         return result;
+     }
+ 
+     public Set<IntPair> materialToAllIds(Material material) {
+         return Collections.unmodifiableSet(getIdsOf(material));
+     }
+ 
+     /**
+      * .
+-     * @param material Material
++     *
++     * @param material         Material
+      * @param partialBlockData String
+      * @return Set of IntPair
+      * @throws IllegalArgumentException exception
+      */
+     public Set<IntPair> partialBlockDataIds(Material material, String partialBlockData)
+             throws IllegalArgumentException {
+         String fullBlockData = BlockUtils.dataString(Bukkit.createBlockData(material, partialBlockData));
+ 
+@@ -268,18 +273,19 @@
+         Set<IntPair> ids = new HashSet<>();
+         query.findAllIdsPartial(material.name().toLowerCase(Locale.ENGLISH), stateLike, ids::addAll);
+ 
+         return ids;
+     }
+ 
+     /**
+      * .
++     *
+      * @param material Material
+-     * @param state String
++     * @param state    String
+      * @return IntPair
+      */
+     @Deprecated
+     public IntPair materialToIdsWildcard(Material material, String state) {
+         IntPair ids = materialToIds(material, state);
+ 
+         if (material.getMaxDurability() > 0) {
+             ids.second = SUBID_WILDCARD;
+@@ -287,24 +293,26 @@
+         return ids;
+     }
+ 
+     /**
+      * Returns the loaded list of item aliases/ids.
+      *
+      * @return HashMap
+      */
++    @Deprecated
+     public HashMap<String, String> getItemAliases() {
+         return itemAliases;
+     }
+ 
+     /**
+      * .
++     *
+      * @param material Material
+-     * @param data BlockData
++     * @param data     BlockData
+      * @return String
+      */
+     public String getAlias(Material material, BlockData data) {
+         String dataString = BlockUtils.dataString(data);
+ 
+         String itemName = null;
+         if (!itemAliases.isEmpty()) {
+             String key = material.name().toLowerCase() + dataString;
+@@ -323,16 +331,17 @@
+      * @return String
+      */
+     public String getAlias(ItemStack i) {
+         return i.getType().name().toLowerCase().replace("_", " ");
+     }
+ 
+     /**
+      * .
++     *
+      * @param alias String
+      * @return ArrayList
+      */
+     // TODO: Break this in 1.13. Woooo.
+     public ArrayList<Material> getMaterialsByAlias(String alias) {
+         ArrayList<Material> itemIds = new ArrayList<>();
+         if (!itemAliases.isEmpty()) {
+             for (Entry<String, String> entry : itemAliases.entrySet()) {
+@@ -352,45 +361,50 @@
+         }
+ 
+         public MaterialState(Material material, String state) {
+             this.material = material;
+             this.state = state;
+         }
+ 
+         /**
+-         * Get Blockdata.
++         * Get BlockData.
++         *
+          * @return BlockData
+          */
+         public BlockData asBlockData() {
+             try {
+                 BlockData data = Bukkit.createBlockData(material, state);
+ 
+                 // In the event that we tried to get BlockData for an item and it returned air
+                 if (data.getMaterial() == material) {
+                     return data;
+                 }
+             } catch (IllegalArgumentException ignored) {
++                //ignored
+             }
+ 
+             return null;
+         }
+ 
+         /**
+          * Get as Item.
++         *
+          * @return ItemStack
+          */
+         public ItemStack asItem() {
+             ItemStack item = new ItemStack(material, 1);
+ 
+             if (!state.isEmpty()) {
+                 try {
+                     ItemUtils.setItemDamage(item, Short.parseShort(state));
+                 } catch (NumberFormatException ignored) {
+-                }
++                    //ignored
++                }
++
+             }
+ 
+             return item;
+         }
+ 
+         @Override
+         public String toString() {
+             return material.name().toLowerCase(Locale.ENGLISH) + state;
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -82,21 +82,21 @@
+      */
+     public void initMaterials(Material... materials) {
+         Bukkit.getScheduler().runTaskAsynchronously(Prism.getInstance(), () -> {
+             SqlIdMapQuery query = new SqlIdMapQuery(Prism.getPrismDataSource());
+             for (Material m : materials) {
+                 String matName = m.name().toLowerCase(Locale.ENGLISH);
+                 String dataString;
+ 
+-                try {
+-                    dataString = Utilities.dataString(Bukkit.createBlockData(m));
+-                } catch (IllegalArgumentException e) {
+-                    continue;
+-                }
++            try {
++                dataString = Utilities.dataString(Bukkit.createBlockData(m));
++            } catch (IllegalArgumentException e) {
++                continue;
++            }
+ 
+                 query.findIds(m.name().toLowerCase(Locale.ENGLISH), dataString, (i, d) ->
+                         storeCache(m, dataString, i, d), () -> {
+                           int id = query.mapAutoId(matName, dataString);
+                           storeCache(m, dataString, id, 0);
+                     });
+             }
+         });
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

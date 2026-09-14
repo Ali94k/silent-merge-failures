@@ -1,0 +1,480 @@
+UNIT ninjaframework_ninja__45bb542cb4
+repo: ninjaframework_ninja   merge: 45bb542cb46d2913c3acff883d15690be0a867bb   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: ninja-core/src/main/java/ninja/AssetsController.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,46 +1,49 @@
+ package ninja;
+ 
+ import java.io.FileNotFoundException;
+ import java.io.IOException;
+ import java.io.InputStream;
+-import java.sql.ResultSet;
+ 
+ import ninja.utils.MimeTypes;
++
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ 
+ import com.google.common.io.ByteStreams;
+ import com.google.inject.Inject;
+ import com.google.inject.Singleton;
+ 
+ /**
+  * This controller serves public resources under /public
+  * 
+  * @author ra
+  * 
+  */
+ @Singleton
+ public class AssetsController {
++	
++	private Logger logger = LoggerFactory.getLogger(AssetsController.class);
+ 
+ 	/** Used as seen by http request */
+ 	final String PUBLIC_PREFIX = "/assets/";
+ 
+ 	/** Used for storing files locally */
+ 	final String ASSETS_PREFIX = "assets/";
+ 
+ 	private final MimeTypes mimeTypes;
+ 
+ 	@Inject
+ 	public AssetsController(MimeTypes mimeTypes) {
+ 		this.mimeTypes = mimeTypes;
+ 		
+ 	}
+ 	
+ 	public Result serve(Context context) {
+-		System.out.println("mime type is");
+ 		Object renderable = new Renderable() {
+ 			
+ 			@Override
+ 			public void render(Context context, Result result) {
+ 				
+ 				String finalName = context.getHttpServletRequest().getRequestURI()
+ 				        .replaceFirst(PUBLIC_PREFIX, "");
+ 				
+@@ -48,37 +51,38 @@
+ 				        .getResourceAsStream(ASSETS_PREFIX + finalName);	
+ 				
+ 				// check if stream exists. if not print a notfound exception
+ 				if (inputStream == null) {
+ 					
+ 					context.finalizeHeaders(Results.status(404));
+ 
+ 				} else {
+-					try {
+-						
++					try {						
+ 						result.status(200);
+ 						
++						//try to set the mimetype:
+ 						String mimeType = mimeTypes.getContentType(context, finalName);
+-						System.out.println("mime type is: " + mimeType);
++
+ 						if (!mimeType.isEmpty()) {
+ 							result.contentType(mimeType);
+ 						}
+ 						
++						//finalize headers:
+ 						context.finalizeHeaders(result);
++						
+ 						
+ 						ByteStreams.copy(this.getClass().getClassLoader()
+ 						        .getResourceAsStream(ASSETS_PREFIX + finalName),
+ 						        context.getHttpServletResponse().getOutputStream());
++						
+ 					} catch (FileNotFoundException e) {
+-						// TODO Auto-generated catch block
+-						e.printStackTrace();
++						logger.error("error streaming file", e);
+ 					} catch (IOException e) {
+-						// TODO Auto-generated catch block
+-						e.printStackTrace();
++						logger.error("error streaming file", e);
+ 					}
+ 					
+ 				}
+ 				
+ 				
+ 			}
+ 		};
+ 		
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -30,17 +30,16 @@
+ 
+ 	@Inject
+ 	public AssetsController(MimeTypes mimeTypes) {
+ 		this.mimeTypes = mimeTypes;
+ 		
+ 	}
+ 	
+ 	public Result serve(Context context) {
+-		System.out.println("mime type is");
+ 		Object renderable = new Renderable() {
+ 			
+ 			@Override
+ 			public void render(Context context, Result result) {
+ 				
+ 				String finalName = context.getHttpServletRequest().getRequestURI()
+ 				        .replaceFirst(PUBLIC_PREFIX, "");
+ 				
+@@ -53,17 +52,16 @@
+ 					context.finalizeHeaders(Results.status(404));
+ 
+ 				} else {
+ 					try {
+ 						
+ 						result.status(200);
+ 						
+ 						String mimeType = mimeTypes.getContentType(context, finalName);
+-						System.out.println("mime type is: " + mimeType);
+ 						if (!mimeType.isEmpty()) {
+ 							result.contentType(mimeType);
+ 						}
+ 						
+ 						context.finalizeHeaders(result);
+ 						
+ 						ByteStreams.copy(this.getClass().getClassLoader()
+ 						        .getResourceAsStream(ASSETS_PREFIX + finalName),
+--- MERGED RESULT (mergiraf; full) ---
+package ninja;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+
+import ninja.utils.MimeTypes;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.io.ByteStreams;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+
+/**
+ * This controller serves public resources under /public
+ * 
+ * @author ra
+ * 
+ */
+@Singleton
+public class AssetsController {
+	
+	private Logger logger = LoggerFactory.getLogger(AssetsController.class);
+
+	/** Used as seen by http request */
+	final String PUBLIC_PREFIX = "/assets/";
+
+	/** Used for storing files locally */
+	final String ASSETS_PREFIX = "assets/";
+
+	private final MimeTypes mimeTypes;
+
+	@Inject
+	public AssetsController(MimeTypes mimeTypes) {
+		this.mimeTypes = mimeTypes;
+		
+	}
+	
+	public Result serve(Context context) {
+		Object renderable = new Renderable() {
+			
+			@Override
+			public void render(Context context, Result result) {
+				
+				String finalName = context.getHttpServletRequest().getRequestURI()
+				        .replaceFirst(PUBLIC_PREFIX, "");
+				
+				InputStream inputStream = this.getClass().getClassLoader()
+				        .getResourceAsStream(ASSETS_PREFIX + finalName);	
+				
+				// check if stream exists. if not print a notfound exception
+				if (inputStream == null) {
+					
+					context.finalizeHeaders(Results.status(404));
+
+				} else {
+					try {						
+						result.status(200);
+						
+						//try to set the mimetype:
+						String mimeType = mimeTypes.getContentType(context, finalName);
+
+						if (!mimeType.isEmpty()) {
+							result.contentType(mimeType);
+						}
+						
+						//finalize headers:
+						context.finalizeHeaders(result);
+						
+						
+						ByteStreams.copy(this.getClass().getClassLoader()
+						        .getResourceAsStream(ASSETS_PREFIX + finalName),
+						        context.getHttpServletResponse().getOutputStream());
+						
+					} catch (FileNotFoundException e) {
+						logger.error("error streaming file", e);
+					} catch (IOException e) {
+						logger.error("error streaming file", e);
+					}
+					
+				}
+				
+				
+			}
+		};
+		
+		
+		
+		return Results.status(200).render(renderable);
+
+
+	}
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: ninja-demo-application/src/test/java/controllers/ApplicationControllerTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,54 +1,74 @@
+ package controllers;
+ 
++import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertTrue;
+ 
+ import java.util.Map;
+ 
+ import ninja.NinjaApiTest;
+ import ninja.NinjaApiTestHelper;
+ 
++import org.apache.http.HttpResponse;
+ import org.junit.Test;
+ 
+ import com.google.common.collect.Maps;
+ 
+ public class ApplicationControllerTest extends NinjaApiTest {
+-	
++
+ 	@Test
+ 	public void testThatRedirectWorks() {
+-		
++
+ 		// Some empty headers for now...
+ 		Map<String, String> headers = Maps.newHashMap();
+-		
++
+ 		// /redirect will send a location: redirect in the headers
+-		String result = NinjaApiTestHelper
+-				.makeRequest(getServerAddress() + "/redirect", headers);
++		String result = NinjaApiTestHelper.makeRequest(getServerAddress()
++				+ "/redirect", headers);
+ 
+ 		// If the redirect has worked we must see the following text
+ 		// from the index screen:
+-		assertTrue(result.contains(
+-				"And developing large web applications becomes fun again."));
++		assertTrue(result
++				.contains("And developing large web applications becomes fun again."));
+ 
+ 	}
+-	
+-	
++
+ 	@Test
+ 	public void testHtmlEscapingInTeamplateWorks() {
+ 
+-		//IF the escaping works I expect the following string inside the page:
++		// IF the escaping works I expect the following string inside the page:
+ 		String expectedContent = "&lt;a javascript:alert(&quot;Hello!&quot;);";
+-		
++
+ 		// Some empty headers for now...
+ 		Map<String, String> headers = Maps.newHashMap();
+-		
++
+ 		// /redirect will send a location: redirect in the headers
+-		
+-		String result = NinjaApiTestHelper
+-				.makeRequest(getServerAddress() + "htmlEscaping", headers);
++
++		String result = NinjaApiTestHelper.makeRequest(getServerAddress()
++				+ "htmlEscaping", headers);
+ 
+ 		// If the redirect has worked we must see the following text
+ 		// from the index screen:
+-		assertTrue(result.contains(
+-				expectedContent));
++		assertTrue(result.contains(expectedContent));
++
++	}
++
++	@Test
++	public void makeSureSessionsGetSentToClient() {
++
++		// Some empty headers for now...
++		Map<String, String> headers = Maps.newHashMap();
++
++		// /redirect will send a location: redirect in the headers
++		HttpResponse httpResponse = NinjaApiTestHelper
++				.makeRequestAndGetResponse(getServerAddress() + "session",
++						headers);
++
++		String setCookie = httpResponse.getHeaders("Set-Cookie")[0].getValue();
++
++		assertTrue(setCookie.contains("NINJA_SESSION"));
++		assertTrue(setCookie.contains("___TS"));
++		assertTrue(setCookie.contains("username"));
++		assertTrue(setCookie.contains("kevin"));
+ 
+ 	}
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -30,17 +30,17 @@
+ 
+ 	}
+ 	
+ 	
+ 	@Test
+ 	public void testHtmlEscapingInTeamplateWorks() {
+ 
+ 		//IF the escaping works I expect the following string inside the page:
+-		String expectedContent = "&lt;a javascript:alert(&quot;Hello!&quot;);";
++		String expectedContent = "&lt;script&gt;alert('Hello');&lt;/script&gt;";
+ 		
+ 		// Some empty headers for now...
+ 		Map<String, String> headers = Maps.newHashMap();
+ 		
+ 		// /redirect will send a location: redirect in the headers
+ 		
+ 		String result = NinjaApiTestHelper
+ 				.makeRequest(getServerAddress() + "htmlEscaping", headers);
+--- MERGED RESULT (mergiraf; full) ---
+package controllers;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Map;
+
+import ninja.NinjaApiTest;
+import ninja.NinjaApiTestHelper;
+
+import org.apache.http.HttpResponse;
+import org.junit.Test;
+
+import com.google.common.collect.Maps;
+
+public class ApplicationControllerTest extends NinjaApiTest {
+
+	@Test
+	public void testThatRedirectWorks() {
+
+		// Some empty headers for now...
+		Map<String, String> headers = Maps.newHashMap();
+
+		// /redirect will send a location: redirect in the headers
+		String result = NinjaApiTestHelper.makeRequest(getServerAddress()
+				+ "/redirect", headers);
+
+		// If the redirect has worked we must see the following text
+		// from the index screen:
+		assertTrue(result
+				.contains("And developing large web applications becomes fun again."));
+
+	}
+
+	@Test
+	public void testHtmlEscapingInTeamplateWorks() {
+
+		// IF the escaping works I expect the following string inside the page:
+		String expectedContent = "&lt;script&gt;alert('Hello');&lt;/script&gt;";
+
+		// Some empty headers for now...
+		Map<String, String> headers = Maps.newHashMap();
+
+		// /redirect will send a location: redirect in the headers
+
+		String result = NinjaApiTestHelper.makeRequest(getServerAddress()
+				+ "htmlEscaping", headers);
+
+		// If the redirect has worked we must see the following text
+		// from the index screen:
+		assertTrue(result.contains(expectedContent));
+
+	}
+
+	@Test
+	public void makeSureSessionsGetSentToClient() {
+
+		// Some empty headers for now...
+		Map<String, String> headers = Maps.newHashMap();
+
+		// /redirect will send a location: redirect in the headers
+		HttpResponse httpResponse = NinjaApiTestHelper
+				.makeRequestAndGetResponse(getServerAddress() + "session",
+						headers);
+
+		String setCookie = httpResponse.getHeaders("Set-Cookie")[0].getValue();
+
+		assertTrue(setCookie.contains("NINJA_SESSION"));
+		assertTrue(setCookie.contains("___TS"));
+		assertTrue(setCookie.contains("username"));
+		assertTrue(setCookie.contains("kevin"));
+
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -30,19 +30,18 @@
+ 		assertTrue(result
+ 				.contains("And developing large web applications becomes fun again."));
+ 
+ 	}
+ 
+ 	@Test
+ 	public void testHtmlEscapingInTeamplateWorks() {
+ 
+-		// IF the escaping works I expect the following string inside the page:
++		//IF the escaping works I expect the following string inside the page:
+ 		String expectedContent = "&lt;script&gt;alert('Hello');&lt;/script&gt;";
+-
+ 		// Some empty headers for now...
+ 		Map<String, String> headers = Maps.newHashMap();
+ 
+ 		// /redirect will send a location: redirect in the headers
+ 
+ 		String result = NinjaApiTestHelper.makeRequest(getServerAddress()
+ 				+ "htmlEscaping", headers);
+ 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

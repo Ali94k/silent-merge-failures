@@ -1,0 +1,967 @@
+UNIT apache_commons-collections__f0c2e97529
+repo: apache_commons-collections   merge: f0c2e975296133067fb222d737b21668348b7419   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/3: src/main/java/org/apache/commons/collections4/bloomfilter/BloomFilter.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -145,16 +145,17 @@
+      *
+      * <p><em>Note: This method should return {@code true} even if no additional bit indexes were
+      * enabled. A {@code false} result indicates that this filter may or may not contain
+      * the {@code hasher} values.</em>  This state may occur in complex Bloom filter implementations like
+      * counting Bloom filters.</p>
+      *
+      * @param hasher The hasher to merge.
+      * @return true if the merge was successful
++     * @throws IllegalArgumentException if hasher produces an illegal value.
+      */
+     default boolean merge(Hasher hasher) {
+         Objects.requireNonNull(hasher, "hasher");
+         return merge(hasher.indices(getShape()));
+     }
+ 
+     /**
+      * Merges the specified IndexProducer into this Bloom filter. Specifically all
+@@ -209,52 +210,103 @@
+     int cardinality();
+ 
+     /**
+      * Estimates the number of items in the Bloom filter.
+      *
+      * <p>By default this is the rounding of the {@code Shape.estimateN(cardinality)} calculation for the
+      * shape and cardinality of this filter.</p>
+      *
+-     * <p>This produces an estimate roughly equivalent to the number of Hashers that have been merged into the filter.</p>
+-     *
+-     * @return an estimate of the number of items in the bloom filter.
++     * <p>This produces an estimate roughly equivalent to the number of Hashers that have been merged into the filter
++     * by rounding the value from the calculation described in the {@code Shape} class javadoc.</p>
++     *
++     * <p><em>Note:</em></p>
++     * <ul>
++     * <li> if cardinality == numberOfBits, then result is Integer.MAX_VALUE.</li>
++     * <li> if cardinality &gt; numberOfBits, then an IllegalArgumentException is thrown.</li>
++     * </ul>
++     *
++     * @return an estimate of the number of items in the bloom filter.  Will return Integer.MAX_VALUE if the
++     * estimate is larger than Integer.MAX_VALUE.
++     * @throws IllegalArgumentException if the cardinality is &gt; numberOfBits as defined in Shape.
+      * @see Shape#estimateN(int)
++     * @see Shape
+      */
+     default int estimateN() {
+-        return (int) Math.round(getShape().estimateN(cardinality()));
++        double d = getShape().estimateN(cardinality());
++        if (Double.isInfinite(d)) {
++            return Integer.MAX_VALUE;
++        }
++        if (Double.isNaN(d)) {
++            throw new IllegalArgumentException("Cardinality too large: "+cardinality());
++        }
++        long l = Math.round(d);
++        return l>Integer.MAX_VALUE?Integer.MAX_VALUE:(int) l;
+     }
+ 
+     /**
+      * Estimates the number of items in the union of this Bloom filter with the other bloom filter.
+      *
+-     * <p>By default this is the {@code estimateN()} of the merging of this filter with the {@code other} filter.</p>
+-     *
+      * <p>This produces an estimate roughly equivalent to the number of unique Hashers that have been merged into either
+-     * of the filters.</p>
++     * of the filters by rounding the value from the calculation described in the {@code Shape} class javadoc.</p>
++     *
++     * <p><em>{@code estimateUnion} should only be called with Bloom filters of the same Shape.  If called on Bloom
++     * filters of differing shape this method is not symmetric. If {@code other} has more bits an {@code IllegalArgumentException}
++     * may be thrown.</em></p>
+      *
+      * @param other The other Bloom filter
+-     * @return an estimate of the number of items in the union.
++     * @return an estimate of the number of items in the union.  Will return Integer.MAX_VALUE if the
++     * estimate is larger than Integer.MAX_VALUE.
+      * @see #estimateN()
++     * @see Shape
+      */
+     default int estimateUnion(BloomFilter other) {
+         Objects.requireNonNull(other, "other");
+         BloomFilter cpy = this.copy();
+         cpy.merge(other);
+         return cpy.estimateN();
+     }
+ 
+     /**
+      * Estimates the number of items in the intersection of this Bloom filter with the other bloom filter.
+      *
+-     * <p>By default this is the {@code estimateN() + other.estimateN() - estimateUnion(other)} </p>
+-     *
+-     * <p>This produces estimate is roughly equivalent to the number of unique Hashers that have been merged into both
+-     * of the filters.</p>
++     * <p></p>
++     *
++     * <p>This method produces estimate is roughly equivalent to the number of unique Hashers that have been merged into both
++     * of the filters by rounding the value from the calculation described in the {@code Shape} class javadoc.</p>
++     *
++     * <p><em>{@code estimateIntersection} should only be called with Bloom filters of the same Shape.  If called on Bloom
++     * filters of differing shape this method is not symmetric. If {@code other} has more bits an {@code IllegalArgumentException}
++     * may be thrown.</em></p>
+      *
+      * @param other The other Bloom filter
+-     * @return an estimate of the number of items in the intersection.
++     * @return an estimate of the number of items in the intersection. If the calculated estimate is larger than Integer.MAX_VALUE then MAX_VALUE is returned.
++     * @throws IllegalArgumentException if the estimated N for the union of the filters is infinite.
++     * @see #estimateN()
++     * @see Shape
+      */
+     default int estimateIntersection(BloomFilter other) {
+         Objects.requireNonNull(other, "other");
+-        return estimateN() + other.estimateN() - estimateUnion(other);
++        double eThis = getShape().estimateN(cardinality());
++        double eOther = getShape().estimateN(other.cardinality());
++        long estimate = 0L;
++        if (Double.isInfinite(eThis) && Double.isInfinite(eOther)) {
++            // if both are infinite the union is infinite and we return Integer.MAX_VALUE
++            return Integer.MAX_VALUE;
++        }
++        // if one is infinite the intersection is the other.
++        if (Double.isInfinite(eThis)) {
++            estimate = Math.round( eOther );
++        } else if (Double.isInfinite(eOther)) {
++            estimate = Math.round( eThis );
++        } else {
++            BloomFilter union = this.copy();
++            union.merge(other);
++            double eUnion = getShape().estimateN(union.cardinality());
++            if (Double.isInfinite(eUnion)) {
++                throw new IllegalArgumentException( "The estimated N for the union of the filters is infinite");
++            }
++            // all estimated values are small values greater than 0 but less that number of bits
++            estimate = Math.round( eThis + eOther - eUnion );
++        }
++        return estimate>Integer.MAX_VALUE?Integer.MAX_VALUE:(int) estimate;
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -71,34 +71,34 @@
+      * <p>Specifically this
+      * returns {@code true} if this filter is enabled for all bits that are enabled in the
+      * {@code other} filter. Using the bit representations this is
+      * effectively {@code (this AND other) == other}.</p>
+      *
+      * @param other the other Bloom filter
+      * @return true if all enabled bits in the other filter are enabled in this filter.
+      */
+-    default boolean contains(BloomFilter other) {
++    default boolean contains(final BloomFilter other) {
+         Objects.requireNonNull(other, "other");
+         return (characteristics() & SPARSE) != 0 ? contains((IndexProducer) other) : contains((BitMapProducer) other);
+     }
+ 
+     /**
+      * Returns {@code true} if this filter contains the bits specified in the hasher.
+      *
+      * <p>Specifically this returns {@code true} if this filter is enabled for all bit indexes
+      * identified by the {@code hasher}. Using the bit map representations this is
+      * effectively {@code (this AND hasher) == hasher}.</p>
+      *
+      * @param hasher the hasher to provide the indexes
+      * @return true if this filter is enabled for all bits specified by the hasher
+      */
+-    default boolean contains(Hasher hasher) {
++    default boolean contains(final Hasher hasher) {
+         Objects.requireNonNull(hasher, "Hasher");
+-        Shape shape = getShape();
++        final Shape shape = getShape();
+         return contains(hasher.indices(shape));
+     }
+ 
+     /**
+      * Returns {@code true} if this filter contains the indices specified IndexProducer.
+      *
+      * <p>Specifically this returns {@code true} if this filter is enabled for all bit indexes
+      * identified by the {@code IndexProducer}.</p>
+@@ -110,17 +110,17 @@
+ 
+     /**
+      * Returns {@code true} if this filter contains the bits specified in the bit maps produced by the
+      * bitMapProducer.
+      *
+      * @param bitMapProducer the the {@code BitMapProducer} to provide the bit maps.
+      * @return {@code true} if this filter is enabled for all bits specified by the bit maps
+      */
+-    default boolean contains(BitMapProducer bitMapProducer) {
++    default boolean contains(final BitMapProducer bitMapProducer) {
+         return forEachBitMapPair(bitMapProducer, (x, y) -> (x & y) == y);
+     }
+ 
+     // update operations
+ 
+     /**
+      * Merges the specified Bloom filter into this Bloom filter.
+      *
+@@ -130,33 +130,33 @@
+      * <p><em>Note: This method should return {@code true} even if no additional bit indexes were
+      * enabled. A {@code false} result indicates that this filter may or may not contain
+      * the {@code other} Bloom filter.</em>  This state may occur in complex Bloom filter implementations like
+      * counting Bloom filters.</p>
+      *
+      * @param other The bloom filter to merge into this one.
+      * @return true if the merge was successful
+      */
+-    default boolean merge(BloomFilter other) {
++    default boolean merge(final BloomFilter other) {
+         return (characteristics() & SPARSE) != 0 ? merge((IndexProducer) other) : merge((BitMapProducer) other);
+     }
+ 
+     /**
+      * Merges the specified hasher into this Bloom filter. Specifically all
+      * bit indexes that are identified by the {@code hasher} will be enabled in this filter.
+      *
+      * <p><em>Note: This method should return {@code true} even if no additional bit indexes were
+      * enabled. A {@code false} result indicates that this filter may or may not contain
+      * the {@code hasher} values.</em>  This state may occur in complex Bloom filter implementations like
+      * counting Bloom filters.</p>
+      *
+      * @param hasher The hasher to merge.
+      * @return true if the merge was successful
+      */
+-    default boolean merge(Hasher hasher) {
++    default boolean merge(final Hasher hasher) {
+         Objects.requireNonNull(hasher, "hasher");
+         return merge(hasher.indices(getShape()));
+     }
+ 
+     /**
+      * Merges the specified IndexProducer into this Bloom filter. Specifically all
+      * bit indexes that are identified by the {@code producer} will be enabled in this filter.
+      *
+@@ -230,31 +230,31 @@
+      *
+      * <p>This produces an estimate roughly equivalent to the number of unique Hashers that have been merged into either
+      * of the filters.</p>
+      *
+      * @param other The other Bloom filter
+      * @return an estimate of the number of items in the union.
+      * @see #estimateN()
+      */
+-    default int estimateUnion(BloomFilter other) {
++    default int estimateUnion(final BloomFilter other) {
+         Objects.requireNonNull(other, "other");
+-        BloomFilter cpy = this.copy();
++        final BloomFilter cpy = this.copy();
+         cpy.merge(other);
+         return cpy.estimateN();
+     }
+ 
+     /**
+      * Estimates the number of items in the intersection of this Bloom filter with the other bloom filter.
+      *
+      * <p>By default this is the {@code estimateN() + other.estimateN() - estimateUnion(other)} </p>
+      *
+      * <p>This produces estimate is roughly equivalent to the number of unique Hashers that have been merged into both
+      * of the filters.</p>
+      *
+      * @param other The other Bloom filter
+      * @return an estimate of the number of items in the intersection.
+      */
+-    default int estimateIntersection(BloomFilter other) {
++    default int estimateIntersection(final BloomFilter other) {
+         Objects.requireNonNull(other, "other");
+         return estimateN() + other.estimateN() - estimateUnion(other);
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/main/java/org/apache/commons/collections4/bloomfilter/Shape.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -31,16 +31,59 @@
+  * <dt>Probability of False Positives ({@code p})</dt>
+  * <dd>{@code p = pow(1 - exp(-k / (m / n)), k)}</dd>
+  * <dt>Number of Bits ({@code m})</dt>
+  * <dd>{@code m = ceil((n * ln(p)) / ln(1 / pow(2, ln(2))))}</dd>
+  * <dt>Number of Functions ({@code k})</dt>
+  * <dd>{@code k = round((m / n) * ln(2))}</dd>
+  * </dl>
+  *
++ * <h2>Estimations from cardinality based on shape</h2>
++ *
++ * <p>Several estimates can be calculated from the Shape and the cardinality of a Bloom filter.</p>
++ *
++ * <p>In the calculation below the following values are used:</p>
++ * <ul>
++ * <li>double c = the cardinality of the Bloom filter.</li>
++ * <li>double m = numberOfBits as specified in the shape.</li>
++ * <li>double k = numberOfHashFunctions as specified in the shape.</li>
++ * </ul>
++ *
++ * <h3>Estimate N - n()</h3>
++ *
++ * <p>The calculation for the estimate of N is: {@code -(m/k) * ln( 1 - (c/m))}.  This is the calculation
++ * performed by the {@code Shape.estimateN(cardinality)} method below.  This estimates is roughly equivalent to the
++ * number of hashers that have been merged into a filter to create the cardinality specified.</p>
++ *
++ * <p><em>Note:</em></p>
++ * <ul>
++ * <li> if cardinality == numberOfBits, then result is infinity.</li>
++ * <li> if cardinality &gt; numberOfBits, then result is NaN.</li>
++ * </ul>
++ *
++ * <h3>Estimate N of Union - n(A &xcup; B)</h3>
++ *
++ * <p>To estimate the number of items in the union of two Bloom filters with the same shape, merge them together and
++ * calculate the estimated N from the result.</p>
++ *
++ * <h3>Estimate N of the Intersection - n(A &xcap; B)</h3>
++ *
++ * <p>To estimate the number of items in the intersection of two Bloom filters A and B with the same shape the calculation is:
++ * n(A) + n(b) - n( A &cup; B )
++ *</p>
++ *
++ * <p>Care must be taken when any of the n(x) returns infinity.  In general the following assumptions are true:
++ *
++ * <ul>
++ * <li>If n(A) = &infin; and n(B) < &infin; then n(A &cap; B) = n(B)</li>
++ * <li>If n(A) < &infin; and n(B) = &infin; then n(A &cap; B) = n(A)</li>
++ * <li>If n(A) = &infin; and n(B) = &infin; then n(A &cap; B) = &infin;</li>
++ * <li>If n(A) < &infin; and n(B) < &infin; and n(A &cup; B) = &infin; then n(A &cap; B) is undefined.</li>
++ * </ul>
++ *
+  * @see <a href="https://hur.st/bloomfilter">Bloom Filter calculator</a>
+  * @see <a href="https://en.wikipedia.org/wiki/Bloom_filter">Bloom filter
+  * [Wikipedia]</a>
+  * @since 4.5
+  */
+ public final class Shape {
+ 
+     /**
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -74,20 +74,20 @@
+      * @throws IllegalArgumentException if {@code numberOfHashFunctions < 1} or {@code numberOfBits < 1}
+      */
+     private Shape(final int numberOfHashFunctions, final int numberOfBits) {
+         this.numberOfHashFunctions = checkNumberOfHashFunctions(numberOfHashFunctions);
+         this.numberOfBits = checkNumberOfBits(numberOfBits);
+     }
+ 
+     @Override
+-    public boolean equals(Object obj) {
++    public boolean equals(final Object obj) {
+         // Shape is final so no check for the same class as inheritance is not possible
+         if (obj instanceof Shape) {
+-            Shape other = (Shape) obj;
++            final Shape other = (Shape) obj;
+             return numberOfBits == other.numberOfBits &&
+                    numberOfHashFunctions == other.numberOfHashFunctions;
+         }
+         return false;
+     }
+ 
+     @Override
+     public int hashCode() {
+@@ -126,17 +126,17 @@
+      * <p>The probability assumes that the Bloom filter is filled with the expected number of
+      * items. If the filter contains fewer items then the actual probability will be lower.
+      * Thus, this returns the worst-case false positive probability for a filter that has not
+      * exceeded its expected number of items.</p>
+      *
+      * @param numberOfItems the number of items hashed into the Bloom filter.
+      * @return the probability of false positives.
+      */
+-    public double getProbability(int numberOfItems) {
++    public double getProbability(final int numberOfItems) {
+         if (numberOfItems < 0) {
+             throw new IllegalArgumentException("Number of items must be greater than or equal to 0: " + numberOfItems);
+         }
+         if (numberOfItems == 0) {
+             return 0;
+         }
+         return Math.pow(-Math.expm1(-1.0 * numberOfHashFunctions * numberOfItems / numberOfBits),
+                 numberOfHashFunctions);
+@@ -150,43 +150,43 @@
+     /**
+      * Determines if a cardinality is sparse based on the shape.
+      * <p>This method assumes that bit maps are 64bits and indexes are 32bits. If the memory
+      * necessary to store the cardinality as indexes is less than the estimated memory for bit maps,
+      * the cardinality is determined to be {@code sparse}.</p>
+      * @param cardinality the cardinality to check.
+      * @return true if the cardinality is sparse within the shape.
+      */
+-    public boolean isSparse(int cardinality) {
++    public boolean isSparse(final int cardinality) {
+         /*
+          * Since the size of a bit map is a long and the size of an index is an int,
+          * there can be 2 indexes for each bit map. In Bloom filters indexes are evenly
+          * distributed across the range of possible values, Thus if the cardinality
+          * (number of indexes) is less than or equal to 2*number of bit maps the
+          * cardinality is sparse within the shape.
+          */
+-        return cardinality <= (BitMap.numberOfBitMaps(getNumberOfBits()) * 2);
++        return cardinality <= BitMap.numberOfBitMaps(getNumberOfBits()) * 2;
+     }
+ 
+     /**
+      * Estimate the number of items in a Bloom filter with this shape and the specified number of bits enabled.
+      *
+      * <p><em>Note:</em></p>
+      * <ul>
+      * <li> if cardinality == numberOfBits, then result is infinity.</li>
+      * <li> if cardinality &gt; numberOfBits, then result is NaN.</li>
+      * </ul>
+      *
+      * @param cardinality the number of enabled  bits also known as the hamming value.
+      * @return An estimate of the number of items in the Bloom filter.
+      */
+-    public double estimateN(int cardinality) {
+-        double c = cardinality;
+-        double m = numberOfBits;
+-        double k = numberOfHashFunctions;
++    public double estimateN(final int cardinality) {
++        final double c = cardinality;
++        final double m = numberOfBits;
++        final double k = numberOfHashFunctions;
+         return -(m / k) * Math.log1p(-c / m);
+     }
+ 
+     /**
+      * Constructs a filter configuration with a desired false-positive probability ({@code p}) and the
+      * specified number of bits ({@code m}) and hash functions ({@code k}).
+      *
+      * <p>The number of items ({@code n}) to be stored in the filter is computed.
+@@ -221,17 +221,17 @@
+         // log 1-e^x = [log1, log0) = <0 with an effective lower limit of -53
+         // numberOfBits/ (-numberOfHashFunctions / [-53,0) ) >0
+         // ceil( >0 ) >= 1
+         // so we can not produce a negative value thus we don't check for it.
+         //
+         // similarly we can not produce a number greater than numberOfBits so we
+         // do not have to check for Integer.MAX_VALUE either.
+ 
+-        Shape shape = new Shape(numberOfHashFunctions, numberOfBits);
++        final Shape shape = new Shape(numberOfHashFunctions, numberOfBits);
+         // check that probability is within range
+         checkCalculatedProbability(shape.getProbability((int) n));
+         return shape;
+     }
+ 
+     /**
+      * Constructs a filter configuration with the specified number of items ({@code n}) and
+      * desired false-positive probability ({@code p}).
+@@ -257,20 +257,20 @@
+         checkNumberOfItems(numberOfItems);
+         checkProbability(probability);
+ 
+         // Number of bits (m)
+         final double m = Math.ceil(numberOfItems * Math.log(probability) / DENOMINATOR);
+         if (m > Integer.MAX_VALUE) {
+             throw new IllegalArgumentException("Resulting filter has more than " + Integer.MAX_VALUE + " bits: " + m);
+         }
+-        int numberOfBits = (int) m;
+-
+-        int numberOfHashFunctions = calculateNumberOfHashFunctions(numberOfItems, numberOfBits);
+-        Shape shape = new Shape(numberOfHashFunctions, numberOfBits);
++        final int numberOfBits = (int) m;
++
++        final int numberOfHashFunctions = calculateNumberOfHashFunctions(numberOfItems, numberOfBits);
++        final Shape shape = new Shape(numberOfHashFunctions, numberOfBits);
+         // check that probability is within range
+         checkCalculatedProbability(shape.getProbability(numberOfItems));
+         return shape;
+     }
+ 
+     /**
+      * Constructs a filter configuration with the specified number of hashFunctions ({@code k}) and
+      * bits ({@code m}).
+@@ -299,18 +299,18 @@
+      * @param numberOfBits The number of bits in the filter
+      * @return a valid Shape.
+      * @throws IllegalArgumentException if {@code numberOfItems < 1}, {@code numberOfBits < 1},
+      * the calculated number of hash function is {@code < 1}, or if the actual probability is {@code >= 1.0}
+      */
+     public static Shape fromNM(final int numberOfItems, final int numberOfBits) {
+         checkNumberOfItems(numberOfItems);
+         checkNumberOfBits(numberOfBits);
+-        int numberOfHashFunctions = calculateNumberOfHashFunctions(numberOfItems, numberOfBits);
+-        Shape shape = new Shape(numberOfHashFunctions, numberOfBits);
++        final int numberOfHashFunctions = calculateNumberOfHashFunctions(numberOfItems, numberOfBits);
++        final Shape shape = new Shape(numberOfHashFunctions, numberOfBits);
+         // check that probability is within range
+         checkCalculatedProbability(shape.getProbability(numberOfItems));
+         return shape;
+     }
+ 
+     /**
+      * Constructs a filter configuration with the specified number of items, bits
+      * and hash functions.
+@@ -326,17 +326,17 @@
+      * @throws IllegalArgumentException if {@code numberOfItems < 1}, {@code numberOfBits < 1},
+      * {@code numberOfHashFunctions < 1}, or if the actual probability is {@code >= 1.0}.
+      */
+     public static Shape fromNMK(final int numberOfItems, final int numberOfBits, final int numberOfHashFunctions) {
+         checkNumberOfItems(numberOfItems);
+         checkNumberOfBits(numberOfBits);
+         checkNumberOfHashFunctions(numberOfHashFunctions);
+         // check that probability is within range
+-        Shape shape = new Shape(numberOfHashFunctions, numberOfBits);
++        final Shape shape = new Shape(numberOfHashFunctions, numberOfBits);
+         // check that probability is within range
+         checkCalculatedProbability(shape.getProbability(numberOfItems));
+         return shape;
+     }
+ 
+     /**
+      * Check number of items is strictly positive.
+      *
+@@ -410,31 +410,31 @@
+         // always be 0<x<1 and y>0
+         if (probability >= 1.0) {
+             throw new IllegalArgumentException(
+                     String.format("Calculated probability is greater than or equal to 1: " + probability));
+         }
+     }
+ 
+     /**
+-     * Calculates the number of hash functions given numberOfItems and numberofBits.
++     * Calculates the number of hash functions given numberOfItems and numberOfBits.
+      * This is a method so that the calculation is consistent across all constructors.
+      *
+      * @param numberOfItems the number of items in the filter.
+      * @param numberOfBits the number of bits in the filter.
+      * @return the optimal number of hash functions.
+      * @throws IllegalArgumentException if the calculated number of hash function is {@code < 1}
+      */
+     private static int calculateNumberOfHashFunctions(final int numberOfItems, final int numberOfBits) {
+         // k = round((m / n) * ln(2)) We change order so that we use real math rather
+         // than integer math.
+         final long k = Math.round(LN_2 * numberOfBits / numberOfItems);
+         if (k < 1) {
+             throw new IllegalArgumentException(
+                     String.format("Filter too small: Calculated number of hash functions (%s) was less than 1", k));
+         }
+-        // Normally we would check that numberofHashFunctions <= Integer.MAX_VALUE but
++        // Normally we would check that numberOfHashFunctions <= Integer.MAX_VALUE but
+         // since numberOfBits is at most Integer.MAX_VALUE the numerator of
+-        // numberofHashFunctions is ln(2) * Integer.MAX_VALUE = 646456992.9449 the
++        // numberOfHashFunctions is ln(2) * Integer.MAX_VALUE = 646456992.9449 the
+         // value of k can not be above Integer.MAX_VALUE.
+         return (int) k;
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/test/java/org/apache/commons/collections4/bloomfilter/AbstractBloomFilterTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -224,31 +224,45 @@
+     public void testClear() {
+         BloomFilter bf1 = createFilter(getTestShape(), from1);
+         assertNotEquals(0, bf1.cardinality());
+         bf1.clear();
+         assertEquals(0, bf1.cardinality());
+     }
+ 
+     /**
+-     * Tests that the andCardinality calculations are correct.
++     * Tests that the estimated intersection calculations are correct.
+      */
+     @Test
+     public final void testEstimateIntersection() {
+ 
+         final BloomFilter bf = createFilter(getTestShape(), from1);
+         final BloomFilter bf2 = createFilter(getTestShape(), bigHasher);
++        final BloomFilter bf3 = createFilter(getTestShape(), fullHasher);
+ 
+         assertEquals(1, bf.estimateIntersection(bf2));
+         assertEquals(1, bf2.estimateIntersection(bf));
+-
+-        final BloomFilter bf3 = createEmptyFilter(getTestShape());
+-
+-        assertEquals(0, bf.estimateIntersection(bf3));
+-        assertEquals(0, bf3.estimateIntersection(bf));
++        assertEquals(1, bf.estimateIntersection(bf3));
++        assertEquals(1, bf2.estimateIntersection(bf));
++        assertEquals(2, bf3.estimateIntersection(bf2));
++
++        final BloomFilter bf4 = createEmptyFilter(getTestShape());
++
++        assertEquals(0, bf.estimateIntersection(bf4));
++        assertEquals(0, bf4.estimateIntersection(bf));
++
++        // test split to union
++        HasherCollection firstHalf = new HasherCollection(new IncrementingHasher(0, 1)/* 0-16 */,
++                new IncrementingHasher(17, 1)/* 17-33 */, new IncrementingHasher(33, 1)/* 33-49 */);
++                // test split to union
++        HasherCollection secondHalf = new HasherCollection(new IncrementingHasher(50, 1)/* 50-66 */,
++                        new IncrementingHasher(67, 1)/* 67-83 */);
++        BloomFilter bf5 = createFilter( getTestShape(), firstHalf);
++        BloomFilter bf6 = createFilter( getTestShape(), secondHalf);
++        assertThrows(IllegalArgumentException.class, () -> bf5.estimateIntersection(bf6));
+     }
+ 
+     /**
+      * Tests that the andCardinality calculations are correct.
+      */
+     @Test
+     public final void testEstimateUnion() {
+         final BloomFilter bf = createFilter(getTestShape(), from1);
+@@ -270,22 +284,24 @@
+     public final void testEstimateN() {
+         // build a filter
+         BloomFilter filter1 = createFilter(getTestShape(), from1);
+         assertEquals(1, filter1.estimateN());
+ 
+         // the data provided above do not generate an estimate that is equivalent to the
+         // actual.
+         filter1.merge(new IncrementingHasher(4, 1));
+-
+         assertEquals(1, filter1.estimateN());
+ 
+         filter1.merge(new IncrementingHasher(17, 1));
+ 
+         assertEquals(3, filter1.estimateN());
++
++        filter1 = createFilter(getTestShape(), fullHasher);
++        assertEquals(Integer.MAX_VALUE, filter1.estimateN());
+     }
+ 
+     /**
+      * Tests that asBitMapArray works correctly.
+      */
+     @Test
+     public final void testAsBitMapArray() {
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -68,108 +68,106 @@
+ 
+     /**
+      * Create the BloomFilter implementation we are testing.
+      *
+      * @param shape the shape of the filter.
+      * @param hasher the hasher to use to create the filter.
+      * @return a BloomFilter implementation.
+      */
+-    protected final T createFilter(Shape shape, Hasher hasher) {
+-        T bf = createEmptyFilter(shape);
++    protected final T createFilter(final Shape shape, final Hasher hasher) {
++        final T bf = createEmptyFilter(shape);
+         bf.merge(hasher);
+         return bf;
+     }
+ 
+     /**
+      * Create the BloomFilter implementation we are testing.
+      *
+      * @param shape the shape of the filter.
+      * @param producer A BitMap producer to build the filter with.
+      * @return a BloomFilter implementation.
+      */
+-    protected final T createFilter(Shape shape, BitMapProducer producer) {
+-        T bf = createEmptyFilter(shape);
++    protected final T createFilter(final Shape shape, final BitMapProducer producer) {
++        final T bf = createEmptyFilter(shape);
+         bf.merge(producer);
+         return bf;
+     }
+ 
+     /**
+      * Create the BloomFilter implementation we are testing.
+      *
+      * @param shape the shape of the filter.
+      * @param producer An Index producer to build the filter with.
+      * @return a BloomFilter implementation.
+      */
+-    protected final T createFilter(Shape shape, IndexProducer producer) {
+-        T bf = createEmptyFilter(shape);
++    protected final T createFilter(final Shape shape, final IndexProducer producer) {
++        final T bf = createEmptyFilter(shape);
+         bf.merge(producer);
+         return bf;
+     }
+ 
+     /**
+      *
+      */
+     @Test
+     public void testMergeWithBadHasher() {
+         // value too large
+         final BloomFilter f = createEmptyFilter(getTestShape());
+         assertThrows(IllegalArgumentException.class,
+                 () -> f.merge(new BadHasher(getTestShape().getNumberOfBits())));
+         // negative value
+-        BloomFilter f2 = createEmptyFilter(getTestShape());
++        final BloomFilter f2 = createEmptyFilter(getTestShape());
+         assertThrows(IllegalArgumentException.class, () -> f2.merge(new BadHasher(-1)));
+     }
+ 
+     @Test
+     public void testMergeWithHasher() {
+         for (int i = 0; i < 5; i++) {
+             final BloomFilter f = createEmptyFilter(getTestShape());
+-            int[] expected = DefaultIndexProducerTest.generateIntArray(getTestShape().getNumberOfHashFunctions(), getTestShape().getNumberOfBits());
+-            Hasher hasher = new ArrayHasher(expected);
++            final int[] expected = DefaultIndexProducerTest.generateIntArray(getTestShape().getNumberOfHashFunctions(), getTestShape().getNumberOfBits());
++            final Hasher hasher = new ArrayHasher(expected);
+             f.merge(hasher);
+             // create sorted unique array of expected values
+             assertArrayEquals(DefaultIndexProducerTest.unique(expected), f.asIndexArray());
+         }
+     }
+ 
+     @Test
+     public void testMergeWithBitMapProducer() {
+         for (int i = 0; i < 5; i++) {
+-            long[] values = new long[2];
+-            for (int idx : DefaultIndexProducerTest.generateIntArray(getTestShape().getNumberOfHashFunctions(), getTestShape().getNumberOfBits())) {
++            final long[] values = new long[2];
++            for (final int idx : DefaultIndexProducerTest.generateIntArray(getTestShape().getNumberOfHashFunctions(), getTestShape().getNumberOfBits())) {
+                 BitMap.set(values, idx);
+             }
+-            BloomFilter f = createFilter(getTestShape(), BitMapProducer.fromBitMapArray(values));
+-            List<Long> lst = new ArrayList<>();
+-            for (long l : values) {
++            final BloomFilter f = createFilter(getTestShape(), BitMapProducer.fromBitMapArray(values));
++            final List<Long> lst = new ArrayList<>();
++            for (final long l : values) {
+                 lst.add(l);
+             }
+-            assertTrue(f.forEachBitMap(l -> {
+-                return lst.remove(Long.valueOf(l));
+-            }));
++            assertTrue(f.forEachBitMap(l -> lst.remove(Long.valueOf(l))));
+             assertTrue(lst.isEmpty());
+         }
+         // values too large
+         final BitMapProducer badProducer = BitMapProducer.fromBitMapArray(0L, Long.MAX_VALUE);
+         final BloomFilter bf = createEmptyFilter(getTestShape());
+         assertThrows(IllegalArgumentException.class, () -> bf.merge(badProducer));
+ 
+         // test where merged bits exceed expected bits but both bitmaps are the same length.
+         final BitMapProducer badProducer2 = BitMapProducer.fromBitMapArray(0x80_00_00_00_00_00_00_00L);
+         final BloomFilter bf2 = createEmptyFilter(Shape.fromKM(3, 32));
+         assertThrows(IllegalArgumentException.class, () -> bf2.merge(badProducer2));
+     }
+ 
+     @Test
+     public void testMergeWithIndexProducer() {
+         for (int i = 0; i < 5; i++) {
+-            int[] values = DefaultIndexProducerTest.generateIntArray(getTestShape().getNumberOfHashFunctions(), getTestShape().getNumberOfBits());
+-            BloomFilter f = createFilter(getTestShape(), IndexProducer.fromIndexArray(values));
+-            BitSet uniqueValues = DefaultIndexProducerTest.uniqueSet(values);
++            final int[] values = DefaultIndexProducerTest.generateIntArray(getTestShape().getNumberOfHashFunctions(), getTestShape().getNumberOfBits());
++            final BloomFilter f = createFilter(getTestShape(), IndexProducer.fromIndexArray(values));
++            final BitSet uniqueValues = DefaultIndexProducerTest.uniqueSet(values);
+             assertTrue(f.forEachIndex(idx -> {
+                 final boolean result = uniqueValues.get(idx);
+                 uniqueValues.clear(idx);
+                 return result;
+             }));
+             assertTrue(uniqueValues.isEmpty());
+         }
+         // value to large
+@@ -217,17 +215,17 @@
+         final BloomFilter bf4 = createFilter(Shape.fromKM(getTestShape().getNumberOfHashFunctions(), Long.SIZE - 1),
+                 bigHasher);
+         assertFalse(bf1.contains(bf4));
+         assertTrue(bf4.contains(bf1));
+     }
+ 
+     @Test
+     public void testClear() {
+-        BloomFilter bf1 = createFilter(getTestShape(), from1);
++        final BloomFilter bf1 = createFilter(getTestShape(), from1);
+         assertNotEquals(0, bf1.cardinality());
+         bf1.clear();
+         assertEquals(0, bf1.cardinality());
+     }
+ 
+     /**
+      * Tests that the andCardinality calculations are correct.
+      */
+@@ -264,17 +262,17 @@
+     }
+ 
+     /**
+      * Tests that the size estimate is correctly calculated.
+      */
+     @Test
+     public final void testEstimateN() {
+         // build a filter
+-        BloomFilter filter1 = createFilter(getTestShape(), from1);
++        final BloomFilter filter1 = createFilter(getTestShape(), from1);
+         assertEquals(1, filter1.estimateN());
+ 
+         // the data provided above do not generate an estimate that is equivalent to the
+         // actual.
+         filter1.merge(new IncrementingHasher(4, 1));
+ 
+         assertEquals(1, filter1.estimateN());
+ 
+@@ -323,93 +321,93 @@
+ 
+         final BloomFilter bf1 = createFilter(getTestShape(), from1);
+         final BloomFilter bf2 = createFilter(getTestShape(), from11);
+         final BloomFilter bf3 = bf1.copy();
+         bf3.merge(bf2);
+ 
+         // test with BloomFilter
+ 
+-        long[] bf1Val = bf1.asBitMapArray();
+-        long[] bf2Val = bf2.asBitMapArray();
++        final long[] bf1Val = bf1.asBitMapArray();
++        final long[] bf2Val = bf2.asBitMapArray();
+         for (int i = 0; i < bf1Val.length; i++) {
+             bf1Val[i] |= bf2Val[i];
+         }
+         bf1.merge(bf2);
+ 
+-        long[] bf1New = bf1.asBitMapArray();
++        final long[] bf1New = bf1.asBitMapArray();
+         for (int i = 0; i < bf1Val.length; i++) {
+             assertEquals(bf1Val[i], bf1New[i], "Bad value at " + i);
+         }
+ 
+         assertTrue(bf1.contains(bf2), "Should contain bf2");
+         assertTrue(bf1.contains(bf3), "Should contain bf3");
+ 
+         // test with hasher
+ 
+-        BloomFilter bf4 = createFilter(getTestShape(), from1);
++        final BloomFilter bf4 = createFilter(getTestShape(), from1);
+         bf4.merge(from11);
+ 
+         assertTrue(bf4.contains(bf2), "Should contain Bf2");
+         assertTrue(bf4.contains(bf3), "Should contain Bf3");
+ 
+         // test with hasher returning numbers out of range
+         assertThrows(IllegalArgumentException.class,
+                 () -> bf1.merge(new BadHasher(bf1.getShape().getNumberOfBits())));
+         assertThrows(IllegalArgumentException.class, () -> bf1.merge(new BadHasher(-1)));
+ 
+         // test error when bloom filter returns values out of range
+-        BloomFilter bf5 = new SimpleBloomFilter(
++        final BloomFilter bf5 = new SimpleBloomFilter(
+                 Shape.fromKM(getTestShape().getNumberOfHashFunctions(), 3 * Long.SIZE));
+         bf5.merge(new IncrementingHasher(Long.SIZE * 2, 1));
+         assertThrows(IllegalArgumentException.class, () -> bf1.merge(bf5));
+ 
+-        BloomFilter bf6 = new SparseBloomFilter(
++        final BloomFilter bf6 = new SparseBloomFilter(
+                 Shape.fromKM(getTestShape().getNumberOfHashFunctions(), 3 * Long.SIZE));
+         bf6.merge(new IncrementingHasher(Long.SIZE * 2, 1));
+         assertThrows(IllegalArgumentException.class, () -> bf1.merge(bf6));
+     }
+ 
+-    private void assertIndexProducerMerge(Shape shape, int[] values, int[] expected) {
+-        IndexProducer indices = IndexProducer.fromIndexArray(values);
+-        BloomFilter filter = createFilter(shape, indices);
+-        List<Integer> lst = new ArrayList<>();
++    private void assertIndexProducerMerge(final Shape shape, final int[] values, final int[] expected) {
++        final IndexProducer indices = IndexProducer.fromIndexArray(values);
++        final BloomFilter filter = createFilter(shape, indices);
++        final List<Integer> lst = new ArrayList<>();
+         filter.forEachIndex(x -> {
+             lst.add(x);
+             return true;
+         });
+         assertEquals(expected.length, lst.size());
+-        for (int value : expected) {
++        for (final int value : expected) {
+             assertTrue(lst.contains(Integer.valueOf(value)), "Missing " + value);
+         }
+     }
+ 
+-    private void assertFailedIndexProducerConstructor(Shape shape, int[] values) {
+-        IndexProducer indices = IndexProducer.fromIndexArray(values);
++    private void assertFailedIndexProducerConstructor(final Shape shape, final int[] values) {
++        final IndexProducer indices = IndexProducer.fromIndexArray(values);
+         assertThrows(IllegalArgumentException.class, () -> createFilter(shape, indices));
+     }
+ 
+     @Test
+     public void testIndexProducerMerge() {
+-        Shape shape = Shape.fromKM(5, 10);
++        final Shape shape = Shape.fromKM(5, 10);
+ 
+         assertIndexProducerMerge(shape, new int[] {0, 2, 4, 6, 8}, new int[] {0, 2, 4, 6, 8});
+         // test duplicate values
+         assertIndexProducerMerge(shape, new int[] {0, 2, 4, 2, 8}, new int[] {0, 2, 4, 8});
+         // test negative values
+         assertFailedIndexProducerConstructor(shape, new int[] {0, 2, 4, -2, 8});
+         // test index too large
+         assertFailedIndexProducerConstructor(shape, new int[] {0, 2, 4, 12, 8});
+         // test no indices
+         assertIndexProducerMerge(shape, new int[0], new int[0]);
+     }
+ 
+     @Test
+     public void testBitMapProducerSize() {
+-        int[] idx = new int[1];
++        final int[] idx = new int[1];
+         createFilter(getTestShape(), from1).forEachBitMap(i -> {
+             idx[0]++;
+             return true;
+         });
+         assertEquals(BitMap.numberOfBitMaps(getTestShape().getNumberOfBits()), idx[0]);
+ 
+         idx[0] = 0;
+         createEmptyFilter(getTestShape()).forEachBitMap(i -> {
+@@ -421,23 +419,23 @@
+ 
+     /**
+      * Testing class returns the value as the only value.
+      */
+     class BadHasher implements Hasher {
+ 
+         IndexProducer producer;
+ 
+-        BadHasher(int value) {
++        BadHasher(final int value) {
+             this.producer = IndexProducer.fromIndexArray(new int[] {value});
+         }
+ 
+         @Override
+-        public IndexProducer indices(Shape shape) {
++        public IndexProducer indices(final Shape shape) {
+             return producer;
+         }
+ 
+         @Override
+-        public IndexProducer uniqueIndices(Shape shape) {
++        public IndexProducer uniqueIndices(final Shape shape) {
+             return producer;
+         }
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

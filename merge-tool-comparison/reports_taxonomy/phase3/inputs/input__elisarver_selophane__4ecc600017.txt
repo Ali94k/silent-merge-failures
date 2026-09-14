@@ -1,0 +1,445 @@
+UNIT elisarver_selophane__4ecc600017
+repo: elisarver_selophane   merge: 4ecc6000170804f1ce07031d285aad8efaeb4256   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/test/java/org/selophane/elements/FormTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,14 +1,15 @@
+ package org.selophane.elements;
+ 
+ import org.junit.AfterClass;
+ import org.junit.Assert;
+ import org.junit.Before;
+ import org.junit.BeforeClass;
++import org.junit.Ignore;
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ import org.junit.runners.JUnit4;
+ import org.openqa.selenium.WebDriver;
+ import org.openqa.selenium.WebElement;
+ import org.openqa.selenium.htmlunit.HtmlUnitDriver;
+ import org.selophane.elements.helpers.FormTestObject;
+ 
+@@ -129,14 +130,45 @@
+     public void tableGetBodyCell() {
+     	Assert.assertEquals("$80", testObject.table.getCellAtIndex(2, 1).getText());
+     }
+     
+     @Test
+     public void tableGetFooterCell() {
+     	Assert.assertEquals("Sum", testObject.table.getCellAtIndex(3, 0).getText());
+     }
++    
++    @Test
++    @Ignore("At the momment the implementation is wrong")
++    public void selectDisabledElement() {
++        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
++        final String disabledOptionText = "Disabled option";
++        testObject.option1.selectByVisibleText(disabledOptionText);
++        Assert.assertNotEquals(disabledOptionText, testObject.option1.getFirstSelectedOption().getText());
++        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
++    }
++    
++    @Test
++    @Ignore("At the momment the implementation is wrong")
++    public void selectHiddenElement() {
++        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
++        final String displayNoneText = "Option display none";
++        testObject.option1.selectByVisibleText(displayNoneText);
++        Assert.assertNotEquals(displayNoneText, testObject.option1.getFirstSelectedOption().getText());
++        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
++    }
++    
++    @Test
++    @Ignore("At the momment the implementation is wrong")
++    public void selectHiddenElementSelectByValue() {
++        testObject.option1.selectByIndex(0);
++        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
++        final String displayNoneText = "Option display none";
++        testObject.option1.selectByValue("option5");
++        Assert.assertNotEquals(displayNoneText, testObject.option1.getFirstSelectedOption().getText());
++        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
++    }
+ 
+     @AfterClass
+     public static void afterClass() {
+         driver.close();
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -5,17 +5,19 @@
+ import org.junit.Before;
+ import org.junit.BeforeClass;
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ import org.junit.runners.JUnit4;
+ import org.openqa.selenium.WebDriver;
+ import org.openqa.selenium.WebElement;
+ import org.openqa.selenium.htmlunit.HtmlUnitDriver;
++import org.selophane.elements.base.Element;
+ import org.selophane.elements.helpers.FormTestObject;
++import org.selophane.elements.widget.Label;
+ 
+ /**
+  * Test the form element types.
+  */
+ @RunWith(JUnit4.class)
+ public class FormTest {
+     static WebDriver driver;
+     static FormTestObject testObject;
+--- MERGED RESULT (mergiraf; full) ---
+package org.selophane.elements;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
+import org.selophane.elements.base.Element;
+import org.selophane.elements.helpers.FormTestObject;
+import org.selophane.elements.widget.Label;
+
+/**
+ * Test the form element types.
+ */
+@RunWith(JUnit4.class)
+public class FormTest {
+    static WebDriver driver;
+    static FormTestObject testObject;
+
+    @BeforeClass
+    public static void beforeClass() {
+        driver = new HtmlUnitDriver();
+        testObject = FormTestObject.initialize(driver);
+    }
+    
+    @Before
+    public void beforeTest() {
+    	testObject.get();
+    }
+
+    @Test
+    public void isChecked() {
+        Assert.assertFalse(testObject.checkbox.isChecked());
+    }
+
+    @Test
+    public void check() {
+        testObject.checkbox.check();
+        Assert.assertTrue(testObject.checkbox.isChecked());
+    }
+
+    @Test
+    public void uncheck() {
+        testObject.checkbox.click();
+        testObject.checkbox.uncheck();
+        Assert.assertFalse(testObject.checkbox.isChecked());
+    }
+
+    @Test
+    public void selectWiredProperly() {
+        testObject.selectFragment.getOption1().selectByIndex(0);
+        Assert.assertEquals(1, testObject.selectFragment.getOption1().getAllSelectedOptions().size());
+    }
+
+    @Test
+    public void getLabelsList() {
+        for (Label label : testObject.labels) {
+            Assert.assertNotNull(label.getFor());
+        }
+    }
+
+    @Test
+    public void getElementLabelsList() {
+        for (Element webElementLabel : testObject.elementLabels) {
+            Assert.assertNotNull(webElementLabel.getAttribute("for"));
+        }
+    }
+
+    @Test
+    public void getWebElementLabelsList() {
+        for (WebElement webElementLabel : testObject.webElementLabels) {
+            Assert.assertNotNull(webElementLabel.getAttribute("for"));
+        }
+    }
+
+    @Test
+    public void getWebElement() {
+        Assert.assertTrue(testObject.labelForTextB.isDisplayed());
+    }
+
+    @Test
+    public void formElement() {
+        Assert.assertTrue(testObject.element.elementWired());
+    }
+
+    @Test
+    public void textInputSet() {
+        testObject.texta.set("TestText");
+        Assert.assertEquals("TestText", testObject.texta.getAttribute("value"));
+    }
+
+    @Test
+    public void textInputClear() {
+        testObject.texta.set("TestText");
+        testObject.texta.clear();
+        Assert.assertEquals("", testObject.texta.getAttribute("value"));
+    }
+
+    @Test
+    public void textInputGetValue() {
+        testObject.texta.set("TestText");
+        Assert.assertEquals("TestText", testObject.texta.getText());
+    }
+
+    @Test
+    public void formWebElement() {
+        Assert.assertTrue(testObject.webElement.isDisplayed());
+    }
+    
+    @Test
+    public void tableRowCount() {
+    	Assert.assertEquals(4, testObject.table.getRowCount());
+    }
+    
+    @Test
+    public void tableColumnCount() {
+    	Assert.assertEquals(2, testObject.table.getColumnCount());
+    }
+    
+    @Test
+    public void tableGetHeaderCell() {
+    	Assert.assertEquals("Month", testObject.table.getCellAtIndex(0, 0).getText());
+    }
+    
+    @Test
+    public void tableGetBodyCell() {
+    	Assert.assertEquals("$80", testObject.table.getCellAtIndex(2, 1).getText());
+    }
+    
+    @Test
+    public void tableGetFooterCell() {
+    	Assert.assertEquals("Sum", testObject.table.getCellAtIndex(3, 0).getText());
+    }
+    
+    @Test
+    @Ignore("At the momment the implementation is wrong")
+    public void selectDisabledElement() {
+        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
+        final String disabledOptionText = "Disabled option";
+        testObject.option1.selectByVisibleText(disabledOptionText);
+        Assert.assertNotEquals(disabledOptionText, testObject.option1.getFirstSelectedOption().getText());
+        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
+    }
+    
+    @Test
+    @Ignore("At the momment the implementation is wrong")
+    public void selectHiddenElement() {
+        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
+        final String displayNoneText = "Option display none";
+        testObject.option1.selectByVisibleText(displayNoneText);
+        Assert.assertNotEquals(displayNoneText, testObject.option1.getFirstSelectedOption().getText());
+        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
+    }
+    
+    @Test
+    @Ignore("At the momment the implementation is wrong")
+    public void selectHiddenElementSelectByValue() {
+        testObject.option1.selectByIndex(0);
+        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
+        final String displayNoneText = "Option display none";
+        testObject.option1.selectByValue("option5");
+        Assert.assertNotEquals(displayNoneText, testObject.option1.getFirstSelectedOption().getText());
+        Assert.assertEquals("option1", testObject.option1.getFirstSelectedOption().getText());
+    }
+
+    @AfterClass
+    public static void afterClass() {
+        driver.close();
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/org/selophane/elements/helpers/FormTestObject.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -17,16 +17,18 @@
+ 
+     public TextInput texta;
+ 
+     @FindBy(id = "test1")
+     public Element element;
+ 
+     @FindBy(id = "test1")
+     public WebElement webElement;
++    
++    public Select option1;
+ 
+     @FindBy(id = SelectFragment.ID_LOCATOR)
+     public SelectFragment selectFragment;
+ 
+     @FindBy(id = "checkbox")
+     public CheckBox checkbox;
+     
+     @FindBy(id = "table")
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,12 +1,17 @@
+ package org.selophane.elements.helpers;
+ 
+ import org.selophane.elements.*;
+-import org.selophane.elements.impl.internal.ElementFactory;
++import org.selophane.elements.base.Element;
++import org.selophane.elements.factory.api.ElementFactory;
++import org.selophane.elements.widget.CheckBox;
++import org.selophane.elements.widget.Label;
++import org.selophane.elements.widget.Table;
++import org.selophane.elements.widget.TextInput;
+ import org.openqa.selenium.WebDriver;
+ import org.openqa.selenium.WebElement;
+ import org.openqa.selenium.support.FindBy;
+ 
+ import java.util.List;
+ 
+ /**
+  * declare elements of a form.
+--- MERGED RESULT (mergiraf; full) ---
+package org.selophane.elements.helpers;
+
+import org.selophane.elements.*;
+import org.selophane.elements.base.Element;
+import org.selophane.elements.factory.api.ElementFactory;
+import org.selophane.elements.widget.CheckBox;
+import org.selophane.elements.widget.Label;
+import org.selophane.elements.widget.Table;
+import org.selophane.elements.widget.TextInput;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+
+import java.util.List;
+
+/**
+ * declare elements of a form.
+ */
+public class FormTestObject {
+
+    private WebDriver driver;
+
+    public TextInput texta;
+
+    @FindBy(id = "test1")
+    public Element element;
+
+    @FindBy(id = "test1")
+    public WebElement webElement;
+    
+    public Select option1;
+
+    @FindBy(id = SelectFragment.ID_LOCATOR)
+    public SelectFragment selectFragment;
+
+    @FindBy(id = "checkbox")
+    public CheckBox checkbox;
+    
+    @FindBy(id = "table")
+    public Table table;
+
+    @FindBy(tagName = "label")
+    public List<Label> labels;
+
+    @FindBy(tagName = "label")
+    public List<Element> elementLabels;
+
+    @FindBy(tagName = "label")
+    public List<WebElement> webElementLabels;
+
+    @FindBy(css = "label[for='textb']")
+    public WebElement labelForTextB;
+
+    public FormTestObject(WebDriver driver) {
+        this.driver = driver;
+    }
+
+    /**
+     * Static factory for generating the class.
+     *
+     * @param driver The WebDriver for the session.
+     * @return FormTestObject.
+     */
+    public static FormTestObject initialize(WebDriver driver) {
+        return ElementFactory.initElements(driver, FormTestObject.class);
+    }
+
+    public void get() {
+        PageLoader.get(driver, "forms.html");
+    }
+
+    public void close() {
+        driver.close();
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,22 +1,22 @@
+ package org.selophane.elements.helpers;
+ 
+-import org.selophane.elements.*;
++import java.util.List;
++
++import org.openqa.selenium.WebDriver;
++import org.openqa.selenium.WebElement;
++import org.openqa.selenium.support.FindBy;
+ import org.selophane.elements.base.Element;
+ import org.selophane.elements.factory.api.ElementFactory;
+ import org.selophane.elements.widget.CheckBox;
+ import org.selophane.elements.widget.Label;
++import org.selophane.elements.widget.Select;
+ import org.selophane.elements.widget.Table;
+ import org.selophane.elements.widget.TextInput;
+-import org.openqa.selenium.WebDriver;
+-import org.openqa.selenium.WebElement;
+-import org.openqa.selenium.support.FindBy;
+-
+-import java.util.List;
+ 
+ /**
+  * declare elements of a form.
+  */
+ public class FormTestObject {
+ 
+     private WebDriver driver;
+ 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package org.selophane.elements does not exist
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

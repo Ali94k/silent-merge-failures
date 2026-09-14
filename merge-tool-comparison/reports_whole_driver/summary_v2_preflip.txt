@@ -1,0 +1,69 @@
+# P2 — Whole-Driver End-to-End Cost-Model Evaluation
+# detectors frozen at driver commit 843e5f5; corpus = P1 164 pos / 193 ctl
+# configs scored: bare-git, bare-mergiraf, driver-git, driver-mergiraf, driver-auto
+# cost unit = per file (Schesch); FP x10, FN/TN x1, CRASH/TIMEOUT x1
+# oracle = hybrid (test-label when output==Mergiraf ref; else dev-match)
+
+## Cost-model table — positives (Tests_failed)
+  config              n   TP   FP   TN   FN  CR    cost  cost/n  med_rt
+  bare-git          232    5  126   92    9   0    1361    5.87     0.0
+  bare-mergiraf     232    0  207   25    0   0    2095    9.03     0.0
+  driver-git        232    5  124   94    9   0    1343    5.79    87.8
+  driver-mergiraf   232    0  195   35    1   1    1987    8.56     0.0
+  driver-auto       232    5  163   59    5   0    1694    7.30    96.3
+
+## Cost-model table — controls (Tests_passed)
+  config              n   TP   FP   TN   FN  CR    cost  cost/n  med_rt
+  bare-git          239  213    0   22    4   0      26    0.11     0.0
+  bare-mergiraf     239  236    0    3    0   0       3    0.01     0.0
+  driver-git        239  209    0   26    4   0      30    0.13    92.3
+  driver-mergiraf   239  232    0    7    0   0       7    0.03     0.0
+  driver-auto       239  197   21   18    3   0     231    0.97   101.3
+
+## Cost-model table — POOLED
+  config              n   TP   FP   TN   FN  CR    cost  cost/n  med_rt
+  bare-git          471  218  126  114   13   0    1387    2.94     0.0
+  bare-mergiraf     471  236  207   28    0   0    2098    4.45     0.0
+  driver-git        471  214  124  120   13   0    1373    2.92    90.6
+  driver-mergiraf   471  232  195   42    1   1    1994    4.23     0.0
+  driver-auto       471  202  184   77    8   0    1925    4.09    99.2
+
+## Three-outcome decomposition (per merge, any-file)
+  config            arm merges  accept  textual  semantic  crash
+  bare-git          pos    180      85       95         0      0
+  bare-git          ctl    195     170       25         0      0
+  bare-mergiraf     pos    180     156       24         0      0
+  bare-mergiraf     ctl    195     192        3         0      0
+  driver-git        pos    180      83       83        14      0
+  driver-git        ctl    195     166       24         5      0
+  driver-mergiraf   pos    180     144       24        11      1
+  driver-mergiraf   ctl    195     188        3         4      0
+  driver-auto       pos    180     118       48        14      0
+  driver-auto       ctl    195     175       14         6      0
+
+## Routing distribution — driver-auto (cluster → effective backend, per file)
+  files with a routing line : 471/471
+  cluster      : {'SYMBOL_CASCADE': 76, 'NONE': 229, 'INTRA_BODY': 79, 'MIGRATE_DECL': 47, 'LOCAL_DECL_EDIT': 40}
+  chosen route : {'mergiraf': 116, 'git': 229, 'spork': 79, 'weave': 47}
+  effective    : {'mergiraf': 116, 'git': 229, 'spork': 79, 'weave': 47}  (after crash-fallback)
+  crash-fell-back to git    : 0
+  FP (silent-wrong) by effective backend:
+    git                 61 FP / 229
+    mergiraf            57 FP / 116
+    spork               53 FP /  79
+    weave               13 FP /  47
+
+## Detection delta — what the detection layer adds (per file)
+  bare-mergiraf → driver-mergiraf:
+    silent-wrong (FP x10) converted to visible (x1): 12  (cost saved ≈ 108)
+    correct (TP) wrongly rejected (x0→x1, the R1 cost): 4  (cost added 4)
+    net weighted-cost improvement (bare − driver): 104
+  bare-git → driver-git:
+    silent-wrong (FP x10) converted to visible (x1): 2  (cost saved ≈ 18)
+    correct (TP) wrongly rejected (x0→x1, the R1 cost): 4  (cost added 4)
+    net weighted-cost improvement (bare − driver): 14
+
+## Cross-check — driver-mergiraf reproduces Stage C (Stage-C R-definition)
+  R2 (positives blocked/scored): 12/164 = 0.073 [0.042, 0.124]  [Stage C 12/164: MATCH]
+  R1 (controls blocked/scored) : 4/193 = 0.021 [0.008, 0.052]  [Stage C 4/193: MATCH]
+

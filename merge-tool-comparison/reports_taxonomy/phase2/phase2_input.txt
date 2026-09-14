@@ -1,0 +1,843 @@
+Here is the historical design taxonomy (for the old→new mapping and the four-family
+test — do not let it dictate the empirical clusters):
+
+1. Atomic Updates — Developer A raises the minimum bound to 10. Developer B concurrently lowers the maximum bound to 5. Textual merge succeeds, but the resulting state violates the logical invariant `min <= max`.
+2. Control Flow Interference (Short Circuit) — Developer A adds a guard clause that exits early if `orderId` is null. Developer B adds an audit log intended to run for every attempt. Depending on text placement, the early return might improperly bypass the audit log.
+3. Data Flow Interference (Stale Read) — Developer A clears a list of `pendingTasks` to reset state. Developer B concurrently introduces a loop that processes the items in `pendingTasks`. The merge results in an iteration over an empty list.
+4. Exception Handling Divergence — Developer A narrows a catch block from `Exception` to specifically `IOException`. Developer B adds a method call within the try block that throws a `SQLException`. The merged code either fails to compile or results in an unhandled exception.
+5. Loop Semantics Divergence — Developer A changes a `while` loop bound from 10 to 100. Developer B introduces a `continue` statement inside the loop that skips the manual `i++` counter increment. The text merges cleanly, but creates an infinite loop.
+6. Method Rename — Developer A renames `createUser` to `registerUser` and updates existing call sites. Developer B adds a new method `createAdmin` that calls the old `createUser` method. The merged code suffers from a dangling reference.
+7. Scope Capture (Variable Shadowing) — Developer A introduces a local variable `rate` with a value of 0.20. Developer B introduces validation logic checking if `rate > 0.10`, assuming it is referring to the global class field `rate = 0.05`. The merge results in Developer B's logic inadvertently evaluating Developer A's local variable, throwing an erroneous exception.
+
+Here are all 165 derivation-split Phase-1 outputs. Cluster the attributed rows;
+treat the escape-hatch rows as the not-cleanly-attributable stratum:
+
+Total derivation units: 165 (attributed 60; escape-hatch 105).
+Verdict distribution: attributed=60, flaky-suspect=3, indeterminate=56, none-identified=46.
+
+### apache_cayenne__f10ba77a97  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: DIGraph.add(V,V) vs DIGraph.addWithOverride(V,V) — two divergent implementations of the same 'override edge' feature
+tags: (none)
+mechanism: (none — escape hatch)
+
+### apache_commons-collections__84e70353ad  [stratum B | verdict attributed | confidence high]
+interaction_point: CollectionUtilsTest.java static import of Assertions.fail vs. ours' new testPartitionByChunkSize body calling fail(...)
+tags: added-usage-of-removed-import, stale-import-deletion, compile-break-from-import-removal
+mechanism: Ours adds a new test method that calls fail(...); theirs deletes the fail static import because it removed every other fail usage. The clean merge keeps ours' new fail() calls but adopts theirs' deletion of the fail import, leaving fail() as an unresolved symbol and breaking compilation of the test sources.
+
+### apache_commons-collections__f0c2e97529  [stratum B | verdict none-identified | confidence medium]
+interaction_point: AbstractBloomFilterTest.java testEstimateIntersection/testEstimateN and BloomFilter.estimateIntersection/estimateN
+tags: (none)
+mechanism: (none — escape hatch)
+
+### apache_commons-lang__53184369d0  [stratum A | verdict none-identified | confidence high]
+interaction_point: ReflectionToStringBuilder.accept(Field) and surrounding javadoc/import regions
+tags: (none)
+mechanism: (none — escape hatch)
+
+### apache_directory-kerby__798f1b4348  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: KrbFlags.toValue() — super.toValue() call removed on theirs side; and third excluded file AbstractInternalKrbClient.java (textual conflict, not shown)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### apache_olingo-odata4__820b462f49  [stratum A | verdict none-identified | confidence high]
+interaction_point: JsonSerializer.valuable() type-defaulting block and the surrounding metadata-full guards
+tags: (none)
+mechanism: (none — escape hatch)
+
+### apache_olingo-odata4__cf731c2cb8  [stratum A | verdict none-identified | confidence medium]
+interaction_point: lib/client-core/src/test/java/org/apache/olingo/client/core/JSONTest.java (import block ordering and placement of testOLINGO1114 relative to theirs-added tests)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### apache_opennlp__8240a2c660  [stratum B | verdict none-identified | confidence medium]
+interaction_point: OnePassRealValueDataIndexer.index(...) event-iteration loop (the one region both sides edited)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### ardesco_selenium-standalone-server-plugin__957d978135  [stratum B | verdict attributed | confidence high]
+interaction_point: BinaryType FIREFOX constant / ArrayList import, and FileExtractor untarFolder/unzipFolder parameter types vs List<String> returned by getBinaryFilenames()
+tags: type-widening-vs-concrete-use, removed-import-still-referenced, incompatible-parameter-type, semantic-conflict-clean-merge
+mechanism: Theirs migrated the collection type from ArrayList to List and deleted the `import java.util.ArrayList` line, while ours added new code (the FIREFOX enum entry and the untarFolder/unzipFolder helpers) that literally depends on `ArrayList`. The clean union leaves BinaryType referencing an unimported `ArrayList` and FileExtractor passing the now-`List<String>` result of getBinaryFilenames() into ArrayList-typed parameters, so the merged sources fail to compile and the test suite cannot build.
+
+### atam4j_atam4j__71fcecb071  [stratum A | verdict attributed | confidence medium]
+interaction_point: PassingTestAcceptanceTest.java: theirs-added critical test references PassingTest.class while ours removed the PassingTest import
+tags: import-removed-usage-added, stale-import, merge-combined-additions
+mechanism: Ours deleted `import me.atam.atam4j.dummytests.PassingTest;` because it removed every reference to PassingTest, while theirs added a brand-new test method that still references `PassingTest.class`. Mergiraf kept both edits, producing a merged file that uses PassingTest with no import in scope, an unresolved-symbol compile failure that breaks the whole acceptance-test module.
+
+### awslabs_amazon-kinesis-client__a207c3760c  [stratum B | verdict indeterminate | confidence low]
+interaction_point: KCLAppConfig.java import block / TestRecordProcessorFactory reference
+tags: (none)
+mechanism: (none — escape hatch)
+
+### azuread_azure-activedirectory-library-for-java__c2385c17f0  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: HttpHelper.executeHttpGet/executeHttpPost signatures (new piiLog parameter) and their callers
+tags: (none)
+mechanism: (none — escape hatch)
+
+### bguerout_jongo__3aaaf0e4c7  [stratum A | verdict attributed | confidence medium]
+interaction_point: Jongo.java — new requestStart()/requestDone() methods calling database.requestStart()/requestDone() against a DB from an upgraded driver.
+tags: stale-call-against-upgraded-dependency, added-method-uses-removed-api, driver-migration-conflict
+mechanism: OURS added Jongo.requestStart()/requestDone() delegating to com.mongodb.DB.requestStart()/requestDone(). THEIRS migrated the codebase toward the newer MongoDB driver (com.mongodb.client.MongoDatabase / JongoNative), where the legacy DB.requestStart()/requestDone() methods were removed. Merging both keeps the OURS calls against the THEIRS driver, so the calls no longer resolve/compile and the build/tests fail — which is exactly why the developer deleted those two methods.
+
+### blockchain_api-v1-client-java__abdf54e6ab  [stratum A | verdict flaky-suspect | confidence low]
+interaction_point: openURL(...) GET branch URL construction in HttpClient.java
+tags: (none)
+mechanism: (none — escape hatch)
+
+### blockchain_api-v1-client-java__e349598f95  [stratum A | verdict attributed | confidence medium]
+interaction_point: HttpClient.openURL(...) GET branch URL construction
+tags: variable-capture-inconsistency, parameter-refactor-vs-branch-guard, semantic-interleaving
+mechanism: Ours introduced an isEmpty-guarded GET branch that hardcodes BASE_URL; theirs parameterized openURL to use a caller-supplied baseURL. Mergiraf combined both, producing a branch where empty-params GET requests use BASE_URL (ours) while non-empty use baseURL (theirs), so the new custom-baseURL overload is silently ignored whenever params are empty.
+
+### buddycloud_buddycloud-server-java__43c8b054e9  [stratum A | verdict none-identified | confidence medium]
+interaction_point: NodeDelete.java class-body field declarations (LOGGER field vs subscriptions field) and the merged test file
+tags: (none)
+mechanism: (none — escape hatch)
+
+### buddycloud_buddycloud-server-java__48e4675ee2  [stratum A | verdict attributed | confidence high]
+interaction_point: RepliesGetTest: theirs' new test rsmStillAddedWhenThereAreNoResults stubs getNodeItemReplies with the 4-arg signature that ours replaced with a 5-arg signature
+tags: stale-caller-of-changed-signature, concurrent-api-arity-change, new-test-against-removed-overload
+mechanism: Ours changed the getNodeItemReplies API from 4 to 5 arguments (adding the boolean `after` cursor) and updated every test stub accordingly. Theirs independently added a new test that stubs getNodeItemReplies with the old 4-argument signature. Merging both keeps theirs' new test verbatim, so it references a method arity that no longer exists, breaking the build/test.
+
+### camsys_onebusaway-application-modules__915e2f3ffe  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: getArrivalsAndDeparturesForStopIds nearby-stops loop / getNearbyStops call
+tags: (none)
+mechanism: (none — escape hatch)
+
+### camsys_onebusaway-application-modules__e779e9fce1  [stratum A | verdict none-identified | confidence high]
+interaction_point: ArrivalsAndDeparturesQueryBean field/method region around setRouteType
+tags: (none)
+mechanism: (none — escape hatch)
+
+### cloudfoundry_cf-java-client__80d0a0dff9  [stratum A | verdict attributed | confidence medium]
+interaction_point: DefaultServiceAdmin.update(UpdateServiceBrokerRequest) in the tool-merged file
+tags: api-migration-not-propagated-to-new-code, deprecated-api-in-added-method, reactor-when-then-vs-zip-flatMap
+mechanism: Ours performed a sweeping reactor 3.0->3.1 API migration (Mono.when/then -> Mono.zip/flatMap), while theirs concurrently introduced a new update() method written against the pre-migration API. The clean textual merge kept theirs' new method verbatim, so the merged file contains `.then(... -> Mono.when(...))` / `.then(function(...))` calls that are invalid under the migrated reactor version (Mono.when now returns Mono<Void> not a Tuple, and Mono.then(Function) was removed in favour of flatMap), breaking the build/tests.
+
+### cloudfoundry_cf-java-client__a69078adc8  [stratum A | verdict none-identified | confidence high]
+interaction_point: _DefaultCloudFoundryOperations (both sides add methods) and IntegrationTestConfiguration cloudFoundryOperations bean
+tags: (none)
+mechanism: (none — escape hatch)
+
+### cloudfoundry_cf-java-client__a9d35d542d  [stratum A | verdict attributed | confidence medium]
+interaction_point: DefaultRoutes.getServiceName — the newly added .then(serviceInstanceId -> getServiceInstanceName(...)) call
+tags: incomplete-api-migration, stale-api-usage-in-added-code, reactor-then-to-flatmap
+mechanism: Ours performed a wholesale Reactor migration converting .then(Function) usages to .flatMap(Function) (and .when to .zip). Theirs, branched from base, added new methods that still use the old .then(Function) overload. The clean merge kept theirs' new getServiceName body using .then(serviceInstanceId -> ...), which is invalid under the migrated Reactor API ours adopted, breaking compilation of the module (and hence the whole suite).
+
+### cloudfoundry_cf-java-client__b0add1ef2a  [stratum A | verdict attributed | confidence medium]
+interaction_point: DefaultServices.updateInstance(...) — the final reactive chain step added by theirs
+tags: incomplete-api-migration-across-merge, deprecated-idiom-in-added-code, stale-combinator-in-new-code
+mechanism: Ours migrated the whole file from the deprecated Reactor idioms (`Mono.when`/`.then(function(...))`) to the newer ones (`Mono.zip`/`.flatMap(...)`), implying the surrounding project moved to a Reactor version where the old idioms behave differently or are gone. Theirs independently added a new updateInstance code path still written in the OLD idiom. Mergiraf combined both cleanly, leaving theirs' newly-added `Mono.when(...)` + `.then(function(DefaultServices::waitForInstanceAction))` embedded in an otherwise-migrated file, so the added code uses combinators inconsistent with the migrated codebase/dependency.
+
+### cloudfoundry_cf-java-client__be097d5860  [stratum A | verdict none-identified | confidence high]
+interaction_point: _DefaultConnectionContext.getHttpClient / DefaultSslCertificateTruster.getTcpClient option-lambda and constructor signature
+tags: (none)
+mechanism: (none — escape hatch)
+
+### cloudfoundry_cf-java-client__eb3b2f5beb  [stratum A | verdict none-identified | confidence high]
+interaction_point: _DefaultCloudFoundryOperations.java (disjoint regions: userAdmin() method vs getCacheDuration/getOrganizationId/getSpaceId)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### cloudslang_score__657635dc0a  [stratum B | verdict none-identified | confidence medium]
+interaction_point: WorkerNodeService interface and WorkerNodeServiceImpl — both sides append disjoint new methods; mergiraf interleaved them cleanly.
+tags: (none)
+mechanism: (none — escape hatch)
+
+### cloudslang_score__ace2958fc1  [stratum B | verdict attributed | confidence high]
+interaction_point: ExternalPythonRuntimeServiceImpl.exec/eval else-branch (post-acquire) references to the engine field vs the renamed field declaration
+tags: field-rename-vs-new-usage, stale-reference-to-renamed-field, partial-rename-on-merge
+mechanism: Ours renamed the engine field to externalPythonExecutionEngine and updated the base-existing references; theirs added a new else branch that calls externalPythonExecutionNotCachedEngine.exec/eval. The merge adopted ours' renamed field declaration and updated the tryAcquire branch, but theirs' newly-added else-branch references to the old name were integrated verbatim, leaving a dangling reference to a field that no longer exists (unresolved symbol / compile failure).
+
+### cloudslang_score__ded24a7b98  [stratum B | verdict none-identified | confidence high]
+interaction_point: WorkerNodeService interface and WorkerNodeServiceImpl — both sides append distinct new methods; no shared method touched
+tags: (none)
+mechanism: (none — escape hatch)
+
+### comatoes_ftl-profile-editor__e87fe65818  [stratum A | verdict attributed | confidence high]
+interaction_point: readShip(...) method body — the `gameState` symbol referenced there is out of scope (only `shipState`/`in` exist)
+tags: code-block-moved-into-new-method, receiver-variable-out-of-scope, insertion-into-relocated-region, stale-reference-after-extraction
+mechanism: OURS extracted the tail of the parsing loop (augment/etc.) into a new readShip method whose only receiver is the local `shipState`, while THEIRS appended new statements (cargo, sector seed, beacons) that reference the local `gameState`. Mergiraf spliced THEIRS's new statements into the moved location inside readShip, where `gameState` is undefined, producing an unresolved-symbol compile error that breaks the whole build and hence the test suite.
+
+### cternes_openkeepass__bb53512ab2  [stratum A | verdict attributed | confidence medium]
+interaction_point: Import block of KeepassDatabaseReaderTest.java — the `Group` symbol
+tags: import-deleted-by-one-side-used-by-other, stale-import-after-merge, unresolved-symbol-from-merged-additions
+mechanism: Theirs deleted the `import ...domain.Group;` from the test file (its own tests no longer needed Group), while ours added a new test that references `Group` (List<Group> and getGroupByName). The clean merge combined theirs' import deletion with ours' Group-using test, leaving the merged test file using `Group` with no import for it, causing a compilation failure that fails the whole suite. The developer avoided it by deleting the icons test (and its CustomIcons import) entirely.
+
+### danielnorberg_auto-matter__3d46ebaf5a  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: AutoMatterProcessor.ensureSafeVarargs / collectionVarargSetter — the generated @SafeVarargs and @SuppressWarnings("varargs") annotations emitted for collection vararg setters, which the excluded expected-builder resource fixtures are compared against.
+tags: (none)
+mechanism: (none — escape hatch)
+
+### datastax_java-driver__e1535e89ad  [stratum A | verdict attributed | confidence medium]
+interaction_point: borrowConnection(...) — the theirs-added `if (isShutdown.get())` guard referencing the field that ours removed
+tags: stale-reference-to-removed-field, field-replaced-with-method, semantic-merge-incompatibility
+mechanism: Ours deleted the `isShutdown` AtomicBoolean field (converting it into a method `isShutdown()`), while theirs added brand-new code that reads that field via `isShutdown.get()`. The clean merge keeps both, so the merged file references a field that no longer exists — an unresolvable symbol that breaks compilation of the module and thus the whole test suite.
+
+### deemopen_zkui__2843e7c28f  [stratum A | verdict none-identified | confidence high]
+interaction_point: src/main/java/com/deem/zkui/vo/LeafBean.java imports + fields region
+tags: (none)
+mechanism: (none — escape hatch)
+
+### dius_java-faker__4c61966b1c  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: Faker.java class fields, constructor body, and accessor methods
+tags: (none)
+mechanism: (none — escape hatch)
+
+### dius_java-faker__9f0019116a  [stratum B | verdict attributed | confidence high]
+interaction_point: src/test/java/com/github/javafaker/AddressTest.java — testCountyByZipCode() call site vs. the import set
+tags: import-narrowing-breaks-added-callsite, hamcrest-api-migration-vs-new-caller, stale-symbol-reference
+mechanism: Ours narrowed AddressTest's hamcrest imports, dropping the wildcard `Matchers.*` and no longer importing `isEmptyOrNullString`. Theirs added testCountyByZipCode() that calls `not(isEmptyOrNullString())`, which compiled under base only because of the wildcard import. The clean merge kept ours' restricted imports and theirs' new test, so the merged test references `isEmptyOrNullString` with no matching import — an unresolved-symbol compile failure that fails the build.
+
+### dtrules_dtrules__505c5cbf82  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: Trace.java class body (root field init, load()/root() accessor, imports)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### edwardcapriolo_nibiru__bb6150cffd  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: Coordinator.handle() system-message routing guard: `if (SYSTEM_KEYSPACE.equals(message.getKeyspace()) || message instanceof MetaDataMessage)`
+tags: (none)
+mechanism: (none — escape hatch)
+
+### elisarver_selophane__4ecc600017  [stratum A | verdict attributed | confidence high]
+interaction_point: FormTestObject.java import block vs. the `public Select option1;` field declaration (type resolution of `Select`).
+tags: symbol-relocated-by-package-refactor, missing-import-after-merge, new-reference-to-moved-type
+mechanism: Ours added a `Select option1` field that resolved via the base-era wildcard `org.selophane.elements.*`. Theirs relocated widget classes into `org.selophane.elements.widget`, so `Select` no longer lives in the wildcard-covered package. The clean merge keeps ours's field but never adds `import org.selophane.elements.widget.Select;`, leaving `Select` unresolvable and the test sources uncompilable.
+
+### feroult_yawp__141f79a8e9  [stratum A | verdict attributed | confidence high]
+interaction_point: Import block of IdRef.java vs. the new theirs-added varargs create(...) method body that references List and ArrayList.
+tags: unused-import-removal-vs-new-usage, import-removed-symbol-reintroduced, clean-merge-compile-break
+mechanism: Ours deletes the java.util.List and java.util.ArrayList imports as dead-import cleanup, while theirs simultaneously adds a new method that uses both List and ArrayList. The clean merge keeps ours' import deletion AND theirs' usage, so the merged file references List/ArrayList with no import in scope — an unresolved-symbol compile error that breaks the build/test suite.
+
+### flaxsearch_luwak__9f54b4463e  [stratum B | verdict attributed | confidence medium]
+interaction_point: FieldFilterPresearcherComponentTestBase inner classes TestTermFiltered/TestMultipass and their @Override createPresearcher() methods
+tags: delete-modify-conflict, stale-override-of-refactored-supertype, kept-deleted-code
+mechanism: This is a delete/modify conflict on the two inner test subclasses: ours edited them, theirs removed them. Mergiraf kept ours' edited version, so the merged file retains TestTermFiltered/TestMultipass whose @Override createPresearcher() no longer matches the supertype contract that theirs' refactor removed, yielding an override/compile error that breaks the whole test compilation and thus the suite.
+
+### garbagemule_mobarena__b34dc0d5ac  [stratum A | verdict none-identified | confidence high]
+interaction_point: MASpawnThread.spawnWave(...) — health-setting block and the BOSS case of the wave-type switch
+tags: (none)
+mechanism: (none — escape hatch)
+
+### gitools_gitools__02221bf3d8  [stratum B | verdict attributed | confidence high]
+interaction_point: HeatmapKeyboardController.java import of IMatrixViewDimension
+tags: stale-import-after-package-rename, import-namespace-conflict
+mechanism: OURS moved the matrix model classes into the org.gitools.core.matrix.model package; THEIRS, written against the base layout, introduced a new import 'org.gitools.matrix.model.IMatrixViewDimension' referencing the pre-rename package. The clean merge keeps THEIRS's stale import verbatim, so after OURS's rename that package no longer exists and the file fails to resolve.
+
+### glowroot_glowroot__5edc6961f8  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: SchemaUpgrade/AggregateDaoImpl constructor signatures and BasicSmokeIT test class (both sides edit disjoint regions of the same files)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### greese_dasein-cloud-core__6c37152e5f  [stratum A | verdict none-identified | confidence high]
+interaction_point: LoadBalancerHealthCheck constructor / field declarations (formatting only)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### gwtbootstrap3_gwtbootstrap3__5c0d1eab79  [stratum A | verdict attributed | confidence medium]
+interaction_point: fireSubmitEvent() referencing the (removed) inner class AbstractForm.SubmitEvent
+tags: stale-reference-to-removed-class, class-deleted-one-side-used-other, api-migration-half-applied
+mechanism: Ours removed the inner `SubmitEvent` class while theirs rewrote `fireSubmitEvent()` to instantiate that same local class (`new SubmitEvent()`). Merged, the file instantiates a type that no longer exists and is not imported, producing an unresolved-symbol/compile break.
+
+### haraldwalker_user-agent-utils__eaaaa1488b  [stratum A | verdict none-identified | confidence medium]
+interaction_point: Browser and OperatingSystem enum ordered lists (new browser/OS entries plus Xbox exclusion tokens added by both sides in adjacent regions)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### imixs_imixs-workflow__23b86de5b4  [stratum A | verdict attributed | confidence high]
+interaction_point: LuceneUpdateService.java import block / @AccessTimeout annotation
+tags: namespace-migration-vs-new-javax-import, stale-import-after-package-rename, incompatible-ee-namespace-mix
+mechanism: Ours performed a wholesale javax→jakarta namespace migration while theirs introduced a brand-new dependency on javax.ejb.AccessTimeout (import + annotation) written against the old base namespace. The clean merge combined both, leaving a stale `import javax.ejb.AccessTimeout;` and `@AccessTimeout` in a codebase whose EE APIs are now jakarta-only, so the javax.ejb package no longer resolves and the module fails to compile.
+
+### imixs_imixs-workflow__d370e1aa34  [stratum B | verdict none-identified | confidence medium]
+interaction_point: SetupService.checkIndex() and WorkflowService import/evalWorkflowResult regions; both merged results are byte-identical to the developer's shipped resolution
+tags: (none)
+mechanism: (none — escape hatch)
+
+### iryndin_jdbf__9853124d73  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: DbfMetadataUtils.fromFieldsString (signature changed by theirs; body region near new fromFields added by ours)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### j256_ormlite-core__2c159335d4  [stratum A | verdict none-identified | confidence high]
+interaction_point: MappedCreate.insert / KeyHolder inner class and build() method
+tags: (none)
+mechanism: (none — escape hatch)
+
+### j256_ormlite-core__606986f118  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: FieldType.assignDataType() / makeConfigObject call and the broadly re-signatured public API of FieldType
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jacquesberger_jsonparsingexample__ac521954c2  [stratum A | verdict attributed | confidence high]
+interaction_point: saveToFiles / initializeBookList local variable naming in JSON.java
+tags: variable-rename-vs-extract-method, inconsistent-identifier-merge, undefined-local-variable
+mechanism: Ours extracted a helper but kept the name outputList; theirs renamed the same variable to bookTitleList in place. Mergiraf combined both edits line-by-line, producing methods that declare one name but reference the other: saveToFiles declares outputList yet calls saveAsRawJsonFile(bookTitleList), and initializeBookList declares bookTitleList yet does return outputList. Both are references to undefined local variables, so the merged code cannot compile.
+
+### jadler-mocking_jadler__294a06c3fc  [stratum A | verdict none-identified | confidence high]
+interaction_point: JadlerMocker constructor near `this.defaultStatus = 200;` / class body (imports and field additions)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jakewharton_disklrucache__7f28919d2a  [stratum B | verdict attributed | confidence high]
+interaction_point: DiskLruCache.validateKey (LEGAL_KEY_PATTERN) invoked by edit()/get() for the uppercase key "A" used in the ours-side testAggressiveClearing* tests
+tags: stricter-validation-vs-new-caller, incompatible-key-convention, added-test-uses-newly-illegal-input
+mechanism: Theirs made key validation reject any key not matching [a-z0-9_]{1,64}, and diligently lowercased all keys in existing tests. Ours independently added three new tests that call set("A",...) / cache.get("A") with an uppercase key. After merge these new tests invoke validateKey("A"), which now throws IllegalArgumentException because 'A' is not in [a-z0-9_], failing tests that neither parent would fail.
+
+### javaparser_javaparser__41a398414f  [stratum A | verdict attributed | confidence medium]
+interaction_point: JavaParserFacade.toMethodUsage — `typeOfScope.asReferenceType().getTypeDeclaration().getAllMethods()`
+tags: stale-caller-of-changed-signature, optional-return-migration, cross-file-api-mismatch
+mechanism: Ours adds a brand-new caller that invokes ResolvedReferenceType.getTypeDeclaration() and immediately calls getAllMethods() on the result, assuming the old direct-return signature. Theirs migrates getTypeDeclaration() to return an Optional. In the merged code the new caller now calls getAllMethods() on an Optional, which is a type mismatch that neither parent contained.
+
+### javaparser_javaparser__6a08db8f51  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: The shared Resolved*Declaration interface hierarchy and the symbol-solver 'model' imports: both sides add new abstract-ish members (toAst/getWrappedDeclaration vs object()) and both rewrite the import blocks of the same concrete declaration classes.
+tags: (none)
+mechanism: (none — escape hatch)
+
+### javaparser_javaparser__dc6254f1bf  [stratum A | verdict attributed | confidence high]
+interaction_point: JavaParserSymbolDeclaration class declaration + the isVariable() method body (getWrappedNode reference and @Override)
+tags: orphaned-override, stale-caller-of-removed-method, incompatible-refactor-vs-addition
+mechanism: Ours removed the `implements ResolvedValueDeclaration` clause and deleted the getWrappedNode() instance method, turning the class into a stateless final utility. Theirs added an `@Override public boolean isVariable()` that both relies on `getWrappedNode()` and marks itself as overriding an interface method. Mergiraf combined both, producing a final class with no interface and no getWrappedNode(), yet containing isVariable() — which fails to compile (@Override on a non-overriding method and a call to a now-nonexistent method).
+
+### javaparser_javaparser__ff91564b7f  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: ModuleDeclarationTest.java (distinct methods: ours edits jlsExample*/fluentInterface + imports; theirs edits testPrettyPrinting expected string)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jboss-msc_jboss-msc__1d9b8d45ff  [stratum A | verdict none-identified | confidence high]
+interaction_point: Import block ordering at top of BatchInjectionBuilderImpl.java
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jboss-msc_jboss-msc__a4e21a3b10  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: doResolve() in ServiceContainerImpl — the 'We are resolved. Lets install' region where ours deletes the ServiceUnregisterListener call/class while theirs continues to reference it and adds optional-dependency injection logic.
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jboss-remoting_jboss-remoting__66a0631d13  [stratum A | verdict none-identified | confidence high]
+interaction_point: parseConnectionElement / parseConnectionsElement in RemotingXmlParser.java (different, non-overlapping methods)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jcabi_jcabi-github__b13d2596ba  [stratum A | verdict attributed | confidence high]
+interaction_point: RtMilestonesITCase private static Milestones milestones() helper and its callers in iteratesIssues()/createsNewMilestone()
+tags: deleted-method-with-new-callers, stale-caller-of-removed-helper, refactor-vs-feature-collision
+mechanism: OURS deleted the private static `milestones()` helper method, while THEIRS added new test-method bodies (iteratesIssues, createsNewMilestone) that call `milestones()`. The clean merge keeps THEIRS's callers but removes the method OURS deleted, leaving dangling references to a non-existent `milestones()` method — an unresolvable symbol that breaks compilation of the test class.
+
+### jcabi_jcabi-github__e18a8ffd16  [stratum A | verdict attributed | confidence high]
+interaction_point: RtHooksITCase.canFetchAllHooks() call to the static helper repo() vs. the helper method set
+tags: stale-caller-of-removed-method, method-signature-change, new-caller-meets-deleted-callee
+mechanism: Theirs added a new caller of the no-arg helper repo() inside the newly-implemented canFetchAllHooks(), while ours deleted that no-arg repo() method and replaced it with repo(Repos)/repos(). The clean merge keeps theirs' `repo().hooks()` call but drops the method it needs, leaving an unresolved reference to a no-arg repo() that no longer exists.
+
+### jdeparser_jdeparser2__868afefbb4  [stratum B | verdict indeterminate | confidence low]
+interaction_point: ImplJSourceFile.hasStaticImport(final String name)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jdupl_lancoder__407742ea19  [stratum A | verdict attributed | confidence high]
+interaction_point: ApiServer.run(): declaration/placement of the local variable `ctxApi`
+tags: moved-declaration-dropped, both-sides-edited-same-block, dangling-reference-after-merge
+mechanism: Both sides edited the same overlapping block that declared and positioned the local `ctxApi`. Theirs deleted the declaration from its original top location (intending to reinsert it below), while ours edited the surrounding lines (removing dead comments/blank lines) at the same spot. Mergiraf combined theirs' deletion with ours' edits and dropped the reinserted declaration, so the merged run() uses `ctxApi` in `contexts.setHandlers(new Handler[] { ctxStatic, ctxApi })` without ever declaring it — an unresolved symbol that breaks compilation and hence the whole test suite.
+
+### jenkinsci_build-timeout-plugin__daeab4a1ee  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: src/test/java/hudson/plugins/build_timeout/BuildTimeoutWrapperIntegrationTest.java — test bodies where ours added BuildTimeOutAction assertions inside methods theirs renamed/re-annotated for JenkinsRule
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jenkinsci_coverity-plugin__62bdb6232e  [stratum A | verdict attributed | confidence medium]
+interaction_point: DefectReaderTest.getLatestDefectsForBuild_withOverOneThousandMatchingDefects — the `Coverity details:` URL assertion vs CoverityBuildAction.getUrlName()
+tags: stale-test-expectation, behavior-change-vs-new-test, semantic-conflict-clean-merge
+mechanism: Ours changed CoverityBuildAction so its URL name becomes `coverity_defects` (evidenced by ours rewriting both existing tests' URL assertions). Theirs independently added a new test asserting the OLD URL `coverity_cim-instance_test-project_test-stream`. The merge keeps ours' behavioral change together with theirs' new test, so that new test's `verifyMessages` assertion fails against the now-different URL.
+
+### jenkinsci_credentials-plugin__e9cf377a17  [stratum B | verdict indeterminate | confidence low]
+interaction_point: src/test/java/com/cloudbees/plugins/credentials/casc/CredentialsCategoryTest.java (and referenced but not-shown ConfigurationAsCodeCategoryRoot class + credentials-category-export.yaml resource)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jenkinsci_docker-build-publish-plugin__59faa9673c  [stratum A | verdict none-identified | confidence high]
+interaction_point: DockerBuilder.Perform.dockerPushCommand() / executeCmd signature
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jenkinsci_email-ext-plugin__4def0e56a8  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: EmailRecipientUtilsTest.java — two independent test-method additions plus an import reorder, all cleanly combined
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jenkinsci_jira-plugin__0eec353cb5  [stratum A | verdict none-identified | confidence high]
+interaction_point: JiraSite.java — ours touches get(Job), theirs touches getIssue's inner Callable; the two regions do not overlap.
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jiaqi_jmxterm__c6a0ae5c6c  [stratum B | verdict none-identified | confidence medium]
+interaction_point: InfoCommand.displayOperations and its test testExecuteWithShowingOperations in InfoCommandTest.java
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jline_jline2__348cb9dada  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: ConsoleReaderTestSupport.getKeyForAction switch (both sides add a `case KILL_WORD:`) and the ConsoleReader dispatch switch (both sides add new Operation cases)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jline_jline2__5acfe59453  [stratum B | verdict attributed | confidence high]
+interaction_point: ConsoleReader.insertClose() referencing the field renamed by ours (nonBlockingInput -> in)
+tags: stale-reference-to-renamed-field, field-rename-vs-added-caller, clean-merge-compile-break
+mechanism: Ours renamed the field `nonBlockingInput` to `in` throughout ConsoleReader, while theirs introduced a brand-new method insertClose() that calls `nonBlockingInput.isNonBlockingEnabled()` / `nonBlockingInput.peek(...)`. The clean merge keeps theirs' new method verbatim but the field it names no longer exists, so the merged file references an undefined symbol and fails to compile, breaking the whole test build.
+
+### jmetal_jmetal__162d1a63b7  [stratum A | verdict attributed | confidence medium]
+interaction_point: SolutionListUtils.selectNRandomDifferentSolutions (two-arg method delegating to three-arg overload) — generic type-bound compatibility
+tags: type-bound-relaxation-vs-bounded-overload, generic-bound-violation, delegation-signature-mismatch
+mechanism: Theirs relaxed the two-arg selectNRandomDifferentSolutions to unbounded <S>, while ours added a body that delegates to a new overload declared <S extends Solution<?>>. In the merge, the unbounded-<S> method delegates to the bounded overload, so the inferred type argument S violates the upper bound Solution<?>, producing a generics type-bound compile error that breaks the module (and hence the test build).
+
+### jmetal_jmetal__b4630972a8  [stratum A | verdict none-identified | confidence medium]
+interaction_point: Parameter.java import block and specificParameters field
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jmrozanec_cron-utils__a77c0476c3  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: src/main/java/com/cronutils/model/time/generator/OnDayOfMonthValueGenerator.java (generateValue vs class-hierarchy refactor) and ExecutionTime/CronDefinitionBuilder DAY_OF_YEAR wiring
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jnr_jnr-unixsocket__467698b6bd  [stratum A | verdict attributed | confidence high]
+interaction_point: Native.java import block vs. theirs' new getsockopt(...,Struct data) method referencing Struct and Pointer
+tags: import-narrowing-breaks-new-usage, wildcard-import-removal, unresolved-symbol-after-merge
+mechanism: Ours narrowed `import jnr.ffi.*;` to a handful of explicit imports (none of which is Struct or Pointer). Theirs added a getsockopt overload whose body uses `Struct` and `Pointer`, which only resolved under the original wildcard import. The clean merge kept ours' narrowed imports and theirs' new method, so `Struct`/`Pointer` become unresolved symbols and Native.java fails to compile, failing the whole suite.
+
+### joel-costigliola_assertj-core__74baae279d  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: AbstractMapAssert class declaration (superclass change to AbstractObjectAssert) plus the excluded, conflicted AbstractObjectAssert.java
+tags: (none)
+mechanism: (none — escape hatch)
+
+### joel-costigliola_assertj-core__a3011e7f9e  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: src/test/java/org/assertj/core/api/BDDSoftAssertionsTest.java (import block ordering) and the shared soft-assertion API classes that back the new then(...) overloads
+tags: (none)
+mechanism: (none — escape hatch)
+
+### joel-costigliola_assertj-core__df351133a9  [stratum B | verdict attributed | confidence medium]
+interaction_point: Static import and call sites of TestFailures.failBecauseExpectedAssertionErrorWasNotThrown in the intersecting test files (e.g. ObjectArrayAssert_usingRecursiveFieldByFieldElementComparator_Test.java)
+tags: stale-import-removal, import-deletion-vs-retained-usage, unresolved-reference-after-merge
+mechanism: OURS deleted the static import of failBecauseExpectedAssertionErrorWasNotThrown in four test files while THEIRS retained (and extended) those files including the existing calls to that method. The structured merge honored OURS's import deletion but kept the usages contributed by THEIRS/base, leaving unresolved references that fail to compile and break the whole test suite; the developer resolution re-adds the import in exactly those files.
+
+### jsamoocha_linksalienceclassification__7aff5753c7  [stratum B | verdict indeterminate | confidence low]
+interaction_point: LinkSalienceComputer.computeLinkSalience / ShortestPathTreeCreator constructors and DirectedEdgeShortestPathTreeCreator; TestGraphUtil graph weights consumed by the (excluded) LinkSalienceComputerTest
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jsprit_jsprit__193d4ec85c  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: MaxDistanceConstraint (main class + its tests in VehicleDependentTraveledDistanceTest); cost abstraction ManhattanCosts vs DefaultCosts/distance package
+tags: (none)
+mechanism: (none — escape hatch)
+
+### jsprit_jsprit__df2e3e4b7e  [stratum B | verdict attributed | confidence medium]
+interaction_point: LocalActivityInsertionCostsCalculator empty-route branch guard `newAct instanceof DeliverShipment` vs OURS's move to the DeliveryActivity+isShipment activity model
+tags: stale-type-check-after-refactor, deprecated-class-instanceof-drift, semantic-drift-in-guard
+mechanism: OURS is a refactor that retires DeliverShipment: shipment deliveries are now generic DeliveryActivity objects distinguished via AbstractActivity.isShipment(), which is why MaxDistanceConstraint's `instanceof DeliverShipment` had to become `instanceof DeliveryActivity && isShipment`. THEIRS independently added a shipment cost path and test that rely on `instanceof DeliverShipment` being true for a shipment's delivery activity. After the merge that guard is stale against OURS's unified activity model, so the shipment cost branch is skipped and the new assertion (cost==10) fails.
+
+### jwtk_jjwt__ff932e9838  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: DefaultJwtParser.parse() claims-validation block: ISO_8601_FORMAT date formatting and the exp/nbf exception message strings
+tags: (none)
+mechanism: (none — escape hatch)
+
+### kaazing_k3po__084cc0b426  [stratum A | verdict attributed | confidence high]
+interaction_point: The @Ignore annotation stack on method shouldEchoFrameWithPayloadLength127
+tags: concurrent-annotation-addition, duplicate-nonrepeatable-annotation
+mechanism: Both sides added an @Ignore annotation (with different messages) to the same method shouldEchoFrameWithPayloadLength127. The clean merge stacked both annotations on the method, but org.junit.Ignore is not @Repeatable, so the merged file has a duplicate non-repeatable annotation, which does not compile and takes down the whole test module's compilation.
+
+### kaazing_robot__084cc0b426  [stratum A | verdict attributed | confidence high]
+interaction_point: @Ignore annotation on method shouldEchoFrameWithPayloadLength127
+tags: duplicate-annotation, non-repeatable-annotation-stacking, concurrent-same-target-annotation
+mechanism: Both parents independently added an @Ignore annotation (with different messages) to the same method shouldEchoFrameWithPayloadLength127. The line-level union merge stacked both, producing two @Ignore annotations on one element. Since org.junit.Ignore is not @Repeatable, this is an illegal duplicate annotation that fails compilation, breaking the whole test module build.
+
+### kohsuke_github-api__4e56b8bb78  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: Both sides append disjoint new methods to GHRepository near the Contributor class, and add disjoint blocks to Requester.parse()/setupConnection().
+tags: (none)
+mechanism: (none — escape hatch)
+
+### kongchen_swagger-maven-plugin__10c79c6df1  [stratum B | verdict attributed | confidence medium]
+interaction_point: Generated swagger output (swagger.yaml/json, sample html) vs. the golden fixtures — PetResource endpoint set (theirs) feeding the new YAML comparison tests (ours).
+tags: new-endpoint-vs-golden-fixture, test-fixture-staleness, cross-side-output-drift
+mechanism: Ours introduces new golden-file tests (testGeneratedSwaggerSpecYaml) whose expected /expectedOutput/*.yaml fixtures were captured from the base PetResource endpoint set. Theirs adds a new endpoint (testingExtensions) that changes the generated swagger output. After merging, the mojo generates swagger documentation that includes the new endpoint, but the YAML fixtures added by ours do not contain it, so assertJsonEquals fails.
+
+### kongchen_swagger-maven-plugin__3d2ea22d07  [stratum A | verdict none-identified | confidence high]
+interaction_point: AbstractReader.java — ours edits isPrimitive (~line 277), theirs edits updateApiResponse (~line 455); disjoint regions
+tags: (none)
+mechanism: (none — escape hatch)
+
+### logstash_log4j-jsonevent-layout__ee90110799  [stratum B | verdict attributed | confidence high]
+interaction_point: import section vs. new use of PatternLayout in measureJSONEventLayoutLocationInfoPerformance()
+tags: wildcard-import-narrowed, new-usage-vs-import-removal, unresolved-symbol-after-merge
+mechanism: Ours introduced new references to PatternLayout, which base resolved through the wildcard import org.apache.log4j.*. Theirs narrowed that wildcard import to only Level/Logger/NDC. The clean merge kept ours's new PatternLayout usage together with theirs's narrowed imports, so PatternLayout is no longer imported and the test file fails to compile, breaking the whole suite.
+
+### lukas-krecan_jsonunit__3cb3260c4b  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: json-unit-core .../core/Configuration.java (ConfigurationWhen / getPathsToBeIgnored / whenIgnoringPaths API) — the dropped, textually-conflicted file both sides depend on
+tags: (none)
+mechanism: (none — escape hatch)
+
+### mashape_unirest-java__121f85b819  [stratum A | verdict flaky-suspect | confidence medium]
+interaction_point: UnirestTest.java import block and appended @Test methods
+tags: (none)
+mechanism: (none — escape hatch)
+
+### mashape_unirest-java__b43fb95f4a  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: src/test/java/com/mashape/unirest/test/http/UnirestTest.java imports block and the two disjoint sets of newly-added @Test methods
+tags: (none)
+mechanism: (none — escape hatch)
+
+### masterthought_cucumber-reporting__d1ecdc4a98  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: FeaturesOverviewPageIntegrationTest bodyRows[0] assertions (OURS edits getReportLink line while THEIRS edits the adjacent hasExactValues/CSSClasses/DataValues lines) and shared ReportGenerator resource helper.
+tags: (none)
+mechanism: (none — escape hatch)
+
+### mbosecke_pebble__617aab328f  [stratum A | verdict indeterminate | confidence low]
+interaction_point: CoreExtension: getTokenParsers() (CacheTokenParser, ours) coexisting with getNodeVisitors() returning NodeVisitorFactory (theirs); new cache tests in CoreTagsTest depend on both.
+tags: (none)
+mechanism: (none — escape hatch)
+
+### mbosecke_pebble__e1d07bf277  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: ForNode.render(...) signature (EvaluationContextImpl vs EvaluationContext) combined with theirs' rewritten loop body; CoreTagsTest exception-type and new-test changes
+tags: (none)
+mechanism: (none — escape hatch)
+
+### mercadopago_sdk-java__9dfc950fd2  [stratum B | verdict attributed | confidence medium]
+interaction_point: PaymentRefundClient: new overloads refund(Long,BigDecimal)/get(Long,Long)/list(Long) (added by ours) delegate to the 3-arg methods whose throws clause ours-side widened to include MPApiException.
+tags: unhandled-checked-exception, throws-clause-widening, new-overload-calls-widened-method
+mechanism: Ours added new convenience overloads that declare only `throws MPException` and delegate to the 3-arg methods; theirs widened those 3-arg methods to also throw the (separately-declared, apparently checked) MPApiException. In the merge, the new overloads call methods that now throw MPApiException without declaring or catching it, yielding an unreported-checked-exception compile error that breaks the whole build/test suite.
+
+### mercadopago_sdk-java__b7498c6f9d  [stratum A | verdict none-identified | confidence high]
+interaction_point: list(Long, MPRequestOptions) method / result.setResponse(response) line
+tags: (none)
+mechanism: (none — escape hatch)
+
+### mikera_vectorz__d93ef1b341  [stratum A | verdict attributed | confidence high]
+interaction_point: Import block of TestMatrices.java (`java.util.Random`) vs. the new `g_BufferMatrix()` test body
+tags: removed-import-still-referenced, added-use-of-deleted-import, merge-broken-compilation
+mechanism: Theirs deleted `import java.util.Random;` because Random was unused on its branch, while ours added a new test `g_BufferMatrix()` that instantiates `new Random()`. The clean merge keeps ours' new usage but applies theirs' import deletion, producing a file that references `Random` with no import — an unresolved-symbol compile error that fails the whole suite.
+
+### mitre_http-proxy-servlet__b7a68118f2  [stratum A | verdict attributed | confidence high]
+interaction_point: getTargetUri() accessor returning field `targetUri`
+tags: field-retype-vs-new-accessor, return-type-mismatch, stale-reference-to-retyped-field
+mechanism: Theirs added a getter `public URI getTargetUri() { return targetUri; }` assuming `targetUri` is a `URI` (its base type). Ours re-typed the field `targetUri` to `String` (moving the URI value into `targetUriObj`). The clean merge keeps both, so `getTargetUri` returns a `String` where a `URI` is declared, producing an incompatible-types compile error that breaks the build/tests.
+
+### mixpanel_mixpanel-java__bcdd1ed28f  [stratum A | verdict none-identified | confidence high]
+interaction_point: MixpanelAPI field declarations (timeout constants) — relocation vs value change
+tags: (none)
+mechanism: (none — escape hatch)
+
+### monitorjbl_excel-streaming-reader__5c0538482f  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: StreamingCell.java (excluded, both sides modified) plus StreamingRow POI Row-interface override set
+tags: (none)
+mechanism: (none — escape hatch)
+
+### movsim_movsim__6dae25caf7  [stratum A | verdict attributed | confidence medium]
+interaction_point: SimulationScan.java: import list vs. body of invokeSimulationScan()
+tags: import-removed-by-refactor, retained-usage-of-removed-symbol, refactor-vs-inplace-edit
+mechanism: Theirs removed the ProjectMetaData and MovsimInputLoader imports because its refactor moved input-loading out of invokeSimulationScan; ours kept the original method body that still calls MovsimInputLoader.getInputData(ProjectMetaData.getInstance()...). Mergiraf combined ours' method body with theirs' import deletions, so the merged file references two types that are no longer imported, breaking compilation and thus the whole test suite.
+
+### msopentech_azure-activedirectory-library-for-java__c2385c17f0  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: HttpHelper.executeHttpGet/executeHttpPost signature (now requires Logger piiLog) and its callers, including the excluded AuthenticationContext.java
+tags: (none)
+mechanism: (none — escape hatch)
+
+### msopentech_azure-activedirectory-library-for-java__d3f143872b  [stratum A | verdict attributed | confidence medium]
+interaction_point: AuthenticationResult constructor invocation inside AuthenticationContextTest (theirs updates all existing call sites; ours adds a new call site).
+tags: stale-caller-of-changed-signature, new-caller-uses-old-api, api-signature-drift
+mechanism: Theirs changed the AuthenticationResult constructor to a new signature (adding an idToken argument) and updated all existing call sites accordingly. Ours independently added a new test that constructs AuthenticationResult with the OLD 5-argument form. The clean merge keeps theirs' updated call sites plus ours' new test, so the new test retains a call to a constructor signature that theirs eliminated, producing a stale/incompatible API call that fails to compile (or is inconsistent) in the merged unit.
+
+### mtedone_podam__8d5f7e40f6  [stratum B | verdict none-identified | confidence medium]
+interaction_point: Placement of the `@PodamAnnotation` marker on each `@interface` header (ours after @Retention vs theirs after @Documented); and the Constraint branch in TypeManufacturerUtil.java
+tags: (none)
+mechanism: (none — escape hatch)
+
+### named-data_jndn__3d47402192  [stratum A | verdict none-identified | confidence high]
+interaction_point: NetworkNack.Reason enum / setOtherReasonCode — but the two changes touch disjoint regions (enum declaration vs setter method).
+tags: (none)
+mechanism: (none — escape hatch)
+
+### nhl_link-etl__5809ccc762  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: JsonExtractorFactory.getRootQuery and the CSV/XML test setup — where ours' reader/connector API migration meets theirs' ExtractorModel property API migration
+tags: (none)
+mechanism: (none — escape hatch)
+
+### ninjaframework_ninja__663883c228  [stratum A | verdict none-identified | confidence high]
+interaction_point: NinjaPropertiesImpl constructor / interface constants; both sides add disjoint members to the same class and interface
+tags: (none)
+mechanism: (none — escape hatch)
+
+### ninjaframework_ninja__94b2365be3  [stratum A | verdict attributed | confidence medium]
+interaction_point: ContextImpl.java import block and the new unsetCookie(String) method's `new Cookie(name, null)` expression
+tags: removed-import-vs-new-usage, symbol-resolution-shift, stale-import-removal
+mechanism: Ours removed the `import javax.servlet.http.Cookie;` line (unused on its side), while theirs added a new unsetCookie implementation that constructs `new Cookie(name, null)` relying on that servlet Cookie import. The clean merge keeps ours' import removal together with theirs' new usage, so the unqualified `Cookie` in unsetCookie no longer resolves to javax.servlet.http.Cookie (it either binds to same-package ninja.Cookie or is unresolved), yielding a type/resolution error that breaks compilation.
+
+### northlander_a__c3f2865b88  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: BaseTest.java import block and appended @Test methods (both sides append distinct tests and distinct static imports of A constants)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### nuodb_migration-tools__2e1f6973c4  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: testWithConnectionProvider() body — combined call databaseIntrospector.withConnection(mock(Connection.class)) with assertion getConnectionProvider()
+tags: (none)
+mechanism: (none — escape hatch)
+
+### nysenate_openlegislation__9c7cf034c1  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: ElasticCommitteeSearchDao: getCommitteeDeleteRequest (resultList()/result() calls) and searchCommittees (new search() overload) — both depend on classes not shown (SearchResults/SearchResult, ElasticBaseDao).
+tags: (none)
+mechanism: (none — escape hatch)
+
+### onebusaway_onebusaway-application-modules__915e2f3ffe  [stratum A | verdict none-identified | confidence high]
+interaction_point: getArrivalsAndDeparturesForStopIds nearby-stops handling (query.getRouteTypes()/getInstanceFilterChain() and route filtering loop)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### onebusaway_onebusaway-application-modules__e779e9fce1  [stratum A | verdict none-identified | confidence high]
+interaction_point: ArrivalsAndDeparturesQueryBean.setRouteType / routeTypes field region
+tags: (none)
+mechanism: (none — escape hatch)
+
+### openhft_chronicle-bytes__0fb20d3a47  [stratum B | verdict attributed | confidence medium]
+interaction_point: NativeBytesStoreTest.java, the copyTo assertion line (`assertEquals(src, dst)` region)
+tags: overlapping-edit-combination, both-sides-edited-same-line, argument-type-mismatch-from-merge
+mechanism: Both sides rewrote the exact same assertion line in different ways: ours changed the arguments to `src.toString()`/`dst.toString()`, theirs wrapped the raw `src`/`dst` in `assertTrue(BytesInternal.contentEqual(...))`. Mergiraf combined both edits into `assertTrue(BytesInternal.contentEqual(src.toString(), dst.toString()))`, feeding String arguments into a method designed for BytesStore, which is a type-incompatible / semantically wrong call the developer explicitly avoided.
+
+### openhft_chronicle-bytes__5bad7e86ea  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: NativeBytes.java — resize()/imports and write* methods; sides touch disjoint regions
+tags: (none)
+mechanism: (none — escape hatch)
+
+### openhft_chronicle-bytes__e3ac571d25  [stratum A | verdict none-identified | confidence high]
+interaction_point: End of BytesTest class body (both sides append new test methods before the closing brace).
+tags: (none)
+mechanism: (none — escape hatch)
+
+### openpnp_openpnp__93126880a6  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: MainFrame constructor / registerBoardImporters() / Help menu region
+tags: (none)
+mechanism: (none — escape hatch)
+
+### openpnp_openpnp__a3cca4daba  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: ReferenceNozzleTip.java (commit() method, changer setters, load/unload actions) — but the two sides touch disjoint regions
+tags: (none)
+mechanism: (none — escape hatch)
+
+### openpnp_openpnp__a43f3e919e  [stratum B | verdict attributed | confidence medium]
+interaction_point: GcodeDriverSolutions.findIssues vs the newly-extracted static suggestGcodeCommand method — the placement of OURS's `for (Command command : gcodeDriver.commands)` loop relative to the disallowHeadMountables block THEIRS moved.
+tags: insertion-anchored-to-moved-block, extracted-method-misplacement, duplicate-issue-generation
+mechanism: OURS appended its ACTUATOR_READ loop to findIssues immediately after the inline disallowHeadMountables block. THEIRS extracted that same disallowHeadMountables block into a new static suggestGcodeCommand method. Mergiraf anchored OURS's loop to the moved block, so in the merged result the loop became the last statement of suggestGcodeCommand instead of findIssues — meaning it now runs once per suggestGcodeCommand call (once per commandType) rather than once, generating duplicate ACTUATOR_READ deprecation issues and iterating/mutating gcodeDriver.commands repeatedly.
+
+### openpnp_openpnp__b62c0ce826  [stratum B | verdict attributed | confidence medium]
+interaction_point: ReferenceBottomVision.findOffsets(): the preRotate block introduced by THEIRS containing pipeline.setCamera(camera)/pipeline.setNozzle(nozzle)
+tags: stale-caller-of-renamed-method, incomplete-api-migration, merge-reintroduced-old-api
+mechanism: OURS performed an API migration renaming CvPipeline.setCamera/setNozzle to setProperty("camera"/"nozzle", ...) at every call site it could see. THEIRS independently added a new preRotate code block that still calls the old setCamera/setNozzle methods. Mergiraf combined both, so the merged file contains new callers of the old API that OURS had migrated away from (and presumably removed on CvPipeline), which the developer had to convert to setProperty.
+
+### oxo42_stateless4j__4c7880ec0e  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: TriggerBehaviour hierarchy: the resultsInTransitionFrom signature (theirs) and the guard delegate type FuncBoolean (ours), which both sides edit in the same TriggerBehaviour/DynamicTriggerBehaviour/IgnoredTriggerBehaviour/TransitioningTriggerBehaviour classes.
+tags: (none)
+mechanism: (none — escape hatch)
+
+### premium-minds_billy__bc9db33323  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: The 'reference' field of JPAESCreditNoteEntryEntity/JPAESCreditReceiptEntryEntity and the checkCreditNote/checkCreditReceipt DAO methods that query it.
+tags: overlapping-refactor-hybrid, type-change-plus-rename, field-generification-vs-query-rewrite
+mechanism: Both branches refactored the same field/method: ours changed its TYPE to GenericInvoiceEntity while theirs RENAMED it (invoiceReference/receiptReference) and rewrote the QueryDSL bodies around the new name. Mergiraf applied both non-conflicting edits, yielding a hybrid field 'GenericInvoiceEntity invoiceReference' and check* methods mixing ours' GenericInvoiceEntity parameter with theirs' QueryDSL body — a combination the developer explicitly avoided by taking theirs' concrete types.
+
+### prism_prism-bukkit__c9fd69aac9  [stratum B | verdict none-identified | confidence medium]
+interaction_point: MaterialAliases.initMaterials — theirs wrapped the body in runTaskAsynchronously while ours renamed BlockUtils.dataString to Utilities.dataString inside that body
+tags: (none)
+mechanism: (none — escape hatch)
+
+### projectblueshift_blueshiftapi__004679e5bb  [stratum A | verdict none-identified | confidence high]
+interaction_point: import block and JSON serialization/deserialization methods of ChatComponent
+tags: (none)
+mechanism: (none — escape hatch)
+
+### projectkorra_projectkorra__f76c2ce874  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: PKListener.java — imports block and event-handler bodies; ours' guard sits in onEntityDamage while theirs rewrites surrounding handlers and imports.
+tags: (none)
+mechanism: (none — escape hatch)
+
+### qcadoo_mes__c6cb8180e5  [stratum B | verdict none-identified | confidence medium]
+interaction_point: createUserGroupDefinition() in DataDefinitionServiceImpl.java and createUserGroupDetailsView() in ViewDefinitionServiceImpl.java (the 'role' field)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### relayrides_pushy__6badde9538  [stratum A | verdict indeterminate | confidence low]
+interaction_point: handleConnectionClosure and the shutdown completion path (listenerExecutorService.submit vs. activeConnections/removeActiveConnection signaling)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### sailthru_sailthru-java-client__ee1f917600  [stratum A | verdict attributed | confidence high]
+interaction_point: ApiException constructor logger call: logger.warning("{}: {}", statusCode, reason)
+tags: cross-side-api-incompatibility, logging-framework-swap-vs-method-rename, method-name-mismatch
+mechanism: Ours replaced java.util.logging with SLF4J (whose severity method is warn), while theirs renamed the call from info to warning (the java.util.logging severity method). The merge combined ours' SLF4J Logger instance with theirs' .warning() method name, producing a call to a method that does not exist on org.slf4j.Logger.
+
+### sander2798_enderstone__9d0d7b7ba8  [stratum B | verdict attributed | confidence medium]
+interaction_point: EnderPlayer.teleport() -> EnderPlayer.switchWorld() (currentWorld.players removal)
+tags: assert-side-effect-dependency, newly-routed-call-path, combined-switchworld-refactor
+mechanism: Theirs newly routes teleport() into switchWorld() when worlds differ, while ours rewrote switchWorld() to remove the player from the current world via `assert currentWorld.players.remove(this)`. In the merged code teleport can now reach the assert-based removal; with assertions enabled (default under surefire) a removal that returns false (player not present in that world) throws AssertionError, and the removal itself is skipped when assertions are off, corrupting world membership.
+
+### sandergielisse_enderstone__df0826f63b  [stratum B | verdict attributed | confidence high]
+interaction_point: Main.broadcastMessage() — `new PacketOutChatMessage(message)`
+tags: new-callsite-of-changed-constructor, signature-change-vs-new-caller, protocol-upgrade-drift
+mechanism: Ours introduced a brand-new call site (Main.broadcastMessage) invoking the one-argument PacketOutChatMessage constructor, while theirs' 1.8 protocol upgrade changed that constructor to require two arguments (message plus a byte position). Merged cleanly, the new one-arg call site no longer matches any existing constructor, breaking compilation/behavior.
+
+### sandergielisse_enderstone__febdb02eb3  [stratum B | verdict attributed | confidence medium]
+interaction_point: ItemStack constructor arity — merged ItemStack only exposes the 4-arg (boolean generateNBT) constructors while THEIRS's new EnderPlayer.onSpawn code calls the removed 3-arg ItemStack(short,byte,short) form.
+tags: constructor-signature-narrowed, new-caller-of-removed-overload, cross-file-api-mismatch
+mechanism: OURS narrowed the ItemStack constructor API by adding a required trailing `boolean generateNBT` parameter and updated all of its own call sites. THEIRS independently added new EnderPlayer.onSpawn() callers that construct ItemStack with the original 3-argument signature. The clean merge keeps OURS's constructor change and THEIRS's new callers verbatim (they touch disjoint lines, so no fine-grained adaptation occurred), leaving 3-arg calls with no matching constructor — a cross-file compile failure that breaks the whole test build.
+
+### segmentio_analytics-java__0d4a7b4e69  [stratum A | verdict attributed | confidence medium]
+interaction_point: AnalyticsClientTest.java — messageQueue field declaration and the java.util.concurrent.BlockingQueue import
+tags: import-removed-vs-reference-retained, type-switch-import-inconsistency, missing-import-compile-failure
+mechanism: Ours retains a `@Mock BlockingQueue<Message> messageQueue` field (and needs the BlockingQueue import); theirs removes the `import java.util.concurrent.BlockingQueue;` as part of switching the field to a `@Spy LinkedBlockingQueue`. The structured merge combined ours' field/reference to the BlockingQueue type with theirs' deletion of the import, leaving BlockingQueue referenced but unimported, so the test source fails to compile and the whole suite errors out.
+
+### softinstigate_restheart__98dda32101  [stratum A | verdict attributed | confidence high]
+interaction_point: GraphQLService.handle(...) — the newly added query-syntax else-block references to the handle parameters
+tags: parameter-rename-vs-added-references, stale-identifier-after-rename, added-code-references-renamed-symbol
+mechanism: Theirs renamed handle()'s parameters from request/response to req/res everywhere it edited, while ours added a new else-block that references the parameters by their old names request/response. Mergiraf combined the renamed signature (req/res) with ours's new block still using request/response, producing references to identifiers that no longer exist in scope.
+
+### softinstigate_restheart__dc14776b02  [stratum B | verdict none-identified | confidence medium]
+interaction_point: GraphQLService.java import block (DataLoaderDispatcherInstrumentation) and GraphQLAppDeserializer JsonUtils->BsonUtils rename
+tags: (none)
+mechanism: (none — escape hatch)
+
+### sonarcommunity_sonar-scm-activity__e078d44db1  [stratum B | verdict none-identified | confidence medium]
+interaction_point: SupportedScm.java import block and SVN/TFS enum constants
+tags: (none)
+mechanism: (none — escape hatch)
+
+### sonarsource_sonar-findbugs__b2fd863305  [stratum B | verdict attributed | confidence high]
+interaction_point: FindbugsExecutor.execute(...) call/stub in FindbugsSensorTest (new theirs tests vs ours-changed signature)
+tags: stale-caller-of-changed-signature, concurrent-api-change-vs-new-caller, test-mock-signature-mismatch
+mechanism: Ours changed the FindbugsExecutor.execute API from a boolean-flag form to one taking ActiveRules (`executor.execute(context.activeRules())`), updating all existing callers/mocks. Theirs concurrently added brand-new tests that stub and verify the executor with the old `executor.execute(false, false)` signature. Mergiraf kept both, so the merged test file references a method signature that ours removed, breaking compilation/verification of the new tests.
+
+### spigotmc_bungeecord__760d3618d3  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: protocol/.../Protocol.java registerPacket(...) and import block; AbstractPacketHandler ViewDistance handling
+tags: (none)
+mechanism: (none — escape hatch)
+
+### spigotmc_bungeecord__78083158f5  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: KeepAlive handling referencing ServerConnection.KeepAliveData / getKeepAlives() (ServerConnection.java not shown); ProxyConfig.getRemotePingCache() (api not shown)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### spigotmc_bungeecord__84babbd5fe  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: proxy/src/main/java/net/md_5/bungee/entitymap/EntityMap.java getEntityMap switch (1.7 cases) and ProtocolConstants 1.7 entries — added only by ours
+tags: (none)
+mechanism: (none — escape hatch)
+
+### spigotmc_bungeecord__8943fe2bd2  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: EntityMap.getEntityMap(int version) switch statement (default case + commented throw from ours vs new 1_14 cases + retained throw from theirs)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### spigotmc_bungeecord__b71e3b33f3  [stratum B | verdict none-identified | confidence medium]
+interaction_point: chat ComponentBuilder / component classes and proxy/conf/Configuration.java — but the two sides touch mostly disjoint aspects (ours: modifiers + map impl; theirs: method bodies + new fields)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### sps_pushover4j__88cd636fab  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: src/test/java/net/pushover/client/PushoverResponseFactoryTest.java (tests referencing production API in the excluded PushoverResponseFactory.java)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### square_javapoet__d019b6f624  [stratum A | verdict attributed | confidence high]
+interaction_point: src/main/java/com/squareup/javawriter/JavaWriter.java — import section vs. new emitImports(Class<?>...) which references ArrayList
+tags: import-removed-vs-new-usage, dangling-symbol-reference, additive-method-needs-removed-import
+mechanism: Ours removed the `import java.util.ArrayList;` from JavaWriter.java because its refactor no longer used ArrayList, while theirs independently added a new `emitImports(Class<?>...)` method that instantiates `new ArrayList<String>(...)`. The clean merge kept ours' import block (no ArrayList) and theirs' new method (needs ArrayList), so the merged JavaWriter.java references an unimported type and fails to compile, breaking the whole test suite.
+
+### steveice10_mcprotocollib__5c8a435832  [stratum A | verdict none-identified | confidence high]
+interaction_point: MessageStyle.Builder.copy / getColor (the copy() call reached by theirs' toBuilder() reads the color field retyped by ours)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### stevespringett_dependency-check-sonar-plugin__03377193d3  [stratum B | verdict attributed | confidence high]
+interaction_point: DependencyCheckConfiguration.getPropertyDefinitions() — the appended USE_FILEPATH PropertyDefinition.builder(...) block
+tags: duplicate-insertion-both-sides, identical-addition-not-deduplicated, duplicate-property-registration
+mechanism: Both sides appended the exact same USE_FILEPATH PropertyDefinition block at the end of getPropertyDefinitions(). Mergiraf treated the two identical additions as distinct insertions and emitted the block twice, producing a duplicated PropertyDefinition (same key registered twice), which a test asserting the property-definition list (count or uniqueness) would reject. The developer removed the redundant copy.
+
+### stratehm_stratum-proxy__45364d27bd  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: Pool.java timer fields/methods (reconnectTask, notifyTimeoutTask, stabilityTestTask, subscribeResponseTimeoutTask) using custom Timer.Task
+tags: (none)
+mechanism: (none — escape hatch)
+
+### structr_structr__6738b144bb  [stratum B | verdict indeterminate | confidence medium]
+interaction_point: AbstractNode.invokeMethod (signature change from ours + catch-block rewrite from theirs merged in the same method body)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### sviperll_static-mustache__271693c779  [stratum B | verdict attributed | confidence high]
+interaction_point: TemplateCompilerContext.getChild(...) constructor call referencing writerExpression
+tags: renamed-field-vs-relocated-caller, stale-reference-to-removed-field
+mechanism: Ours removed the `writerExpression` field entirely, replacing it with a `variables` field and updating all references. Theirs renamed createChild→getChild (and added getInvertedChild) but its constructor calls still pass `writerExpression`. Mergiraf kept theirs' method body verbatim, leaving `new TemplateCompilerContext(generator, writerExpression, ...)` in getChild referencing a field that no longer exists — an undefined symbol that fails compilation of the whole module.
+
+### swagger-api_swagger-parser__41ccee4da3  [stratum A | verdict flaky-suspect | confidence medium]
+interaction_point: OpenAPIV3ParserTest class body — both sides append/modify independent @Test methods; only whitespace differs from developer's shipped version.
+tags: (none)
+mechanism: (none — escape hatch)
+
+### tcurdt_jdeb__77d052996a  [stratum A | verdict none-identified | confidence medium]
+interaction_point: DataBuilder.buildData / checksums.append(md5).append("  ") line and the testBuildDataWithFileSet assertion
+tags: (none)
+mechanism: (none — escape hatch)
+
+### thenewcircle_spring-hibernate-20120924__7ec9c1b4bb  [stratum A | verdict attributed | confidence medium]
+interaction_point: Import block of ContactController.java vs. bodies of the add/edit/view/post handler methods that reference Address and Contact types.
+tags: import-deleted-still-used, combine-deletion-with-added-usage, stale-type-reference
+mechanism: Mergiraf accepted theirs' deletion of the Address and Contact imports while keeping ours' newly added handler methods whose bodies construct and reference Address and Contact. The merged file therefore uses the Address/Contact types with no import in scope, yielding unresolved-symbol compile errors that neither parent had.
+
+### tumblr_jumblr__31bd6f8335  [stratum A | verdict none-identified | confidence medium]
+interaction_point: RequestBuilder.clear(Response) — both sides edited this method
+tags: (none)
+mechanism: (none — escape hatch)
+
+### urbanairship_datacube__b8bef94f4d  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: HBaseDbHarness.java import block and metrics field declarations (yammer metrics type names) plus the implied metrics dependency version
+tags: (none)
+mechanism: (none — escape hatch)
+
+### urbanairship_java-library__bbe0297a10  [stratum A | verdict attributed | confidence high]
+interaction_point: CustomEventPayloadSerializerTest.testNamedUserFullPayload → addAllPropertyEntries(properties) called with Map<String,String>
+tags: stale-caller-of-changed-signature, new-test-uses-old-api, type-signature-mismatch
+mechanism: OURS changed the property value type across the codebase so that CustomEventBody.Builder.addAllPropertyEntries now takes Map<String,CustomEventPropValue> (evident from OURS converting every caller to CustomEventPropValue.of(...)). THEIRS independently added a new test method testNamedUserFullPayload that constructs properties as Map<String,String> and passes them to addAllPropertyEntries. Mergiraf combines both, yielding a test file whose new method calls the changed method with the old String map — a type mismatch that fails to compile, breaking the whole test module.
+
+### vijay2win_flume-cassandra-sink__38cdbeced7  [stratum B | verdict none-identified | confidence medium]
+interaction_point: AbstractCassandraSink.getConfigName() abstract declaration and its subclass overrides / configure() and process() methods
+tags: (none)
+mechanism: (none — escape hatch)
+
+### vkostyukov_la4j__843d8ff9de  [stratum B | verdict none-identified | confidence medium]
+interaction_point: src/test/java/org/la4j/matrix/AbstractMatrixTest.java (bounds-check tests and select tests) plus AbstractMatrix.ensureIndexesAreInBounds
+tags: (none)
+mechanism: (none — escape hatch)
+
+### vkostyukov_la4j__d216aa8928  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: SparseVectorTest: JUnit3-vs-JUnit4 test style and assertEquals overload resolution / whether the new testXxx methods execute
+tags: (none)
+mechanism: (none — escape hatch)
+
+### winder_universal-g-code-sender__bc742cb4c4  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: GrblController.java field/method region — the two sides touch different, non-overlapping members (field visibility vs. method removal).
+tags: (none)
+mechanism: (none — escape hatch)
+
+### winder_universal-g-code-sender__c93fec43ee  [stratum A | verdict attributed | confidence high]
+interaction_point: getProcessor(ProcessorConfig) switch statement — the EmptyLineRemoverProcessor case return statement vs the method's return type
+tags: return-type-change-vs-new-return-site, incompatible-type-merge, signature-refactor-collision
+mechanism: Ours changed getProcessor's return type from CommandProcessor to Optional<CommandProcessor>, wrapping all returns in Optional.of(). Theirs independently added a new case returning a bare `new EmptyLineRemoverProcessor()`. The clean merge grafts theirs' un-wrapped return into ours' Optional-typed method, producing `return new EmptyLineRemoverProcessor();` where an Optional<CommandProcessor> is required — an incompatible-type compile error.
+
+### xebia_xebium__2808ba14a8  [stratum A | verdict none-identified | confidence medium]
+interaction_point: SeleniumDriverFixture.java — ours edits startWebDriverCommandProcessor/imports; theirs edits loadFirefoxProfileFromDirectory (disjoint methods)
+tags: (none)
+mechanism: (none — escape hatch)
+
+### xebia_xebium__a82603c978  [stratum A | verdict indeterminate | confidence medium]
+interaction_point: import of WebDriverCommandProcessor and its use as the driver variable type in startWebDriverCommandProcessor()
+tags: (none)
+mechanism: (none — escape hatch)
+
+### yandex-qatools_postgresql-embedded__6e15a53c7e  [stratum B | verdict attributed | confidence high]
+interaction_point: PostgresProcess.java — the `processReady` field / its write in onAfterProcessStart
+tags: deleted-field-still-written, use-after-removal, refactor-vs-feature-collision
+mechanism: Ours deleted the `processReady` field (and its `isProcessReady()` accessor) as part of a cleanup, while theirs added a new write `this.processReady = true;` to that same field. The clean merge keeps theirs' assignment but loses ours' field declaration, leaving a reference to an undefined member and breaking compilation of the whole module, so every test fails.
+
+Produce the codebook draft now, following the SYSTEM section's structure exactly.

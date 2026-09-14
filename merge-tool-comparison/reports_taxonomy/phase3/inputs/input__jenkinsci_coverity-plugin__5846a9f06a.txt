@@ -1,0 +1,1341 @@
+UNIT jenkinsci_coverity-plugin__5846a9f06a
+repo: jenkinsci_coverity-plugin   merge: 5846a9f06a151725dff014e3a580a9349a20e8ec   stratum: B
+files shown: 8 of 8 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T3/cap5  (diffs at -U3; merged bodies omitted; hard-fit to the 30k budget: files capped at 5 largest merged-vs-dev diffs)
+
+=== FILE 1/8: src/test/java/jenkins/plugins/coverity/CoverityTool/CovManageHistoryCommandTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -10,32 +10,37 @@
+  *******************************************************************************/
+ package jenkins.plugins.coverity.CoverityTool;
+ 
+-import hudson.XmlFile;
+-import jenkins.model.Jenkins;
+ import jenkins.plugins.coverity.*;
+ import org.apache.commons.lang.StringUtils;
+ import org.junit.Test;
++import org.mockito.Mockito;
+ 
+-import java.io.File;
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+ import static org.easymock.EasyMock.expect;
+ import static org.junit.Assert.assertEquals;
++import static org.mockito.Mockito.when;
+ 
+ public class CovManageHistoryCommandTest extends CommandTestBase {
+ 
+     @Test
+-    public void CovManageHistoryCommand_PrepareCommandTest() throws IOException {
+-        mocker.replay();
+-
++    public void prepareCommandTest() throws IOException, InterruptedException {
+         CIMStream cimStream = new CIMStream("TestInstance", "TestProject", "TestStream", null, "TestId", null);
+         List<CIMStream> cimStreamList = new ArrayList<>();
+         cimStreamList.add(cimStream);
+ 
+         CIMInstance cimInstance = new CIMInstance("TestInstance", "Localhost", 8080, "TestUser", "TestPassword", false, 0);
+ 
++        TaOptionBlock taOptionBlock = new TaOptionBlock(
++                StringUtils.EMPTY, false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, true
++        );
+         InvocationAssistance invocationAssistance = new InvocationAssistance(
+                 false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -45,43 +50,35 @@
+         CoverityPublisher publisher = new CoverityPublisher(
+                 cimStreamList, invocationAssistance, false, false, false, false, false,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, taOptionBlock, null
+         );
+ 
+-        CovCommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_JASPER);
+-        List<String> covManageHistoryArguments = covManageHistoryCommand.getCommandLines();
+-
+-        assertEquals(13, covManageHistoryArguments.size());
+-
+-        checkCommandLineArg(covManageHistoryArguments, "cov-manage-history");
+-        checkCommandLineArg(covManageHistoryArguments, "--dir");
+-        checkCommandLineArg(covManageHistoryArguments, "TestDir");
+-        checkCommandLineArg(covManageHistoryArguments, "download");
+-        checkCommandLineArg(covManageHistoryArguments, "--host");
+-        checkCommandLineArg(covManageHistoryArguments, "Localhost");
+-        checkCommandLineArg(covManageHistoryArguments, "--port");
+-        checkCommandLineArg(covManageHistoryArguments, "8080");
+-        checkCommandLineArg(covManageHistoryArguments, "--stream");
+-        checkCommandLineArg(covManageHistoryArguments, "TestStream");
+-        checkCommandLineArg(covManageHistoryArguments, "--user");
+-        checkCommandLineArg(covManageHistoryArguments, "TestUser");
+-        checkCommandLineArg(covManageHistoryArguments, "--merge");
+-
++        ICommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_JASPER);
++        setExpectedArguments(new String[] {
++                "cov-manage-history", "--dir", "TestDir", "download", "--host", "Localhost",
++                "--port", "8080", "--stream", "TestStream", "--user", "TestUser", "--merge"
++        });
++        covManageHistoryCommand.runCommand();
+         assertEquals("TestPassword", envVars.get("COVERITY_PASSPHRASE"));
+-
+-        assertEquals(0, covManageHistoryArguments.size());
++        consoleLogger.verifyLastMessage("[Coverity] cov-manage-history command line arguments: " + actualArguments.toString());
+     }
+ 
+     @Test
+-    public void CovManageHistoryCommand_PrepareCommandTest_WithSslConfiguration_ForIndio() throws IOException {
+-        mocker.replay();
+-
++    public void prepareCommandTest_WithSslConfiguration_ForIndio() throws IOException, InterruptedException {
+         CIMStream cimStream = new CIMStream("TestInstance", "TestProject", "TestStream", null, "TestId", null);
+         List<CIMStream> cimStreamList = new ArrayList<>();
+         cimStreamList.add(cimStream);
+ 
+         CIMInstance cimInstance = new CIMInstance("TestInstance", "Localhost", 8080, "TestUser", "TestPassword", true, 0);
+ 
++        TaOptionBlock taOptionBlock = new TaOptionBlock(
++                StringUtils.EMPTY, false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, true
++        );
+         InvocationAssistance invocationAssistance = new InvocationAssistance(
+                 false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -91,42 +88,35 @@
+         CoverityPublisher publisher = new CoverityPublisher(
+                 cimStreamList, invocationAssistance, false, false, false, false, false,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, taOptionBlock, null
+         );
+ 
+-        CovCommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_INDIO);
+-        List<String> covManageHistoryArguments = covManageHistoryCommand.getCommandLines();
+-
+-        assertEquals(14, covManageHistoryArguments.size());
+-
+-        checkCommandLineArg(covManageHistoryArguments, "cov-manage-history");
+-        checkCommandLineArg(covManageHistoryArguments, "--dir");
+-        checkCommandLineArg(covManageHistoryArguments, "TestDir");
+-        checkCommandLineArg(covManageHistoryArguments, "download");
+-        checkCommandLineArg(covManageHistoryArguments, "--host");
+-        checkCommandLineArg(covManageHistoryArguments, "Localhost");
+-        checkCommandLineArg(covManageHistoryArguments, "--port");
+-        checkCommandLineArg(covManageHistoryArguments, "8080");
+-        checkCommandLineArg(covManageHistoryArguments, "--stream");
+-        checkCommandLineArg(covManageHistoryArguments, "TestStream");
+-        checkCommandLineArg(covManageHistoryArguments, "--ssl");
+-        checkCommandLineArg(covManageHistoryArguments, "--user");
+-        checkCommandLineArg(covManageHistoryArguments, "TestUser");
+-        checkCommandLineArg(covManageHistoryArguments, "--merge");
+-
++        ICommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_INDIO);
++        setExpectedArguments(new String[] {
++                "cov-manage-history", "--dir", "TestDir", "download", "--host", "Localhost",
++                "--port", "8080", "--stream", "TestStream", "--ssl", "--user", "TestUser", "--merge"
++        });
++        covManageHistoryCommand.runCommand();
+         assertEquals("TestPassword", envVars.get("COVERITY_PASSPHRASE"));
+-
+-        assertEquals(0, covManageHistoryArguments.size());
++        consoleLogger.verifyLastMessage("[Coverity] cov-manage-history command line arguments: " + actualArguments.toString());
+     }
+ 
+     @Test
+-    public void CovManageHistoryCommand_PrepareCommandTest_WithSslConfiguration_ForJasperOrHigher() throws IOException {
++    public void prepareCommandTest_WithSslConfiguration_ForJasperOrHigher() throws IOException, InterruptedException {
+         CIMStream cimStream = new CIMStream("TestInstance", "TestProject", "TestStream", null, "TestId", null);
+         List<CIMStream> cimStreamList = new ArrayList<>();
+         cimStreamList.add(cimStream);
+ 
+         CIMInstance cimInstance = new CIMInstance("TestInstance", "Localhost", 8080, "TestUser", "TestPassword", true, 0);
+ 
++        TaOptionBlock taOptionBlock = new TaOptionBlock(
++                StringUtils.EMPTY, false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, true
++        );
+         InvocationAssistance invocationAssistance = new InvocationAssistance(
+                 false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -136,41 +126,41 @@
+         SSLConfigurations sslConfigurations = new SSLConfigurations(true, null);
+         sslConfigurations.setCertFileName("TestCertFile");
+ 
+-        CoverityPublisher.DescriptorImpl descriptor = mocker.createMock(CoverityPublisher.DescriptorImpl.class);
+-        expect(descriptor.getSslConfigurations()).andReturn(sslConfigurations);
++        CoverityPublisher.DescriptorImpl descriptor = Mockito.mock(CoverityPublisher.DescriptorImpl.class);
++        CoverityPublisher publisher = Mockito.mock(CoverityPublisher.class);
+ 
+-        CoverityPublisher publisher = mocker.createMock(CoverityPublisher.class);
+-        expect(publisher.getDescriptor()).andReturn(descriptor);
+-        expect(publisher.getInvocationAssistance()).andReturn(invocationAssistance);
+-        expect(publisher.getCimStreams()).andReturn(cimStreamList);
+-        mocker.replay();
++        when(publisher.getTaOptionBlock()).thenReturn(taOptionBlock);
++        when(publisher.getDescriptor()).thenReturn(descriptor);
++        when(publisher.getCimStreams()).thenReturn(cimStreamList);
++        when(publisher.getInvocationAssistance()).thenReturn(invocationAssistance);
++        when(publisher.getInvocationAssistance()).thenReturn(invocationAssistance);
++        when(descriptor.getSslConfigurations()).thenReturn(sslConfigurations);
+ 
+-        CovCommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_JASPER);
+-        List<String> covManageHistoryArguments = covManageHistoryCommand.getCommandLines();
++        ICommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_JASPER);
++        setExpectedArguments(new String[] {
++                "cov-manage-history", "--dir", "TestDir", "download", "--host", "Localhost",
++                "--port", "8080", "--stream", "TestStream", "--ssl", "--on-new-cert", "trust",
++                "--cert", "TestCertFile", "--user", "TestUser", "--merge"
++        });
++        covManageHistoryCommand.runCommand();
++        assertEquals("TestPassword", envVars.get("COVERITY_PASSPHRASE"));
++        consoleLogger.verifyLastMessage("[Coverity] cov-manage-history command line arguments: " + actualArguments.toString());
++    }
+ 
+-        assertEquals(18, covManageHistoryArguments.size());
++    @Test
++    public void cannotExecuteTest() throws IOException, InterruptedException {
++        CoverityPublisher publisher = new CoverityPublisher(
++                null, null, false, false, false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                null, null, null
++        );
+ 
+-        checkCommandLineArg(covManageHistoryArguments, "cov-manage-history");
+-        checkCommandLineArg(covManageHistoryArguments, "--dir");
+-        checkCommandLineArg(covManageHistoryArguments, "TestDir");
+-        checkCommandLineArg(covManageHistoryArguments, "download");
+-        checkCommandLineArg(covManageHistoryArguments, "--host");
+-        checkCommandLineArg(covManageHistoryArguments, "Localhost");
+-        checkCommandLineArg(covManageHistoryArguments, "--port");
+-        checkCommandLineArg(covManageHistoryArguments, "8080");
+-        checkCommandLineArg(covManageHistoryArguments, "--stream");
+-        checkCommandLineArg(covManageHistoryArguments, "TestStream");
+-        checkCommandLineArg(covManageHistoryArguments, "--ssl");
+-        checkCommandLineArg(covManageHistoryArguments, "--on-new-cert");
+-        checkCommandLineArg(covManageHistoryArguments, "trust");
+-        checkCommandLineArg(covManageHistoryArguments, "--cert");
+-        checkCommandLineArg(covManageHistoryArguments, "TestCertFile");
+-        checkCommandLineArg(covManageHistoryArguments, "--user");
+-        checkCommandLineArg(covManageHistoryArguments, "TestUser");
+-        checkCommandLineArg(covManageHistoryArguments, "--merge");
+-
+-        assertEquals("TestPassword", envVars.get("COVERITY_PASSPHRASE"));
+-
+-        assertEquals(0, covManageHistoryArguments.size());
++        ICommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, null, null, CoverityVersion.VERSION_INDIO);
++        setExpectedArguments(new String[] {
++                "cov-manage-history", "--dir", "TestDir", "download", "--host", "Localhost",
++                "--port", "8080", "--stream", "TestStream", "--ssl", "--user", "TestUser", "--merge"
++        });
++        covManageHistoryCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] Skipping command because it can't be executed");
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -44,8 +44,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 cimStreamList, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         CovCommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_JASPER);
+@@ -90,8 +89,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 cimStreamList, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         CovCommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_INDIO);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -49,8 +49,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 cimStreamList, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, taOptionBlock, null
++                taOptionBlock, null
+         );
+ 
+         ICommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_JASPER);
+@@ -87,8 +86,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 cimStreamList, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, taOptionBlock, null
++                taOptionBlock, null
+         );
+ 
+         ICommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_INDIO);
+@@ -151,8 +149,7 @@
+     public void cannotExecuteTest() throws IOException, InterruptedException {
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, null, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         ICommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, null, null, CoverityVersion.VERSION_INDIO);
+@@ -163,95 +160,4 @@
+         covManageHistoryCommand.runCommand();
+         consoleLogger.verifyLastMessage("[Coverity] Skipping command because it can't be executed");
+     }
+-
+-    @Test
+-    public void CovManageHistoryCommand_PrepareCommandTest() throws IOException {
+-        mocker.replay();
+-
+-        CIMStream cimStream = new CIMStream("TestInstance", "TestProject", "TestStream", null, "TestId", null);
+-        List<CIMStream> cimStreamList = new ArrayList<>();
+-        cimStreamList.add(cimStream);
+-
+-        CIMInstance cimInstance = new CIMInstance("TestInstance", "Localhost", 8080, "TestUser", "TestPassword", false, 0);
+-
+-        InvocationAssistance invocationAssistance = new InvocationAssistance(
+-                false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                false, StringUtils.EMPTY, StringUtils.EMPTY, null, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, null, false
+-        );
+-        CoverityPublisher publisher = new CoverityPublisher(
+-                cimStreamList, invocationAssistance, false, false, false, false, false,
+-                null, null
+-        );
+-
+-        CovCommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_JASPER);
+-        List<String> covManageHistoryArguments = covManageHistoryCommand.getCommandLines();
+-
+-        assertEquals(13, covManageHistoryArguments.size());
+-
+-        checkCommandLineArg(covManageHistoryArguments, "cov-manage-history");
+-        checkCommandLineArg(covManageHistoryArguments, "--dir");
+-        checkCommandLineArg(covManageHistoryArguments, "TestDir");
+-        checkCommandLineArg(covManageHistoryArguments, "download");
+-        checkCommandLineArg(covManageHistoryArguments, "--host");
+-        checkCommandLineArg(covManageHistoryArguments, "Localhost");
+-        checkCommandLineArg(covManageHistoryArguments, "--port");
+-        checkCommandLineArg(covManageHistoryArguments, "8080");
+-        checkCommandLineArg(covManageHistoryArguments, "--stream");
+-        checkCommandLineArg(covManageHistoryArguments, "TestStream");
+-        checkCommandLineArg(covManageHistoryArguments, "--user");
+-        checkCommandLineArg(covManageHistoryArguments, "TestUser");
+-        checkCommandLineArg(covManageHistoryArguments, "--merge");
+-
+-        assertEquals("TestPassword", envVars.get("COVERITY_PASSPHRASE"));
+-
+-        assertEquals(0, covManageHistoryArguments.size());
+-    }
+-
+-    @Test
+-    public void CovManageHistoryCommand_PrepareCommandTest_WithSslConfiguration_ForIndio() throws IOException {
+-        mocker.replay();
+-
+-        CIMStream cimStream = new CIMStream("TestInstance", "TestProject", "TestStream", null, "TestId", null);
+-        List<CIMStream> cimStreamList = new ArrayList<>();
+-        cimStreamList.add(cimStream);
+-
+-        CIMInstance cimInstance = new CIMInstance("TestInstance", "Localhost", 8080, "TestUser", "TestPassword", true, 0);
+-
+-        InvocationAssistance invocationAssistance = new InvocationAssistance(
+-                false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                false, StringUtils.EMPTY, StringUtils.EMPTY, null, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, null, false
+-        );
+-        CoverityPublisher publisher = new CoverityPublisher(
+-                cimStreamList, invocationAssistance, false, false, false, false, false,
+-                null, null
+-        );
+-
+-        ICommand covManageHistoryCommand = new CovManageHistoryCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, cimStream, cimInstance, CoverityVersion.VERSION_INDIO);
+-        List<String> covManageHistoryArguments = covManageHistoryCommand.getCommandLines();
+-
+-        assertEquals(14, covManageHistoryArguments.size());
+-
+-        checkCommandLineArg(covManageHistoryArguments, "cov-manage-history");
+-        checkCommandLineArg(covManageHistoryArguments, "--dir");
+-        checkCommandLineArg(covManageHistoryArguments, "TestDir");
+-        checkCommandLineArg(covManageHistoryArguments, "download");
+-        checkCommandLineArg(covManageHistoryArguments, "--host");
+-        checkCommandLineArg(covManageHistoryArguments, "Localhost");
+-        checkCommandLineArg(covManageHistoryArguments, "--port");
+-        checkCommandLineArg(covManageHistoryArguments, "8080");
+-        checkCommandLineArg(covManageHistoryArguments, "--stream");
+-        checkCommandLineArg(covManageHistoryArguments, "TestStream");
+-        checkCommandLineArg(covManageHistoryArguments, "--ssl");
+-        checkCommandLineArg(covManageHistoryArguments, "--user");
+-        checkCommandLineArg(covManageHistoryArguments, "TestUser");
+-        checkCommandLineArg(covManageHistoryArguments, "--merge");
+-
+-        assertEquals("TestPassword", envVars.get("COVERITY_PASSPHRASE"));
+-
+-        assertEquals(0, covManageHistoryArguments.size());
+-    }
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/8: src/test/java/jenkins/plugins/coverity/CoverityTool/CovAnalyzeCommandTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -14,22 +14,69 @@
+ import jenkins.plugins.coverity.InvocationAssistance;
+ import jenkins.plugins.coverity.TaOptionBlock;
+ import org.apache.commons.lang.StringUtils;
++import org.junit.Assert;
+ import org.junit.Test;
+ 
+ import java.io.File;
+ import java.io.IOException;
+-import java.util.List;
+ 
+ import static org.junit.Assert.assertEquals;
+ 
+ public class CovAnalyzeCommandTest extends CommandTestBase {
+ 
+     @Test
+-    public void CovAnalyzeCommand_MisraConfigurationTest() throws IOException {
+-        mocker.replay();
+-
++    public void addMisraConfigurationTest() throws IOException, InterruptedException {
+         File misraConfigFile = new File("misraConfigFile");
+-        misraConfigFile.createNewFile();
++        try{
++            misraConfigFile.createNewFile();
++
++            InvocationAssistance invocationAssistance = new InvocationAssistance(
++                    false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
++                    StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                    true, misraConfigFile.getPath(), StringUtils.EMPTY, null, false, false,
++                    StringUtils.EMPTY, StringUtils.EMPTY, null, false
++            );
++            CoverityPublisher publisher = new CoverityPublisher(
++                    null, invocationAssistance, false, false, false, false, false,
++                    StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                    null, null, null
++            );
++
++            ICommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++            setExpectedArguments(new String[] {"cov-analyze", "--dir", "TestDir", "--misra-config", misraConfigFile.getPath()});
++            covAnalyzeCommand.runCommand();
++            consoleLogger.verifyLastMessage("[Coverity] cov-analyze command line arguments: " + actualArguments.toString());
++        }finally {
++            misraConfigFile.delete();
++        }
++    }
++
++    @Test
++    public void addMisraConfigurationTest_WithEmptyMisraConfigFilePath() throws IOException, InterruptedException {
++        InvocationAssistance invocationAssistance = new InvocationAssistance(
++                false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                true, StringUtils.EMPTY, StringUtils.EMPTY, null, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, null, false
++        );
++        CoverityPublisher publisher = new CoverityPublisher(
++                null, invocationAssistance, false, false, false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                null, null, null
++        );
++
++        ICommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        try{
++            covAnalyzeCommand.runCommand();
++            Assert.fail("RuntimeException should have been thrown");
++        }catch(RuntimeException e) {
++            assertEquals("Misra configuration file is required to run Misra analysis.", e.getMessage());
++        }
++    }
++
++    @Test
++    public void addMisraConfigurationTest_WithInvalidMisraConfigFilePath() throws IOException, InterruptedException {
++        File misraConfigFile = new File("misraConfigFile");
+ 
+         InvocationAssistance invocationAssistance = new InvocationAssistance(
+                 false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
+@@ -43,72 +90,17 @@
+                 null, null, null
+         );
+ 
+-        CovCommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-        List<String> covAnalyzeArguments = covAnalyzeCommand.getCommandLines();
+-
+-        assertEquals(5, covAnalyzeArguments.size());
+-
+-        checkCommandLineArg(covAnalyzeArguments, "cov-analyze");
+-        checkCommandLineArg(covAnalyzeArguments, "--dir");
+-        checkCommandLineArg(covAnalyzeArguments, "TestDir");
+-        checkCommandLineArg(covAnalyzeArguments, "--misra-config");
+-        checkCommandLineArg(covAnalyzeArguments, misraConfigFile.getPath());
+-
+-        assertEquals(0, covAnalyzeArguments.size());
+-
+-        misraConfigFile.delete();
+-    }
+-
+-    @Test
+-    public void CovAnalyzeCommand_MisraConfigurationTest_WithEmptyMisraConfigFilePath() {
+-        mocker.replay();
+-
+-        InvocationAssistance invocationAssistance = new InvocationAssistance(
+-                false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                true, StringUtils.EMPTY, StringUtils.EMPTY, null, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, null, false
+-        );
+-        CoverityPublisher publisher = new CoverityPublisher(
+-                null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
+-        );
+-
+-        expectedException.expect(RuntimeException.class);
+-        expectedException.expectMessage("Misra configuration file is required to run Misra analysis.");
+-
+-        CovCommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-    }
+-
+-    @Test
+-    public void CovAnalyzeCommand_MisraConfigurationTest_WithInvalidMisraConfigFilePath() {
+-        mocker.replay();
+-
+-        File misraConfigFile = new File("misraConfigFile");
+-
+-        InvocationAssistance invocationAssistance = new InvocationAssistance(
+-                false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                true, misraConfigFile.getPath(), StringUtils.EMPTY, null, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, null, false
+-        );
+-        CoverityPublisher publisher = new CoverityPublisher(
+-                null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
+-        );
+-
+-        expectedException.expect(RuntimeException.class);
+-        expectedException.expectMessage("Could not find MISRA configuration file at \"" + misraConfigFile.getAbsolutePath() + "\"");
+-
+-        CovCommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-    }
+-
+-    @Test
+-    public void CovAnalyzeCommand_AdditionalArgumentsTest() {
+-        mocker.replay();
+-
++        ICommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        try{
++            covAnalyzeCommand.runCommand();
++            Assert.fail("RuntimeException should have been thrown");
++        }catch (RuntimeException e) {
++            assertEquals("Could not find MISRA configuration file at \"" + misraConfigFile.getAbsolutePath() + "\"", e.getMessage());
++        }
++    }
++
++    @Test
++    public void additionalArgumentsTest() throws IOException, InterruptedException {
+         InvocationAssistance invocationAssistance = new InvocationAssistance(
+                 false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
+                 StringUtils.EMPTY, "additionalArgs", StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -121,23 +113,14 @@
+                 null, null, null
+         );
+ 
+-        CovCommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-        List<String> covAnalyzeArguments = covAnalyzeCommand.getCommandLines();
+-
+-        assertEquals(4, covAnalyzeArguments.size());
+-
+-        checkCommandLineArg(covAnalyzeArguments, "cov-analyze");
+-        checkCommandLineArg(covAnalyzeArguments, "--dir");
+-        checkCommandLineArg(covAnalyzeArguments, "TestDir");
+-        checkCommandLineArg(covAnalyzeArguments, "additionalArgs");
+-
+-        assertEquals(0, covAnalyzeArguments.size());
+-    }
+-
+-    @Test
+-    public void CovAnalyzeCommand_AdditionalArgumentsTest_WithParseException() {
+-        mocker.replay();
+-
++        ICommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        setExpectedArguments(new String[] {"cov-analyze", "--dir", "TestDir", "additionalArgs"});
++        covAnalyzeCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] cov-analyze command line arguments: " + actualArguments.toString());
++    }
++
++    @Test
++    public void additionalArgumentsTest_WithParseException() throws IOException, InterruptedException {
+         InvocationAssistance invocationAssistance = new InvocationAssistance(
+                 false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
+                 StringUtils.EMPTY, "\'", StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -150,25 +133,53 @@
+                 null, null, null
+         );
+ 
+-        expectedException.expect(RuntimeException.class);
+-        expectedException.expectMessage("ParseException occurred during tokenizing the cov analyze additional arguments.");
+-
+-        new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-    }
+-
+-    @Test
+-    public void CovAnalyzeCommand_TestAdvisorConfigurationTest_WithEmptyStripPath() throws IOException {
+-        mocker.replay();
+-
++        ICommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        try{
++            covAnalyzeCommand.runCommand();
++            Assert.fail("RuntimeException should have been thrown");
++        }catch(RuntimeException e) {
++            assertEquals("ParseException occurred during tokenizing the cov analyze additional arguments.", e.getMessage());
++        }
++    }
++
++    @Test
++    public void addTestAdvisorConfigurationTest_WithEmptyStripPath() throws IOException, InterruptedException {
+         File taPolicyFile = new File("taPolicyFile");
+-        taPolicyFile.createNewFile();
+-
++        try{
++            taPolicyFile.createNewFile();
++
++            TaOptionBlock taOptionBlock = new TaOptionBlock(
++                    StringUtils.EMPTY, false, false, false,
++                    StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                    StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                    false, false, false,
++                    taPolicyFile.getPath(), "Path2Strip",
++                    StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, false
++            );
++
++            CoverityPublisher publisher = new CoverityPublisher(
++                    null, null, false, false, false, false, false,
++                    StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                    null, taOptionBlock, null
++            );
++
++            ICommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++            setExpectedArguments(new String[] {"cov-analyze", "--dir", "TestDir", "--test-advisor", "--test-advisor-policy", taPolicyFile.getPath(), "--strip-path", "Path2Strip"});
++            covAnalyzeCommand.runCommand();
++            consoleLogger.verifyLastMessage("[Coverity] cov-analyze command line arguments: " + actualArguments.toString());
++        }finally {
++            taPolicyFile.delete();
++        }
++    }
++
++    @Test
++    public void addTestAdvisorConfigurationTest_WithEmptyTaPolicyFilePath() throws IOException, InterruptedException {
+         TaOptionBlock taOptionBlock = new TaOptionBlock(
+                 StringUtils.EMPTY, false, false, false,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+                 false, false, false,
+-                taPolicyFile.getPath(), "Path2Strip",
++                StringUtils.EMPTY, StringUtils.EMPTY,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, false
+         );
+ 
+@@ -178,61 +189,24 @@
+                 null, taOptionBlock, null
+         );
+ 
+-        CovCommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-        List<String> covAnalyzeArguments = covAnalyzeCommand.getCommandLines();
+-
+-        assertEquals(8, covAnalyzeArguments.size());
+-
+-        checkCommandLineArg(covAnalyzeArguments, "cov-analyze");
+-        checkCommandLineArg(covAnalyzeArguments, "--dir");
+-        checkCommandLineArg(covAnalyzeArguments, "TestDir");
+-        checkCommandLineArg(covAnalyzeArguments, "--test-advisor");
+-        checkCommandLineArg(covAnalyzeArguments, "--test-advisor-policy");
+-        checkCommandLineArg(covAnalyzeArguments, taPolicyFile.getPath());
+-        checkCommandLineArg(covAnalyzeArguments, "--strip-path");
+-        checkCommandLineArg(covAnalyzeArguments, "Path2Strip");
+-
+-        assertEquals(0, covAnalyzeArguments.size());
+-
+-        taPolicyFile.delete();
+-    }
+-
+-    @Test
+-    public void CovAnalyzeCommand_TestAdvisorConfigurationTest_WithEmptyTaPolicyFilePath() {
+-        mocker.replay();
++        ICommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        try{
++            covAnalyzeCommand.runCommand();
++            Assert.fail("RuntimeException should have been thrown");
++        }catch(RuntimeException e) {
++            assertEquals("Test Advisor Policy File is required to run the Test Advisor.", e.getMessage());
++        }
++    }
++
++    @Test
++    public void addTestAdvisorConfigurationTest_WithInvalidTaPolicyFilePath() throws IOException, InterruptedException {
++        File taPolicyFile = new File("taPolicyFile");
+ 
+         TaOptionBlock taOptionBlock = new TaOptionBlock(
+                 StringUtils.EMPTY, false, false, false,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+                 false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, false
+-        );
+-
+-        CoverityPublisher publisher = new CoverityPublisher(
+-                null, null, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, taOptionBlock, null
+-        );
+-
+-        expectedException.expect(RuntimeException.class);
+-        expectedException.expectMessage("Test Advisor Policy File is required to run the Test Advisor.");
+-
+-        CovCommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-    }
+-
+-    @Test
+-    public void CovAnalyzeCommand_TestAdvisorConfigurationTest_WithInvalidTaPolicyFilePath() {
+-        mocker.replay();
+-
+-        File taPolicyFile = new File("taPolicyFile");
+-
+-        TaOptionBlock taOptionBlock = new TaOptionBlock(
+-                StringUtils.EMPTY, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                false, false, false,
+                 taPolicyFile.getPath(), "Path2Strip",
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, false
+         );
+@@ -243,9 +217,25 @@
+                 null, taOptionBlock, null
+         );
+ 
+-        expectedException.expect(RuntimeException.class);
+-        expectedException.expectMessage("Could not find test policy file at \"" + taPolicyFile.getAbsolutePath() + "\"");
+-
+-        CovCommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        ICommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        try{
++            covAnalyzeCommand.runCommand();
++            Assert.fail("RuntimeException should have been thrown");
++        }catch(RuntimeException e) {
++            assertEquals("Could not find test policy file at \"" + taPolicyFile.getAbsolutePath() + "\"", e.getMessage());
++        }
++    }
++
++    @Test
++    public void cannotExecuteTest() throws IOException, InterruptedException {
++        CoverityPublisher publisher = new CoverityPublisher(
++                null, null, false, false, false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                null, null, null
++        );
++
++        ICommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        covAnalyzeCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] Skipping command because it can't be executed");
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -39,8 +39,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         CovCommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+@@ -71,8 +70,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         expectedException.expect(RuntimeException.class);
+@@ -95,8 +93,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         expectedException.expect(RuntimeException.class);
+@@ -117,8 +114,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         CovCommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+@@ -146,8 +142,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         expectedException.expect(RuntimeException.class);
+@@ -174,8 +169,7 @@
+ 
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, null, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, taOptionBlock, null
++                taOptionBlock, null
+         );
+ 
+         CovCommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+@@ -212,8 +206,7 @@
+ 
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, null, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, taOptionBlock, null
++                taOptionBlock, null
+         );
+ 
+         expectedException.expect(RuntimeException.class);
+@@ -239,8 +232,7 @@
+ 
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, null, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, taOptionBlock, null
++                taOptionBlock, null
+         );
+ 
+         expectedException.expect(RuntimeException.class);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -222,8 +222,7 @@
+     public void cannotExecuteTest() throws IOException, InterruptedException {
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, null, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         ICommand covAnalyzeCommand = new CovAnalyzeCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/8: src/test/java/jenkins/plugins/coverity/CoverityTool/CovImportMsvscaCommandTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -11,42 +11,54 @@
+ package jenkins.plugins.coverity.CoverityTool;
+ 
+ import jenkins.plugins.coverity.CoverityPublisher;
++import jenkins.plugins.coverity.InvocationAssistance;
++import jnr.ffi.annotations.In;
+ import org.apache.commons.lang.StringUtils;
+ import org.junit.Test;
+ 
+ import java.io.File;
+-import java.util.List;
+-
+-import static org.junit.Assert.assertEquals;
++import java.io.IOException;
+ 
+ public class CovImportMsvscaCommandTest extends CommandTestBase {
+ 
+     @Test
+-    public void CovImportMsvscaCommand_AddMsvscaOutputFilesTest(){
+-        mocker.replay();
++    public void addMsvscaOutputFilesTest() throws IOException, InterruptedException {
+ 
+         File analysisLog1 = new File("CodeAnalysisLog1.xml");
+         File analysisLog2 = new File("CodeAnalysisLog2.xml");
+         File[] outputFiles = new File[] {analysisLog1, analysisLog2};
+ 
++        InvocationAssistance invocationAssistance = new InvocationAssistance(
++                false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                false, StringUtils.EMPTY, StringUtils.EMPTY, null, false, true,
++                StringUtils.EMPTY, StringUtils.EMPTY, null, false
++        );
++
++        CoverityPublisher publisher = new CoverityPublisher(
++                null, invocationAssistance, false, false, false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                null, null, null
++        );
++
++        ICommand covImportMsvscaCommand = new CovImportMsvscaCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, outputFiles);
++        setExpectedArguments(new String[] {
++                "cov-import-msvsca", "--dir", "TestDir", "--append", analysisLog1.getAbsolutePath(), analysisLog2.getAbsolutePath()
++        });
++        covImportMsvscaCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] cov-import-msvsca command line arguments: " + actualArguments.toString());
++    }
++
++    @Test
++    public void cannotExecuteTest() throws IOException, InterruptedException {
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, null, false, false, false, false, false,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+                 null, null, null
+         );
+ 
+-        CovCommand covImportMsvscaCommand = new CovImportMsvscaCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, outputFiles);
+-        List<String> covImportMsvscaArguments = covImportMsvscaCommand.getCommandLines();
+-
+-        assertEquals(6, covImportMsvscaArguments.size());
+-
+-        checkCommandLineArg(covImportMsvscaArguments, "cov-import-msvsca");
+-        checkCommandLineArg(covImportMsvscaArguments, "--dir");
+-        checkCommandLineArg(covImportMsvscaArguments, "TestDir");
+-        checkCommandLineArg(covImportMsvscaArguments, "--append");
+-        checkCommandLineArg(covImportMsvscaArguments, analysisLog1.getAbsolutePath());
+-        checkCommandLineArg(covImportMsvscaArguments, analysisLog2.getAbsolutePath());
+-
+-        assertEquals(0, covImportMsvscaArguments.size());
++        ICommand covImportMsvscaCommand = new CovImportMsvscaCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, null);
++        covImportMsvscaCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] Skipping command because it can't be executed");
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -31,8 +31,7 @@
+ 
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, null, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         CovCommand covImportMsvscaCommand = new CovImportMsvscaCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, outputFiles);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -37,8 +37,7 @@
+ 
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         ICommand covImportMsvscaCommand = new CovImportMsvscaCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars, outputFiles);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/8: src/test/java/jenkins/plugins/coverity/CoverityTool/CovBuildCommandTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -17,6 +17,7 @@
+ import org.junit.Test;
+ 
+ import java.io.File;
++import java.io.IOException;
+ import java.util.List;
+ 
+ import static org.junit.Assert.assertEquals;
+@@ -24,9 +25,7 @@
+ public class CovBuildCommandTest extends CommandTestBase {
+ 
+     @Test
+-    public void CovBuildCommand_CommandForScriptSourcesTest() {
+-        mocker.replay();
+-
++    public void commandForScriptSourcesTest() throws IOException, InterruptedException {
+         InvocationAssistance invocationAssistance = new InvocationAssistance(
+                 false, StringUtils.EMPTY, false, StringUtils.EMPTY, false, true,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -39,25 +38,14 @@
+                 null, null, null
+         );
+ 
+-        CovCommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-        List<String> covBuildArguments = covBuildCommand.getCommandLines();
+-
+-        assertEquals(6, covBuildArguments.size());
+-
+-        checkCommandLineArg(covBuildArguments, "cov-build");
+-        checkCommandLineArg(covBuildArguments, "--dir");
+-        checkCommandLineArg(covBuildArguments, "TestDir");
+-        checkCommandLineArg(covBuildArguments, "--no-command");
+-        checkCommandLineArg(covBuildArguments, "--fs-capture-search");
+-        checkCommandLineArg(covBuildArguments, "$WORKSPACE");
+-
+-        assertEquals(0, covBuildArguments.size());
++        ICommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        setExpectedArguments(new String[] {"cov-build", "--dir", "TestDir", "--no-command", "--fs-capture-search", "$WORKSPACE"});
++        covBuildCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] cov-build command line arguments: " + actualArguments.toString());
+     }
+ 
+     @Test
+-    public void CovBuildCommand_CommandForCompileSourcesTest_WithCaptureScriptSources() {
+-        mocker.replay();
+-
++    public void commandForCompileSourcesTest_WithCaptureScriptSources() throws IOException, InterruptedException {
+         InvocationAssistance invocationAssistance = new InvocationAssistance(
+                 false, StringUtils.EMPTY, false, StringUtils.EMPTY, true, true,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -70,24 +58,14 @@
+                 null, null, null
+         );
+ 
+-        CovCommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-        List<String> covBuildArguments = covBuildCommand.getCommandLines();
+-
+-        assertEquals(5, covBuildArguments.size());
+-
+-        checkCommandLineArg(covBuildArguments, "cov-build");
+-        checkCommandLineArg(covBuildArguments, "--dir");
+-        checkCommandLineArg(covBuildArguments, "TestDir");
+-        checkCommandLineArg(covBuildArguments, "--fs-capture-search");
+-        checkCommandLineArg(covBuildArguments, "$WORKSPACE");
+-
+-        assertEquals(0, covBuildArguments.size());
++        ICommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        setExpectedArguments(new String[] {"cov-build", "--dir", "TestDir", "--fs-capture-search", "$WORKSPACE"});
++        covBuildCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] cov-build command line arguments: " + actualArguments.toString());
+     }
+ 
+     @Test
+-    public void CovBuildCommand_CommandForCompileSourcesTest_WithTaOptions() {
+-        mocker.replay();
+-
++    public void commandForCompileSourcesTest_WithTaOptions() throws IOException, InterruptedException {
+         InvocationAssistance invocationAssistance = new InvocationAssistance(
+                 false, StringUtils.EMPTY, false, StringUtils.EMPTY, true, false,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -110,26 +88,14 @@
+                 null, taOptionBlock, null
+         );
+ 
+-        CovCommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-        List<String> covBuildArguments = covBuildCommand.getCommandLines();
+-
+-        assertEquals(7, covBuildArguments.size());
+-
+-        checkCommandLineArg(covBuildArguments, "cov-build");
+-        checkCommandLineArg(covBuildArguments, "--dir");
+-        checkCommandLineArg(covBuildArguments, "TestDir");
+-        checkCommandLineArg(covBuildArguments, "--java-coverage");
+-        checkCommandLineArg(covBuildArguments, "Jacoco");
+-        checkCommandLineArg(covBuildArguments, "--java-test");
+-        checkCommandLineArg(covBuildArguments, "junit");
+-
+-        assertEquals(0, covBuildArguments.size());
++        ICommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        setExpectedArguments(new String[] {"cov-build", "--dir", "TestDir", "--java-coverage", "Jacoco", "--java-test", "junit"});
++        covBuildCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] cov-build command line arguments: " + actualArguments.toString());
+     }
+ 
+     @Test
+-    public void CovBuildCommand_CommandForCompileSourcesTest_WithAdditionalBuildArguments() {
+-        mocker.replay();
+-
++    public void commandForCompileSourcesTest_WithAdditionalBuildArguments() throws IOException, InterruptedException {
+         InvocationAssistance invocationAssistance = new InvocationAssistance(
+                 false, StringUtils.EMPTY, false, StringUtils.EMPTY, true, false,
+                 "AdditionalBuildArguments", StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -142,16 +108,22 @@
+                 null, null, null
+         );
+ 
+-        CovCommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-        List<String> covBuildArguments = covBuildCommand.getCommandLines();
++        ICommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        setExpectedArguments(new String[] {"cov-build", "--dir", "TestDir", "AdditionalBuildArguments"});
++        covBuildCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] cov-build command line arguments: " + actualArguments.toString());
++    }
+ 
+-        assertEquals(4, covBuildArguments.size());
++    @Test
++    public void cannotExecuteTest() throws IOException, InterruptedException {
++        CoverityPublisher publisher = new CoverityPublisher(
++                null, null, false, false, false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                null, null, null
++        );
+ 
+-        checkCommandLineArg(covBuildArguments, "cov-build");
+-        checkCommandLineArg(covBuildArguments, "--dir");
+-        checkCommandLineArg(covBuildArguments, "TestDir");
+-        checkCommandLineArg(covBuildArguments, "AdditionalBuildArguments");
+-
+-        assertEquals(0, covBuildArguments.size());
++        ICommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        covBuildCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] Skipping command because it can't be executed");
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -35,8 +35,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         CovCommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+@@ -66,8 +65,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         CovCommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+@@ -106,8 +104,7 @@
+ 
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, taOptionBlock, null
++                taOptionBlock, null
+         );
+ 
+         CovCommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+@@ -138,8 +135,7 @@
+         );
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, invocationAssistance, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, null, null
++                null, null
+         );
+ 
+         CovCommand covBuildCommand = new CovBuildCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/8: src/test/java/jenkins/plugins/coverity/CoverityTool/CovCaptureCommandTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -13,18 +13,17 @@
+ import jenkins.plugins.coverity.CoverityPublisher;
+ import jenkins.plugins.coverity.TaOptionBlock;
+ import org.apache.commons.lang.StringUtils;
++import org.junit.Assert;
+ import org.junit.Test;
+ 
+-import java.util.List;
++import java.io.IOException;
+ 
+ import static org.junit.Assert.assertEquals;
+ 
+ public class CovCaptureCommandTest extends CommandTestBase {
+ 
+     @Test
+-    public void CovCaptureCommand_TestAdvisorConfigurationTest() {
+-        mocker.replay();
+-
++    public void addTAdvisorConfigurationTest() throws IOException, InterruptedException {
+         TaOptionBlock taOptionBlock = new TaOptionBlock(
+                 StringUtils.EMPTY, false, false, true,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -40,26 +39,14 @@
+                 null, taOptionBlock, null
+         );
+ 
+-        CovCommand covCaptureCommand = new CovCaptureCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-        List<String> covCaptureArguments = covCaptureCommand.getCommandLines();
+-
+-        assertEquals(7, covCaptureArguments.size());
+-
+-        checkCommandLineArg(covCaptureArguments, "cov-capture");
+-        checkCommandLineArg(covCaptureArguments, "--dir");
+-        checkCommandLineArg(covCaptureArguments, "TestDir");
+-        checkCommandLineArg(covCaptureArguments, "--java-coverage");
+-        checkCommandLineArg(covCaptureArguments, "Jacoco");
+-        checkCommandLineArg(covCaptureArguments, "--java-test");
+-        checkCommandLineArg(covCaptureArguments, "junit");
+-
+-        assertEquals(0, covCaptureArguments.size());
++        ICommand covCaptureCommand = new CovCaptureCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        setExpectedArguments(new String[] {"cov-capture", "--dir", "TestDir", "--java-coverage", "Jacoco", "--java-test", "junit"});
++        covCaptureCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] cov-capture command line arguments: " + actualArguments.toString());
+     }
+ 
+     @Test
+-    public void CovCaptureCommand_CustomTestCommandTest() {
+-        mocker.replay();
+-
++    public void customTestCommandTest() throws IOException, InterruptedException {
+         TaOptionBlock taOptionBlock = new TaOptionBlock(
+                 "CustomTestCommand", false, false, false,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -75,23 +62,14 @@
+                 null, taOptionBlock, null
+         );
+ 
+-        CovCommand covCaptureCommand = new CovCaptureCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+-        List<String> covCaptureArguments = covCaptureCommand.getCommandLines();
+-
+-        assertEquals(4, covCaptureArguments.size());
+-
+-        checkCommandLineArg(covCaptureArguments, "cov-capture");
+-        checkCommandLineArg(covCaptureArguments, "--dir");
+-        checkCommandLineArg(covCaptureArguments, "TestDir");
+-        checkCommandLineArg(covCaptureArguments, "CustomTestCommand");
+-
+-        assertEquals(0, covCaptureArguments.size());
++        ICommand covCaptureCommand = new CovCaptureCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        setExpectedArguments(new String[] {"cov-capture", "--dir", "TestDir", "CustomTestCommand"});
++        covCaptureCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] cov-capture command line arguments: " + actualArguments.toString());
+     }
+ 
+     @Test
+-    public void CovCaptureCommand_CustomTestCommandTest_WithParseException() {
+-        mocker.replay();
+-
++    public void customTestCommandTest_WithParseException() throws IOException, InterruptedException {
+         TaOptionBlock taOptionBlock = new TaOptionBlock(
+                 "\'", false, false, false,
+                 StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+@@ -107,9 +85,25 @@
+                 null, taOptionBlock, null
+         );
+ 
+-        expectedException.expect(RuntimeException.class);
+-        expectedException.expectMessage("ParseException occurred during tokenizing the cov capture custom test command.");
++        ICommand covCaptureCommand = new CovCaptureCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        try{
++            covCaptureCommand.runCommand();
++            Assert.fail("RuntimeException should have been thrown");
++        }catch (RuntimeException e) {
++            assertEquals("ParseException occurred during tokenizing the cov capture custom test command.", e.getMessage());
++        }
++    }
+ 
+-        CovCommand covCaptureCommand = new CovCaptureCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++    @Test
++    public void cannotExecuteTest() throws IOException, InterruptedException {
++        CoverityPublisher publisher = new CoverityPublisher(
++                null, null, false, false, false, false, false,
++                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
++                null, null, null
++        );
++
++        ICommand covCaptureCommand = new CovCaptureCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
++        covCaptureCommand.runCommand();
++        consoleLogger.verifyLastMessage("[Coverity] Skipping command because it can't be executed");
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -36,8 +36,7 @@
+ 
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, null, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, taOptionBlock, null
++                taOptionBlock, null
+         );
+ 
+         CovCommand covCaptureCommand = new CovCaptureCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+@@ -71,8 +70,7 @@
+ 
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, null, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, taOptionBlock, null
++                taOptionBlock, null
+         );
+ 
+         CovCommand covCaptureCommand = new CovCaptureCommand(build, launcher, listener, publisher, StringUtils.EMPTY, envVars);
+@@ -103,8 +101,7 @@
+ 
+         CoverityPublisher publisher = new CoverityPublisher(
+                 null, null, false, false, false, false, false,
+-                StringUtils.EMPTY, StringUtils.EMPTY, StringUtils.EMPTY,
+-                null, taOptionBlock, null
++                taOptionBlock, null
+         );
+ 
+         expectedException.expect(RuntimeException.class);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== REMAINING 3 FILES (elided at truncation T3; listed by path + merged-vs-dev diffstat) ===
+  src/test/java/jenkins/plugins/coverity/CoverityTool/CovCommitDefectsCommandTest.java  (merged-vs-dev +0 -0)
+  src/test/java/jenkins/plugins/coverity/CoverityTool/CovEmitJavaCommandTest.java  (merged-vs-dev +0 -0)
+  src/test/java/jenkins/plugins/coverity/CoverityTool/CovImportScmCommandTest.java  (merged-vs-dev +0 -0)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

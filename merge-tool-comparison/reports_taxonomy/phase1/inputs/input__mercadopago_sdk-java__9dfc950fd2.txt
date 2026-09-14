@@ -1,0 +1,1292 @@
+UNIT mercadopago_sdk-java__9dfc950fd2
+repo: mercadopago_sdk-java   merge: 9dfc950fd257928e4f676fea47ff0f82ece4f8c4   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/3: src/main/java/com/mercadopago/client/customer/CustomerClient.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -48,30 +48,34 @@
+   }
+ 
+   /**
+    * Get customer.
+    *
+    * @param customerId id of the customer to which the card belongs
+    * @return the requested customer card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/get/">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/get/">api
++   *     docs</a>
+    */
+   public Customer get(String customerId) throws MPException {
+     return this.get(customerId, null);
+   }
+ 
+   /**
+    * Get customer.
+    *
+    * @param customerId id of the customer
+    * @param requestOptions metadata to customize the request
+    * @return the requested customer card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/get/">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/get/">api
++   *     docs</a>
+    */
+   public Customer get(String customerId, MPRequestOptions requestOptions) throws MPException {
+     LOGGER.info("Sending get customer request");
+ 
+     MPResponse response =
+         send(
+             String.format("/v1/customers/%s", customerId),
+             HttpMethod.GET,
+@@ -85,30 +89,34 @@
+   }
+ 
+   /**
+    * Add new customer.
+    *
+    * @param request attributes used to perform the request
+    * @return the customer just added
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers/post/">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers/post/">api
++   *     docs</a>
+    */
+   public Customer create(CustomerRequest request) throws MPException {
+     return this.create(request, null);
+   }
+ 
+   /**
+    * Add new customer.
+    *
+    * @param request attributes used to perform the request
+    * @param requestOptions metadata to customize the request
+    * @return the customer just added
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers/post/">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers/post/">api
++   *     docs</a>
+    */
+   public Customer create(CustomerRequest request, MPRequestOptions requestOptions)
+       throws MPException {
+     LOGGER.info("Sending create customer request");
+ 
+     JsonObject payload = Serializer.serializeToJson(request);
+     MPRequest mpRequest =
+         MPRequest.buildRequest("/v1/customers", HttpMethod.POST, payload, null, requestOptions);
+@@ -121,31 +129,35 @@
+ 
+   /**
+    * Update customer.
+    *
+    * @param customerId id of the customer
+    * @param request attributes used to perform the request
+    * @return the customer just updated
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/put/">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/put/">api
++   *     docs</a>
+    */
+   public Customer update(String customerId, CustomerRequest request) throws MPException {
+     return this.update(customerId, request, null);
+   }
+ 
+   /**
+    * Update customer.
+    *
+    * @param customerId id of the customer
+    * @param request attributes used to perform the request
+    * @param requestOptions metadata to customize the request
+    * @return the customer just updated
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/put/">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/put/">api
++   *     docs</a>
+    */
+   public Customer update(
+       String customerId, CustomerRequest request, MPRequestOptions requestOptions)
+       throws MPException {
+     LOGGER.info("Sending update customer request");
+ 
+     JsonObject payload = Serializer.serializeToJson(request);
+     MPRequest mpRequest =
+@@ -199,30 +211,34 @@
+   }
+ 
+   /**
+    * Search customer.
+    *
+    * @param request attributes used to perform the request
+    * @return search result
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/customers/_customers_search/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/customers/_customers_search/get">api
++   *     docs</a>
+    */
+   public MPResultsResourcesPage<Customer> search(MPSearchRequest request) throws MPException {
+     return this.search(request, null);
+   }
+ 
+   /**
+    * Search customer.
+    *
+    * @param request attributes used to search for customer
+    * @param requestOptions metadata to customize the request
+    * @return search result
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/customers/_customers_search/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/customers/_customers_search/get">api
++   *     docs</a>
+    */
+   public MPResultsResourcesPage<Customer> search(
+       MPSearchRequest request, MPRequestOptions requestOptions) throws MPException {
+     LOGGER.info("Sending search customer request");
+ 
+     MPResponse response = search("/v1/customers/search", request, requestOptions);
+ 
+     Type responseType = new TypeToken<MPResultsResourcesPage<Customer>>() {}.getType();
+@@ -234,113 +250,129 @@
+ 
+   /**
+    * Get customer card by id.
+    *
+    * @param customerId id of the customer
+    * @param cardId id of the card
+    * @return the requested card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/get">api
++   *     docs</a>
+    */
+   public CustomerCard getCard(String customerId, String cardId) throws MPException {
+     return this.getCard(customerId, cardId, null);
+   }
+ 
+   /**
+    * Get customer card by id.
+    *
+    * @param customerId id of the customer
+    * @param cardId id of the card
+    * @param requestOptions metadata to customize the request
+    * @return the requested card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/get">api
++   *     docs</a>
+    */
+   public CustomerCard getCard(String customerId, String cardId, MPRequestOptions requestOptions)
+       throws MPException {
+     return cardClient.get(customerId, cardId, requestOptions);
+   }
+ 
+   /**
+    * Associate new card with customer.
+    *
+    * @param customerId id of the customer
+    * @param request attributes used to associate a new card with customer
+    * @return the added card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/post">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/post">api
++   *     docs</a>
+    */
+   public CustomerCard createCard(String customerId, CustomerCardCreateRequest request)
+       throws MPException {
+     return this.createCard(customerId, request, null);
+   }
+ 
+   /**
+    * Associate new card with customer.
+    *
+    * @param customerId id of the customer
+    * @param request attributes used to associate a new card with customer
+    * @param requestOptions metadata to customize the request
+    * @return the added card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/post">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/post">api
++   *     docs</a>
+    */
+   public CustomerCard createCard(
+       String customerId, CustomerCardCreateRequest request, MPRequestOptions requestOptions)
+       throws MPException {
+     return cardClient.create(customerId, request, requestOptions);
+   }
+ 
+   /**
+    * Delete card.
+    *
+    * @param customerId id of the customer
+    * @param cardId id of the card being removed
+    * @return the deleted card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/delete">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/delete">api
++   *     docs</a>
+    */
+   public CustomerCard deleteCard(String customerId, String cardId) throws MPException {
+     return this.deleteCard(customerId, cardId, null);
+   }
+ 
+   /**
+    * Delete card.
+    *
+    * @param customerId id of the customer
+    * @param cardId id of the card being removed
+    * @param requestOptions metadata to customize the request
+    * @return the deleted card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/delete">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/delete">api
++   *     docs</a>
+    */
+   public CustomerCard deleteCard(String customerId, String cardId, MPRequestOptions requestOptions)
+       throws MPException {
+     return cardClient.delete(customerId, cardId, requestOptions);
+   }
+ 
+   /**
+    * List customer cards.
+    *
+    * @param customerId id of the customer
+    * @return list of customer cards
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/get">api
++   *     docs</a>
+    */
+   public MPResourceList<CustomerCard> listCards(String customerId) throws MPException {
+     return this.listCards(customerId, null);
+   }
+ 
+   /**
+    * List customer cards.
+    *
+    * @param customerId id of the customer
+    * @param requestOptions metadata to customize the request
+    * @return list of customer cards
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/get">api
++   *     docs</a>
+    */
+   public MPResourceList<CustomerCard> listCards(String customerId, MPRequestOptions requestOptions)
+       throws MPException {
+     return cardClient.listAll(customerId, requestOptions);
+   }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -3,16 +3,17 @@
+ import static com.mercadopago.MercadoPagoConfig.getStreamHandler;
+ import static com.mercadopago.serialization.Serializer.deserializeResultsResourcesPageFromJson;
+ 
+ import com.google.gson.JsonObject;
+ import com.google.gson.reflect.TypeToken;
+ import com.mercadopago.MercadoPagoConfig;
+ import com.mercadopago.client.MercadoPagoClient;
+ import com.mercadopago.core.MPRequestOptions;
++import com.mercadopago.exceptions.MPApiException;
+ import com.mercadopago.exceptions.MPException;
+ import com.mercadopago.net.HttpMethod;
+ import com.mercadopago.net.MPHttpClient;
+ import com.mercadopago.net.MPRequest;
+ import com.mercadopago.net.MPResourceList;
+ import com.mercadopago.net.MPResponse;
+ import com.mercadopago.net.MPResultsResourcesPage;
+ import com.mercadopago.net.MPSearchRequest;
+@@ -48,32 +49,37 @@
+   }
+ 
+   /**
+    * Get customer.
+    *
+    * @param customerId id of the customer to which the card belongs
+    * @return the requested customer card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/get/">api docs</a>
+-   */
+-  public Customer get(String customerId) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/get/">api
++   *     docs</a>
++   */
++  public Customer get(String customerId) throws MPException, MPApiException {
+     return this.get(customerId, null);
+   }
+ 
+   /**
+    * Get customer.
+    *
+    * @param customerId id of the customer
+    * @param requestOptions metadata to customize the request
+    * @return the requested customer card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/get/">api docs</a>
+-   */
+-  public Customer get(String customerId, MPRequestOptions requestOptions) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/get/">api
++   *     docs</a>
++   */
++  public Customer get(String customerId, MPRequestOptions requestOptions)
++      throws MPException, MPApiException {
+     LOGGER.info("Sending get customer request");
+ 
+     MPResponse response =
+         send(
+             String.format("/v1/customers/%s", customerId),
+             HttpMethod.GET,
+             null,
+             null,
+@@ -85,33 +91,37 @@
+   }
+ 
+   /**
+    * Add new customer.
+    *
+    * @param request attributes used to perform the request
+    * @return the customer just added
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers/post/">api docs</a>
+-   */
+-  public Customer create(CustomerRequest request) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers/post/">api
++   *     docs</a>
++   */
++  public Customer create(CustomerRequest request) throws MPException, MPApiException {
+     return this.create(request, null);
+   }
+ 
+   /**
+    * Add new customer.
+    *
+    * @param request attributes used to perform the request
+    * @param requestOptions metadata to customize the request
+    * @return the customer just added
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers/post/">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers/post/">api
++   *     docs</a>
+    */
+   public Customer create(CustomerRequest request, MPRequestOptions requestOptions)
+-      throws MPException {
++      throws MPException, MPApiException {
+     LOGGER.info("Sending create customer request");
+ 
+     JsonObject payload = Serializer.serializeToJson(request);
+     MPRequest mpRequest =
+         MPRequest.buildRequest("/v1/customers", HttpMethod.POST, payload, null, requestOptions);
+     MPResponse response = send(mpRequest);
+ 
+     Customer customer = Serializer.deserializeFromJson(Customer.class, response.getContent());
+@@ -121,35 +131,40 @@
+ 
+   /**
+    * Update customer.
+    *
+    * @param customerId id of the customer
+    * @param request attributes used to perform the request
+    * @return the customer just updated
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/put/">api docs</a>
+-   */
+-  public Customer update(String customerId, CustomerRequest request) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/put/">api
++   *     docs</a>
++   */
++  public Customer update(String customerId, CustomerRequest request)
++      throws MPException, MPApiException {
+     return this.update(customerId, request, null);
+   }
+ 
+   /**
+    * Update customer.
+    *
+    * @param customerId id of the customer
+    * @param request attributes used to perform the request
+    * @param requestOptions metadata to customize the request
+    * @return the customer just updated
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/put/">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com/developers/en/reference/customers/_customers_id/put/">api
++   *     docs</a>
+    */
+   public Customer update(
+       String customerId, CustomerRequest request, MPRequestOptions requestOptions)
+-      throws MPException {
++      throws MPException, MPApiException {
+     LOGGER.info("Sending update customer request");
+ 
+     JsonObject payload = Serializer.serializeToJson(request);
+     MPRequest mpRequest =
+         MPRequest.buildRequest(
+             String.format("/v1/customers/%s", customerId),
+             HttpMethod.PUT,
+             payload,
+@@ -164,29 +179,30 @@
+ 
+   /**
+    * Delete customer.
+    *
+    * @param customerId id of the customer
+    * @return the customer just deleted
+    * @throws MPException an error if the request fails
+    */
+-  public Customer delete(String customerId) throws MPException {
++  public Customer delete(String customerId) throws MPException, MPApiException {
+     return this.delete(customerId, null);
+   }
+ 
+   /**
+    * Delete customer.
+    *
+    * @param customerId id of the customer
+    * @param requestOptions metadata to customize the request
+    * @return the customer just deleted
+    * @throws MPException an error if the request fails
+    */
+-  public Customer delete(String customerId, MPRequestOptions requestOptions) throws MPException {
++  public Customer delete(String customerId, MPRequestOptions requestOptions)
++      throws MPException, MPApiException {
+     LOGGER.info("Sending delete customer request");
+ 
+     MPRequest mpRequest =
+         MPRequest.buildRequest(
+             String.format("/v1/customers/%s", customerId),
+             HttpMethod.DELETE,
+             null,
+             null,
+@@ -199,33 +215,38 @@
+   }
+ 
+   /**
+    * Search customer.
+    *
+    * @param request attributes used to perform the request
+    * @return search result
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/customers/_customers_search/get">api docs</a>
+-   */
+-  public MPResultsResourcesPage<Customer> search(MPSearchRequest request) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/customers/_customers_search/get">api
++   *     docs</a>
++   */
++  public MPResultsResourcesPage<Customer> search(MPSearchRequest request)
++      throws MPException, MPApiException {
+     return this.search(request, null);
+   }
+ 
+   /**
+    * Search customer.
+    *
+    * @param request attributes used to search for customer
+    * @param requestOptions metadata to customize the request
+    * @return search result
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/customers/_customers_search/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/customers/_customers_search/get">api
++   *     docs</a>
+    */
+   public MPResultsResourcesPage<Customer> search(
+-      MPSearchRequest request, MPRequestOptions requestOptions) throws MPException {
++      MPSearchRequest request, MPRequestOptions requestOptions) throws MPException, MPApiException {
+     LOGGER.info("Sending search customer request");
+ 
+     MPResponse response = search("/v1/customers/search", request, requestOptions);
+ 
+     Type responseType = new TypeToken<MPResultsResourcesPage<Customer>>() {}.getType();
+     MPResultsResourcesPage<Customer> result =
+         deserializeResultsResourcesPageFromJson(responseType, response.getContent());
+     result.setResponse(response);
+@@ -234,113 +255,131 @@
+ 
+   /**
+    * Get customer card by id.
+    *
+    * @param customerId id of the customer
+    * @param cardId id of the card
+    * @return the requested card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/get">api docs</a>
+-   */
+-  public CustomerCard getCard(String customerId, String cardId) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/get">api
++   *     docs</a>
++   */
++  public CustomerCard getCard(String customerId, String cardId) throws MPException, MPApiException {
+     return this.getCard(customerId, cardId, null);
+   }
+ 
+   /**
+    * Get customer card by id.
+    *
+    * @param customerId id of the customer
+    * @param cardId id of the card
+    * @param requestOptions metadata to customize the request
+    * @return the requested card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/get">api
++   *     docs</a>
+    */
+   public CustomerCard getCard(String customerId, String cardId, MPRequestOptions requestOptions)
+-      throws MPException {
++      throws MPException, MPApiException {
+     return cardClient.get(customerId, cardId, requestOptions);
+   }
+ 
+   /**
+    * Associate new card with customer.
+    *
+    * @param customerId id of the customer
+    * @param request attributes used to associate a new card with customer
+    * @return the added card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/post">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/post">api
++   *     docs</a>
+    */
+   public CustomerCard createCard(String customerId, CustomerCardCreateRequest request)
+-      throws MPException {
++      throws MPException, MPApiException {
+     return this.createCard(customerId, request, null);
+   }
+ 
+   /**
+    * Associate new card with customer.
+    *
+    * @param customerId id of the customer
+    * @param request attributes used to associate a new card with customer
+    * @param requestOptions metadata to customize the request
+    * @return the added card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/post">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/post">api
++   *     docs</a>
+    */
+   public CustomerCard createCard(
+       String customerId, CustomerCardCreateRequest request, MPRequestOptions requestOptions)
+-      throws MPException {
++      throws MPException, MPApiException {
+     return cardClient.create(customerId, request, requestOptions);
+   }
+ 
+   /**
+    * Delete card.
+    *
+    * @param customerId id of the customer
+    * @param cardId id of the card being removed
+    * @return the deleted card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/delete">api docs</a>
+-   */
+-  public CustomerCard deleteCard(String customerId, String cardId) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/delete">api
++   *     docs</a>
++   */
++  public CustomerCard deleteCard(String customerId, String cardId)
++      throws MPException, MPApiException {
+     return this.deleteCard(customerId, cardId, null);
+   }
+ 
+   /**
+    * Delete card.
+    *
+    * @param customerId id of the customer
+    * @param cardId id of the card being removed
+    * @param requestOptions metadata to customize the request
+    * @return the deleted card
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/delete">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards_id/delete">api
++   *     docs</a>
+    */
+   public CustomerCard deleteCard(String customerId, String cardId, MPRequestOptions requestOptions)
+-      throws MPException {
++      throws MPException, MPApiException {
+     return cardClient.delete(customerId, cardId, requestOptions);
+   }
+ 
+   /**
+    * List customer cards.
+    *
+    * @param customerId id of the customer
+    * @return list of customer cards
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/get">api docs</a>
+-   */
+-  public MPResourceList<CustomerCard> listCards(String customerId) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/get">api
++   *     docs</a>
++   */
++  public MPResourceList<CustomerCard> listCards(String customerId)
++      throws MPException, MPApiException {
+     return this.listCards(customerId, null);
+   }
+ 
+   /**
+    * List customer cards.
+    *
+    * @param customerId id of the customer
+    * @param requestOptions metadata to customize the request
+    * @return list of customer cards
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/cards/_customers_customer_id_cards/get">api
++   *     docs</a>
+    */
+   public MPResourceList<CustomerCard> listCards(String customerId, MPRequestOptions requestOptions)
+-      throws MPException {
++      throws MPException, MPApiException {
+     return cardClient.listAll(customerId, requestOptions);
+   }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/main/java/com/mercadopago/client/payment/PaymentRefundClient.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -20,16 +20,21 @@
+ 
+ /** Client that use the Payment Refunds APIs. */
+ public class PaymentRefundClient extends MercadoPagoClient {
+ 
+   private static final Logger LOGGER = Logger.getLogger(PaymentRefundClient.class.getName());
+ 
+   private static final String URL_WITH_PAYMENT_ID = "/v1/payments/%s/refunds";
+ 
++  /** Default constructor. Uses the default http client used by the SDK. */
++  public PaymentRefundClient() {
++    this(MercadoPagoConfig.getHttpClient());
++  }
++
+   /**
+    * Constructor used for providing a custom http client.
+    *
+    * @param httpClient httpClient
+    */
+   public PaymentRefundClient(MPHttpClient httpClient) {
+     super(httpClient);
+     StreamHandler streamHandler = getStreamHandler();
+@@ -37,20 +42,37 @@
+     LOGGER.addHandler(streamHandler);
+   }
+ 
+   /**
+    * Creates a refund for payment.
+    *
+    * @param paymentId payment id
+    * @param amount refund amount
++   * @return PaymentRefund
++   * @throws MPException an error if the request fails
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds/post">api
++   *     docs</a>
++   */
++  public PaymentRefund refund(Long paymentId, BigDecimal amount) throws MPException {
++    return this.refund(paymentId, amount, null);
++  }
++
++  /**
++   * Creates a refund for payment.
++   *
++   * @param paymentId payment id
++   * @param amount refund amount
+    * @param requestOptions metadata to customize the request
+    * @return PaymentRefund
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds/post">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds/post">api
++   *     docs</a>
+    */
+   public PaymentRefund refund(Long paymentId, BigDecimal amount, MPRequestOptions requestOptions)
+       throws MPException {
+     LOGGER.info("Sending refund payment request");
+     PaymentRefundCreateRequest request =
+         PaymentRefundCreateRequest.builder().amount(amount).build();
+ 
+     MPResponse response =
+@@ -66,20 +88,37 @@
+     return result;
+   }
+ 
+   /**
+    * Gets refund information by id from the payment.
+    *
+    * @param paymentId payment id
+    * @param refundId refund id
++   * @return PaymentRefund
++   * @throws MPException an error if the request fails
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds_refund_id/get">api
++   *     docs</a>
++   */
++  public PaymentRefund get(Long paymentId, Long refundId) throws MPException {
++    return this.get(paymentId, refundId, null);
++  }
++
++  /**
++   * Gets refund information by id from the payment.
++   *
++   * @param paymentId payment id
++   * @param refundId refund id
+    * @param requestOptions metadata to customize the request
+    * @return PaymentRefund
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds_refund_id/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds_refund_id/get">api
++   *     docs</a>
+    */
+   public PaymentRefund get(Long paymentId, Long refundId, MPRequestOptions requestOptions)
+       throws MPException {
+     LOGGER.info("Sending get refund payment request");
+     MPResponse response =
+         send(
+             String.format("/v1/payments/%s/refunds/%s", paymentId, refundId),
+             HttpMethod.GET,
+@@ -91,20 +130,36 @@
+ 
+     return result;
+   }
+ 
+   /**
+    * Lists the refunds of the payment.
+    *
+    * @param paymentId payment id
++   * @return list of PaymentRefund
++   * @throws MPException an error if the request fails
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds/get">api
++   *     docs</a>
++   */
++  public MPResourceList<PaymentRefund> list(Long paymentId) throws MPException {
++    return this.list(paymentId, null);
++  }
++
++  /**
++   * Lists the refunds of the payment.
++   *
++   * @param paymentId payment id
+    * @param requestOptions metadata to customize the request
+    * @return list of PaymentRefund
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds/get">api
++   *     docs</a>
+    */
+   public MPResourceList<PaymentRefund> list(Long paymentId, MPRequestOptions requestOptions)
+       throws MPException {
+     LOGGER.info("Sending list refund payment request");
+     MPResponse response =
+         send(
+             String.format(URL_WITH_PAYMENT_ID, paymentId),
+             HttpMethod.GET,
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -3,16 +3,17 @@
+ import static com.mercadopago.MercadoPagoConfig.getStreamHandler;
+ import static com.mercadopago.serialization.Serializer.deserializeFromJson;
+ import static com.mercadopago.serialization.Serializer.deserializeListFromJson;
+ import static com.mercadopago.serialization.Serializer.serializeToJson;
+ 
+ import com.mercadopago.MercadoPagoConfig;
+ import com.mercadopago.client.MercadoPagoClient;
+ import com.mercadopago.core.MPRequestOptions;
++import com.mercadopago.exceptions.MPApiException;
+ import com.mercadopago.exceptions.MPException;
+ import com.mercadopago.net.HttpMethod;
+ import com.mercadopago.net.MPHttpClient;
+ import com.mercadopago.net.MPResourceList;
+ import com.mercadopago.net.MPResponse;
+ import com.mercadopago.resources.payment.PaymentRefund;
+ import java.math.BigDecimal;
+ import java.util.logging.Logger;
+@@ -40,20 +41,22 @@
+   /**
+    * Creates a refund for payment.
+    *
+    * @param paymentId payment id
+    * @param amount refund amount
+    * @param requestOptions metadata to customize the request
+    * @return PaymentRefund
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds/post">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds/post">api
++   *     docs</a>
+    */
+   public PaymentRefund refund(Long paymentId, BigDecimal amount, MPRequestOptions requestOptions)
+-      throws MPException {
++      throws MPException, MPApiException {
+     LOGGER.info("Sending refund payment request");
+     PaymentRefundCreateRequest request =
+         PaymentRefundCreateRequest.builder().amount(amount).build();
+ 
+     MPResponse response =
+         send(
+             String.format(URL_WITH_PAYMENT_ID, paymentId),
+             HttpMethod.POST,
+@@ -69,20 +72,22 @@
+   /**
+    * Gets refund information by id from the payment.
+    *
+    * @param paymentId payment id
+    * @param refundId refund id
+    * @param requestOptions metadata to customize the request
+    * @return PaymentRefund
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds_refund_id/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds_refund_id/get">api
++   *     docs</a>
+    */
+   public PaymentRefund get(Long paymentId, Long refundId, MPRequestOptions requestOptions)
+-      throws MPException {
++      throws MPException, MPApiException {
+     LOGGER.info("Sending get refund payment request");
+     MPResponse response =
+         send(
+             String.format("/v1/payments/%s/refunds/%s", paymentId, refundId),
+             HttpMethod.GET,
+             null,
+             null,
+             requestOptions);
+@@ -94,20 +99,22 @@
+ 
+   /**
+    * Lists the refunds of the payment.
+    *
+    * @param paymentId payment id
+    * @param requestOptions metadata to customize the request
+    * @return list of PaymentRefund
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/chargebacks/_payments_id_refunds/get">api
++   *     docs</a>
+    */
+   public MPResourceList<PaymentRefund> list(Long paymentId, MPRequestOptions requestOptions)
+-      throws MPException {
++      throws MPException, MPApiException {
+     LOGGER.info("Sending list refund payment request");
+     MPResponse response =
+         send(
+             String.format(URL_WITH_PAYMENT_ID, paymentId),
+             HttpMethod.GET,
+             null,
+             null,
+             requestOptions);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/main/java/com/mercadopago/client/preference/PreferenceClient.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -46,30 +46,34 @@
+   }
+ 
+   /**
+    * Method responsible for getting preference.
+    *
+    * @param id preference id
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/get">api
++   *     docs</a>
+    */
+   public Preference get(String id) throws MPException {
+     return this.get(id, null);
+   }
+ 
+   /**
+    * Method responsible for getting preference.
+    *
+    * @param id preference id
+    * @param requestOptions metadata to customize the request
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/get">api
++   *     docs</a>
+    */
+   public Preference get(String id, MPRequestOptions requestOptions) throws MPException {
+     LOGGER.info("Sending get preference request");
+     MPResponse response =
+         send(String.format(URL_WITH_ID, id), HttpMethod.GET, null, null, requestOptions);
+ 
+     Preference result = deserializeFromJson(Preference.class, response.getContent());
+     result.setResponse(response);
+@@ -78,30 +82,34 @@
+   }
+ 
+   /**
+    * Method responsible for creating preference.
+    *
+    * @param request attributes used to create a preference
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences/post">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences/post">api
++   *     docs</a>
+    */
+   public Preference create(PreferenceRequest request) throws MPException {
+     return this.create(request, null);
+   }
+ 
+   /**
+    * Method responsible for creating preference with request options.
+    *
+    * @param request attributes used to create a preference
+    * @param requestOptions metadata to customize the request
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences/post">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences/post">api
++   *     docs</a>
+    */
+   public Preference create(PreferenceRequest request, MPRequestOptions requestOptions)
+       throws MPException {
+     LOGGER.info("Sending create preference request");
+ 
+     MPRequest mpRequest =
+         MPRequest.builder()
+             .uri("/checkout/preferences")
+@@ -118,31 +126,35 @@
+ 
+   /**
+    * Method responsible for updating preference.
+    *
+    * @param id preference id
+    * @param request attributes used to create a preference
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/put">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/put">api
++   *     docs</a>
+    */
+   public Preference update(String id, PreferenceRequest request) throws MPException {
+     return this.update(id, request, null);
+   }
+ 
+   /**
+    * Method responsible for updating preference with request options.
+    *
+    * @param id preference id
+    * @param request attributes used to create a preference
+    * @param requestOptions metadata to customize the request
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/put">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/put">api
++   *     docs</a>
+    */
+   public Preference update(String id, PreferenceRequest request, MPRequestOptions requestOptions)
+       throws MPException {
+     LOGGER.info("Sending update preference request");
+ 
+     MPRequest mpRequest =
+         MPRequest.builder()
+             .uri(String.format(URL_WITH_ID, id))
+@@ -158,31 +170,35 @@
+   }
+ 
+   /**
+    * Method responsible for search preference.
+    *
+    * @param request attributes used to create a preference
+    * @return list of results
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_search/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_search/get">api
++   *     docs</a>
+    */
+   public MPElementsResourcesPage<PreferenceSearch> search(MPSearchRequest request)
+       throws MPException {
+     return this.search(request, null);
+   }
+ 
+   /**
+    * Method responsible for search preference.
+    *
+    * @param request attributes used to create a preference
+    * @param requestOptions metadata to customize the request
+    * @return list of results
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_search/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_search/get">api
++   *     docs</a>
+    */
+   public MPElementsResourcesPage<PreferenceSearch> search(
+       MPSearchRequest request, MPRequestOptions requestOptions) throws MPException {
+     LOGGER.info("Sending search preference request");
+ 
+     MPResponse response = search("/checkout/preferences/search", request, requestOptions);
+ 
+     Type responseType = new TypeToken<MPElementsResourcesPage<PreferenceSearch>>() {}.getType();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -3,16 +3,17 @@
+ import static com.mercadopago.MercadoPagoConfig.getStreamHandler;
+ import static com.mercadopago.serialization.Serializer.deserializeElementsResourcesPageFromJson;
+ import static com.mercadopago.serialization.Serializer.deserializeFromJson;
+ 
+ import com.google.gson.reflect.TypeToken;
+ import com.mercadopago.MercadoPagoConfig;
+ import com.mercadopago.client.MercadoPagoClient;
+ import com.mercadopago.core.MPRequestOptions;
++import com.mercadopago.exceptions.MPApiException;
+ import com.mercadopago.exceptions.MPException;
+ import com.mercadopago.net.HttpMethod;
+ import com.mercadopago.net.MPElementsResourcesPage;
+ import com.mercadopago.net.MPHttpClient;
+ import com.mercadopago.net.MPRequest;
+ import com.mercadopago.net.MPResponse;
+ import com.mercadopago.net.MPSearchRequest;
+ import com.mercadopago.resources.preference.Preference;
+@@ -46,65 +47,74 @@
+   }
+ 
+   /**
+    * Method responsible for getting preference.
+    *
+    * @param id preference id
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/get">api docs</a>
+-   */
+-  public Preference get(String id) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/get">api
++   *     docs</a>
++   */
++  public Preference get(String id) throws MPException, MPApiException {
+     return this.get(id, null);
+   }
+ 
+   /**
+    * Method responsible for getting preference.
+    *
+    * @param id preference id
+    * @param requestOptions metadata to customize the request
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/get">api docs</a>
+-   */
+-  public Preference get(String id, MPRequestOptions requestOptions) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/get">api
++   *     docs</a>
++   */
++  public Preference get(String id, MPRequestOptions requestOptions)
++      throws MPException, MPApiException {
+     LOGGER.info("Sending get preference request");
+     MPResponse response =
+         send(String.format(URL_WITH_ID, id), HttpMethod.GET, null, null, requestOptions);
+ 
+     Preference result = deserializeFromJson(Preference.class, response.getContent());
+     result.setResponse(response);
+ 
+     return result;
+   }
+ 
+   /**
+    * Method responsible for creating preference.
+    *
+    * @param request attributes used to create a preference
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences/post">api docs</a>
+-   */
+-  public Preference create(PreferenceRequest request) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences/post">api
++   *     docs</a>
++   */
++  public Preference create(PreferenceRequest request) throws MPException, MPApiException {
+     return this.create(request, null);
+   }
+ 
+   /**
+    * Method responsible for creating preference with request options.
+    *
+    * @param request attributes used to create a preference
+    * @param requestOptions metadata to customize the request
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences/post">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences/post">api
++   *     docs</a>
+    */
+   public Preference create(PreferenceRequest request, MPRequestOptions requestOptions)
+-      throws MPException {
++      throws MPException, MPApiException {
+     LOGGER.info("Sending create preference request");
+ 
+     MPRequest mpRequest =
+         MPRequest.builder()
+             .uri("/checkout/preferences")
+             .method(HttpMethod.POST)
+             .payload(Serializer.serializeToJson(request))
+             .build();
+@@ -118,34 +128,39 @@
+ 
+   /**
+    * Method responsible for updating preference.
+    *
+    * @param id preference id
+    * @param request attributes used to create a preference
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/put">api docs</a>
+-   */
+-  public Preference update(String id, PreferenceRequest request) throws MPException {
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/put">api
++   *     docs</a>
++   */
++  public Preference update(String id, PreferenceRequest request)
++      throws MPException, MPApiException {
+     return this.update(id, request, null);
+   }
+ 
+   /**
+    * Method responsible for updating preference with request options.
+    *
+    * @param id preference id
+    * @param request attributes used to create a preference
+    * @param requestOptions metadata to customize the request
+    * @return preference information
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/put">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_id/put">api
++   *     docs</a>
+    */
+   public Preference update(String id, PreferenceRequest request, MPRequestOptions requestOptions)
+-      throws MPException {
++      throws MPException, MPApiException {
+     LOGGER.info("Sending update preference request");
+ 
+     MPRequest mpRequest =
+         MPRequest.builder()
+             .uri(String.format(URL_WITH_ID, id))
+             .method(HttpMethod.PUT)
+             .payload(Serializer.serializeToJson(request))
+             .build();
+@@ -158,34 +173,38 @@
+   }
+ 
+   /**
+    * Method responsible for search preference.
+    *
+    * @param request attributes used to create a preference
+    * @return list of results
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_search/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_search/get">api
++   *     docs</a>
+    */
+   public MPElementsResourcesPage<PreferenceSearch> search(MPSearchRequest request)
+-      throws MPException {
++      throws MPException, MPApiException {
+     return this.search(request, null);
+   }
+ 
+   /**
+    * Method responsible for search preference.
+    *
+    * @param request attributes used to create a preference
+    * @param requestOptions metadata to customize the request
+    * @return list of results
+    * @throws MPException an error if the request fails
+-   * @see <a href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_search/get">api docs</a>
++   * @see <a
++   *     href="https://www.mercadopago.com.br/developers/en/reference/preferences/_checkout_preferences_search/get">api
++   *     docs</a>
+    */
+   public MPElementsResourcesPage<PreferenceSearch> search(
+-      MPSearchRequest request, MPRequestOptions requestOptions) throws MPException {
++      MPSearchRequest request, MPRequestOptions requestOptions) throws MPException, MPApiException {
+     LOGGER.info("Sending search preference request");
+ 
+     MPResponse response = search("/checkout/preferences/search", request, requestOptions);
+ 
+     Type responseType = new TypeToken<MPElementsResourcesPage<PreferenceSearch>>() {}.getType();
+     MPElementsResourcesPage<PreferenceSearch> result =
+         deserializeElementsResourcesPageFromJson(responseType, response.getContent());
+     result.setResponse(response);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

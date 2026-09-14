@@ -1,0 +1,833 @@
+UNIT spigotmc_bungeecord__9fa5e74c10
+repo: spigotmc_bungeecord   merge: 9fa5e74c10df23fb291fd5e047e606830a1ce46d   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/3: proxy/src/main/java/net/md_5/bungee/ServerConnector.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -4,18 +4,20 @@
+ import io.netty.buffer.ByteBuf;
+ import io.netty.buffer.ByteBufAllocator;
+ import java.util.Locale;
+ import java.util.Queue;
+ import java.util.Set;
+ import java.util.UUID;
+ import lombok.Getter;
+ import lombok.RequiredArgsConstructor;
++import net.md_5.bungee.api.Callback;
+ import net.md_5.bungee.api.ChatColor;
+ import net.md_5.bungee.api.ProxyServer;
++import net.md_5.bungee.api.ServerConnectRequest;
+ import net.md_5.bungee.api.config.ServerInfo;
+ import net.md_5.bungee.api.event.ServerConnectEvent;
+ import net.md_5.bungee.api.event.ServerConnectedEvent;
+ import net.md_5.bungee.api.event.ServerKickEvent;
+ import net.md_5.bungee.api.event.ServerSwitchEvent;
+ import net.md_5.bungee.api.score.Objective;
+ import net.md_5.bungee.api.score.Score;
+ import net.md_5.bungee.api.score.Scoreboard;
+@@ -297,34 +299,45 @@
+ 
+     @Override
+     public void handle(EncryptionRequest encryptionRequest) throws Exception
+     {
+         throw new QuietException( "Server is online mode!" );
+     }
+ 
+     @Override
+-    public void handle(Kick kick) throws Exception
++    public void handle(final Kick kick) throws Exception
+     {
+         ServerInfo def = user.updateAndGetNextServer( target );
+-        ServerKickEvent event = new ServerKickEvent( user, target, ComponentSerializer.parse( kick.getMessage() ), def, ServerKickEvent.State.CONNECTING );
++        final ServerKickEvent event = new ServerKickEvent( user, target, ComponentSerializer.parse( kick.getMessage() ), def, ServerKickEvent.State.CONNECTING );
+         if ( event.getKickReason().toLowerCase( Locale.ROOT ).contains( "outdated" ) && def != null )
+         {
+             // Pre cancel the event if we are going to try another server
+             event.setCancelled( true );
+         }
+         bungee.getPluginManager().callEvent( event );
++        final String message = bungee.getTranslation( "connect_kick", target.getName(), event.getKickReason() );
+         if ( event.isCancelled() && event.getCancelServer() != null )
+         {
+             obsolete = true;
+-            user.connect( event.getCancelServer(), ServerConnectEvent.Reason.KICK_REDIRECT );
++            Callback<ServerConnectRequest.Result> callback = new Callback<ServerConnectRequest.Result>()
++            {
++                @Override
++                public void done(ServerConnectRequest.Result result, Throwable error)
++                {
++                    if ( result != ServerConnectRequest.Result.SUCCESS )
++                    {
++                        user.disconnect( message );
++                    }
++                }
++            };
++            user.connect( ServerConnectRequest.builder().target( event.getCancelServer() ).callback( callback ).retry( false ).reason( ServerConnectEvent.Reason.KICK_REDIRECT ).build() );
+             throw CancelSendSignal.INSTANCE;
+         }
+ 
+-        String message = bungee.getTranslation( "connect_kick", target.getName(), event.getKickReason() );
+         if ( user.isDimensionChange() )
+         {
+             user.disconnect( message );
+         } else
+         {
+             user.sendMessage( message );
+         }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,13 +1,14 @@
+ package net.md_5.bungee;
+ 
+ import com.google.common.base.Preconditions;
+ import io.netty.buffer.ByteBuf;
+ import io.netty.buffer.ByteBufAllocator;
++import java.net.InetSocketAddress;
+ import java.util.Locale;
+ import java.util.Queue;
+ import java.util.Set;
+ import java.util.UUID;
+ import lombok.Getter;
+ import lombok.RequiredArgsConstructor;
+ import net.md_5.bungee.api.ChatColor;
+ import net.md_5.bungee.api.ProxyServer;
+@@ -31,16 +32,17 @@
+ import net.md_5.bungee.netty.HandlerBoss;
+ import net.md_5.bungee.netty.PacketHandler;
+ import net.md_5.bungee.protocol.DefinedPacket;
+ import net.md_5.bungee.protocol.PacketWrapper;
+ import net.md_5.bungee.protocol.Protocol;
+ import net.md_5.bungee.protocol.ProtocolConstants;
+ import net.md_5.bungee.protocol.packet.EncryptionRequest;
+ import net.md_5.bungee.protocol.packet.EntityStatus;
++import net.md_5.bungee.protocol.packet.GameState;
+ import net.md_5.bungee.protocol.packet.Handshake;
+ import net.md_5.bungee.protocol.packet.Kick;
+ import net.md_5.bungee.protocol.packet.Login;
+ import net.md_5.bungee.protocol.packet.LoginRequest;
+ import net.md_5.bungee.protocol.packet.LoginSuccess;
+ import net.md_5.bungee.protocol.packet.PluginMessage;
+ import net.md_5.bungee.protocol.packet.Respawn;
+ import net.md_5.bungee.protocol.packet.ScoreboardObjective;
+@@ -91,17 +93,17 @@
+     public void connected(ChannelWrapper channel) throws Exception
+     {
+         this.ch = channel;
+ 
+         this.handshakeHandler = new ForgeServerHandler( user, ch, target );
+         Handshake originalHandshake = user.getPendingConnection().getHandshake();
+         Handshake copiedHandshake = new Handshake( originalHandshake.getProtocolVersion(), originalHandshake.getHost(), originalHandshake.getPort(), 2 );
+ 
+-        if ( BungeeCord.getInstance().config.isIpForward() )
++        if ( BungeeCord.getInstance().config.isIpForward() && user.getSocketAddress() instanceof InetSocketAddress )
+         {
+             String newHost = copiedHandshake.getHost() + "\00" + user.getAddress().getHostString() + "\00" + user.getUUID();
+ 
+             LoginResult profile = user.getPendingConnection().getLoginProfile();
+             if ( profile != null && profile.getProperties() != null && profile.getProperties().length > 0 )
+             {
+                 newHost += "\00" + BungeeCord.getInstance().gson.toJson( profile.getProperties() );
+             }
+@@ -198,32 +200,51 @@
+             ch.write( user.getSettings() );
+         }
+ 
+         if ( user.getForgeClientHandler().getClientModList() == null && !user.getForgeClientHandler().isHandshakeComplete() ) // Vanilla
+         {
+             user.getForgeClientHandler().setHandshakeComplete();
+         }
+ 
+-        if ( user.getServer() == null )
++        if ( user.getServer() == null || !( login.getDimension() instanceof Integer ) )
+         {
+             // Once again, first connection
+             user.setClientEntityId( login.getEntityId() );
+             user.setServerEntityId( login.getEntityId() );
+ 
+             // Set tab list size, TODO: what shall we do about packet mutability
+-            Login modLogin = new Login( login.getEntityId(), login.getGameMode(), (byte) login.getDimension(), login.getDifficulty(),
+-                    (byte) user.getPendingConnection().getListener().getTabListSize(), login.getLevelType(), login.getViewDistance(), login.isReducedDebugInfo() );
++            Login modLogin = new Login( login.getEntityId(), login.getGameMode(), login.getPreviousGameMode(), login.getWorldNames(), login.getDimensions(), login.getDimension(), login.getWorldName(), login.getSeed(), login.getDifficulty(),
++                    (byte) user.getPendingConnection().getListener().getTabListSize(), login.getLevelType(), login.getViewDistance(), login.isReducedDebugInfo(), login.isNormalRespawn(), login.isDebug(), login.isFlat() );
+ 
+             user.unsafe().sendPacket( modLogin );
+ 
+-            ByteBuf brand = ByteBufAllocator.DEFAULT.heapBuffer();
+-            DefinedPacket.writeString( bungee.getName() + " (" + bungee.getVersion() + ")", brand );
+-            user.unsafe().sendPacket( new PluginMessage( user.getPendingConnection().getVersion() >= ProtocolConstants.MINECRAFT_1_13 ? "minecraft:brand" : "MC|Brand", DefinedPacket.toArray( brand ), handshakeHandler.isServerForge() ) );
+-            brand.release();
++            if ( user.getServer() != null )
++            {
++                user.getServer().setObsolete( true );
++                user.getTabListHandler().onServerChange();
++
++                user.getServerSentScoreboard().clear();
++
++                for ( UUID bossbar : user.getSentBossBars() )
++                {
++                    // Send remove bossbar packet
++                    user.unsafe().sendPacket( new net.md_5.bungee.protocol.packet.BossBar( bossbar, 1 ) );
++                }
++                user.getSentBossBars().clear();
++
++                user.unsafe().sendPacket( new Respawn( login.getDimension(), login.getWorldName(), login.getSeed(), login.getDifficulty(), login.getGameMode(), login.getPreviousGameMode(), login.getLevelType(), login.isDebug(), login.isFlat(), false ) );
++                user.getServer().disconnect( "Quitting" );
++            } else
++            {
++                ByteBuf brand = ByteBufAllocator.DEFAULT.heapBuffer();
++                DefinedPacket.writeString( bungee.getName() + " (" + bungee.getVersion() + ")", brand );
++                user.unsafe().sendPacket( new PluginMessage( user.getPendingConnection().getVersion() >= ProtocolConstants.MINECRAFT_1_13 ? "minecraft:brand" : "MC|Brand", DefinedPacket.toArray( brand ), handshakeHandler.isServerForge() ) );
++                brand.release();
++            }
+ 
+             user.setDimension( login.getDimension() );
+         } else
+         {
+             user.getServer().setObsolete( true );
+             user.getTabListHandler().onServerChange();
+ 
+             Scoreboard serverScoreboard = user.getServerSentScoreboard();
+@@ -245,25 +266,30 @@
+             {
+                 // Send remove bossbar packet
+                 user.unsafe().sendPacket( new net.md_5.bungee.protocol.packet.BossBar( bossbar, 1 ) );
+             }
+             user.getSentBossBars().clear();
+ 
+             // Update debug info from login packet
+             user.unsafe().sendPacket( new EntityStatus( user.getClientEntityId(), login.isReducedDebugInfo() ? EntityStatus.DEBUG_INFO_REDUCED : EntityStatus.DEBUG_INFO_NORMAL ) );
++            // And immediate respawn
++            if ( user.getPendingConnection().getVersion() >= ProtocolConstants.MINECRAFT_1_15 )
++            {
++                user.unsafe().sendPacket( new GameState( GameState.IMMEDIATE_RESPAWN, login.isNormalRespawn() ? 0 : 1 ) );
++            }
+ 
+             user.setDimensionChange( true );
+             if ( login.getDimension() == user.getDimension() )
+             {
+-                user.unsafe().sendPacket( new Respawn( ( login.getDimension() >= 0 ? -1 : 0 ), login.getDifficulty(), login.getGameMode(), login.getLevelType() ) );
++                user.unsafe().sendPacket( new Respawn( (Integer) login.getDimension() >= 0 ? -1 : 0, login.getWorldName(), login.getSeed(), login.getDifficulty(), login.getGameMode(), login.getPreviousGameMode(), login.getLevelType(), login.isDebug(), login.isFlat(), false ) );
+             }
+ 
+             user.setServerEntityId( login.getEntityId() );
+-            user.unsafe().sendPacket( new Respawn( login.getDimension(), login.getDifficulty(), login.getGameMode(), login.getLevelType() ) );
++            user.unsafe().sendPacket( new Respawn( login.getDimension(), login.getWorldName(), login.getSeed(), login.getDifficulty(), login.getGameMode(), login.getPreviousGameMode(), login.getLevelType(), login.isDebug(), login.isFlat(), false ) );
+             if ( user.getPendingConnection().getVersion() >= ProtocolConstants.MINECRAFT_1_14 )
+             {
+                 user.unsafe().sendPacket( new ViewDistance( login.getViewDistance() ) );
+             }
+             user.setDimension( login.getDimension() );
+ 
+             // Remove from old servers
+             user.getServer().disconnect( "Quitting" );
+@@ -280,20 +306,21 @@
+ 
+         // Add to new server
+         // TODO: Move this to the connected() method of DownstreamBridge
+         target.addPlayer( user );
+         user.getPendingConnects().remove( target );
+         user.setServerJoinQueue( null );
+         user.setDimensionChange( false );
+ 
++        ServerInfo from = ( user.getServer() == null ) ? null : user.getServer().getInfo();
+         user.setServer( server );
+         ch.getHandle().pipeline().get( HandlerBoss.class ).setHandler( new DownstreamBridge( bungee, user, server ) );
+ 
+-        bungee.getPluginManager().callEvent( new ServerSwitchEvent( user ) );
++        bungee.getPluginManager().callEvent( new ServerSwitchEvent( user, from ) );
+ 
+         thisState = State.FINISHED;
+ 
+         throw CancelSendSignal.INSTANCE;
+     }
+ 
+     @Override
+     public void handle(EncryptionRequest encryptionRequest) throws Exception
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: proxy/src/main/java/net/md_5/bungee/UserConnection.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -340,18 +340,27 @@
+                 if ( !future.isSuccess() )
+                 {
+                     future.channel().close();
+                     pendingConnects.remove( target );
+ 
+                     ServerInfo def = updateAndGetNextServer( target );
+                     if ( request.isRetry() && def != null && ( getServer() == null || def != getServer().getInfo() ) )
+                     {
+-                        sendMessage( bungee.getTranslation( "fallback_lobby" ) );
+-                        connect( def, null, true, ServerConnectEvent.Reason.LOBBY_FALLBACK );
++                        connect(def, new Callback<Boolean>()
++                        {
++                            @Override
++                            public void done(Boolean result, Throwable error)
++                            {
++                                if ( result )
++                                {
++                                    sendMessage( bungee.getTranslation( "fallback_lobby" ) );
++                                }
++                            }
++                        }, true, ServerConnectEvent.Reason.LOBBY_FALLBACK);
+                     } else if ( dimensionChange )
+                     {
+                         disconnect( bungee.getTranslation( "fallback_kick", future.cause().getClass().getName() ) );
+                     } else
+                     {
+                         sendMessage( bungee.getTranslation( "fallback_kick", future.cause().getClass().getName() ) );
+                     }
+                 }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -5,16 +5,17 @@
+ import io.netty.bootstrap.Bootstrap;
+ import io.netty.channel.Channel;
+ import io.netty.channel.ChannelFuture;
+ import io.netty.channel.ChannelFutureListener;
+ import io.netty.channel.ChannelInitializer;
+ import io.netty.channel.ChannelOption;
+ import io.netty.util.internal.PlatformDependent;
+ import java.net.InetSocketAddress;
++import java.net.SocketAddress;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.HashSet;
+ import java.util.LinkedList;
+ import java.util.Locale;
+ import java.util.Map;
+ import java.util.Objects;
+ import java.util.Queue;
+@@ -46,16 +47,17 @@
+ import net.md_5.bungee.netty.ChannelWrapper;
+ import net.md_5.bungee.netty.HandlerBoss;
+ import net.md_5.bungee.netty.PipelineUtils;
+ import net.md_5.bungee.protocol.DefinedPacket;
+ import net.md_5.bungee.protocol.MinecraftDecoder;
+ import net.md_5.bungee.protocol.MinecraftEncoder;
+ import net.md_5.bungee.protocol.PacketWrapper;
+ import net.md_5.bungee.protocol.Protocol;
++import net.md_5.bungee.protocol.ProtocolConstants;
+ import net.md_5.bungee.protocol.packet.Chat;
+ import net.md_5.bungee.protocol.packet.ClientSettings;
+ import net.md_5.bungee.protocol.packet.Kick;
+ import net.md_5.bungee.protocol.packet.PlayerListHeaderFooter;
+ import net.md_5.bungee.protocol.packet.PluginMessage;
+ import net.md_5.bungee.protocol.packet.SetCompression;
+ import net.md_5.bungee.tab.ServerUnique;
+ import net.md_5.bungee.tab.TabList;
+@@ -77,26 +79,23 @@
+     @Getter
+     private final InitialHandler pendingConnection;
+     /*========================================================================*/
+     @Getter
+     @Setter
+     private ServerConnection server;
+     @Getter
+     @Setter
+-    private int dimension;
++    private Object dimension;
+     @Getter
+     @Setter
+     private boolean dimensionChange = true;
+     @Getter
+     private final Collection<ServerInfo> pendingConnects = new HashSet<>();
+     /*========================================================================*/
+-    @Getter
+-    @Setter
+-    private long sentPingTime;
+     @Getter
+     @Setter
+     private int ping = 100;
+     @Getter
+     @Setter
+     private ServerInfo reconnectServer;
+     @Getter
+     private TabList tabListHandler;
+@@ -270,17 +269,17 @@
+     }
+ 
+     @Override
+     public void connect(final ServerConnectRequest request)
+     {
+         Preconditions.checkNotNull( request, "request" );
+ 
+         final Callback<ServerConnectRequest.Result> callback = request.getCallback();
+-        ServerConnectEvent event = new ServerConnectEvent( this, request.getTarget(), request.getReason() );
++        ServerConnectEvent event = new ServerConnectEvent( this, request.getTarget(), request.getReason(), request );
+         if ( bungee.getPluginManager().callEvent( event ).isCancelled() )
+         {
+             if ( callback != null )
+             {
+                 callback.done( ServerConnectRequest.Result.EVENT_CANCEL, null );
+             }
+ 
+             if ( getServer() == null && !ch.isClosing() )
+@@ -353,23 +352,23 @@
+                     } else
+                     {
+                         sendMessage( bungee.getTranslation( "fallback_kick", future.cause().getClass().getName() ) );
+                     }
+                 }
+             }
+         };
+         Bootstrap b = new Bootstrap()
+-                .channel( PipelineUtils.getChannel() )
++                .channel( PipelineUtils.getChannel( target.getAddress() ) )
+                 .group( ch.getHandle().eventLoop() )
+                 .handler( initializer )
+                 .option( ChannelOption.CONNECT_TIMEOUT_MILLIS, request.getConnectTimeout() )
+                 .remoteAddress( target.getAddress() );
+         // Windows is bugged, multi homed users will just have to live with random connecting IPs
+-        if ( getPendingConnection().getListener().isSetLocalAddress() && !PlatformDependent.isWindows() )
++        if ( getPendingConnection().getListener().isSetLocalAddress() && !PlatformDependent.isWindows() && getPendingConnection().getListener().getSocketAddress() instanceof InetSocketAddress )
+         {
+             b.localAddress( getPendingConnection().getListener().getHost().getHostString(), 0 );
+         }
+         b.connect().addListener( listener );
+     }
+ 
+     @Override
+     public void disconnect(String reason)
+@@ -393,17 +392,17 @@
+     {
+         if ( !ch.isClosing() )
+         {
+             bungee.getLogger().log( Level.INFO, "[{0}] disconnected with: {1}", new Object[]
+             {
+                 getName(), BaseComponent.toLegacyText( reason )
+             } );
+ 
+-            ch.delayedClose( new Kick( ComponentSerializer.toString( reason ) ) );
++            ch.close( new Kick( ComponentSerializer.toString( reason ) ) );
+ 
+             if ( server != null )
+             {
+                 server.setObsolete( true );
+                 server.disconnect( "Quitting" );
+             }
+         }
+     }
+@@ -446,51 +445,67 @@
+     {
+         unsafe().sendPacket( new Chat( message, (byte) position.ordinal() ) );
+     }
+ 
+     @Override
+     public void sendMessage(ChatMessageType position, BaseComponent... message)
+     {
+         // transform score components
+-        message = ChatComponentTransformer.getInstance().transform( this, message );
++        message = ChatComponentTransformer.getInstance().transform( this, true, message );
++
++        if ( position == ChatMessageType.ACTION_BAR )
++        {
++            // Versions older than 1.11 cannot send the Action bar with the new JSON formattings
++            // Fix by converting to a legacy message, see https://bugs.mojang.com/browse/MC-119145
++            if ( getPendingConnection().getVersion() <= ProtocolConstants.MINECRAFT_1_10 )
++            {
++                sendMessage( position, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
++            } else
++            {
++                net.md_5.bungee.protocol.packet.Title title = new net.md_5.bungee.protocol.packet.Title();
++                title.setAction( net.md_5.bungee.protocol.packet.Title.Action.ACTIONBAR );
++                title.setText( ComponentSerializer.toString( message ) );
++                unsafe.sendPacket( title );
++            }
++        } else
++        {
++            sendMessage( position, ComponentSerializer.toString( message ) );
++        }
++    }
++
++    @Override
++    public void sendMessage(ChatMessageType position, BaseComponent message)
++    {
++        message = ChatComponentTransformer.getInstance().transform( this, true, message )[0];
+ 
+         // Action bar doesn't display the new JSON formattings, legacy works - send it using this for now
+         if ( position == ChatMessageType.ACTION_BAR )
+         {
+             sendMessage( position, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
+         } else
+         {
+             sendMessage( position, ComponentSerializer.toString( message ) );
+         }
+     }
+ 
+     @Override
+-    public void sendMessage(ChatMessageType position, BaseComponent message)
+-    {
+-        message = ChatComponentTransformer.getInstance().transform( this, message )[0];
+-
+-        // Action bar doesn't display the new JSON formattings, legacy works - send it using this for now
+-        if ( position == ChatMessageType.ACTION_BAR )
+-        {
+-            sendMessage( position, ComponentSerializer.toString( new TextComponent( BaseComponent.toLegacyText( message ) ) ) );
+-        } else
+-        {
+-            sendMessage( position, ComponentSerializer.toString( message ) );
+-        }
+-    }
+-
+-    @Override
+     public void sendData(String channel, byte[] data)
+     {
+         unsafe().sendPacket( new PluginMessage( channel, data, forgeClientHandler.isForgeUser() ) );
+     }
+ 
+     @Override
+     public InetSocketAddress getAddress()
++    {
++        return (InetSocketAddress) getSocketAddress();
++    }
++
++    @Override
++    public SocketAddress getSocketAddress()
+     {
+         return ch.getRemoteAddress();
+     }
+ 
+     @Override
+     public Collection<String> getGroups()
+     {
+         return Collections.unmodifiableCollection( groups );
+@@ -643,30 +658,30 @@
+         }
+ 
+         return ImmutableMap.copyOf( forgeClientHandler.getClientModList() );
+     }
+ 
+     @Override
+     public void setTabHeader(BaseComponent header, BaseComponent footer)
+     {
+-        header = ChatComponentTransformer.getInstance().transform( this, header )[0];
+-        footer = ChatComponentTransformer.getInstance().transform( this, footer )[0];
++        header = ChatComponentTransformer.getInstance().transform( this, true, header )[0];
++        footer = ChatComponentTransformer.getInstance().transform( this, true, footer )[0];
+ 
+         unsafe().sendPacket( new PlayerListHeaderFooter(
+                 ComponentSerializer.toString( header ),
+                 ComponentSerializer.toString( footer )
+         ) );
+     }
+ 
+     @Override
+     public void setTabHeader(BaseComponent[] header, BaseComponent[] footer)
+     {
+-        header = ChatComponentTransformer.getInstance().transform( this, header );
+-        footer = ChatComponentTransformer.getInstance().transform( this, footer );
++        header = ChatComponentTransformer.getInstance().transform( this, true, header );
++        footer = ChatComponentTransformer.getInstance().transform( this, true, footer );
+ 
+         unsafe().sendPacket( new PlayerListHeaderFooter(
+                 ComponentSerializer.toString( header ),
+                 ComponentSerializer.toString( footer )
+         ) );
+     }
+ 
+     @Override
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: proxy/src/main/java/net/md_5/bungee/connection/DownstreamBridge.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -18,17 +18,19 @@
+ import java.io.DataInput;
+ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Map;
+ import lombok.RequiredArgsConstructor;
+ import net.md_5.bungee.ServerConnection;
+ import net.md_5.bungee.UserConnection;
+ import net.md_5.bungee.Util;
++import net.md_5.bungee.api.Callback;
+ import net.md_5.bungee.api.ProxyServer;
++import net.md_5.bungee.api.ServerConnectRequest;
+ import net.md_5.bungee.api.chat.TextComponent;
+ import net.md_5.bungee.api.config.ServerInfo;
+ import net.md_5.bungee.api.connection.ProxiedPlayer;
+ import net.md_5.bungee.api.event.PluginMessageEvent;
+ import net.md_5.bungee.api.event.ServerConnectEvent;
+ import net.md_5.bungee.api.event.ServerDisconnectEvent;
+ import net.md_5.bungee.api.event.ServerKickEvent;
+ import net.md_5.bungee.api.event.TabCompleteResponseEvent;
+@@ -62,30 +64,51 @@
+ public class DownstreamBridge extends PacketHandler
+ {
+ 
+     private final ProxyServer bungee;
+     private final UserConnection con;
+     private final ServerConnection server;
+ 
+     @Override
+-    public void exception(Throwable t) throws Exception
++    public void exception(final Throwable t) throws Exception
+     {
+         if ( server.isObsolete() )
+         {
+             // do not perform any actions if the user has already moved
+             return;
+         }
+ 
+-        ServerInfo def = con.updateAndGetNextServer( server.getInfo() );
++        final ServerInfo def = con.updateAndGetNextServer( server.getInfo() );
+         if ( def != null )
+         {
+             server.setObsolete( true );
+-            con.connectNow( def, ServerConnectEvent.Reason.SERVER_DOWN_REDIRECT );
+-            con.sendMessage( bungee.getTranslation( "server_went_down" ) );
++
++            Callback<ServerConnectRequest.Result> callback = new Callback<ServerConnectRequest.Result>()
++            {
++                @Override
++                public void done(ServerConnectRequest.Result result, Throwable error)
++                {
++                    if ( result == ServerConnectRequest.Result.SUCCESS )
++                    {
++                        con.sendMessage( bungee.getTranslation( "server_went_down", server.getInfo().getName(), def.getName() ) );
++                    } else
++                    {
++                        con.disconnect( Util.exception( t ) );
++                    }
++                }
++            };
++            ServerConnectRequest connectRequest = ServerConnectRequest.builder()
++                    .callback( callback )
++                    .retry( false )
++                    .reason( ServerConnectEvent.Reason.SERVER_DOWN_REDIRECT )
++                    .target( def )
++                    .build();
++            con.connect( connectRequest );
++            con.setDimensionChange( true ); // NOTE: Dim Change Connect
+         } else
+         {
+             con.disconnect( Util.exception( t ) );
+         }
+     }
+ 
+     @Override
+     public void disconnected(ChannelWrapper channel) throws Exception
+@@ -475,21 +498,47 @@
+ 
+             throw CancelSendSignal.INSTANCE;
+         }
+     }
+ 
+     @Override
+     public void handle(Kick kick) throws Exception
+     {
+-        ServerInfo def = con.updateAndGetNextServer( server.getInfo() );
+-        ServerKickEvent event = bungee.getPluginManager().callEvent( new ServerKickEvent( con, server.getInfo(), ComponentSerializer.parse( kick.getMessage() ), def, ServerKickEvent.State.CONNECTED ) );
++        final ServerInfo def = con.updateAndGetNextServer( server.getInfo() );
++        final ServerKickEvent event = bungee.getPluginManager().callEvent( new ServerKickEvent( con, server.getInfo(), ComponentSerializer.parse( kick.getMessage() ), def, ServerKickEvent.State.CONNECTED ) );
+         if ( event.isCancelled() && event.getCancelServer() != null )
+         {
+-            con.connectNow( event.getCancelServer(), ServerConnectEvent.Reason.KICK_REDIRECT );
++            if ( event.getCancelServer().equals( server.getInfo() ) )
++            {
++                // Just in case a plugin tries to do this. No point trying to reconnect to same server.
++                // Also prevent the code setting the connection to obsolete from reoccurring.
++                throw CancelSendSignal.INSTANCE;
++            }
++            Callback<ServerConnectRequest.Result> callback = new Callback<ServerConnectRequest.Result>() {
++                @Override
++                public void done(ServerConnectRequest.Result result, Throwable error)
++                {
++                    if ( result == ServerConnectRequest.Result.SUCCESS )
++                    {
++                        con.sendMessage( bungee.getTranslation( "server_went_down", server.getInfo().getName(), def.getName() ) );
++                    } else
++                    {
++                        con.disconnect0( event.getKickReasonComponent() );
++                    }
++                }
++            };
++            ServerConnectRequest connectRequest = ServerConnectRequest.builder()
++                .callback( callback )
++                .retry( false )
++                .reason( ServerConnectEvent.Reason.SERVER_DOWN_REDIRECT )
++                .target( def )
++                .build();
++            con.connect( connectRequest );
++            con.setDimensionChange( true ); // NOTE: Dim Change Connect
+         } else
+         {
+             con.disconnect0( event.getKickReasonComponent() ); // TODO: Prefix our own stuff.
+         }
+         server.setObsolete( true );
+         throw CancelSendSignal.INSTANCE;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -10,25 +10,29 @@
+ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+ import com.mojang.brigadier.context.StringRange;
+ import com.mojang.brigadier.suggestion.Suggestion;
+ import com.mojang.brigadier.suggestion.Suggestions;
+ import com.mojang.brigadier.tree.LiteralCommandNode;
+ import io.netty.buffer.ByteBuf;
+ import io.netty.buffer.ByteBufAllocator;
+ import io.netty.buffer.Unpooled;
++import io.netty.channel.unix.DomainSocketAddress;
+ import java.io.DataInput;
++import java.net.InetSocketAddress;
+ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Map;
+ import lombok.RequiredArgsConstructor;
+ import net.md_5.bungee.ServerConnection;
++import net.md_5.bungee.ServerConnection.KeepAliveData;
+ import net.md_5.bungee.UserConnection;
+ import net.md_5.bungee.Util;
+ import net.md_5.bungee.api.ProxyServer;
++import net.md_5.bungee.api.chat.BaseComponent;
+ import net.md_5.bungee.api.chat.TextComponent;
+ import net.md_5.bungee.api.config.ServerInfo;
+ import net.md_5.bungee.api.connection.ProxiedPlayer;
+ import net.md_5.bungee.api.event.PluginMessageEvent;
+ import net.md_5.bungee.api.event.ServerConnectEvent;
+ import net.md_5.bungee.api.event.ServerDisconnectEvent;
+ import net.md_5.bungee.api.event.ServerKickEvent;
+ import net.md_5.bungee.api.event.TabCompleteResponseEvent;
+@@ -117,18 +121,21 @@
+     {
+         con.getEntityRewrite().rewriteClientbound( packet.buf, con.getServerEntityId(), con.getClientEntityId(), con.getPendingConnection().getVersion() );
+         con.sendPacket( packet );
+     }
+ 
+     @Override
+     public void handle(KeepAlive alive) throws Exception
+     {
+-        server.setSentPingId( alive.getRandomId() );
+-        con.setSentPingTime( System.currentTimeMillis() );
++        int timeout = bungee.getConfig().getTimeout();
++        if ( timeout <= 0 || server.getKeepAlives().size() < timeout / 50 ) // Some people disable timeout, otherwise allow a theoretical maximum of 1 keepalive per tick
++        {
++            server.getKeepAlives().add( new KeepAliveData( alive.getRandomId(), System.currentTimeMillis() ) );
++        }
+     }
+ 
+     @Override
+     public void handle(PlayerListItem playerList) throws Exception
+     {
+         con.getTabListHandler().onUpdate( TabList.rewrite( playerList ) );
+         throw CancelSendSignal.INSTANCE; // Always throw because of profile rewriting
+     }
+@@ -354,18 +361,25 @@
+                     {
+                         player.connect( server );
+                     }
+                 }
+             }
+             if ( subChannel.equals( "IP" ) )
+             {
+                 out.writeUTF( "IP" );
+-                out.writeUTF( con.getAddress().getHostString() );
+-                out.writeInt( con.getAddress().getPort() );
++                if ( con.getSocketAddress() instanceof InetSocketAddress )
++                {
++                    out.writeUTF( con.getAddress().getHostString() );
++                    out.writeInt( con.getAddress().getPort() );
++                } else
++                {
++                    out.writeUTF( "unix://" + ( (DomainSocketAddress) con.getSocketAddress() ).path() );
++                    out.writeInt( 0 );
++                }
+             }
+             if ( subChannel.equals( "PlayerCount" ) )
+             {
+                 String target = in.readUTF();
+                 out.writeUTF( "PlayerCount" );
+                 if ( target.equals( "ALL" ) )
+                 {
+                     out.writeUTF( "ALL" );
+@@ -402,16 +416,35 @@
+             {
+                 out.writeUTF( "GetServers" );
+                 out.writeUTF( Util.csv( bungee.getServers().keySet() ) );
+             }
+             if ( subChannel.equals( "Message" ) )
+             {
+                 String target = in.readUTF();
+                 String message = in.readUTF();
++                if ( target.equals( "ALL" ) )
++                {
++                    for ( ProxiedPlayer player : bungee.getPlayers() )
++                    {
++                        player.sendMessage( message );
++                    }
++                } else
++                {
++                    ProxiedPlayer player = bungee.getPlayer( target );
++                    if ( player != null )
++                    {
++                        player.sendMessage( message );
++                    }
++                }
++            }
++            if ( subChannel.equals( "MessageRaw" ) )
++            {
++                String target = in.readUTF();
++                BaseComponent[] message = ComponentSerializer.parse( in.readUTF() );
+                 if ( target.equals( "ALL" ) )
+                 {
+                     for ( ProxiedPlayer player : bungee.getPlayers() )
+                     {
+                         player.sendMessage( message );
+                     }
+                 } else
+                 {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -538,17 +538,17 @@
+     {
+         final ServerInfo def = con.updateAndGetNextServer( server.getInfo() );
+         final ServerKickEvent event = bungee.getPluginManager().callEvent( new ServerKickEvent( con, server.getInfo(), ComponentSerializer.parse( kick.getMessage() ), def, ServerKickEvent.State.CONNECTED ) );
+         if ( event.isCancelled() && event.getCancelServer() != null )
+         {
+             if ( event.getCancelServer().equals( server.getInfo() ) )
+             {
+                 // Just in case a plugin tries to do this. No point trying to reconnect to same server.
+-                // Also prevent the code setting the connection to obsolete from reoccurring.
++                // This also prevents the code setting the connection to obsolete from reoccurring.
+                 throw CancelSendSignal.INSTANCE;
+             }
+             Callback<ServerConnectRequest.Result> callback = new Callback<ServerConnectRequest.Result>() {
+                 @Override
+                 public void done(ServerConnectRequest.Result result, Throwable error)
+                 {
+                     if ( result == ServerConnectRequest.Result.SUCCESS )
+                     {
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

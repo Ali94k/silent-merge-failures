@@ -1,0 +1,1094 @@
+UNIT urbanairship_java-library__bbe0297a10
+repo: urbanairship_java-library   merge: bbe0297a107727f3f58629274f6ca5e42356e146   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/test/java/com/urbanairship/api/customevents/model/CustomEventPayloadTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,35 +1,43 @@
+ package com.urbanairship.api.customevents.model;
+ 
++import com.fasterxml.jackson.core.JsonProcessingException;
++import com.fasterxml.jackson.databind.JsonNode;
++import com.fasterxml.jackson.databind.ObjectMapper;
++import com.urbanairship.api.push.parse.PushObjectMapper;
+ import org.joda.time.DateTime;
+ import org.joda.time.DateTimeZone;
+ import org.junit.Test;
+ 
+ import java.math.BigDecimal;
++import java.util.ArrayList;
+ import java.util.HashMap;
++import java.util.List;
+ import java.util.Map;
+ 
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertTrue;
+ 
+ public class CustomEventPayloadTest {
++
++    private static final ObjectMapper MAPPER = PushObjectMapper.getInstance();
+ 
+     @Test
+     public void testBuilder() {
+         CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                 .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
+                 .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
+                 .build();
+ 
+-        Map<String, String> properties = new HashMap<String, String>();
+-        properties.put("category", "mens shoes");
+-        properties.put("id", "pid-11046546");
+-        properties.put("description", "sky high");
+-        properties.put("brand", "victory");
++        Map<String, CustomEventPropValue> properties = new HashMap<String, CustomEventPropValue>();
++        properties.put("category", CustomEventPropValue.of("mens shoes"));
++        properties.put("id", CustomEventPropValue.of("pid-11046546"));
++        properties.put("description", CustomEventPropValue.of("sky high"));
++        properties.put("brand", CustomEventPropValue.of("victory"));
+ 
+         CustomEventBody customEventBody = CustomEventBody.newBuilder()
+                 .setName("purchased")
+                 .setValue(new BigDecimal(120.49))
+                 .setTransaction("886f53d4-3e0f-46d7-930e-c2792dac6e0a")
+                 .setInteractionId("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234")
+                 .setInteractionType("url")
+                 .addAllPropertyEntries(properties)
+@@ -39,27 +47,255 @@
+         DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
+ 
+         CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
+                 .setCustomEventBody(customEventBody)
+                 .setCustomEventUser(customEventUser)
+                 .setOccurred(occurred)
+                 .build();
+ 
+-
+         assertTrue(customEventPayload.getCustomEventBody().getProperties().isPresent());
+         assertEquals(4, customEventPayload.getCustomEventBody().getProperties().get().size());
+         assertTrue(customEventPayload.getCustomEventBody().getProperties().get().containsKey("description"));
+-        assertEquals("victory", customEventPayload.getCustomEventBody().getProperties().get().get("brand"));
++        assertEquals("victory", customEventPayload.getCustomEventBody().getProperties().get().get("brand").getAsString());
+ 
+         assertEquals("purchased", customEventPayload.getCustomEventBody().getName());
+         assertEquals(new BigDecimal(120.49), customEventPayload.getCustomEventBody().getValue().get());
+         assertEquals("886f53d4-3e0f-46d7-930e-c2792dac6e0a", customEventPayload.getCustomEventBody().getTransaction().get());
+         assertEquals("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234", customEventPayload.getCustomEventBody().getInteractionId().get());
+         assertEquals("url", customEventPayload.getCustomEventBody().getInteractionType().get());
+         assertEquals("22404b07-3f8f-4e42-a4ff-a996c18fa9f1", customEventPayload.getCustomEventBody().getSessionId());
+ 
+         assertEquals("e393d28e-23b2-4a22-9ace-dc539a5b07a8", customEventPayload.getCustomEventUser().getChannel());
+         assertEquals(CustomEventChannelType.ANDROID_CHANNEL, customEventPayload.getCustomEventUser().getChannelType());
+ 
+         assertEquals(occurred, customEventPayload.getOccurred());
++   }
++
++    @Test
++    public void testScalarProperties() throws JsonProcessingException {
++        CustomEventUser customEventUser = CustomEventUser.newBuilder()
++                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
++                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
++                .build();
++
++        DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
++
++        Map<String,CustomEventPropValue> properties = new HashMap<>();
++
++        properties.put("amount", CustomEventPropValue.of(51));
++        properties.put("isThisTrue", CustomEventPropValue.of(true));
++        properties.put("name", CustomEventPropValue.of("Sally"));
++
++        CustomEventBody customEventBody = CustomEventBody.newBuilder()
++                .setName("purchased")
++                .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
++                .addAllPropertyEntries(properties)
++                .build();
++
++        CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
++                .setOccurred(occurred)
++                .setCustomEventBody(customEventBody)
++                .setCustomEventUser(customEventUser)
++                .build();
++
++        assertEquals(customEventPayload.getCustomEventBody().getProperties().get().size(), 3);
++        assertTrue(customEventPayload.getCustomEventBody().getProperties().get().get("amount").isNumber());
++        assertEquals(51, customEventPayload.getCustomEventBody().getProperties().get().get("amount").getAsNumber());
++        assertEquals(true, customEventPayload.getCustomEventBody().getProperties().get().get("isThisTrue").getAsBoolean());
++        assertEquals("Sally", customEventPayload.getCustomEventBody().getProperties().get().get("name").getAsString());
++        assertTrue(customEventPayload.getCustomEventBody().getProperties().get().get("isThisTrue").isBoolean());
++        assertTrue(customEventPayload.getCustomEventBody().getProperties().get().get("name").isString());
++        customEventPayload.getCustomEventBody().getProperties().get().forEach(
++                (property, propValue) -> assertTrue(propValue.isScalar())
++        );
++        customEventPayload.getCustomEventBody().getProperties().get().forEach(
++                (property, propValue) -> assertTrue(propValue.isPrimitive())
++        );
++
++        String json = MAPPER.writeValueAsString(customEventPayload);
++        String expected = "{\"body\":{\"name\":\"purchased\",\"session_id\":\"22404b07-3f8f-4e42-a4ff-a996c18fa9f1\",\"properties\":{\"amount\":51,\"isThisTrue\":true,\"name\":\"Sally\"}},\"occurred\":\"2015-05-02T02:31:22\",\"user\":{\"android_channel\":\"e393d28e-23b2-4a22-9ace-dc539a5b07a8\"}}";
++
++        JsonNode jsonFromObject = MAPPER.readTree(json);
++        JsonNode jsonFromString = MAPPER.readTree(expected);
++
++        assertEquals(jsonFromString, jsonFromObject);
++    }
++
++    @Test
++    public void testArrayProperties() throws JsonProcessingException {
++        CustomEventUser customEventUser = CustomEventUser.newBuilder()
++                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
++                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
++                .build();
++
++        DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
++
++        Map<String,CustomEventPropValue> properties = new HashMap<>();
++
++        List<CustomEventPropValue> items = new ArrayList<>();
++        items.add(CustomEventPropValue.of("la croix"));
++        items.add(CustomEventPropValue.of("more la croix"));
++
++        List<CustomEventPropValue> numbers = new ArrayList<>();
++        numbers.add(CustomEventPropValue.of(1));
++        numbers.add(CustomEventPropValue.of(22.23));
++        numbers.add(CustomEventPropValue.of(0));
++
++        Map<String, CustomEventPropValue> bootsMap = new HashMap<>();
++
++        bootsMap.put("price", CustomEventPropValue.of(40));
++        bootsMap.put("color", CustomEventPropValue.of("black"));
++        bootsMap.put("waterproof", CustomEventPropValue.of(false));
++
++        CustomEventPropValue boots = CustomEventPropValue.of(bootsMap);
++
++        Map<String, CustomEventPropValue> sneakersMap = new HashMap<>();
++
++        sneakersMap.put("price", CustomEventPropValue.of(10));
++        sneakersMap.put("color", CustomEventPropValue.of("red"));
++        sneakersMap.put("clearance", CustomEventPropValue.of(true));
++
++        CustomEventPropValue sneakers = CustomEventPropValue.of(sneakersMap);
++
++        List<CustomEventPropValue> shoes = new ArrayList<>();
++
++        shoes.add(boots);
++        shoes.add(sneakers);
++
++        properties.put("items", CustomEventPropValue.of(items));
++        properties.put("numbers", CustomEventPropValue.of(numbers));
++        properties.put("shoes", CustomEventPropValue.of(shoes));
++
++        CustomEventBody customEventBody = CustomEventBody.newBuilder()
++                .setName("purchased")
++                .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
++                .addAllPropertyEntries(properties)
++                .build();
++
++        CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
++                .setOccurred(occurred)
++                .setCustomEventBody(customEventBody)
++                .setCustomEventUser(customEventUser)
++                .build();
++
++        assertEquals(customEventPayload.getCustomEventBody().getProperties().get().size(), 3);
++        customEventPayload.getCustomEventBody().getProperties().get().forEach(
++                (property, propValue) -> assertTrue(propValue.isArray())
++        );
++
++        customEventPayload.getCustomEventBody().getProperties().get().get("items").getAsList().forEach(
++                 propValue-> assertTrue(propValue.isString())
++        );
++        customEventPayload.getCustomEventBody().getProperties().get().get("numbers").getAsList().forEach(
++                propValue -> assertTrue(propValue.isNumber())
++        );
++        customEventPayload.getCustomEventBody().getProperties().get().get("shoes").getAsList().forEach(
++                propValue -> assertTrue(propValue.isObject())
++        );
++
++        customEventPayload.getCustomEventBody().getProperties().get().get("items").getAsList().forEach(
++                propValue -> assertTrue(propValue.getAsString().equals("la croix") ||
++                        propValue.getAsString().equals("more la croix")));
++
++        customEventPayload.getCustomEventBody().getProperties().get().get("numbers").getAsList().forEach(
++                propValue -> assertTrue(propValue.getAsNumber().equals(1) ||
++                        propValue.getAsNumber().equals(22.23) ||
++                        propValue.getAsNumber().equals(0)));
++
++       customEventPayload.getCustomEventBody().getProperties().get().get("shoes").getAsList().forEach(
++                propValue ->
++                        assertTrue(propValue.getAsMap().get("color").getAsString().equals("black") ||
++                        propValue.getAsMap().get("price").getAsString().equals(40) ||
++                        propValue.getAsMap().get("clearance").getAsString().equals(false) ||
++                        propValue.getAsMap().get("color").getAsString().equals("red") ||
++                        propValue.getAsMap().get("price").getAsString().equals(10) ||
++                        propValue.getAsMap().get("clearance").getAsString().equals(true)));
++
++        String json = MAPPER.writeValueAsString(customEventPayload);
++        String expected = "{\"body\":{\"name\":\"purchased\",\"session_id\":\"22404b07-3f8f-4e42-a4ff-a996c18fa9f1\",\"properties\":{\"numbers\":[1,22.23,0],\"items\":[\"la croix\",\"more la croix\"],\"shoes\":[{\"color\":\"black\",\"price\":40,\"waterproof\":false},{\"color\":\"red\",\"price\":10,\"clearance\":true}]}},\"occurred\":\"2015-05-02T02:31:22\",\"user\":{\"android_channel\":\"e393d28e-23b2-4a22-9ace-dc539a5b07a8\"}}";
++
++        JsonNode jsonFromObject = MAPPER.readTree(json);
++        JsonNode jsonFromString = MAPPER.readTree(expected);
++
++        assertEquals(jsonFromString, jsonFromObject);
++    }
++
++    @Test
++    public void testObjectProperties() throws JsonProcessingException {
++
++        CustomEventUser customEventUser = CustomEventUser.newBuilder()
++                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
++                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
++                .build();
++
++        DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
++
++        Map<String, CustomEventPropValue> properties = new HashMap<>();
++
++        Map<String, CustomEventPropValue> something = new HashMap<>();
++
++        something.put("aThing", CustomEventPropValue.of("thing"));
++        something.put("somethingElse", CustomEventPropValue.of("this thing"));
++
++        Map<String, CustomEventPropValue> numbers = new HashMap<>();
++
++        numbers.put("high", CustomEventPropValue.of(3));
++        numbers.put("low", CustomEventPropValue.of(0));
++
++        Map<String, CustomEventPropValue> booleans = new HashMap<>();
++
++        booleans.put("testing", CustomEventPropValue.of(true));
++        booleans.put("passing", CustomEventPropValue.of(false));
++
++        properties.put("something", CustomEventPropValue.of(something));
++        properties.put("numbers", CustomEventPropValue.of(numbers));
++        properties.put("booleans", CustomEventPropValue.of(booleans));
++
++        CustomEventBody customEventBody = CustomEventBody.newBuilder()
++                .setName("purchased")
++                .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
++                .addAllPropertyEntries(properties)
++                .build();
++
++        CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
++                .setOccurred(occurred)
++                .setCustomEventBody(customEventBody)
++                .setCustomEventUser(customEventUser)
++                .build();
++
++        assertEquals(customEventPayload.getCustomEventBody().getProperties().get().size(), 3);
++        customEventPayload.getCustomEventBody().getProperties().get().forEach(
++                (property, propValue) -> assertTrue(propValue.isObject())
++        );
++        customEventPayload.getCustomEventBody().getProperties().get().get("something").getAsMap().values().forEach(
++                propValue -> assertTrue(propValue.isString())
++        );
++        assertEquals("thing", customEventPayload.getCustomEventBody().getProperties().get().get("something").getAsMap().get("aThing").getAsString()
++        );
++        assertEquals("this thing", customEventPayload.getCustomEventBody().getProperties().get().get("something").getAsMap().get("somethingElse").getAsString()
++        );
++        customEventPayload.getCustomEventBody().getProperties().get().get("numbers").getAsMap().values().forEach(
++                propValue -> assertTrue(propValue.isNumber())
++        );
++        assertEquals(3, customEventPayload.getCustomEventBody().getProperties().get().get("numbers").getAsMap().get("high").getAsNumber()
++        );
++        assertEquals(0 , customEventPayload.getCustomEventBody().getProperties().get().get("numbers").getAsMap().get("low").getAsNumber()
++        );
++        assertEquals(false, customEventPayload.getCustomEventBody().getProperties().get().get("booleans").getAsMap().get("passing").getAsBoolean()
++        );
++        customEventPayload.getCustomEventBody().getProperties().get().get("booleans").getAsMap().values().forEach(
++                propValue -> assertTrue(propValue.isBoolean())
++        );
++        assertEquals(true , customEventPayload.getCustomEventBody().getProperties().get().get("booleans").getAsMap().get("testing").getAsBoolean()
++        );
++        assertEquals(false, customEventPayload.getCustomEventBody().getProperties().get().get("booleans").getAsMap().get("passing").getAsBoolean()
++        );
++
++        String json = MAPPER.writeValueAsString(customEventPayload);
++        String expected = "{\"body\":{\"name\":\"purchased\",\"session_id\":\"22404b07-3f8f-4e42-a4ff-a996c18fa9f1\",\"properties\":{\"numbers\":{\"high\":3,\"low\":0},\"booleans\":{\"testing\":true,\"passing\":false},\"something\":{\"aThing\":\"thing\",\"somethingElse\":\"this thing\"}}},\"occurred\":\"2015-05-02T02:31:22\",\"user\":{\"android_channel\":\"e393d28e-23b2-4a22-9ace-dc539a5b07a8\"}}";
++
++        JsonNode jsonFromObject = MAPPER.readTree(json);
++        JsonNode jsonFromString = MAPPER.readTree(expected);
++
++        assertEquals(jsonFromString, jsonFromObject);
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -31,35 +31,34 @@
+                 .setValue(new BigDecimal(120.49))
+                 .setTransaction("886f53d4-3e0f-46d7-930e-c2792dac6e0a")
+                 .setInteractionId("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234")
+                 .setInteractionType("url")
+                 .addAllPropertyEntries(properties)
+                 .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
+                 .build();
+ 
+-        DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
++        DateTime occurred = new DateTime(2016, 5, 2, 2, 31, 22, DateTimeZone.UTC);
+ 
+         CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
++                .setOccurred(occurred)
++                .setCustomEventUser(customEventUser)
+                 .setCustomEventBody(customEventBody)
+-                .setCustomEventUser(customEventUser)
+-                .setOccurred(occurred)
+                 .build();
+-
+ 
+         assertTrue(customEventPayload.getCustomEventBody().getProperties().isPresent());
+         assertEquals(4, customEventPayload.getCustomEventBody().getProperties().get().size());
+         assertTrue(customEventPayload.getCustomEventBody().getProperties().get().containsKey("description"));
+         assertEquals("victory", customEventPayload.getCustomEventBody().getProperties().get().get("brand"));
+ 
+         assertEquals("purchased", customEventPayload.getCustomEventBody().getName());
+         assertEquals(new BigDecimal(120.49), customEventPayload.getCustomEventBody().getValue().get());
+         assertEquals("886f53d4-3e0f-46d7-930e-c2792dac6e0a", customEventPayload.getCustomEventBody().getTransaction().get());
+         assertEquals("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234", customEventPayload.getCustomEventBody().getInteractionId().get());
+         assertEquals("url", customEventPayload.getCustomEventBody().getInteractionType().get());
+         assertEquals("22404b07-3f8f-4e42-a4ff-a996c18fa9f1", customEventPayload.getCustomEventBody().getSessionId());
+ 
+-        assertEquals("e393d28e-23b2-4a22-9ace-dc539a5b07a8", customEventPayload.getCustomEventUser().getChannel());
+-        assertEquals(CustomEventChannelType.ANDROID_CHANNEL, customEventPayload.getCustomEventUser().getChannelType());
++        assertEquals("e393d28e-23b2-4a22-9ace-dc539a5b07a8", customEventPayload.getCustomEventUser().getChannel().get());
++        assertEquals(CustomEventChannelType.ANDROID_CHANNEL, customEventPayload.getCustomEventUser().getChannelType().get());
+ 
+         assertEquals(occurred, customEventPayload.getOccurred());
+     }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package com.urbanairship.api.customevents.model;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.urbanairship.api.push.parse.PushObjectMapper;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.junit.Test;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+public class CustomEventPayloadTest {
+
+    private static final ObjectMapper MAPPER = PushObjectMapper.getInstance();
+
+    @Test
+    public void testBuilder() {
+        CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
+                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
+                .build();
+
+        Map<String, CustomEventPropValue> properties = new HashMap<String, CustomEventPropValue>();
+        properties.put("category", CustomEventPropValue.of("mens shoes"));
+        properties.put("id", CustomEventPropValue.of("pid-11046546"));
+        properties.put("description", CustomEventPropValue.of("sky high"));
+        properties.put("brand", CustomEventPropValue.of("victory"));
+
+        CustomEventBody customEventBody = CustomEventBody.newBuilder()
+                .setName("purchased")
+                .setValue(new BigDecimal(120.49))
+                .setTransaction("886f53d4-3e0f-46d7-930e-c2792dac6e0a")
+                .setInteractionId("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234")
+                .setInteractionType("url")
+                .addAllPropertyEntries(properties)
+                .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
+                .build();
+
+        DateTime occurred = new DateTime(2016, 5, 2, 2, 31, 22, DateTimeZone.UTC);
+
+        CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
+                .setOccurred(occurred)
+                .setCustomEventUser(customEventUser)
+                .setCustomEventBody(customEventBody)
+                .build();
+
+        assertTrue(customEventPayload.getCustomEventBody().getProperties().isPresent());
+        assertEquals(4, customEventPayload.getCustomEventBody().getProperties().get().size());
+        assertTrue(customEventPayload.getCustomEventBody().getProperties().get().containsKey("description"));
+        assertEquals("victory", customEventPayload.getCustomEventBody().getProperties().get().get("brand").getAsString());
+
+        assertEquals("purchased", customEventPayload.getCustomEventBody().getName());
+        assertEquals(new BigDecimal(120.49), customEventPayload.getCustomEventBody().getValue().get());
+        assertEquals("886f53d4-3e0f-46d7-930e-c2792dac6e0a", customEventPayload.getCustomEventBody().getTransaction().get());
+        assertEquals("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234", customEventPayload.getCustomEventBody().getInteractionId().get());
+        assertEquals("url", customEventPayload.getCustomEventBody().getInteractionType().get());
+        assertEquals("22404b07-3f8f-4e42-a4ff-a996c18fa9f1", customEventPayload.getCustomEventBody().getSessionId());
+
+        assertEquals("e393d28e-23b2-4a22-9ace-dc539a5b07a8", customEventPayload.getCustomEventUser().getChannel().get());
+        assertEquals(CustomEventChannelType.ANDROID_CHANNEL, customEventPayload.getCustomEventUser().getChannelType().get());
+
+        assertEquals(occurred, customEventPayload.getOccurred());
+   }
+
+    @Test
+    public void testScalarProperties() throws JsonProcessingException {
+        CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
+                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
+                .build();
+
+        DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
+
+        Map<String,CustomEventPropValue> properties = new HashMap<>();
+
+        properties.put("amount", CustomEventPropValue.of(51));
+        properties.put("isThisTrue", CustomEventPropValue.of(true));
+        properties.put("name", CustomEventPropValue.of("Sally"));
+
+        CustomEventBody customEventBody = CustomEventBody.newBuilder()
+                .setName("purchased")
+                .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
+                .addAllPropertyEntries(properties)
+                .build();
+
+        CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
+                .setOccurred(occurred)
+                .setCustomEventBody(customEventBody)
+                .setCustomEventUser(customEventUser)
+                .build();
+
+        assertEquals(customEventPayload.getCustomEventBody().getProperties().get().size(), 3);
+        assertTrue(customEventPayload.getCustomEventBody().getProperties().get().get("amount").isNumber());
+        assertEquals(51, customEventPayload.getCustomEventBody().getProperties().get().get("amount").getAsNumber());
+        assertEquals(true, customEventPayload.getCustomEventBody().getProperties().get().get("isThisTrue").getAsBoolean());
+        assertEquals("Sally", customEventPayload.getCustomEventBody().getProperties().get().get("name").getAsString());
+        assertTrue(customEventPayload.getCustomEventBody().getProperties().get().get("isThisTrue").isBoolean());
+        assertTrue(customEventPayload.getCustomEventBody().getProperties().get().get("name").isString());
+        customEventPayload.getCustomEventBody().getProperties().get().forEach(
+                (property, propValue) -> assertTrue(propValue.isScalar())
+        );
+        customEventPayload.getCustomEventBody().getProperties().get().forEach(
+                (property, propValue) -> assertTrue(propValue.isPrimitive())
+        );
+
+        String json = MAPPER.writeValueAsString(customEventPayload);
+        String expected = "{\"body\":{\"name\":\"purchased\",\"session_id\":\"22404b07-3f8f-4e42-a4ff-a996c18fa9f1\",\"properties\":{\"amount\":51,\"isThisTrue\":true,\"name\":\"Sally\"}},\"occurred\":\"2015-05-02T02:31:22\",\"user\":{\"android_channel\":\"e393d28e-23b2-4a22-9ace-dc539a5b07a8\"}}";
+
+        JsonNode jsonFromObject = MAPPER.readTree(json);
+        JsonNode jsonFromString = MAPPER.readTree(expected);
+
+        assertEquals(jsonFromString, jsonFromObject);
+    }
+
+    @Test
+    public void testArrayProperties() throws JsonProcessingException {
+        CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
+                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
+                .build();
+
+        DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
+
+        Map<String,CustomEventPropValue> properties = new HashMap<>();
+
+        List<CustomEventPropValue> items = new ArrayList<>();
+        items.add(CustomEventPropValue.of("la croix"));
+        items.add(CustomEventPropValue.of("more la croix"));
+
+        List<CustomEventPropValue> numbers = new ArrayList<>();
+        numbers.add(CustomEventPropValue.of(1));
+        numbers.add(CustomEventPropValue.of(22.23));
+        numbers.add(CustomEventPropValue.of(0));
+
+        Map<String, CustomEventPropValue> bootsMap = new HashMap<>();
+
+        bootsMap.put("price", CustomEventPropValue.of(40));
+        bootsMap.put("color", CustomEventPropValue.of("black"));
+        bootsMap.put("waterproof", CustomEventPropValue.of(false));
+
+        CustomEventPropValue boots = CustomEventPropValue.of(bootsMap);
+
+        Map<String, CustomEventPropValue> sneakersMap = new HashMap<>();
+
+        sneakersMap.put("price", CustomEventPropValue.of(10));
+        sneakersMap.put("color", CustomEventPropValue.of("red"));
+        sneakersMap.put("clearance", CustomEventPropValue.of(true));
+
+        CustomEventPropValue sneakers = CustomEventPropValue.of(sneakersMap);
+
+        List<CustomEventPropValue> shoes = new ArrayList<>();
+
+        shoes.add(boots);
+        shoes.add(sneakers);
+
+        properties.put("items", CustomEventPropValue.of(items));
+        properties.put("numbers", CustomEventPropValue.of(numbers));
+        properties.put("shoes", CustomEventPropValue.of(shoes));
+
+        CustomEventBody customEventBody = CustomEventBody.newBuilder()
+                .setName("purchased")
+                .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
+                .addAllPropertyEntries(properties)
+                .build();
+
+        CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
+                .setOccurred(occurred)
+                .setCustomEventBody(customEventBody)
+                .setCustomEventUser(customEventUser)
+                .build();
+
+        assertEquals(customEventPayload.getCustomEventBody().getProperties().get().size(), 3);
+        customEventPayload.getCustomEventBody().getProperties().get().forEach(
+                (property, propValue) -> assertTrue(propValue.isArray())
+        );
+
+        customEventPayload.getCustomEventBody().getProperties().get().get("items").getAsList().forEach(
+                 propValue-> assertTrue(propValue.isString())
+        );
+        customEventPayload.getCustomEventBody().getProperties().get().get("numbers").getAsList().forEach(
+                propValue -> assertTrue(propValue.isNumber())
+        );
+        customEventPayload.getCustomEventBody().getProperties().get().get("shoes").getAsList().forEach(
+                propValue -> assertTrue(propValue.isObject())
+        );
+
+        customEventPayload.getCustomEventBody().getProperties().get().get("items").getAsList().forEach(
+                propValue -> assertTrue(propValue.getAsString().equals("la croix") ||
+                        propValue.getAsString().equals("more la croix")));
+
+        customEventPayload.getCustomEventBody().getProperties().get().get("numbers").getAsList().forEach(
+                propValue -> assertTrue(propValue.getAsNumber().equals(1) ||
+                        propValue.getAsNumber().equals(22.23) ||
+                        propValue.getAsNumber().equals(0)));
+
+       customEventPayload.getCustomEventBody().getProperties().get().get("shoes").getAsList().forEach(
+                propValue ->
+                        assertTrue(propValue.getAsMap().get("color").getAsString().equals("black") ||
+                        propValue.getAsMap().get("price").getAsString().equals(40) ||
+                        propValue.getAsMap().get("clearance").getAsString().equals(false) ||
+                        propValue.getAsMap().get("color").getAsString().equals("red") ||
+                        propValue.getAsMap().get("price").getAsString().equals(10) ||
+                        propValue.getAsMap().get("clearance").getAsString().equals(true)));
+
+        String json = MAPPER.writeValueAsString(customEventPayload);
+        String expected = "{\"body\":{\"name\":\"purchased\",\"session_id\":\"22404b07-3f8f-4e42-a4ff-a996c18fa9f1\",\"properties\":{\"numbers\":[1,22.23,0],\"items\":[\"la croix\",\"more la croix\"],\"shoes\":[{\"color\":\"black\",\"price\":40,\"waterproof\":false},{\"color\":\"red\",\"price\":10,\"clearance\":true}]}},\"occurred\":\"2015-05-02T02:31:22\",\"user\":{\"android_channel\":\"e393d28e-23b2-4a22-9ace-dc539a5b07a8\"}}";
+
+        JsonNode jsonFromObject = MAPPER.readTree(json);
+        JsonNode jsonFromString = MAPPER.readTree(expected);
+
+        assertEquals(jsonFromString, jsonFromObject);
+    }
+
+    @Test
+    public void testObjectProperties() throws JsonProcessingException {
+
+        CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
+                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
+                .build();
+
+        DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
+
+        Map<String, CustomEventPropValue> properties = new HashMap<>();
+
+        Map<String, CustomEventPropValue> something = new HashMap<>();
+
+        something.put("aThing", CustomEventPropValue.of("thing"));
+        something.put("somethingElse", CustomEventPropValue.of("this thing"));
+
+        Map<String, CustomEventPropValue> numbers = new HashMap<>();
+
+        numbers.put("high", CustomEventPropValue.of(3));
+        numbers.put("low", CustomEventPropValue.of(0));
+
+        Map<String, CustomEventPropValue> booleans = new HashMap<>();
+
+        booleans.put("testing", CustomEventPropValue.of(true));
+        booleans.put("passing", CustomEventPropValue.of(false));
+
+        properties.put("something", CustomEventPropValue.of(something));
+        properties.put("numbers", CustomEventPropValue.of(numbers));
+        properties.put("booleans", CustomEventPropValue.of(booleans));
+
+        CustomEventBody customEventBody = CustomEventBody.newBuilder()
+                .setName("purchased")
+                .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
+                .addAllPropertyEntries(properties)
+                .build();
+
+        CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
+                .setOccurred(occurred)
+                .setCustomEventBody(customEventBody)
+                .setCustomEventUser(customEventUser)
+                .build();
+
+        assertEquals(customEventPayload.getCustomEventBody().getProperties().get().size(), 3);
+        customEventPayload.getCustomEventBody().getProperties().get().forEach(
+                (property, propValue) -> assertTrue(propValue.isObject())
+        );
+        customEventPayload.getCustomEventBody().getProperties().get().get("something").getAsMap().values().forEach(
+                propValue -> assertTrue(propValue.isString())
+        );
+        assertEquals("thing", customEventPayload.getCustomEventBody().getProperties().get().get("something").getAsMap().get("aThing").getAsString()
+        );
+        assertEquals("this thing", customEventPayload.getCustomEventBody().getProperties().get().get("something").getAsMap().get("somethingElse").getAsString()
+        );
+        customEventPayload.getCustomEventBody().getProperties().get().get("numbers").getAsMap().values().forEach(
+                propValue -> assertTrue(propValue.isNumber())
+        );
+        assertEquals(3, customEventPayload.getCustomEventBody().getProperties().get().get("numbers").getAsMap().get("high").getAsNumber()
+        );
+        assertEquals(0 , customEventPayload.getCustomEventBody().getProperties().get().get("numbers").getAsMap().get("low").getAsNumber()
+        );
+        assertEquals(false, customEventPayload.getCustomEventBody().getProperties().get().get("booleans").getAsMap().get("passing").getAsBoolean()
+        );
+        customEventPayload.getCustomEventBody().getProperties().get().get("booleans").getAsMap().values().forEach(
+                propValue -> assertTrue(propValue.isBoolean())
+        );
+        assertEquals(true , customEventPayload.getCustomEventBody().getProperties().get().get("booleans").getAsMap().get("testing").getAsBoolean()
+        );
+        assertEquals(false, customEventPayload.getCustomEventBody().getProperties().get().get("booleans").getAsMap().get("passing").getAsBoolean()
+        );
+
+        String json = MAPPER.writeValueAsString(customEventPayload);
+        String expected = "{\"body\":{\"name\":\"purchased\",\"session_id\":\"22404b07-3f8f-4e42-a4ff-a996c18fa9f1\",\"properties\":{\"numbers\":{\"high\":3,\"low\":0},\"booleans\":{\"testing\":true,\"passing\":false},\"something\":{\"aThing\":\"thing\",\"somethingElse\":\"this thing\"}}},\"occurred\":\"2015-05-02T02:31:22\",\"user\":{\"android_channel\":\"e393d28e-23b2-4a22-9ace-dc539a5b07a8\"}}";
+
+        JsonNode jsonFromObject = MAPPER.readTree(json);
+        JsonNode jsonFromString = MAPPER.readTree(expected);
+
+        assertEquals(jsonFromString, jsonFromObject);
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/com/urbanairship/api/customevents/parse/CustomEventPayloadSerializerTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,15 +1,16 @@
+ package com.urbanairship.api.customevents.parse;
+ 
+ import com.fasterxml.jackson.databind.JsonNode;
+ import com.fasterxml.jackson.databind.ObjectMapper;
+ import com.urbanairship.api.customevents.model.CustomEventPayload;
+ import com.urbanairship.api.customevents.model.CustomEventBody;
+ import com.urbanairship.api.customevents.model.CustomEventChannelType;
++import com.urbanairship.api.customevents.model.CustomEventPropValue;
+ import com.urbanairship.api.customevents.model.CustomEventUser;
+ import com.urbanairship.api.push.parse.PushObjectMapper;
+ import org.joda.time.DateTime;
+ import org.joda.time.DateTimeZone;
+ import org.junit.Test;
+ 
+ import java.io.IOException;
+ import java.math.BigDecimal;
+@@ -24,21 +25,22 @@
+ 
+     @Test
+     public void testFullPayload() throws IOException {
+         CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                 .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
+                 .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
+                 .build();
+ 
+-        Map<String, String> properties = new HashMap<String, String>();
+-        properties.put("category", "mens shoes");
+-        properties.put("id", "pid-11046546");
+-        properties.put("description", "sky high");
+-        properties.put("brand", "victory");
++        Map<String, CustomEventPropValue> properties = new HashMap<>();
++
++        properties.put("category", CustomEventPropValue.of("mens shoes"));
++        properties.put("id",  CustomEventPropValue.of("pid-11046546"));
++        properties.put("description", CustomEventPropValue.of( "sky high"));
++        properties.put("brand",  CustomEventPropValue.of("victory"));
+ 
+         CustomEventBody customEventBody = CustomEventBody.newBuilder()
+                 .setName("purchased")
+                 .setValue(new BigDecimal(120.49))
+                 .setTransaction("886f53d4-3e0f-46d7-930e-c2792dac6e0a")
+                 .setInteractionId("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234")
+                 .setInteractionType("url")
+                 .addAllPropertyEntries(properties)
+@@ -54,12 +56,11 @@
+                 .build();
+ 
+         String json = MAPPER.writeValueAsString(customEventPayload);
+         String expected = "{\"occurred\": \"2015-05-02T02:31:22\",\"user\": {\"android_channel\": \"e393d28e-23b2-4a22-9ace-dc539a5b07a8\"},\"body\": {\"name\": \"purchased\",\"value\": 120.49,\"transaction\": \"886f53d4-3e0f-46d7-930e-c2792dac6e0a\",\"interaction_id\": \"your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234\",\"interaction_type\": \"url\",\"properties\": {\"category\": \"mens shoes\",\"id\": \"pid-11046546\",\"description\": \"sky high\",\"brand\": \"victory\"},\"session_id\": \"22404b07-3f8f-4e42-a4ff-a996c18fa9f1\"}}";
+ 
+         JsonNode jsonFromObject = MAPPER.readTree(json);
+         JsonNode jsonFromString = MAPPER.readTree(expected);
+ 
+-
+         assertEquals(jsonFromString, jsonFromObject);
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,29 +1,34 @@
+ package com.urbanairship.api.customevents.parse;
+ 
+ import com.fasterxml.jackson.databind.JsonNode;
+ import com.fasterxml.jackson.databind.ObjectMapper;
+-import com.urbanairship.api.customevents.model.CustomEventPayload;
+ import com.urbanairship.api.customevents.model.CustomEventBody;
+ import com.urbanairship.api.customevents.model.CustomEventChannelType;
++import com.urbanairship.api.customevents.model.CustomEventPayload;
+ import com.urbanairship.api.customevents.model.CustomEventUser;
+ import com.urbanairship.api.push.parse.PushObjectMapper;
+ import org.joda.time.DateTime;
+ import org.joda.time.DateTimeZone;
++import org.junit.Rule;
+ import org.junit.Test;
++import org.junit.rules.ExpectedException;
+ 
+ import java.io.IOException;
+ import java.math.BigDecimal;
+ import java.util.HashMap;
+ import java.util.Map;
+ 
+ import static org.junit.Assert.assertEquals;
+ 
+ public class CustomEventPayloadSerializerTest {
++
++    @Rule
++    public ExpectedException expectedException = ExpectedException.none();
+ 
+     private static final ObjectMapper MAPPER = PushObjectMapper.getInstance();
+ 
+     @Test
+     public void testFullPayload() throws IOException {
+         CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                 .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
+                 .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
+@@ -40,26 +45,116 @@
+                 .setValue(new BigDecimal(120.49))
+                 .setTransaction("886f53d4-3e0f-46d7-930e-c2792dac6e0a")
+                 .setInteractionId("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234")
+                 .setInteractionType("url")
+                 .addAllPropertyEntries(properties)
+                 .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
+                 .build();
+ 
+-        DateTime occured = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
++        DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
+ 
+         CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
++                .setOccurred(occurred)
+                 .setCustomEventBody(customEventBody)
+                 .setCustomEventUser(customEventUser)
+-                .setOccurred(occured)
+                 .build();
+ 
+         String json = MAPPER.writeValueAsString(customEventPayload);
+         String expected = "{\"occurred\": \"2015-05-02T02:31:22\",\"user\": {\"android_channel\": \"e393d28e-23b2-4a22-9ace-dc539a5b07a8\"},\"body\": {\"name\": \"purchased\",\"value\": 120.49,\"transaction\": \"886f53d4-3e0f-46d7-930e-c2792dac6e0a\",\"interaction_id\": \"your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234\",\"interaction_type\": \"url\",\"properties\": {\"category\": \"mens shoes\",\"id\": \"pid-11046546\",\"description\": \"sky high\",\"brand\": \"victory\"},\"session_id\": \"22404b07-3f8f-4e42-a4ff-a996c18fa9f1\"}}";
+ 
++        JsonNode jsonFromString = MAPPER.readTree(expected);
++        JsonNode jsonFromObject = MAPPER.readTree(json);
++
++        assertEquals(jsonFromString, jsonFromObject);
++    }
++
++    @Test
++    public void testChannelIdCustomEventUserObject() throws IOException {
++        CustomEventUser customEventUser = CustomEventUser.newBuilder()
++                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
++                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
++                .build();
++
++        String userJson = MAPPER.writeValueAsString(customEventUser);
++
++        String expected = "{\"android_channel\": \"e393d28e-23b2-4a22-9ace-dc539a5b07a8\"}}";
++
++        JsonNode userJsonFromObject = MAPPER.readTree(userJson);
++        JsonNode userJsonFromString = MAPPER.readTree(expected);
++
++        assertEquals(userJsonFromString, userJsonFromObject);
++    }
++
++    @Test
++    public void testNamedUserFullPayload() throws IOException {
++        CustomEventUser customEventUser = CustomEventUser.newBuilder()
++                .setNamedUserId("hugh.manbeing")
++                .build();
++
++        Map<String, String> properties = new HashMap<>();
++        properties.put("category", "mens shoes");
++        properties.put("id", "pid-11046546");
++        properties.put("description", "Sneaker purchase");
++        properties.put("brand", "Victory Sneakers");
++
++        CustomEventBody customEventBody = CustomEventBody.newBuilder()
++                .setName("purchased")
++                .setValue(new BigDecimal(120.49))
++                .setTransaction("886f53d4-3e0f-46d7-930e-c2792dac6e0a")
++                .setInteractionId("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234")
++                .setInteractionType("url")
++                .addAllPropertyEntries(properties)
++                .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
++                .build();
++
++        DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
++
++        CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
++                .setCustomEventBody(customEventBody)
++                .setCustomEventUser(customEventUser)
++                .setOccurred(occurred)
++                .build();
++
++        String json = MAPPER.writeValueAsString(customEventPayload);
++        String expected = "{\"occurred\":\"2015-05-02T02:31:22\",\"user\":{\"named_user_id\":\"hugh.manbeing\"},\"body\":{\"name\":\"purchased\",\"session_id\":\"22404b07-3f8f-4e42-a4ff-a996c18fa9f1\",\"interaction_id\":\"your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234\",\"interaction_type\":\"url\",\"transaction\":\"886f53d4-3e0f-46d7-930e-c2792dac6e0a\",\"properties\":{\"description\":\"Sneaker purchase\",\"id\":\"pid-11046546\",\"category\":\"mens shoes\",\"brand\":\"Victory Sneakers\"},\"value\":120.49}}";
+         JsonNode jsonFromObject = MAPPER.readTree(json);
+         JsonNode jsonFromString = MAPPER.readTree(expected);
+ 
+ 
+         assertEquals(jsonFromString, jsonFromObject);
+     }
++
++    @Test
++    public void testNoChannelType() throws IOException {
++
++        expectedException.expect(IllegalArgumentException.class);
++        expectedException.expectMessage("Must provide channel and channelType, or namedUserId");
++
++        CustomEventUser customEventUser = CustomEventUser.newBuilder()
++                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
++                .build();
++    }
++
++    @Test
++    public void testChannelTypeNoChannel() throws IOException, IllegalArgumentException {
++
++        expectedException.expect(IllegalArgumentException.class);
++        expectedException.expectMessage("Must provide channel and channelType, or namedUserId");
++
++        CustomEventUser customEventUser = CustomEventUser.newBuilder()
++                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
++                .build();
++    }
++
++    @Test
++    public void testNamedUserAndChannel() throws IOException {
++
++        expectedException.expect(IllegalArgumentException.class);
++        expectedException.expectMessage("Must provide either channel and channelType or namedUserId, not both");
++
++        CustomEventUser customEventUser = CustomEventUser.newBuilder()
++                .setNamedUserId("hugh.manbeing")
++                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
++                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
++                .build();
++    }
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package com.urbanairship.api.customevents.parse;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.urbanairship.api.customevents.model.CustomEventBody;
+import com.urbanairship.api.customevents.model.CustomEventChannelType;
+import com.urbanairship.api.customevents.model.CustomEventPropValue;
+import com.urbanairship.api.customevents.model.CustomEventPayload;
+import com.urbanairship.api.customevents.model.CustomEventUser;
+import com.urbanairship.api.push.parse.PushObjectMapper;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+
+public class CustomEventPayloadSerializerTest {
+
+    @Rule
+    public ExpectedException expectedException = ExpectedException.none();
+
+    private static final ObjectMapper MAPPER = PushObjectMapper.getInstance();
+
+    @Test
+    public void testFullPayload() throws IOException {
+        CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
+                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
+                .build();
+
+        Map<String, CustomEventPropValue> properties = new HashMap<>();
+
+        properties.put("category", CustomEventPropValue.of("mens shoes"));
+        properties.put("id",  CustomEventPropValue.of("pid-11046546"));
+        properties.put("description", CustomEventPropValue.of( "sky high"));
+        properties.put("brand",  CustomEventPropValue.of("victory"));
+
+        CustomEventBody customEventBody = CustomEventBody.newBuilder()
+                .setName("purchased")
+                .setValue(new BigDecimal(120.49))
+                .setTransaction("886f53d4-3e0f-46d7-930e-c2792dac6e0a")
+                .setInteractionId("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234")
+                .setInteractionType("url")
+                .addAllPropertyEntries(properties)
+                .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
+                .build();
+
+        DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
+
+        CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
+                .setOccurred(occurred)
+                .setCustomEventBody(customEventBody)
+                .setCustomEventUser(customEventUser)
+                .build();
+
+        String json = MAPPER.writeValueAsString(customEventPayload);
+        String expected = "{\"occurred\": \"2015-05-02T02:31:22\",\"user\": {\"android_channel\": \"e393d28e-23b2-4a22-9ace-dc539a5b07a8\"},\"body\": {\"name\": \"purchased\",\"value\": 120.49,\"transaction\": \"886f53d4-3e0f-46d7-930e-c2792dac6e0a\",\"interaction_id\": \"your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234\",\"interaction_type\": \"url\",\"properties\": {\"category\": \"mens shoes\",\"id\": \"pid-11046546\",\"description\": \"sky high\",\"brand\": \"victory\"},\"session_id\": \"22404b07-3f8f-4e42-a4ff-a996c18fa9f1\"}}";
+
+        JsonNode jsonFromString = MAPPER.readTree(expected);
+        JsonNode jsonFromObject = MAPPER.readTree(json);
+
+        assertEquals(jsonFromString, jsonFromObject);
+    }
+
+    @Test
+    public void testChannelIdCustomEventUserObject() throws IOException {
+        CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
+                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
+                .build();
+
+        String userJson = MAPPER.writeValueAsString(customEventUser);
+
+        String expected = "{\"android_channel\": \"e393d28e-23b2-4a22-9ace-dc539a5b07a8\"}}";
+
+        JsonNode userJsonFromObject = MAPPER.readTree(userJson);
+        JsonNode userJsonFromString = MAPPER.readTree(expected);
+
+        assertEquals(userJsonFromString, userJsonFromObject);
+    }
+
+    @Test
+    public void testNamedUserFullPayload() throws IOException {
+        CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                .setNamedUserId("hugh.manbeing")
+                .build();
+
+        Map<String, String> properties = new HashMap<>();
+        properties.put("category", "mens shoes");
+        properties.put("id", "pid-11046546");
+        properties.put("description", "Sneaker purchase");
+        properties.put("brand", "Victory Sneakers");
+
+        CustomEventBody customEventBody = CustomEventBody.newBuilder()
+                .setName("purchased")
+                .setValue(new BigDecimal(120.49))
+                .setTransaction("886f53d4-3e0f-46d7-930e-c2792dac6e0a")
+                .setInteractionId("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234")
+                .setInteractionType("url")
+                .addAllPropertyEntries(properties)
+                .setSessionId("22404b07-3f8f-4e42-a4ff-a996c18fa9f1")
+                .build();
+
+        DateTime occurred = new DateTime(2015, 5, 2, 2, 31, 22, DateTimeZone.UTC);
+
+        CustomEventPayload customEventPayload = CustomEventPayload.newBuilder()
+                .setCustomEventBody(customEventBody)
+                .setCustomEventUser(customEventUser)
+                .setOccurred(occurred)
+                .build();
+
+        String json = MAPPER.writeValueAsString(customEventPayload);
+        String expected = "{\"occurred\":\"2015-05-02T02:31:22\",\"user\":{\"named_user_id\":\"hugh.manbeing\"},\"body\":{\"name\":\"purchased\",\"session_id\":\"22404b07-3f8f-4e42-a4ff-a996c18fa9f1\",\"interaction_id\":\"your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234\",\"interaction_type\":\"url\",\"transaction\":\"886f53d4-3e0f-46d7-930e-c2792dac6e0a\",\"properties\":{\"description\":\"Sneaker purchase\",\"id\":\"pid-11046546\",\"category\":\"mens shoes\",\"brand\":\"Victory Sneakers\"},\"value\":120.49}}";
+        JsonNode jsonFromObject = MAPPER.readTree(json);
+        JsonNode jsonFromString = MAPPER.readTree(expected);
+
+        assertEquals(jsonFromString, jsonFromObject);
+    }
+
+    @Test
+    public void testNoChannelType() throws IOException {
+
+        expectedException.expect(IllegalArgumentException.class);
+        expectedException.expectMessage("Must provide channel and channelType, or namedUserId");
+
+        CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
+                .build();
+    }
+
+    @Test
+    public void testChannelTypeNoChannel() throws IOException, IllegalArgumentException {
+
+        expectedException.expect(IllegalArgumentException.class);
+        expectedException.expectMessage("Must provide channel and channelType, or namedUserId");
+
+        CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
+                .build();
+    }
+
+    @Test
+    public void testNamedUserAndChannel() throws IOException {
+
+        expectedException.expect(IllegalArgumentException.class);
+        expectedException.expectMessage("Must provide either channel and channelType or namedUserId, not both");
+
+        CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                .setNamedUserId("hugh.manbeing")
+                .setChannel("e393d28e-23b2-4a22-9ace-dc539a5b07a8")
+                .setCustomEventChannelType(CustomEventChannelType.ANDROID_CHANNEL)
+                .build();
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -87,21 +87,21 @@
+     }
+ 
+     @Test
+     public void testNamedUserFullPayload() throws IOException {
+         CustomEventUser customEventUser = CustomEventUser.newBuilder()
+                 .setNamedUserId("hugh.manbeing")
+                 .build();
+ 
+-        Map<String, String> properties = new HashMap<>();
+-        properties.put("category", "mens shoes");
+-        properties.put("id", "pid-11046546");
+-        properties.put("description", "Sneaker purchase");
+-        properties.put("brand", "Victory Sneakers");
++        Map<String, CustomEventPropValue> properties = new HashMap<>();
++        properties.put("category", CustomEventPropValue.of("mens shoes"));
++        properties.put("id", CustomEventPropValue.of("pid-11046546"));
++        properties.put("description", CustomEventPropValue.of("Sneaker purchase"));
++        properties.put("brand", CustomEventPropValue.of("Victory Sneakers"));
+ 
+         CustomEventBody customEventBody = CustomEventBody.newBuilder()
+                 .setName("purchased")
+                 .setValue(new BigDecimal(120.49))
+                 .setTransaction("886f53d4-3e0f-46d7-930e-c2792dac6e0a")
+                 .setInteractionId("your.store/us/en_us/pd/shoe/pid-11046546/pgid-10978234")
+                 .setInteractionType("url")
+                 .addAllPropertyEntries(properties)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

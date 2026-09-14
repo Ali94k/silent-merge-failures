@@ -1,0 +1,875 @@
+UNIT buddycloud_buddycloud-server-java__33ec3ec7cd
+repo: buddycloud_buddycloud-server-java   merge: 33ec3ec7cd6dbeedd89af03946985e450e7f280c   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/2: src/main/java/org/buddycloud/channelserver/packetprocessor/iq/namespace/pubsub/set/UnsubscribeSet.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -9,16 +9,17 @@
+ import org.buddycloud.channelserver.packetprocessor.iq.namespace.pubsub.JabberPubsub;
+ import org.buddycloud.channelserver.packetprocessor.iq.namespace.pubsub.PubSubElementProcessorAbstract;
+ import org.buddycloud.channelserver.pubsub.affiliation.Affiliations;
+ import org.buddycloud.channelserver.pubsub.event.Event;
+ import org.buddycloud.channelserver.pubsub.model.NodeAffiliation;
+ import org.buddycloud.channelserver.pubsub.model.NodeSubscription;
+ import org.buddycloud.channelserver.pubsub.model.impl.NodeSubscriptionImpl;
+ import org.buddycloud.channelserver.pubsub.subscription.Subscriptions;
++import org.buddycloud.channelserver.utils.node.item.payload.Buddycloud;
+ import org.dom4j.Document;
+ import org.dom4j.Element;
+ import org.dom4j.dom.DOMElement;
+ import org.xmpp.packet.IQ;
+ import org.xmpp.packet.IQ.Type;
+ import org.xmpp.packet.JID;
+ import org.xmpp.packet.Message;
+ import org.xmpp.packet.Packet;
+@@ -218,17 +219,17 @@
+ 
+ 		outQueue.put(response);
+ 	}
+ 
+ 	private void makeRemoteRequest() throws InterruptedException {
+ 		request.setTo(new JID(node.split("/")[2]).getDomain());
+ 		Element actor = request.getElement()
+ 		    .element("pubsub")
+-		    .addElement("actor", JabberPubsub.NS_BUDDYCLOUD);
++		    .addElement("actor", Buddycloud.NS);
+ 		actor.addText(request.getFrom().toBareJID());
+ 	    outQueue.put(request);
+ 	}
+ 	
+ 	@Override
+ 	public boolean accept(Element elm) {
+ 		return elm.getName().equals("unsubscribe");
+ 	}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -22,26 +22,23 @@
+ import org.xmpp.packet.JID;
+ import org.xmpp.packet.Message;
+ import org.xmpp.packet.Packet;
+ import org.xmpp.packet.PacketError;
+ import org.xmpp.resultsetmanagement.ResultSet;
+ 
+ public class UnsubscribeSet extends PubSubElementProcessorAbstract {
+ 
+-	private final BlockingQueue<Packet> outQueue;
+-	private final ChannelManager channelManager;
+-
+ 	private static final Logger logger = Logger.getLogger(UnsubscribeSet.class);
+ 	public static final String NODE_ID_REQUIRED = "nodeid-required";
++	public static final String CAN_NOT_UNSUBSCRIBE_ANOTHER_USER = "can-only-unsubscribe-self";
++	public static String MUST_HAVE_ONE_OWNER = "node-must-have-owner";
+ 
+-	private String node;
+-	private IQ request;
+-	private IQ response;
+ 	private JID unsubscribingJid;
++	
+ 
+ 	public UnsubscribeSet(BlockingQueue<Packet> outQueue,
+ 			ChannelManager channelManager) {
+ 		this.outQueue = outQueue;
+ 		this.channelManager = channelManager;
+ 	}
+ 
+ 	@Override
+@@ -73,51 +70,49 @@
+ 		
+ 		if (false == unsubscribingJid.toBareJID().equals(from.toBareJID())) {
+ 		    failAuthRequired();
+ 		    return;
+ 		}
+ 
+ 
+ 		if (false == channelManager.nodeExists(node)) {
+-			response.setType(Type.error);
+-			PacketError pe = new PacketError(
+-					org.xmpp.packet.PacketError.Condition.item_not_found,
+-					org.xmpp.packet.PacketError.Type.cancel);
+-			response.setError(pe);
++			setErrorCondition(PacketError.Type.cancel, PacketError.Condition.item_not_found);
+ 			outQueue.put(response);
+ 			return;
+ 		}
+ 
+ 		NodeSubscription existingSubscription = channelManager
+ 				.getUserSubscription(node, unsubscribingJid);
+ 		NodeAffiliation existingAffiliation = channelManager
+ 				.getUserAffiliation(node, unsubscribingJid);
+ 		String fromJID = request.getFrom().toBareJID();
+ 
+ 		// Check that the requesting user is allowed to unsubscribe according to
+ 		// XEP-0060 section 6.2.3.3		
+ 		if (false == unsubscribingJid.equals(existingSubscription.getUser())) {
+-			response.setType(Type.error);
+-			PacketError pe = new PacketError(
+-					org.xmpp.packet.PacketError.Condition.forbidden,
+-					org.xmpp.packet.PacketError.Type.auth);
+-			response.setError(pe);
++			createExtendedErrorReply(
++					PacketError.Type.auth,
++					PacketError.Condition.forbidden, 
++					CAN_NOT_UNSUBSCRIBE_ANOTHER_USER,
++					JabberPubsub.NS_BUDDYCLOUD
++				);
+ 			outQueue.put(response);
+ 			return;
+ 		}
+ 		
+ 		if ((Affiliations.owner == existingAffiliation.getAffiliation()) &&
+ 			(channelManager.getNodeOwners(node).size() < 2)) {
+ 			
+-			response.setType(Type.error);
+-			PacketError pe = new PacketError(
+-					org.xmpp.packet.PacketError.Condition.not_allowed,
+-					org.xmpp.packet.PacketError.Type.cancel);
+-			response.setError(pe);
++			createExtendedErrorReply(
++				PacketError.Type.cancel,
++				PacketError.Condition.not_allowed, 
++				MUST_HAVE_ONE_OWNER,
++				JabberPubsub.NS_BUDDYCLOUD
++			);
+ 			outQueue.put(response);
+ 			return;
+ 		}
+ 
+ 		NodeSubscription newSubscription = new NodeSubscriptionImpl(
+ 				existingSubscription.getNodeId(),
+ 				existingSubscription.getUser(),
+ 				existingSubscription.getListener(), Subscriptions.none);
+@@ -167,60 +162,22 @@
+ 		for (JID admin : admins) {
+ 			Message notification = rootElement.createCopy();
+ 			notification.setTo(admin);
+ 			outQueue.put(notification);
+ 		}
+ 	}
+ 
+ 	private void failAuthRequired() throws InterruptedException {
+-		// If the packet did not have actor, and the sender is not a
+-		// local user
+-		// subscription is not allowed.
+-
+-		/*
+-		 * <iq type='error' from='pubsub.shakespeare.lit'
+-		 * to='hamlet@denmark.lit/elsinore' id='unsub1'> <error type='auth'>
+-		 * <registration-required xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+-		 * </error> </iq>
+-		 */
+-		response.setType(Type.error);
+-		PacketError pe = new PacketError(
+-				org.xmpp.packet.PacketError.Condition.not_authorized,
+-				org.xmpp.packet.PacketError.Type.auth);
+-		response.setError(pe);
++		setErrorCondition(PacketError.Type.auth, PacketError.Condition.not_authorized);
+ 		outQueue.put(response);
+ 	}
+ 
+ 	private void missingNodeName() throws InterruptedException {
+-		/*
+-		 * 7.2.3.3 NodeID Required
+-		 * 
+-		 * <iq type='error' from='pubsub.shakespeare.lit'
+-		 * to='hamlet@denmark.lit/elsinore' id='retract1'> <error type='modify'>
+-		 * <bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+-		 * <nodeid-required xmlns='http://jabber.org/protocol/pubsub#errors'/>
+-		 * </error> </iq>
+-		 */
+-
+-		response.setType(Type.error);
+-
+-		Element badRequest = new DOMElement("bad-request",
+-				new org.dom4j.Namespace("", JabberPubsub.NS_XMPP_STANZAS));
+-
+-		Element nodeIdRequired = new DOMElement(NODE_ID_REQUIRED,
+-				new org.dom4j.Namespace("", JabberPubsub.NS_PUBSUB_ERROR));
+-
+-		Element error = new DOMElement("error");
+-		error.addAttribute("type", "modify");
+-		error.add(badRequest);
+-		error.add(nodeIdRequired);
+-
+-		response.setChildElement(error);
+-
++		createExtendedErrorReply(PacketError.Type.modify, PacketError.Condition.bad_request, NODE_ID_REQUIRED);
+ 		outQueue.put(response);
+ 	}
+ 
+ 	private void makeRemoteRequest() throws InterruptedException {
+ 		request.setTo(new JID(node.split("/")[2]).getDomain());
+ 		Element actor = request.getElement()
+ 		    .element("pubsub")
+ 		    .addElement("actor", JabberPubsub.NS_BUDDYCLOUD);
+--- MERGED RESULT (mergiraf; full) ---
+package org.buddycloud.channelserver.packetprocessor.iq.namespace.pubsub.set;
+
+import java.util.Collection;
+import java.util.concurrent.BlockingQueue;
+
+import org.apache.log4j.Logger;
+import org.buddycloud.channelserver.channel.ChannelManager;
+import org.buddycloud.channelserver.db.exception.NodeStoreException;
+import org.buddycloud.channelserver.packetprocessor.iq.namespace.pubsub.JabberPubsub;
+import org.buddycloud.channelserver.packetprocessor.iq.namespace.pubsub.PubSubElementProcessorAbstract;
+import org.buddycloud.channelserver.pubsub.affiliation.Affiliations;
+import org.buddycloud.channelserver.pubsub.event.Event;
+import org.buddycloud.channelserver.pubsub.model.NodeAffiliation;
+import org.buddycloud.channelserver.pubsub.model.NodeSubscription;
+import org.buddycloud.channelserver.pubsub.model.impl.NodeSubscriptionImpl;
+import org.buddycloud.channelserver.pubsub.subscription.Subscriptions;
+import org.buddycloud.channelserver.utils.node.item.payload.Buddycloud;
+import org.dom4j.Document;
+import org.dom4j.Element;
+import org.dom4j.dom.DOMElement;
+import org.xmpp.packet.IQ;
+import org.xmpp.packet.IQ.Type;
+import org.xmpp.packet.JID;
+import org.xmpp.packet.Message;
+import org.xmpp.packet.Packet;
+import org.xmpp.packet.PacketError;
+import org.xmpp.resultsetmanagement.ResultSet;
+
+public class UnsubscribeSet extends PubSubElementProcessorAbstract {
+
+	private static final Logger logger = Logger.getLogger(UnsubscribeSet.class);
+	public static final String NODE_ID_REQUIRED = "nodeid-required";
+	public static final String CAN_NOT_UNSUBSCRIBE_ANOTHER_USER = "can-only-unsubscribe-self";
+	public static String MUST_HAVE_ONE_OWNER = "node-must-have-owner";
+
+	private JID unsubscribingJid;
+	
+
+	public UnsubscribeSet(BlockingQueue<Packet> outQueue,
+			ChannelManager channelManager) {
+		this.outQueue = outQueue;
+		this.channelManager = channelManager;
+	}
+
+	@Override
+	public void process(Element elm, JID actorJID, IQ reqIQ, Element rsm)
+			throws Exception {
+
+		request = reqIQ;
+		node = request.getChildElement().element("unsubscribe").attributeValue("node");
+		response = IQ.createResultIQ(request);
+
+		if ((node == null) || (node.equals(""))) {
+			missingNodeName();
+			return;
+		}
+
+		JID from = request.getFrom();
+		if ((false == node.equals("/firehose")) && (false == channelManager.isLocalNode(node))) {
+			makeRemoteRequest();
+			return;
+		}
+		boolean isLocalSubscriber = false;
+
+		if (actorJID != null) {
+			from = actorJID;
+		}
+		
+		unsubscribingJid = new JID(request.getChildElement().element("unsubscribe")
+				.attributeValue("jid"));
+		
+		if (false == unsubscribingJid.toBareJID().equals(from.toBareJID())) {
+		    failAuthRequired();
+		    return;
+		}
+
+
+		if (false == channelManager.nodeExists(node)) {
+			setErrorCondition(PacketError.Type.cancel, PacketError.Condition.item_not_found);
+			outQueue.put(response);
+			return;
+		}
+
+		NodeSubscription existingSubscription = channelManager
+				.getUserSubscription(node, unsubscribingJid);
+		NodeAffiliation existingAffiliation = channelManager
+				.getUserAffiliation(node, unsubscribingJid);
+		String fromJID = request.getFrom().toBareJID();
+
+		// Check that the requesting user is allowed to unsubscribe according to
+		// XEP-0060 section 6.2.3.3		
+		if (false == unsubscribingJid.equals(existingSubscription.getUser())) {
+			createExtendedErrorReply(
+					PacketError.Type.auth,
+					PacketError.Condition.forbidden, 
+					CAN_NOT_UNSUBSCRIBE_ANOTHER_USER,
+					JabberPubsub.NS_BUDDYCLOUD
+				);
+			outQueue.put(response);
+			return;
+		}
+		
+		if ((Affiliations.owner == existingAffiliation.getAffiliation()) &&
+			(channelManager.getNodeOwners(node).size() < 2)) {
+			
+			createExtendedErrorReply(
+				PacketError.Type.cancel,
+				PacketError.Condition.not_allowed, 
+				MUST_HAVE_ONE_OWNER,
+				JabberPubsub.NS_BUDDYCLOUD
+			);
+			outQueue.put(response);
+			return;
+		}
+
+		NodeSubscription newSubscription = new NodeSubscriptionImpl(
+				existingSubscription.getNodeId(),
+				existingSubscription.getUser(),
+				existingSubscription.getListener(), Subscriptions.none);
+
+		channelManager.addUserSubscription(newSubscription);
+		if (false == Affiliations.outcast.toString().equals(
+				existingAffiliation.getAffiliation().toString())) {
+			channelManager.setUserAffiliation(node, unsubscribingJid,
+					Affiliations.none);
+		}
+
+		outQueue.put(response);
+		notifySubscribers();
+	}
+
+	private void notifySubscribers() throws NodeStoreException,
+			InterruptedException {
+		ResultSet<NodeSubscription> subscribers = channelManager
+				.getNodeSubscriptionListeners(node);
+
+		Document document = getDocumentHelper();
+		Element message = document.addElement("message");
+		message.addAttribute("remote-server-discover", "false");
+		Element event = message.addElement("event", Event.NAMESPACE);
+		Element subscription = event.addElement("subscription");
+		subscription.addAttribute("node", node);
+		subscription.addAttribute("jid", unsubscribingJid.toBareJID());
+		subscription
+				.addAttribute("subscription", Subscriptions.none.toString());
+		message.addAttribute("from", request.getTo().toString());
+		message.addAttribute("type", "headline");
+		// "None" because we don't glorify the bad
+		Element affiliations = event.addElement("affiliations");
+		Element affiliation = affiliations.addElement("affiliation");
+		affiliation.addAttribute("jid", unsubscribingJid.toBareJID());
+		affiliation.addAttribute("node", node);
+
+		Message rootElement = new Message(message);
+        
+		for (NodeSubscription subscriber : subscribers) {
+			Message notification = rootElement.createCopy();
+			notification.setTo(subscriber.getUser());
+			outQueue.put(notification);
+		}
+		
+		Collection<JID> admins = getAdminUsers();
+		for (JID admin : admins) {
+			Message notification = rootElement.createCopy();
+			notification.setTo(admin);
+			outQueue.put(notification);
+		}
+	}
+
+	private void failAuthRequired() throws InterruptedException {
+		setErrorCondition(PacketError.Type.auth, PacketError.Condition.not_authorized);
+		outQueue.put(response);
+	}
+
+	private void missingNodeName() throws InterruptedException {
+		createExtendedErrorReply(PacketError.Type.modify, PacketError.Condition.bad_request, NODE_ID_REQUIRED);
+		outQueue.put(response);
+	}
+
+	private void makeRemoteRequest() throws InterruptedException {
+		request.setTo(new JID(node.split("/")[2]).getDomain());
+		Element actor = request.getElement()
+		    .element("pubsub")
+		    .addElement("actor", Buddycloud.NS);
+		actor.addText(request.getFrom().toBareJID());
+	    outQueue.put(request);
+	}
+	
+	@Override
+	public boolean accept(Element elm) {
+		return elm.getName().equals("unsubscribe");
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/test/java/org/buddycloud/channelserver/packetprocessor/iq/namespace/pubsub/set/UnsubscribeSetTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -14,16 +14,17 @@
+ import org.buddycloud.channelserver.pubsub.affiliation.Affiliations;
+ import org.buddycloud.channelserver.pubsub.event.Event;
+ import org.buddycloud.channelserver.pubsub.model.NodeAffiliation;
+ import org.buddycloud.channelserver.pubsub.model.NodeSubscription;
+ import org.buddycloud.channelserver.pubsub.model.impl.NodeAffiliationImpl;
+ import org.buddycloud.channelserver.pubsub.model.impl.NodeItemImpl;
+ import org.buddycloud.channelserver.pubsub.model.impl.NodeSubscriptionImpl;
+ import org.buddycloud.channelserver.pubsub.subscription.Subscriptions;
++import org.buddycloud.channelserver.utils.node.item.payload.Buddycloud;
+ import org.dom4j.Element;
+ import org.dom4j.tree.BaseElement;
+ import org.junit.Before;
+ import org.junit.Test;
+ import org.mockito.ArgumentCaptor;
+ import org.mockito.Mockito;
+ import org.mockito.stubbing.OngoingStubbing;
+ import org.xmpp.packet.IQ;
+@@ -144,17 +145,17 @@
+ 				.element("unsubscribe").attributeValue("node").split("/")[2])
+ 				.getDomain();
+ 
+ 		IQ response = (IQ) queue.poll();
+ 		Assert.assertEquals(IQ.Type.set, response.getType());
+ 		Assert.assertEquals(domain, response.getTo().toString());
+ 		Element actor = response.getChildElement().element("actor");
+ 		Assert.assertNotNull(actor);
+-		Assert.assertEquals(JabberPubsub.NS_BUDDYCLOUD, actor.getNamespaceURI());
++		Assert.assertEquals(Buddycloud.NS, actor.getNamespaceURI());
+ 		Assert.assertEquals(request.getFrom().toBareJID(), actor.getText());
+ 	}
+ 
+ 	@Test
+ 	public void canNotUnsubscribeAnotherUser() throws Exception {
+ 
+ 		IQ badRequest = request.createCopy();
+ 		badRequest.getChildElement().element("unsubscribe").attribute("jid")
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -189,17 +189,16 @@
+ 		IQ response = (IQ) queue.poll();
+ 
+ 		Assert.assertEquals(IQ.Type.error, response.getType());
+ 		Assert.assertEquals(request.getFrom(), response.getTo());
+ 		PacketError error = response.getError();
+ 		Assert.assertEquals(PacketError.Condition.item_not_found,
+ 				error.getCondition());
+ 		Assert.assertEquals(PacketError.Type.cancel, error.getType());
+-
+ 	}
+ 
+ 	@Test
+ 	public void nonMatchingSubscriptionToSenderReturnsError() throws Exception {
+ 
+ 		Mockito.when(
+ 				channelManager.getUserSubscription(Mockito.anyString(),
+ 						Mockito.any(JID.class))).thenReturn(
+@@ -212,16 +211,18 @@
+ 		IQ response = (IQ) queue.poll();
+ 
+ 		Assert.assertEquals(IQ.Type.error, response.getType());
+ 		Assert.assertEquals(request.getFrom(), response.getTo());
+ 		PacketError error = response.getError();
+ 		Assert.assertEquals(PacketError.Condition.forbidden,
+ 				error.getCondition());
+ 		Assert.assertEquals(PacketError.Type.auth, error.getType());
++		Assert.assertEquals(JabberPubsub.NS_BUDDYCLOUD, error.getApplicationConditionNamespaceURI());
++		Assert.assertEquals(UnsubscribeSet.CAN_NOT_UNSUBSCRIBE_ANOTHER_USER, error.getApplicationConditionName());
+ 	}
+ 
+ 	@Test
+ 	public void canNotUnsubscribeAsOnlyNodeOwner() throws Exception {
+ 
+ 		affiliation = new NodeAffiliationImpl(node, jid, Affiliations.owner,
+ 				new Date());
+ 
+@@ -243,16 +244,18 @@
+ 		Assert.assertEquals(IQ.Type.error, response.getType());
+ 
+ 		PacketError error = response.getError();
+ 		Assert.assertNotNull(error);
+ 
+ 		Assert.assertEquals(PacketError.Type.cancel, error.getType());
+ 		Assert.assertEquals(PacketError.Condition.not_allowed,
+ 				error.getCondition());
++		Assert.assertEquals(UnsubscribeSet.MUST_HAVE_ONE_OWNER, error.getApplicationConditionName());
++		Assert.assertEquals(JabberPubsub.NS_BUDDYCLOUD, error.getApplicationConditionNamespaceURI());
+ 	}
+ 
+ 	@Test
+ 	public void unsubscribesTheUser() throws Exception {
+ 
+ 		ArgumentCaptor<NodeSubscriptionImpl> argument = ArgumentCaptor
+ 				.forClass(NodeSubscriptionImpl.class);
+ 
+--- MERGED RESULT (mergiraf; full) ---
+package org.buddycloud.channelserver.packetprocessor.iq.namespace.pubsub.set;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import junit.framework.Assert;
+
+import org.buddycloud.channelserver.channel.ChannelManager;
+import org.buddycloud.channelserver.packetHandler.iq.IQTestHandler;
+import org.buddycloud.channelserver.packetprocessor.iq.namespace.pubsub.JabberPubsub;
+import org.buddycloud.channelserver.packetprocessor.iq.namespace.pubsub.set.UnsubscribeSet;
+import org.buddycloud.channelserver.pubsub.affiliation.Affiliations;
+import org.buddycloud.channelserver.pubsub.event.Event;
+import org.buddycloud.channelserver.pubsub.model.NodeAffiliation;
+import org.buddycloud.channelserver.pubsub.model.NodeSubscription;
+import org.buddycloud.channelserver.pubsub.model.impl.NodeAffiliationImpl;
+import org.buddycloud.channelserver.pubsub.model.impl.NodeItemImpl;
+import org.buddycloud.channelserver.pubsub.model.impl.NodeSubscriptionImpl;
+import org.buddycloud.channelserver.pubsub.subscription.Subscriptions;
+import org.buddycloud.channelserver.utils.node.item.payload.Buddycloud;
+import org.dom4j.Element;
+import org.dom4j.tree.BaseElement;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+import org.mockito.stubbing.OngoingStubbing;
+import org.xmpp.packet.IQ;
+import org.xmpp.packet.JID;
+import org.xmpp.packet.Message;
+import org.xmpp.packet.Packet;
+import org.xmpp.packet.PacketError;
+import org.xmpp.resultsetmanagement.ResultSet;
+import org.xmpp.resultsetmanagement.ResultSetImpl;
+
+public class UnsubscribeSetTest extends IQTestHandler {
+	private IQ request;
+	private UnsubscribeSet unsubscribe;
+	private Element element;
+	private BlockingQueue<Packet> queue = new LinkedBlockingQueue<Packet>();
+
+	private String node = "/user/pamela@denmark.lit/posts";
+	private JID jid = new JID("juliet@shakespeare.lit");
+	private ChannelManager channelManager;
+
+	private NodeSubscription subscription;
+	private NodeAffiliation affiliation;
+
+	@Before
+	public void setUp() throws Exception {
+
+		channelManager = Mockito.mock(ChannelManager.class);
+		Mockito.when(channelManager.isLocalNode(Mockito.anyString()))
+				.thenReturn(true);
+		Mockito.when(channelManager.nodeExists(Mockito.anyString()))
+				.thenReturn(true);
+
+		queue = new LinkedBlockingQueue<Packet>();
+		unsubscribe = new UnsubscribeSet(queue, channelManager);
+		request = readStanzaAsIq("/iq/pubsub/unsubscribe/request.stanza");
+		unsubscribe.setServerDomain("shakespeare.lit");
+
+		element = new BaseElement("unsubscribe");
+		element.addAttribute("node", node);
+
+		unsubscribe.setChannelManager(channelManager);
+
+		subscription = new NodeSubscriptionImpl(node, jid,
+				Subscriptions.subscribed);
+		affiliation = new NodeAffiliationImpl(node, jid,
+				Affiliations.publisher, new Date());
+
+		ResultSet<NodeSubscription> listeners = new ResultSetImpl<NodeSubscription>(
+				new ArrayList<NodeSubscription>());
+		Mockito.when(channelManager.getNodeSubscriptionListeners(node))
+				.thenReturn(listeners);
+
+		Mockito.when(
+				channelManager.getUserSubscription(Mockito.anyString(),
+						Mockito.any(JID.class))).thenReturn(subscription);
+		Mockito.when(
+				channelManager.getUserAffiliation(Mockito.anyString(),
+						Mockito.any(JID.class))).thenReturn(affiliation);
+		Mockito.when(channelManager.getNodeOwners(Mockito.anyString()))
+				.thenReturn(new ArrayList<JID>());
+	}
+
+	@Test
+	public void missingNodeAttributeReturnsError() throws Exception {
+		IQ badRequest = request.createCopy();
+		badRequest.getChildElement().element("unsubscribe").attribute("node")
+				.detach();
+		unsubscribe.process(element, jid, badRequest, null);
+
+		Assert.assertEquals(1, queue.size());
+
+		IQ response = (IQ) queue.poll();
+
+		Assert.assertEquals(IQ.Type.error, response.getType());
+		Assert.assertEquals(badRequest.getFrom(), response.getTo());
+		PacketError error = response.getError();
+		Assert.assertEquals(PacketError.Condition.bad_request,
+				error.getCondition());
+		Assert.assertEquals(PacketError.Type.modify, error.getType());
+		Assert.assertEquals(UnsubscribeSet.NODE_ID_REQUIRED,
+				error.getApplicationConditionName());
+	}
+
+	@Test
+	public void emptyNodeAttributeReturnsError() throws Exception {
+		IQ badRequest = request.createCopy();
+		badRequest.getChildElement().element("unsubscribe").attribute("node")
+				.detach();
+		badRequest.getChildElement().element("unsubscribe")
+				.addAttribute("node", "");
+
+		unsubscribe.process(element, jid, badRequest, null);
+
+		Assert.assertEquals(1, queue.size());
+
+		IQ response = (IQ) queue.poll();
+
+		Assert.assertEquals(IQ.Type.error, response.getType());
+		Assert.assertEquals(badRequest.getFrom(), response.getTo());
+		PacketError error = response.getError();
+		Assert.assertEquals(PacketError.Condition.bad_request,
+				error.getCondition());
+		Assert.assertEquals(PacketError.Type.modify, error.getType());
+		Assert.assertEquals(UnsubscribeSet.NODE_ID_REQUIRED,
+				error.getApplicationConditionName());
+	}
+
+	@Test
+	public void makesRemoteRequest() throws Exception {
+		Mockito.when(channelManager.isLocalNode(Mockito.anyString()))
+				.thenReturn(false);
+
+		unsubscribe.process(element, jid, request, null);
+
+		Assert.assertEquals(1, queue.size());
+
+		String domain = new JID(request.getChildElement()
+				.element("unsubscribe").attributeValue("node").split("/")[2])
+				.getDomain();
+
+		IQ response = (IQ) queue.poll();
+		Assert.assertEquals(IQ.Type.set, response.getType());
+		Assert.assertEquals(domain, response.getTo().toString());
+		Element actor = response.getChildElement().element("actor");
+		Assert.assertNotNull(actor);
+		Assert.assertEquals(Buddycloud.NS, actor.getNamespaceURI());
+		Assert.assertEquals(request.getFrom().toBareJID(), actor.getText());
+	}
+
+	@Test
+	public void canNotUnsubscribeAnotherUser() throws Exception {
+
+		IQ badRequest = request.createCopy();
+		badRequest.getChildElement().element("unsubscribe").attribute("jid")
+				.detach();
+		badRequest.getChildElement().element("unsubscribe")
+				.addAttribute("jid", "romeo@montague.lit");
+
+		unsubscribe.process(element, jid, badRequest, null);
+
+		Assert.assertEquals(1, queue.size());
+
+		IQ response = (IQ) queue.poll();
+
+		Assert.assertEquals(IQ.Type.error, response.getType());
+		Assert.assertEquals(badRequest.getFrom(), response.getTo());
+		PacketError error = response.getError();
+		Assert.assertEquals(PacketError.Condition.not_authorized,
+				error.getCondition());
+		Assert.assertEquals(PacketError.Type.auth, error.getType());
+
+	}
+
+	@Test
+	public void notExistingNodeRetunsError() throws Exception {
+		Mockito.when(channelManager.nodeExists(Mockito.anyString()))
+				.thenReturn(false);
+
+		unsubscribe.process(element, jid, request, null);
+
+		Assert.assertEquals(1, queue.size());
+
+		IQ response = (IQ) queue.poll();
+
+		Assert.assertEquals(IQ.Type.error, response.getType());
+		Assert.assertEquals(request.getFrom(), response.getTo());
+		PacketError error = response.getError();
+		Assert.assertEquals(PacketError.Condition.item_not_found,
+				error.getCondition());
+		Assert.assertEquals(PacketError.Type.cancel, error.getType());
+	}
+
+	@Test
+	public void nonMatchingSubscriptionToSenderReturnsError() throws Exception {
+
+		Mockito.when(
+				channelManager.getUserSubscription(Mockito.anyString(),
+						Mockito.any(JID.class))).thenReturn(
+				new NodeSubscriptionImpl(node, new JID("juliet@capulet.lit"),
+						Subscriptions.subscribed));
+		unsubscribe.process(element, jid, request, null);
+
+		Assert.assertEquals(1, queue.size());
+
+		IQ response = (IQ) queue.poll();
+
+		Assert.assertEquals(IQ.Type.error, response.getType());
+		Assert.assertEquals(request.getFrom(), response.getTo());
+		PacketError error = response.getError();
+		Assert.assertEquals(PacketError.Condition.forbidden,
+				error.getCondition());
+		Assert.assertEquals(PacketError.Type.auth, error.getType());
+		Assert.assertEquals(JabberPubsub.NS_BUDDYCLOUD, error.getApplicationConditionNamespaceURI());
+		Assert.assertEquals(UnsubscribeSet.CAN_NOT_UNSUBSCRIBE_ANOTHER_USER, error.getApplicationConditionName());
+	}
+
+	@Test
+	public void canNotUnsubscribeAsOnlyNodeOwner() throws Exception {
+
+		affiliation = new NodeAffiliationImpl(node, jid, Affiliations.owner,
+				new Date());
+
+		ArrayList<JID> owners = new ArrayList<JID>();
+		owners.add(jid);
+
+		Mockito.when(
+				channelManager.getUserAffiliation(Mockito.anyString(),
+						Mockito.any(JID.class))).thenReturn(affiliation);
+		Mockito.when(channelManager.getNodeOwners(Mockito.anyString()))
+				.thenReturn(owners);
+
+		unsubscribe.process(element, jid, request, null);
+
+		Assert.assertEquals(1, queue.size());
+
+		IQ response = (IQ) queue.poll();
+
+		Assert.assertEquals(IQ.Type.error, response.getType());
+
+		PacketError error = response.getError();
+		Assert.assertNotNull(error);
+
+		Assert.assertEquals(PacketError.Type.cancel, error.getType());
+		Assert.assertEquals(PacketError.Condition.not_allowed,
+				error.getCondition());
+		Assert.assertEquals(UnsubscribeSet.MUST_HAVE_ONE_OWNER, error.getApplicationConditionName());
+		Assert.assertEquals(JabberPubsub.NS_BUDDYCLOUD, error.getApplicationConditionNamespaceURI());
+	}
+
+	@Test
+	public void unsubscribesTheUser() throws Exception {
+
+		ArgumentCaptor<NodeSubscriptionImpl> argument = ArgumentCaptor
+				.forClass(NodeSubscriptionImpl.class);
+
+		unsubscribe.process(element, jid, request, null);
+
+		Mockito.verify(channelManager, Mockito.times(1)).addUserSubscription(
+				argument.capture());
+
+		IQ response = (IQ) queue.poll();
+
+		Assert.assertEquals(IQ.Type.result, response.getType());
+		Assert.assertEquals(node, argument.getValue().getNodeId());
+		Assert.assertEquals(request.getFrom().toBareJID(), argument.getValue()
+				.getUser().toString());
+		Assert.assertEquals(Subscriptions.none, argument.getValue()
+				.getSubscription());
+	}
+
+	@Test
+	public void updatesUserAffiliationToNone() throws Exception {
+
+		unsubscribe.process(element, jid, request, null);
+
+		Mockito.verify(channelManager, Mockito.times(1)).setUserAffiliation(
+				Mockito.eq(node), Mockito.eq(jid),
+				Mockito.eq(Affiliations.none));
+
+		IQ response = (IQ) queue.poll();
+
+		Assert.assertEquals(IQ.Type.result, response.getType());
+	}
+
+	@Test
+	public void doesNotUpdateAffiliationIfOutcast() throws Exception {
+
+		affiliation = new NodeAffiliationImpl(node, jid, Affiliations.outcast,
+				new Date());
+
+		Mockito.when(
+				channelManager.getUserAffiliation(Mockito.anyString(),
+						Mockito.any(JID.class))).thenReturn(affiliation);
+		Mockito.when(channelManager.getNodeOwners(Mockito.anyString()))
+				.thenReturn(new ArrayList<JID>());
+
+		unsubscribe.process(element, jid, request, null);
+
+		Mockito.verify(channelManager, Mockito.times(0)).setUserAffiliation(
+				Mockito.eq(node), Mockito.eq(jid),
+				Mockito.eq(Affiliations.none));
+
+		IQ response = (IQ) queue.poll();
+
+		Assert.assertEquals(IQ.Type.result, response.getType());
+	}
+
+	@Test
+	public void sendsExpectedNotifications() throws Exception {
+
+		JID listener = new JID("channels.example.com");
+		ArrayList<NodeSubscription> listeners = new ArrayList<NodeSubscription>();
+		listeners.add(new NodeSubscriptionImpl(node, jid, listener,
+				Subscriptions.subscribed));
+
+		ResultSet<NodeSubscription> nodeListeners = new ResultSetImpl<NodeSubscription>(
+				listeners);
+		Mockito.when(channelManager.getNodeSubscriptionListeners(node))
+				.thenReturn(nodeListeners);
+
+		unsubscribe.process(element, jid, request, null);
+
+		Assert.assertEquals(4, queue.size());
+
+		IQ response = (IQ) queue.poll();
+
+		Assert.assertEquals(IQ.Type.result, response.getType());
+
+		Message notification = (Message) queue.poll();
+
+		Assert.assertEquals(jid, notification.getTo());
+		Assert.assertEquals(Message.Type.headline, notification.getType());
+
+		Element event = notification.getElement().element("event");
+		Assert.assertEquals(Event.NAMESPACE, event.getNamespaceURI());
+		Element subscription = event.element("subscription");
+		Assert.assertEquals(node, subscription.attributeValue("node"));
+		Assert.assertEquals(jid.toBareJID(), subscription.attributeValue("jid"));
+		Assert.assertEquals(Subscriptions.none.toString(),
+				subscription.attributeValue("subscription"));
+
+	}
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,43 @@
+# Detection-validation pilot — Stage A (v1 detectors, driver commit 2eed882)
+# spec: outputs/p1-detection-validation-plan.md §4–§5
+
+## positives (mergiraf=Tests_failed) — R2 (detection rate)
+  merges materialized      : 30  (36 files)
+  files MERGE_DIVERGED     : 7  {'conflict': 7}
+  merges all-files-diverged: 5 (leave the sample — granularity finding)
+  merges scored            : 25
+  blocked                  : 2/25 = 0.080 [0.022, 0.250]
+    via detector FLAG      : 2
+    via fail-closed only   : 0
+
+## controls (mergiraf=Tests_passed) — R1 (block rate on good merges)
+  merges materialized      : 30  (35 files)
+  files MERGE_DIVERGED     : 0  
+  merges all-files-diverged: 0 (leave the sample — granularity finding)
+  merges scored            : 30
+  blocked                  : 1/30 = 0.033 [0.006, 0.167]
+    via detector FLAG      : 1
+    via fail-closed only   : 0
+
+## Per-detector breakdown (clean-merged files only)
+  detector                      FLAG  UNANALYZ  CLEAN  mean_rt_s  median_rt_s
+  JoernDataFlowInterference        0         0     64       18.8         18.4
+  JoernInfiniteLoop                4         0     60        6.0          5.9
+  JoernInvalidLoopBounds           0         0     64        6.3          6.2
+  RM2RenameConflict                0         0     64        2.3          2.0
+
+## G0 calibration
+  median per-merge runtime : 34s (abort threshold 1200s)
+  UNANALYZABLE file frac   : 0/64 = 0.00 (abort threshold 0.3)
+
+## FLAGged files — adjudicate every one, written rationale (plan §4.6): 4
+  [pos] clojure_clojure__77342d2e35__src_jvm_clojure_lang_Compiler.java
+      JoernInfiniteLoop L6599: Potential Infinite Loop detected (Constant Condition)
+      JoernInfiniteLoop L7397: Potential Infinite Loop detected (Constant Condition)
+  [pos] urbanairship_datacube__b8bef94f4d__src_main_java_com_urbanairship_datacube_DataCubeIo.java
+      JoernInfiniteLoop L217: Potential Infinite Loop detected (Constant Condition)
+  [pos] urbanairship_datacube__b8bef94f4d__src_main_java_com_urbanairship_datacube_dbharnesses_HBaseDbHarness.java
+      JoernInfiniteLoop L355: Potential Infinite Loop detected (Constant Condition)
+  [ctl] farin_jcloisterzone__4a38e3b926__src_main_java_com_jcloisterzone_engine_Engine.java
+      JoernInfiniteLoop L207: Potential Infinite Loop detected (Constant Condition)
+

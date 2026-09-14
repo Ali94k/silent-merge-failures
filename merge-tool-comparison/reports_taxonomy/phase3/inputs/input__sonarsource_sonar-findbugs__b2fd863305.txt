@@ -1,0 +1,1501 @@
+UNIT sonarsource_sonar-findbugs__b2fd863305
+repo: sonarsource_sonar-findbugs   merge: b2fd8633056d7e5dd1b820601741bf09967da852   stratum: B
+files shown: 6 of 6 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/6: src/main/java/org/sonar/plugins/findbugs/FindbugsConfiguration.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -14,44 +14,42 @@
+  * Lesser General Public License for more details.
+  *
+  * You should have received a copy of the GNU Lesser General Public
+  * License along with this program; if not, write to the Free Software
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02
+  */
+ package org.sonar.plugins.findbugs;
+ 
+-import com.google.common.collect.ImmutableList;
+-import com.google.common.collect.Lists;
+ import com.thoughtworks.xstream.XStream;
+ 
+ import edu.umd.cs.findbugs.ClassScreener;
+ import edu.umd.cs.findbugs.Project;
+ import java.io.File;
+ import java.io.IOException;
+-import java.io.InputStream;
+ import java.io.StringWriter;
+ import java.io.Writer;
+ import java.nio.charset.StandardCharsets;
+ import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.Collections;
+ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Optional;
+ import java.util.Queue;
+ import java.util.regex.Pattern;
+ import java.util.StringTokenizer;
+ import java.util.function.Predicate;
+ import java.util.stream.Collectors;
+ 
+ import javax.annotation.Nullable;
+ 
+ import org.apache.commons.io.FileUtils;
+-import org.apache.commons.lang.StringUtils;
++import org.apache.commons.lang3.StringUtils;
+ import org.sonar.api.PropertyType;
+-import org.sonar.api.Startable;
+ import org.sonar.api.batch.ScannerSide;
+ import org.sonar.api.batch.fs.FilePredicates;
+ import org.sonar.api.batch.fs.FileSystem;
+ import org.sonar.api.batch.fs.InputFile.Type;
+ import org.sonar.api.batch.rule.ActiveRule;
+ import org.sonar.api.batch.rule.ActiveRules;
+ import org.sonar.api.config.Configuration;
+ import org.sonar.api.config.PropertyDefinition;
+@@ -66,17 +64,17 @@
+ import org.sonar.plugins.findbugs.xml.FindBugsFilter;
+ import org.sonar.plugins.findbugs.xml.Match;
+ import org.sonar.plugins.java.Java;
+ import org.sonar.plugins.java.api.JavaResourceLocator;
+ 
+ import static java.lang.String.format;
+ 
+ @ScannerSide
+-public class FindbugsConfiguration implements Startable {
++public class FindbugsConfiguration {
+ 
+   private static final Logger LOG = Loggers.get(FindbugsConfiguration.class);
+   private static final Pattern JSP_FILE_NAME_PATTERN = Pattern.compile(".*_jsp[\\$0-9]*\\.class");
+ 
+   private final FileSystem fileSystem;
+   private final Configuration config;
+   private final ActiveRules activeRules;
+   private final JavaResourceLocator javaResourceLocator;
+@@ -120,22 +118,16 @@
+               + " make it possible for Findbugs to analyse your (sub)project ({}).", fileSystem.baseDir().getPath());
+       
+       if (!isAllowUncompiledCode() && hasSourceFiles()) { //This excludes test source files
+         throw new IllegalStateException(format("One (sub)project contains Java source files that are not compiled (%s).",
+                 fileSystem.baseDir().getPath()));
+       }
+     }
+ 
+-    copyLibs();
+-    if (annotationsLib != null) {
+-      // Findbugs dependencies are packaged by Maven. They are not available during execution of unit tests.
+-      findbugsProject.addAuxClasspathEntry(annotationsLib.getCanonicalPath());
+-      findbugsProject.addAuxClasspathEntry(jsr305Lib.getCanonicalPath());
+-    }
+     findbugsProject.setCurrentWorkingDirectory(fileSystem.workDir());
+   }
+ 
+   /**
+    * Creates a class screener to filter the files for analysis by findbugs.
+    * The filter is based on  sonar.findbugs.onlyAnalyze {@link FindbugsConstants} property
+    * 
+    * @return ClassScreener object if property is present and not empty, null otherwise.
+@@ -333,17 +325,17 @@
+           allFiles.add(f);
+         }
+       }
+     }
+     return allFiles;
+   }
+ 
+   List<File> getExcludesFilters() {
+-    List<File> result = Lists.newArrayList();
++    List<File> result = new ArrayList<>();
+     PathResolver pathResolver = new PathResolver();
+     String[] filters = config.getStringArray(FindbugsConstants.EXCLUDES_FILTERS_PROPERTY);
+     for (String excludesFilterPath : filters) {
+       excludesFilterPath = StringUtils.trim(excludesFilterPath);
+       if (StringUtils.isNotBlank(excludesFilterPath)) {
+         result.add(pathResolver.relativeFile(fileSystem.baseDir(), excludesFilterPath));
+       }
+     }
+@@ -365,85 +357,19 @@
+   public long getTimeout() {
+     return config.getLong(FindbugsConstants.TIMEOUT_PROPERTY).orElse(FindbugsConstants.TIMEOUT_DEFAULT_VALUE);
+   }
+ 
+   public boolean isAllowUncompiledCode() {
+     return config.getBoolean(FindbugsConstants.ALLOW_UNCOMPILED_CODE).orElse(FindbugsConstants.ALLOW_UNCOMPILED_CODE_VALUE);
+   }
+ 
+-  private File jsr305Lib;
+-  private File annotationsLib;
+-  private File fbContrib;
+-  private File findSecBugs;
+-
+-  public void copyLibs() {
+-    if (jsr305Lib == null) {
+-      jsr305Lib = copyLib("/jsr305.jar");
+-    }
+-    if (annotationsLib == null) {
+-      annotationsLib = copyLib("/annotations.jar");
+-    }
+-    if (fbContrib == null) {
+-      fbContrib = copyLib("/sb-contrib.jar");
+-    }
+-    if (findSecBugs == null) {
+-      findSecBugs = copyLib("/findsecbugs-plugin.jar");
+-    }
+-  }
+-
+-  @Override
+-  public void start() {
+-    // do nothing
+-  }
+-
+-  /**
+-   * Invoked by PicoContainer to remove temporary files.
+-   */
+-  @SuppressWarnings("RV_RETURN_VALUE_IGNORED_BAD_PRACTICE")
+-  @Override
+-  public void stop() {
+-    if (jsr305Lib != null) {
+-      jsr305Lib.delete();
+-    }
+-    if (annotationsLib != null) {
+-      annotationsLib.delete();
+-    }
+-    if (fbContrib != null) {
+-      fbContrib.delete();
+-    }
+-
+-    if (findSecBugs != null) {
+-      findSecBugs.delete();
+-    }
+-  }
+-
+-  private File copyLib(String name) {
+-    try (InputStream input = getClass().getResourceAsStream(name)) {
+-      File dir = new File(fileSystem.workDir(), "findbugs");
+-      FileUtils.forceMkdir(dir);
+-      File target = new File(dir, name);
+-      FileUtils.copyInputStreamToFile(input, target);
+-      return target;
+-    } catch (IOException e) {
+-      throw new IllegalStateException("Fail to extract Findbugs dependency", e);
+-    }
+-  }
+-
+-  public File getFbContribJar() {
+-    return fbContrib;
+-  }
+-
+-  public File getFindSecBugsJar() {
+-    return findSecBugs;
+-  }
+-
+   public static List<PropertyDefinition> getPropertyDefinitions() {
+     String subCategory = "FindBugs";
+-    return ImmutableList.of(
++    return Collections.unmodifiableList(Arrays.asList(
+       PropertyDefinition.builder(FindbugsConstants.EFFORT_PROPERTY)
+         .defaultValue(FindbugsConstants.EFFORT_DEFAULT_VALUE)
+         .category(Java.KEY)
+         .subCategory(subCategory)
+         .name("Effort")
+         .description("Effort of the bug finders. Valid values are Min, Default and Max. Setting 'Max' increases precision but also increases " +
+           "memory consumption.")
+         .onQualifiers(Qualifiers.PROJECT)
+@@ -495,12 +421,12 @@
+         .build(),
+         PropertyDefinition.builder(FindbugsConstants.ONLY_ANALYZE_PROPERTY)
+         .category(Java.KEY)
+         .subCategory(subCategory)
+         .name("Only Analyze")
+         .description("To analyze only the given files (in FQCN, comma separted) / package patterns")
+         .type(PropertyType.STRING)
+         .build()      
+-      );
++      ));
+   }
+ 
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -70,16 +70,17 @@
+ 
+ import static java.lang.String.format;
+ 
+ @ScannerSide
+ public class FindbugsConfiguration implements Startable {
+ 
+   private static final Logger LOG = Loggers.get(FindbugsConfiguration.class);
+   private static final Pattern JSP_FILE_NAME_PATTERN = Pattern.compile(".*_jsp[\\$0-9]*\\.class");
++  public static final String SONAR_JAVA_BINARIES = "sonar.java.binaries";
+ 
+   private final FileSystem fileSystem;
+   private final Configuration config;
+   private final ActiveRules activeRules;
+   private final JavaResourceLocator javaResourceLocator;
+ 
+   public FindbugsConfiguration(FileSystem fileSystem, Configuration config, ActiveRules activeRules,
+                                JavaResourceLocator javaResourceLocator) {
+@@ -115,28 +116,47 @@
+     }    
+ 
+     if (classFilesToAnalyze.isEmpty()) {
+       LOG.warn("Findbugs needs sources to be compiled."
+               + " Please build project before executing sonar or check the location of compiled classes to"
+               + " make it possible for Findbugs to analyse your (sub)project ({}).", fileSystem.baseDir().getPath());
+       
+       if (!isAllowUncompiledCode() && hasSourceFiles()) { //This excludes test source files
+-        throw new IllegalStateException(format("One (sub)project contains Java source files that are not compiled (%s).",
+-                fileSystem.baseDir().getPath()));
++        throw buildMissingCompiledCodeException();
+       }
+     }
+ 
+     copyLibs();
+     if (annotationsLib != null) {
+       // Findbugs dependencies are packaged by Maven. They are not available during execution of unit tests.
+       findbugsProject.addAuxClasspathEntry(annotationsLib.getCanonicalPath());
+       findbugsProject.addAuxClasspathEntry(jsr305Lib.getCanonicalPath());
+     }
+     findbugsProject.setCurrentWorkingDirectory(fileSystem.workDir());
++  }
++
++  public IllegalStateException buildMissingCompiledCodeException() {
++    String message = "One (sub)project contains Java source files that are not compiled (" + fileSystem.baseDir().getPath() + ").";
++    
++    if (!config.hasKey(SONAR_JAVA_BINARIES) || config.getStringArray(SONAR_JAVA_BINARIES).length == 0) {
++      message += "\nProperty sonar.java.binaries was not set, it is required to locate the compiled .class files. For instance set the property to: sonar.java.binaries=target/classes";
++    } else {
++      message += "\nsonar.java.binaries was set to " + config.get(SONAR_JAVA_BINARIES).orElse(null);
++    }
++    
++    if (javaResourceLocator.classpath().isEmpty()) {
++      message += "\nSonar JavaResourceLocator.classpath was empty";
++    }
++
++    if (javaResourceLocator.classFilesToAnalyze().isEmpty()) {
++      message += "\nSonar JavaResourceLocator.classFilesToAnalyze was empty";
++    }
++    
++    return new IllegalStateException(message);
+   }
+ 
+   /**
+    * Creates a class screener to filter the files for analysis by findbugs.
+    * The filter is based on  sonar.findbugs.onlyAnalyze {@link FindbugsConstants} property
+    * 
+    * @return ClassScreener object if property is present and not empty, null otherwise.
+    */
+@@ -219,27 +239,30 @@
+     File file = new File(fileSystem.workDir(), "findbugs-include.xml");
+     FileUtils.write(file, conf.toString(), StandardCharsets.UTF_8);
+     return file;
+   }
+   
+   private List<File> buildClassFilesToAnalyze() throws IOException {
+     List<File> classFilesToAnalyze = new ArrayList<>(javaResourceLocator.classFilesToAnalyze());
+     
+-    boolean hasScalaFiles = fileSystem.hasFiles(fileSystem.predicates().hasLanguage("scala"));
++    boolean hasScalaOrKotlinFiles = fileSystem.hasFiles(fileSystem.predicates().hasLanguages("scala", "kotlin"));
+     boolean hasJspFiles = fileSystem.hasFiles(fileSystem.predicates().hasLanguage("jsp"));    
+ 
+     // javaResourceLocator.classFilesToAnalyze() only contains .class files from Java sources
+-    if (hasScalaFiles) {
++    if (hasScalaOrKotlinFiles) {
+       // Add all the .class files from the classpath
+       // For Gradle multi-module projects this will unfortunately include compiled .class files from dependency modules
+       addClassFilesFromClasspath(classFilesToAnalyze);
+     } else if (hasJspFiles) {
+       // Add the precompiled JSP .class files
+       addPrecompiledJspClasses(classFilesToAnalyze);
++    } else if (classFilesToAnalyze.isEmpty()) {
++      // For some users javaResourceLocator.classFilesToAnalyze() seems to return an empty list, it is unclear why
++      addClassFilesFromClasspath(classFilesToAnalyze);
+     }
+ 
+     return classFilesToAnalyze;
+   }
+ 
+   /**
+    * Updates the class files list by adding precompiled JSP classes
+    * 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/6: src/main/java/org/sonar/plugins/findbugs/FindbugsPlugin.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -16,33 +16,25 @@
+  * You should have received a copy of the GNU Lesser General Public
+  * License along with this program; if not, write to the Free Software
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02
+  */
+ package org.sonar.plugins.findbugs;
+ 
+ import java.util.Arrays;
+ import java.util.stream.Collectors;
++
+ import org.sonar.api.Plugin;
+ import org.sonar.api.batch.fs.FilePredicate;
+ import org.sonar.api.batch.fs.FilePredicates;
+ import org.sonar.plugins.findbugs.language.Jsp;
+ import org.sonar.plugins.findbugs.language.scala.Scala;
+-import org.sonar.plugins.findbugs.profiles.FindbugsContribProfile;
+ import org.sonar.plugins.findbugs.profiles.FindbugsProfile;
+-import org.sonar.plugins.findbugs.profiles.FindbugsSecurityAuditProfile;
+-import org.sonar.plugins.findbugs.profiles.FindbugsSecurityJspProfile;
+-import org.sonar.plugins.findbugs.profiles.FindbugsSecurityMinimalProfile;
+-import org.sonar.plugins.findbugs.profiles.FindbugsSecurityScalaProfile;
+ import org.sonar.plugins.findbugs.resource.ByteCodeResourceLocator;
+-import org.sonar.plugins.findbugs.rules.FbContribRulesDefinition;
+-import org.sonar.plugins.findbugs.rules.FindSecurityBugsJspRulesDefinition;
+-import org.sonar.plugins.findbugs.rules.FindSecurityBugsRulesDefinition;
+-import org.sonar.plugins.findbugs.rules.FindSecurityBugsScalaRulesDefinition;
+-import org.sonar.plugins.findbugs.rules.FindbugsRulesDefinition;
++import org.sonar.plugins.findbugs.rules.FindbugsRulesPluginsDefinition;
+ import org.sonar.plugins.java.Java;
+ 
+ public class FindbugsPlugin implements Plugin {
+ 
+     protected static final String[] SUPPORTED_JVM_LANGUAGES = {
+             Java.KEY, Jsp.KEY, Scala.KEY, "clojure"
+     };
+ 
+@@ -58,27 +50,17 @@
+     }
+ 
+     @Override
+   public void define(Context context) {
+     context.addExtensions(FindbugsConfiguration.getPropertyDefinitions());
+     context.addExtensions(Arrays.asList(
+             FindbugsSensor.class,
+             FindbugsProfileExporter.class,
+-            FindbugsProfileImporter.class,
+             FindbugsConfiguration.class,
+             FindbugsExecutor.class,
+ 
+             FindbugsProfile.class,
+-            FindbugsContribProfile.class,
+-            FindbugsSecurityAuditProfile.class,
+-            FindbugsSecurityMinimalProfile.class,
+-            FindbugsSecurityJspProfile.class,
+-            FindbugsSecurityScalaProfile.class,
+ 
+-            FindbugsRulesDefinition.class,
+-            FbContribRulesDefinition.class,
+-            FindSecurityBugsRulesDefinition.class,
+-            FindSecurityBugsJspRulesDefinition.class,
+-            FindSecurityBugsScalaRulesDefinition.class,
++            FindbugsRulesPluginsDefinition.class,
+             ByteCodeResourceLocator.class));
+   }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -38,21 +38,29 @@
+ import org.sonar.plugins.findbugs.rules.FindSecurityBugsRulesDefinition;
+ import org.sonar.plugins.findbugs.rules.FindSecurityBugsScalaRulesDefinition;
+ import org.sonar.plugins.findbugs.rules.FindbugsRulesDefinition;
+ import org.sonar.plugins.java.Java;
+ 
+ public class FindbugsPlugin implements Plugin {
+ 
+     protected static final String[] SUPPORTED_JVM_LANGUAGES = {
+-            Java.KEY, Jsp.KEY, Scala.KEY, "clojure"
++        Java.KEY,
++        Jsp.KEY,
++        Scala.KEY,
++        "clojure",
++        "kotlin",
+     };
+ 
+     protected static final String[] SUPPORTED_JVM_LANGUAGES_EXTENSIONS = {
+-            "java", "jsp", "scala", "clj"
++        "java",
++        "jsp",
++        "scala",
++        "clj",
++        "kt",
+     };
+ 
+     public static FilePredicate[] getSupportedLanguagesFilePredicate(FilePredicates pred) {
+         return Arrays.stream(SUPPORTED_JVM_LANGUAGES)
+                 .map(s -> pred.hasLanguage(s))
+                 .collect(Collectors.toList())
+                 .toArray(new FilePredicate[SUPPORTED_JVM_LANGUAGES.length]);
+     }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/6: src/main/java/org/sonar/plugins/findbugs/FindbugsSensor.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -118,17 +118,17 @@
+ 
+   @Override
+   public void execute(SensorContext context) {
+ 
+     if (!hasActiveFindbugsRules() && !hasActiveFbContribRules() && !hasActiveFindSecBugsRules()) {
+       return;
+     }
+ 
+-    Collection<ReportedBug> collection = executor.execute(hasActiveFbContribRules(), hasActiveFindSecBugsRules());
++    Collection<ReportedBug> collection = executor.execute(context.activeRules());
+ 
+     try {
+ 
+       for (ReportedBug bugInstance : collection) {
+ 
+         try {
+           ActiveRule rule = null;
+           for (String repoKey : getRepositories()) {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -40,17 +40,21 @@
+ import org.sonar.api.batch.sensor.SensorDescriptor;
+ import org.sonar.api.batch.sensor.issue.NewIssue;
+ import org.sonar.api.batch.sensor.issue.NewIssueLocation;
+ import org.sonar.plugins.findbugs.language.Jsp;
+ import org.sonar.plugins.findbugs.language.scala.Scala;
+ import org.sonar.plugins.findbugs.resource.ByteCodeResourceLocator;
+ import org.sonar.plugins.findbugs.resource.ClassMetadataLoadingException;
+ import org.sonar.plugins.findbugs.resource.SmapParser;
+-import org.sonar.plugins.findbugs.rules.*;
++import org.sonar.plugins.findbugs.rules.FbContribRulesDefinition;
++import org.sonar.plugins.findbugs.rules.FindSecurityBugsJspRulesDefinition;
++import org.sonar.plugins.findbugs.rules.FindSecurityBugsRulesDefinition;
++import org.sonar.plugins.findbugs.rules.FindSecurityBugsScalaRulesDefinition;
++import org.sonar.plugins.findbugs.rules.FindbugsRulesDefinition;
+ import org.sonar.plugins.java.api.JavaResourceLocator;
+ 
+ public class FindbugsSensor implements Sensor {
+ 
+   private static final Logger LOG = LoggerFactory.getLogger(FindbugsSensor.class);
+ 
+   public static final String[] REPOS = {FindbugsRulesDefinition.REPOSITORY_KEY, FbContribRulesDefinition.REPOSITORY_KEY,
+           FindSecurityBugsRulesDefinition.REPOSITORY_KEY, FindSecurityBugsJspRulesDefinition.REPOSITORY_KEY,
+@@ -142,70 +146,82 @@
+             LOG.warn("Findbugs rule '{}' is not active in Sonar.", bugInstance.getType());
+             continue;
+           }
+ 
+           String className = bugInstance.getClassName();
+           String sourceFile = bugInstance.getSourceFile();
+           String longMessage = bugInstance.getMessage();
+           int line = bugInstance.getStartLine();
+-
+-
+-          //Regular Java class mapped to their original .java
+-          InputFile resource = byteCodeResourceLocator.findSourceFile(sourceFile, this.fs);
+-          if (resource != null) {
+-            insertIssue(rule, resource, line, longMessage, bugInstance);
+-            continue;
+-          }
+-
++          
++          // Example values for an inner class
++          // className:                   multimodule.core.InnerClassSample$InnerClass
++          // bugInstance.getClassFile():  multimodule.core.InnerClassSample
++          // sourceFile:                  multimodule/core/InnerClassSample.java
++
++          // Example values for a Kotlin extension class (classFile and sourceFile are missing Kt at the end
++          // className:                   org.jitsi.rtp.extensions.bytearray.ByteArrayExtensionsKt
++          // bugInstance.getClassFile():  org.jitsi.rtp.extensions.bytearray.ByteArrayExtensions
++          // sourceFile:                  org/jitsi/rtp/extensions/bytearray/ByteArrayExtensions.kt
++          
+           //Locate the original class file
+-          File classFile = findOriginalClassForBug(bugInstance.getClassFile());
+-          if (classFile == null) {
+-            LOG.warn("Unable to find the class " + bugInstance.getClassName());
+-            continue;
+-          }
++          File classFile = findOriginalClassForBug(bugInstance);
+ 
+   //        //If the class was an outer class, the source file will not be analog to the class name.
+   //        //The original source file is available in the class file metadata.
+   //        resource = byteCodeResourceLocator.findJavaOuterClassFile(className, classFile, this.fs);
+   //        if (resource != null) {
+   //          insertIssue(rule, resource, line, longMessage);
+   //          continue;
+   //        }
+ 
+           //More advanced mapping if the original source is not Java files
++          // Even though we might be able to find the source file right away there might be an SMAP we need to look for:
++          // For Kotlin classes part of the .class file might be from other sources files
+           if (classFile != null) {
+             //Attempt to load SMAP debug metadata
+             try {
+               SmapParser.SmapLocation location = byteCodeResourceLocator.extractSmapLocation(className, line, classFile);
+               if (location != null) {
+                 if (!location.isPrimaryFile) { //Avoid reporting issue in double when a source file was include inline
+                   continue;
+                 }
+ 
+                 //SMAP was found
+-                resource = byteCodeResourceLocator.findSourceFile(location.fileInfo.path, fs);
++                InputFile resource = byteCodeResourceLocator.findSourceFile(location.fileInfo.path, fs);
+                 if (resource != null) {
+                   insertIssue(rule, resource, location.line, longMessage, bugInstance);
+                   continue;
+                 }
+               } else {
+                 //SMAP was not found or unparsable.. The orgininal source file will be guess based on the class name
+-                resource = byteCodeResourceLocator.findTemplateFile(className, this.fs);
++                InputFile resource = byteCodeResourceLocator.findTemplateFile(className, this.fs);
+                 if (resource != null) {
+                   insertIssue(rule, resource, line, longMessage, bugInstance);
+                   continue;
+                 }
+               }
+             } catch (ClassMetadataLoadingException e) {
+               LOG.warn("Failed to load the class file metadata", e);
+             }
+           }
+-
+-          LOG.warn("The class '" + className + "' could not be matched to its original source file. It might be a dynamically generated class.");
++          
++          // In case there was no .class file or we could not use the SMAP
++          //Regular Java class mapped to their original .java
++          InputFile resource = byteCodeResourceLocator.findSourceFile(sourceFile, this.fs);
++          if (resource != null) {
++            insertIssue(rule, resource, line, longMessage, bugInstance);
++            continue;
++          }
++
++          // We have found an issue in a class file but the corresponding source file was not found, this might be because:
++          // - it's a Kotlin extension from another project/module
++          // - the source file was excluded and is not visible in the FileSystem interface
++          // - we're analyzing all the class files on the classpath and some are from another Gradle module, but the source file is not in the FileSystem
++          LOG.debug("The class '{}' could not be matched to its original source file. It might be a dynamically generated class. Class file: {}", className, classFile);
+         } catch (Exception e) {
+           String bugInstanceDebug = String.format("[BugInstance type=%s, class=%s, line=%s]", bugInstance.getType(), bugInstance.getClassName(), bugInstance.getStartLine());
+           LOG.warn("An error occurs while processing the bug instance " + bugInstanceDebug, e);
+           //Continue to the bug without aborting the report
+         }
+       }
+ 
+     }
+@@ -235,21 +251,25 @@
+   protected void writeDebugMappingToFile(String classFile, int classFileLine, String sourceFile, int sourceFileLine) {
+     if(classMappingWriter != null) {
+       classMappingWriter.println(classFile + ":" + classFileLine + "," + sourceFile + ":" + sourceFileLine);
+     }
+   }
+ 
+   /**
+    *
+-   * @param className Class name
++   * @param bugInstance The bug instance detected by SpotBugs
+    * @return File handle of the original class file analyzed
+    */
+-  private File findOriginalClassForBug(String className) {
+-    String sourceFile = byteCodeResourceLocator.findSourceFileKeyByClassName(className,javaResourceLocator);
++  private File findOriginalClassForBug(ReportedBug bugInstance) {
++    String sourceFile = byteCodeResourceLocator.findClassFileByClassName(bugInstance.getClassName(), javaResourceLocator);
++    if (sourceFile == null) {
++      sourceFile = byteCodeResourceLocator.findClassFileByClassName(bugInstance.getClassFile(), javaResourceLocator);
++    }
++    
+     if (sourceFile == null) {
+       return null;
+     }
+ 
+     return new File(sourceFile);
+   }
+ 
+   @Override
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/6: src/test/java/org/sonar/plugins/findbugs/FindbugsConfigurationTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -14,24 +14,23 @@
+  * Lesser General Public License for more details.
+  *
+  * You should have received a copy of the GNU Lesser General Public
+  * License along with this program; if not, write to the Free Software
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02
+  */
+ package org.sonar.plugins.findbugs;
+ 
+-import com.google.common.collect.ImmutableList;
+-
+ import edu.umd.cs.findbugs.ClassScreener;
+ import edu.umd.cs.findbugs.Project;
+ import java.io.File;
+ import java.io.IOException;
+ import java.nio.file.Files;
+ import java.util.Arrays;
++import java.util.Collections;
+ import java.util.List;
+ 
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.junit.jupiter.api.extension.RegisterExtension;
+ import org.junit.jupiter.api.io.TempDir;
+ import org.sonar.api.batch.fs.FilePredicate;
+ import org.sonar.api.batch.fs.FilePredicates;
+@@ -125,72 +124,33 @@
+     assertThat(conf.getConfidenceLevel()).as("default confidence level").isEqualTo("medium");
+     configuration.setProperty(FindbugsConstants.EFFORT_PROPERTY, "HIGH");
+     assertThat(conf.getEffort()).isEqualTo("high");
+   }
+ 
+   @Test
+   void should_set_class_files() throws IOException {
+     File file = new File(temp, "MyClass.class");
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(ImmutableList.of(file));
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(file));
+     try (Project findbugsProject = new Project()) {
+       conf.initializeFindbugsProject(findbugsProject);
+       
+       assertThat(findbugsProject.getFileList()).containsOnly(file.getCanonicalPath());
+-      conf.stop();
+     }
+   }
+ 
+   @Test
+   void should_set_class_path() throws IOException {
+     File classpath = new File(temp, "classpath");
+-    when(javaResourceLocator.classpath()).thenReturn(ImmutableList.of(classpath));
++    when(javaResourceLocator.classpath()).thenReturn(Collections.singletonList(classpath));
+     try (Project findbugsProject = new Project()) {
+       conf.initializeFindbugsProject(findbugsProject);
+ 
+       assertThat(findbugsProject.getAuxClasspathEntryList()).contains(classpath.getCanonicalPath());
+-      conf.stop();
+-    }
+-  }
+-
+-  @Test
+-  void should_copy_lib_in_working_dir() throws IOException {
+-    String jsr305 = "findbugs/jsr305.jar";
+-    String annotations = "findbugs/annotations.jar";
+-
+-    // stop at start
+-    conf.stop();
+-    assertThat(new File(fs.workDir(), jsr305)).doesNotExist();
+-    assertThat(new File(fs.workDir(), annotations)).doesNotExist();
+-
+-    conf.copyLibs();
+-    assertThat(new File(fs.workDir(), jsr305)).isFile();
+-    assertThat(new File(fs.workDir(), annotations)).isFile();
+-
+-    // copy again
+-    conf.copyLibs();
+-    assertThat(new File(fs.workDir(), jsr305)).isFile();
+-    assertThat(new File(fs.workDir(), annotations)).isFile();
+-
+-    conf.stop();
+-    assertThat(new File(fs.workDir(), jsr305)).doesNotExist();
+-    assertThat(new File(fs.workDir(), annotations)).doesNotExist();
+-
+-  }
+-
+-  @Test
+-  void should_get_fbcontrib() throws IOException {
+-    conf.copyLibs();
+-    assertThat(conf.getFbContribJar()).isFile();
+-  }
+-
+-  @Test
+-  void should_get_findSecBugs() throws IOException {
+-    conf.copyLibs();
+-    assertThat(conf.getFindSecBugsJar()).isFile();
++    }
+   }
+   
+   @Test
+   public void should_get_only_analyze_filter() {
+ 	 // No onlyAnalyze option present 
+ 	 assertNull(conf.getOnlyAnalyzeFilter());
+ 	 // Empty Property
+ 	 configuration.setProperty(FindbugsConstants.ONLY_ANALYZE_PROPERTY, "");
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -22,22 +22,24 @@
+ import com.google.common.collect.ImmutableList;
+ 
+ import edu.umd.cs.findbugs.ClassScreener;
+ import edu.umd.cs.findbugs.Project;
+ import java.io.File;
+ import java.io.IOException;
+ import java.nio.file.Files;
+ import java.util.Arrays;
++import java.util.Collections;
+ import java.util.List;
+ 
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.junit.jupiter.api.extension.RegisterExtension;
+ import org.junit.jupiter.api.io.TempDir;
++import org.mockito.Mockito;
+ import org.sonar.api.batch.fs.FilePredicate;
+ import org.sonar.api.batch.fs.FilePredicates;
+ import org.sonar.api.batch.fs.FileSystem;
+ import org.sonar.api.batch.rule.ActiveRules;
+ import org.sonar.api.utils.log.LogTester;
+ import org.sonar.api.utils.log.LoggerLevel;
+ import org.sonar.plugins.findbugs.configuration.SimpleConfiguration;
+ import org.sonar.plugins.findbugs.rule.FakeActiveRules;
+@@ -269,18 +271,18 @@
+       assertThat(project.getFileCount()).isEqualTo(1);
+       assertThat(project.getFile(0)).endsWith("Test.class");
+     }
+     
+     assertThat(logTester.getLogs(LoggerLevel.WARN)).isNull();
+   }
+ 
+   private void setupSampleProject(boolean withPrecompiledJsp, boolean withJspFiles, boolean withScalaFiles) throws IOException {
+-    mockHasLanguagePredicate("jsp", withJspFiles);
+-    mockHasLanguagePredicate("scala", withScalaFiles);
++    mockHasLanguagePredicate(withJspFiles, "jsp");
++    mockHasLanguagesPredicate(withScalaFiles, "scala");
+     
+     // classpath
+     // |_ some.jar
+     // |_ target
+     //   |_ jsp_servlet
+     //   |_ classes
+     //     |_ module-info.class
+     //     |_ package
+@@ -313,14 +315,55 @@
+       Files.createFile(weblogicJspClassFile.toPath());
+     }
+     
+     List<File> classpathFiles = Arrays.asList(jarFile, classesFolder, jspServletFolder, moduleInfoFile);
+     
+     when(javaResourceLocator.classpath()).thenReturn(classpathFiles);
+   }
+ 
+-  private void mockHasLanguagePredicate(String language, boolean predicateReturn) {
++  private void mockHasLanguagePredicate(boolean predicateReturn, String language) {
+     FilePredicate languagePredicate = mock(FilePredicate.class);
+     when(filePredicates.hasLanguage(language)).thenReturn(languagePredicate);
+     when(fs.hasFiles(languagePredicate)).thenReturn(predicateReturn);
+   }
++
++  private void mockHasLanguagesPredicate(boolean predicateReturn, String ... languages) {
++    // First mock the calls to hasLanguage() for individual languages
++    for (String language : languages) {
++      mockHasLanguagePredicate(predicateReturn, language);
++    }
++    
++    // Then mock the call to the vararg method hasLanguages()
++    when(filePredicates.hasLanguages(Mockito.<String>any())).thenAnswer(i -> {
++      Object[] arguments = i.getArguments();
++      for (int j = 0; j < arguments.length; j++) {
++        String language = (String) arguments[j];
++        
++        if (fs.hasFiles(filePredicates.hasLanguage(language))) {
++          return filePredicates.hasLanguage(language);
++        }
++      }
++      
++      return (FilePredicate) file -> false;
++    });
++  }
++  
++  @Test
++  void buildMissingCompiledCodeException() {
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.emptyList());
++    when(javaResourceLocator.classpath()).thenReturn(Collections.emptyList());
++    
++    assertThat(conf.buildMissingCompiledCodeException().getMessage()).contains("Property sonar.java.binaries was not set");
++    assertThat(conf.buildMissingCompiledCodeException().getMessage()).contains("Sonar JavaResourceLocator.classpath was empty");
++    assertThat(conf.buildMissingCompiledCodeException().getMessage()).contains("Sonar JavaResourceLocator.classFilesToAnalyze was empty");
++    
++    configuration.setProperty(FindbugsConfiguration.SONAR_JAVA_BINARIES, "foo/bar");
++    
++    assertThat(conf.buildMissingCompiledCodeException().getMessage()).contains("sonar.java.binaries was set to");
++    
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(baseDir));
++    when(javaResourceLocator.classpath()).thenReturn(Collections.singletonList(baseDir));
++    
++    assertThat(conf.buildMissingCompiledCodeException().getMessage()).doesNotContain("Sonar JavaResourceLocator.classpath was empty");
++    assertThat(conf.buildMissingCompiledCodeException().getMessage()).doesNotContain("Sonar JavaResourceLocator.classFilesToAnalyze was empty");
++  }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/6: src/test/java/org/sonar/plugins/findbugs/FindbugsSensorTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -14,17 +14,16 @@
+  * Lesser General Public License for more details.
+  *
+  * You should have received a copy of the GNU Lesser General Public
+  * License along with this program; if not, write to the Free Software
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02
+  */
+ package org.sonar.plugins.findbugs;
+ 
+-import com.google.common.collect.Lists;
+ import edu.umd.cs.findbugs.BugInstance;
+ import edu.umd.cs.findbugs.ClassAnnotation;
+ import edu.umd.cs.findbugs.MethodAnnotation;
+ import edu.umd.cs.findbugs.SourceLineAnnotation;
+ import java.io.File;
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+@@ -38,16 +37,17 @@
+ import org.picocontainer.DefaultPicoContainer;
+ import org.picocontainer.MutablePicoContainer;
+ import org.sonar.api.batch.fs.FilePredicate;
+ import org.sonar.api.batch.fs.FilePredicates;
+ import org.sonar.api.batch.fs.FileSystem;
+ import org.sonar.api.batch.fs.InputComponent;
+ import org.sonar.api.batch.fs.InputFile;
+ import org.sonar.api.batch.fs.TextRange;
++import org.sonar.api.batch.rule.ActiveRules;
+ import org.sonar.api.batch.sensor.SensorContext;
+ import org.sonar.api.batch.sensor.internal.DefaultSensorDescriptor;
+ import org.sonar.api.batch.sensor.issue.NewIssue;
+ import org.sonar.api.batch.sensor.issue.NewIssueLocation;
+ import org.sonar.api.rule.RuleKey;
+ import org.sonar.plugins.findbugs.resource.ByteCodeResourceLocator;
+ import org.sonar.plugins.findbugs.rule.FakeActiveRules;
+ import org.sonar.plugins.java.api.JavaResourceLocator;
+@@ -64,22 +64,24 @@
+ class FindbugsSensorTest extends FindbugsTests {
+   @TempDir
+   public File temp;
+ 
+   private FileSystem fs;
+   private ByteCodeResourceLocator byteCodeResourceLocator;
+   private MutablePicoContainer pico;
+   private SensorContext sensorContext;
++  private ActiveRules activeRules;
+   private FindbugsExecutor executor;
+   private JavaResourceLocator javaResourceLocator;
+ 
+   @BeforeEach
+   public void setUp() throws IOException {
+     sensorContext = mock(SensorContext.class);
++    activeRules = mock(ActiveRules.class);
+     byteCodeResourceLocator = mock(ByteCodeResourceLocator.class);
+     executor = mock(FindbugsExecutor.class);
+     javaResourceLocator = mockJavaResourceLocator();
+     
+     File baseDir = new File(temp, "findbugs");
+ 
+     FilePredicate relativePathFilePredicate = mock(FilePredicate.class);
+     when(relativePathFilePredicate.apply(any(InputFile.class))).thenReturn(true);
+@@ -112,16 +114,17 @@
+ 
+     NewIssueLocation newIssueLocation = mock(NewIssueLocation.class);
+     when(newIssue.newLocation()).thenReturn(newIssueLocation);
+     when(newIssueLocation.at(any(TextRange.class))).thenReturn(newIssueLocation);
+     when(newIssueLocation.on(any(InputComponent.class))).thenReturn(newIssueLocation);
+     //--
+ 
+     when(sensorContext.newIssue()).thenReturn(newIssue);
++    when(sensorContext.activeRules()).thenReturn(activeRules);
+ 
+     pico.addComponent(executor);
+     pico.addComponent(javaResourceLocator);
+   }
+ 
+   private static JavaResourceLocator mockJavaResourceLocator() {
+     JavaResourceLocator javaResourceLocator = mock(JavaResourceLocator.class);
+     InputFile resource = mock(InputFile.class);
+@@ -129,153 +132,153 @@
+     return javaResourceLocator;
+   }
+ 
+   @Test
+   void should_execute_findbugs() throws Exception {
+ 
+     BugInstance bugInstance = getBugInstance("AM_CREATES_EMPTY_ZIP_FILE_ENTRY", 6, true);
+     Collection<ReportedBug> collection = Arrays.asList(new ReportedBug(bugInstance));
+-    when(executor.execute(false, false)).thenReturn(collection);
++    when(executor.execute(activeRules)).thenReturn(collection);
+     JavaResourceLocator javaResourceLocator = mockJavaResourceLocator();
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(new File("file")));
+ 
+     pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
+     FindbugsSensor sensor = pico.getComponent(FindbugsSensor.class);
+     sensor.execute(sensorContext);
+ 
+-    verify(executor).execute(false, false);
++    verify(executor).execute(activeRules);
+     verify(sensorContext, times(1)).newIssue();
+   }
+ 
+   @Test
+   void should_not_add_issue_if_resource_not_found() throws Exception {
+ 
+     BugInstance bugInstance = getBugInstance("AM_CREATES_EMPTY_ZIP_FILE_ENTRY", 13, false);
+     Collection<ReportedBug> collection = Arrays.asList(new ReportedBug(bugInstance));
+-    when(executor.execute(false, false)).thenReturn(collection);
++    when(executor.execute(activeRules)).thenReturn(collection);
+ 
+     when(javaResourceLocator.findResourceByClassName(anyString())).thenReturn(null);
+     when(fs.inputFiles(any(FilePredicate.class))).thenReturn(new ArrayList<InputFile>());
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
+-
+-    pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
+-    FindbugsSensor analyser = pico.getComponent(FindbugsSensor.class);
+-    analyser.execute(sensorContext);
+-
+-    verify(executor).execute(false, false);
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(new File("file")));
++
++    pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
++    FindbugsSensor analyser = pico.getComponent(FindbugsSensor.class);
++    analyser.execute(sensorContext);
++
++    verify(executor).execute(activeRules);
+     verify(sensorContext, never()).newIssue();
+   }
+ 
+ 
+   @Test
+   void should_execute_findbugs_even_if_only_fbcontrib() throws Exception {
+ 
+     BugInstance bugInstance = getBugInstance("ISB_INEFFICIENT_STRING_BUFFERING", 49, true);
+     Collection<ReportedBug> collection = Arrays.asList(new ReportedBug(bugInstance));
+-    when(executor.execute(true, false)).thenReturn(collection);
++    when(executor.execute(activeRules)).thenReturn(collection);
+     JavaResourceLocator javaResourceLocator = mockJavaResourceLocator();
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(new File("file")));
+ 
+     pico.addComponent(FakeActiveRules.createWithOnlyFbContribRules());
+ 
+     FindbugsSensor analyser = pico.getComponent(FindbugsSensor.class);
+     analyser.execute(sensorContext);
+ 
+-    verify(executor).execute(true, false);
++    verify(executor).execute(activeRules);
+     verify(sensorContext, times(1)).newIssue();
+   }
+ 
+   @Test
+   void should_execute_findbugs_even_if_only_findsecbug() throws Exception {
+ 
+     BugInstance bugInstance = getBugInstance("PREDICTABLE_RANDOM", 0, true);
+     Collection<ReportedBug> collection = Arrays.asList(new ReportedBug(bugInstance));
+-    when(executor.execute(false, true)).thenReturn(collection);
+-
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
++    when(executor.execute(activeRules)).thenReturn(collection);
++
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(new File("file")));
+ 
+     pico.addComponent(FakeActiveRules.createWithOnlyFindSecBugsRules());
+ 
+     FindbugsSensor analyser = pico.getComponent(FindbugsSensor.class);
+     analyser.execute(sensorContext);
+ 
+-    verify(executor).execute(false, true);
++    verify(executor).execute(activeRules);
+     verify(sensorContext, times(1)).newIssue();
+   }
+ 
+   @Test
+   void should_execute_findbugs_but_not_find_violation() throws Exception {
+ 
+     BugInstance bugInstance = getBugInstance("THIS_RULE_DOES_NOT_EXIST", 107, true);
+     Collection<ReportedBug> collection = Arrays.asList(new ReportedBug(bugInstance));
+-    when(executor.execute(false, false)).thenReturn(collection);
+-
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
+-
+-    pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
+-
+-    FindbugsSensor analyser = pico.getComponent(FindbugsSensor.class);
+-    analyser.execute(sensorContext);
+-
+-    verify(executor).execute(false, false);
++    when(executor.execute(activeRules)).thenReturn(collection);
++
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(new File("file")));
++
++    pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
++
++    FindbugsSensor analyser = pico.getComponent(FindbugsSensor.class);
++    analyser.execute(sensorContext);
++
++    verify(executor).execute(activeRules);
+     verify(sensorContext, never()).newIssue();
+   }
+ 
+   @Test
+   void should_not_execute_findbugs_if_no_active() throws Exception {
+ 
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(new File("file")));
+ 
+     pico.addComponent(FakeActiveRules.createWithNoRules());
+ 
+     FindbugsSensor analyser = pico.getComponent(FindbugsSensor.class);
+     analyser.execute(sensorContext);
+ 
+-    verify(executor, never()).execute(false, false);
++    verify(executor, never()).execute(activeRules);
+     verify(sensorContext, never()).newIssue();
+   }
+ 
+   /**
+    * When the users want to disable SpotBugs on a project they usually disable the java rules but do not realize that
+    * their default JSP profile has some Find Sec Bugs JSP rules. SonarQube's ActiveRule will return these JSP rules
+    * because it selects a profile for every language installed on the server (typically the default profile)
+    */
+   @Test
+   void should_not_execute_findbugs_if_only_jsp_rules_and_no_jsp_file() throws Exception {
+     TreeSet<String> languages = new TreeSet<>(Arrays.asList("java", "xml"));
+     when(fs.languages()).thenReturn(languages);
+ 
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(new File("file")));
+ 
+     pico.addComponent(FakeActiveRules.createWithOnlyFindSecBugsJspRules());
+ 
+     FindbugsSensor analyser = pico.getComponent(FindbugsSensor.class);
+     analyser.execute(sensorContext);
+ 
+-    verify(executor, never()).execute(false, false);
++    verify(executor, never()).execute(activeRules);
+     verify(sensorContext, never()).newIssue();
+   }
+   
+   /**
+    * Check that the Find Sec Bugs analysis still runs when there are some JSP rules and files
+    */
+   @Test
+   void should_execute_findbugs_if_only_jsp_rules_and_some_jsp_files() throws Exception {
+     TreeSet<String> languages = new TreeSet<>(Arrays.asList("java", "xml", "jsp"));
+     when(fs.languages()).thenReturn(languages);
+     
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(new File("file")));
+ 
+     pico.addComponent(FakeActiveRules.createWithOnlyFindSecBugsJspRules());
+ 
+     FindbugsSensor analyser = pico.getComponent(FindbugsSensor.class);
+     analyser.execute(sensorContext);
+ 
+-    verify(executor).execute(false, true);
++    verify(executor).execute(activeRules);
+     verify(sensorContext, never()).newIssue();
+   }
+ 
+   private BugInstance getBugInstance(String name, int line, boolean mockFindSourceFile) {
+     BugInstance bugInstance = new BugInstance(name, 2);
+     String className = "org.sonar.commons.ZipUtils";
+     String sourceFile = "org/sonar/commons/ZipUtils.java";
+     ClassAnnotation classAnnotation = new ClassAnnotation(className, sourceFile);
+@@ -292,34 +295,24 @@
+       when(byteCodeResourceLocator.findSourceFile(reportedBug.getSourceFile(), fs)).thenReturn(resource);
+       when(resource.selectLine(line > 0 ? line : 1)).thenReturn(textRange);
+     }
+     
+     return bugInstance;
+   }
+ 
+   @Test
+-  void should_not_execute_if_no_compiled_class_available() throws Exception {
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.<File>emptyList());
+-    pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
+-    FindbugsSensor sensor = pico.getComponent(FindbugsSensor.class);
+-    sensor.execute(sensorContext);
+-
+-    verify(executor, never()).execute();
+-  }
+-
+-  @Test
+   void shouldIgnoreNotActiveViolations() throws Exception {
+     BugInstance bugInstance = new BugInstance("UNKNOWN", 2);
+     String className = "org.sonar.commons.ZipUtils";
+     String sourceFile = "org/sonar/commons/ZipUtils.java";
+     ClassAnnotation classAnnotation = new ClassAnnotation(className, sourceFile);
+     bugInstance.add(classAnnotation);
+     Collection<ReportedBug> collection = Arrays.asList(new ReportedBug(bugInstance));
+-    when(executor.execute()).thenReturn(collection);
++    when(executor.execute(activeRules)).thenReturn(collection);
+ 
+     pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
+     FindbugsSensor sensor = pico.getComponent(FindbugsSensor.class);
+     sensor.execute(sensorContext);
+ 
+     verify(sensorContext, never()).newIssue();
+   }
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -30,30 +30,33 @@
+ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.TreeSet;
+ 
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.junit.jupiter.api.io.TempDir;
++import org.mockito.ArgumentCaptor;
+ import org.picocontainer.DefaultPicoContainer;
+ import org.picocontainer.MutablePicoContainer;
+ import org.sonar.api.batch.fs.FilePredicate;
+ import org.sonar.api.batch.fs.FilePredicates;
+ import org.sonar.api.batch.fs.FileSystem;
+ import org.sonar.api.batch.fs.InputComponent;
+ import org.sonar.api.batch.fs.InputFile;
+ import org.sonar.api.batch.fs.TextRange;
+ import org.sonar.api.batch.sensor.SensorContext;
+-import org.sonar.api.batch.sensor.internal.DefaultSensorDescriptor;
++import org.sonar.api.batch.sensor.SensorDescriptor;
+ import org.sonar.api.batch.sensor.issue.NewIssue;
+ import org.sonar.api.batch.sensor.issue.NewIssueLocation;
+ import org.sonar.api.rule.RuleKey;
+ import org.sonar.plugins.findbugs.resource.ByteCodeResourceLocator;
++import org.sonar.plugins.findbugs.resource.SmapParser.FileInfo;
++import org.sonar.plugins.findbugs.resource.SmapParser.SmapLocation;
+ import org.sonar.plugins.findbugs.rule.FakeActiveRules;
+ import org.sonar.plugins.java.api.JavaResourceLocator;
+ 
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.anyString;
+ import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.never;
+@@ -267,16 +270,62 @@
+ 
+     pico.addComponent(FakeActiveRules.createWithOnlyFindSecBugsJspRules());
+ 
+     FindbugsSensor analyser = pico.getComponent(FindbugsSensor.class);
+     analyser.execute(sensorContext);
+ 
+     verify(executor).execute(false, true);
+     verify(sensorContext, never()).newIssue();
++  }
++  
++  @Test
++  void should_execute_findbugs_with_missing_smap_and_source() throws Exception {
++    BugInstance bugInstance = getBugInstance("AM_CREATES_EMPTY_ZIP_FILE_ENTRY", 6, true);
++    Collection<ReportedBug> collection = Arrays.asList(new ReportedBug(bugInstance));
++    when(executor.execute(false, false)).thenReturn(collection);
++    JavaResourceLocator javaResourceLocator = mockJavaResourceLocator();
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
++    
++    // return a class file that does not have SMAP (doesn't exist actually)
++    when(byteCodeResourceLocator.findClassFileByClassName("org.sonar.commons.ZipUtils", this.javaResourceLocator)).thenReturn("");
++    // don't return a source file: the input file is not in the file system even if SpotBugs found an issue in a class file
++    when(byteCodeResourceLocator.findSourceFile("org/sonar/commons/org/sonar/commons/ZipUtils.java", fs)).thenReturn(null);
++    
++    pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
++    FindbugsSensor sensor = pico.getComponent(FindbugsSensor.class);
++    sensor.execute(sensorContext);
++
++    verify(executor).execute(false, false);
++    verify(sensorContext, never()).newIssue();
++  }
++  
++  @Test
++  void should_execute_findbugs_with_smap() throws Exception {
++    BugInstance bugInstance = getBugInstance("AM_CREATES_EMPTY_ZIP_FILE_ENTRY", 6, true);
++    Collection<ReportedBug> collection = Arrays.asList(new ReportedBug(bugInstance));
++    when(executor.execute(false, false)).thenReturn(collection);
++    JavaResourceLocator javaResourceLocator = mockJavaResourceLocator();
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
++    
++    String classFileName = "org/sonar/commons/ZipUtils.class";
++    
++    when(byteCodeResourceLocator.findClassFileByClassName("org.sonar.commons.ZipUtils", this.javaResourceLocator)).thenReturn(classFileName);
++    
++    // Return a valid SMAP location
++    FileInfo fileInfo = new FileInfo("ZipUtils", "org/sonar/commons/org/sonar/commons/ZipUtils.java");
++    SmapLocation smapLocation = new SmapLocation(fileInfo, 6, true);
++    when(byteCodeResourceLocator.extractSmapLocation("org.sonar.commons.ZipUtils", 6, new File(classFileName))).thenReturn(smapLocation);
++    
++    pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
++    FindbugsSensor sensor = pico.getComponent(FindbugsSensor.class);
++    sensor.execute(sensorContext);
++
++    verify(executor).execute(false, false);
++    verify(sensorContext, times(1)).newIssue();
+   }
+ 
+   private BugInstance getBugInstance(String name, int line, boolean mockFindSourceFile) {
+     BugInstance bugInstance = new BugInstance(name, 2);
+     String className = "org.sonar.commons.ZipUtils";
+     String sourceFile = "org/sonar/commons/ZipUtils.java";
+     ClassAnnotation classAnnotation = new ClassAnnotation(className, sourceFile);
+     bugInstance.add(classAnnotation);
+@@ -322,15 +371,17 @@
+ 
+     verify(sensorContext, never()).newIssue();
+   }
+ 
+   @Test
+   void describe() {
+     pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
+     FindbugsSensor sensor = pico.getComponent(FindbugsSensor.class);
+-    DefaultSensorDescriptor descriptor = new DefaultSensorDescriptor();
++    SensorDescriptor descriptor = mock(SensorDescriptor.class);
+     
+     sensor.describe(descriptor);
+     
+-    assertEquals(Arrays.asList(FindbugsSensor.REPOS), descriptor.ruleRepositories());
++    ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
++    verify(descriptor).name(argument.capture());
++    assertEquals("FindBugs Sensor", argument.getValue());
+   }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -279,55 +279,55 @@
+     verify(executor).execute(activeRules);
+     verify(sensorContext, never()).newIssue();
+   }
+   
+   @Test
+   void should_execute_findbugs_with_missing_smap_and_source() throws Exception {
+     BugInstance bugInstance = getBugInstance("AM_CREATES_EMPTY_ZIP_FILE_ENTRY", 6, true);
+     Collection<ReportedBug> collection = Arrays.asList(new ReportedBug(bugInstance));
+-    when(executor.execute(false, false)).thenReturn(collection);
++    when(executor.execute(activeRules)).thenReturn(collection);
+     JavaResourceLocator javaResourceLocator = mockJavaResourceLocator();
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(new File("file")));
+     
+     // return a class file that does not have SMAP (doesn't exist actually)
+     when(byteCodeResourceLocator.findClassFileByClassName("org.sonar.commons.ZipUtils", this.javaResourceLocator)).thenReturn("");
+     // don't return a source file: the input file is not in the file system even if SpotBugs found an issue in a class file
+     when(byteCodeResourceLocator.findSourceFile("org/sonar/commons/org/sonar/commons/ZipUtils.java", fs)).thenReturn(null);
+     
+     pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
+     FindbugsSensor sensor = pico.getComponent(FindbugsSensor.class);
+     sensor.execute(sensorContext);
+ 
+-    verify(executor).execute(false, false);
++    verify(executor).execute(activeRules);
+     verify(sensorContext, never()).newIssue();
+   }
+   
+   @Test
+   void should_execute_findbugs_with_smap() throws Exception {
+     BugInstance bugInstance = getBugInstance("AM_CREATES_EMPTY_ZIP_FILE_ENTRY", 6, true);
+     Collection<ReportedBug> collection = Arrays.asList(new ReportedBug(bugInstance));
+-    when(executor.execute(false, false)).thenReturn(collection);
++    when(executor.execute(activeRules)).thenReturn(collection);
+     JavaResourceLocator javaResourceLocator = mockJavaResourceLocator();
+-    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Lists.newArrayList(new File("file")));
++    when(javaResourceLocator.classFilesToAnalyze()).thenReturn(Collections.singletonList(new File("file")));
+     
+     String classFileName = "org/sonar/commons/ZipUtils.class";
+     
+     when(byteCodeResourceLocator.findClassFileByClassName("org.sonar.commons.ZipUtils", this.javaResourceLocator)).thenReturn(classFileName);
+     
+     // Return a valid SMAP location
+     FileInfo fileInfo = new FileInfo("ZipUtils", "org/sonar/commons/org/sonar/commons/ZipUtils.java");
+     SmapLocation smapLocation = new SmapLocation(fileInfo, 6, true);
+     when(byteCodeResourceLocator.extractSmapLocation("org.sonar.commons.ZipUtils", 6, new File(classFileName))).thenReturn(smapLocation);
+     
+     pico.addComponent(FakeActiveRules.createWithOnlyFindbugsRules());
+     FindbugsSensor sensor = pico.getComponent(FindbugsSensor.class);
+     sensor.execute(sensorContext);
+ 
+-    verify(executor).execute(false, false);
++    verify(executor).execute(activeRules);
+     verify(sensorContext, times(1)).newIssue();
+   }
+ 
+   private BugInstance getBugInstance(String name, int line, boolean mockFindSourceFile) {
+     BugInstance bugInstance = new BugInstance(name, 2);
+     String className = "org.sonar.commons.ZipUtils";
+     String sourceFile = "org/sonar/commons/ZipUtils.java";
+     ClassAnnotation classAnnotation = new ClassAnnotation(className, sourceFile);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/6: src/test/java/org/sonar/plugins/findbugs/resource/ByteCodeResourceLocatorTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -3,18 +3,17 @@
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.sonar.api.batch.fs.FilePredicate;
+ import org.sonar.api.batch.fs.FilePredicates;
+ import org.sonar.api.batch.fs.FileSystem;
+ import org.sonar.api.batch.fs.InputFile;
+ 
+ import java.util.ArrayList;
+-
+-import com.google.common.collect.ImmutableList;
++import java.util.Collections;
+ 
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.times;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+ 
+@@ -98,23 +97,23 @@
+       verify(predicatesEmpty,times(1)).hasRelativePath(prefixSource + jspPage);
+     }
+ 
+   }
+ 
+   @Test
+   void findRegularSourceFile() throws Exception {
+     InputFile givenJavaFile = mock(InputFile.class);
+-    when(fsEmpty.inputFiles(any())).thenReturn(ImmutableList.of(givenJavaFile));
++    when(fsEmpty.inputFiles(any())).thenReturn(Collections.singletonList(givenJavaFile));
+ 
+     ByteCodeResourceLocator locator = new ByteCodeResourceLocator();
+     assertEquals(givenJavaFile, locator.findSourceFile("com/helloworld/TestJavaClass.java", fsEmpty));
+   }
+ 
+   @Test
+   void findSourceFileFromScalaClassName() throws Exception {
+     InputFile givenJavaFile = mock(InputFile.class);
+-    when(fsEmpty.inputFiles(any())).thenReturn(ImmutableList.of(givenJavaFile));
++    when(fsEmpty.inputFiles(any())).thenReturn(Collections.singletonList(givenJavaFile));
+ 
+     ByteCodeResourceLocator locator = new ByteCodeResourceLocator();
+     assertEquals(givenJavaFile, locator.findSourceFile("TestOperationalProfileIccidModel$TestOperationalProfileIccid$.class", fsEmpty));
+   }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,33 +1,43 @@
+ package org.sonar.plugins.findbugs.resource;
+ 
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.io.TempDir;
+ import org.sonar.api.batch.fs.FilePredicate;
+ import org.sonar.api.batch.fs.FilePredicates;
+ import org.sonar.api.batch.fs.FileSystem;
+ import org.sonar.api.batch.fs.InputFile;
++import org.sonar.plugins.java.api.JavaResourceLocator;
+ 
++import java.io.File;
++import java.io.IOException;
++import java.net.URI;
++import java.net.URISyntaxException;
++import java.nio.file.Files;
++import java.nio.file.Path;
+ import java.util.ArrayList;
++import java.util.Arrays;
+ 
+ import com.google.common.collect.ImmutableList;
+ 
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.times;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+ 
++import static org.assertj.core.api.Assertions.assertThat;
++
+ class ByteCodeResourceLocatorTest {
+ 
+-  //File system that return mock input files
+-//  FileSystem fs;
+-//  FilePredicates predicates;
++  @TempDir
++  public File temp;
+ 
+   //File system that return no Input files
+   FileSystem fsEmpty;
+   FilePredicates predicatesEmpty;
+ 
+   @BeforeEach
+   public void setUp() {
+ 
+@@ -112,9 +122,24 @@
+   @Test
+   void findSourceFileFromScalaClassName() throws Exception {
+     InputFile givenJavaFile = mock(InputFile.class);
+     when(fsEmpty.inputFiles(any())).thenReturn(ImmutableList.of(givenJavaFile));
+ 
+     ByteCodeResourceLocator locator = new ByteCodeResourceLocator();
+     assertEquals(givenJavaFile, locator.findSourceFile("TestOperationalProfileIccidModel$TestOperationalProfileIccid$.class", fsEmpty));
+   }
++  
++  @Test
++  void findClassFileByClassName() throws IOException {
++    JavaResourceLocator javaResourceLocator = mock(JavaResourceLocator.class);
++    InputFile inputFile = mock(InputFile.class);
++    
++    Path folderPath = Files.createDirectories(temp.toPath().resolve(Path.of("foo", "bar")));
++    Path testFolderPath = Files.createDirectories(temp.toPath().resolve(Path.of("test", "123")));
++    Path filePath = Files.createFile(folderPath.resolve("Test.class"));
++    
++    when(javaResourceLocator.classpath()).thenReturn(Arrays.asList(testFolderPath.toFile(), filePath.toFile(), temp));
++
++    ByteCodeResourceLocator locator = new ByteCodeResourceLocator();
++    assertThat(locator.findClassFileByClassName("foo.bar.Test", javaResourceLocator)).isNotNull();
++  }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -6,23 +6,20 @@
+ import org.sonar.api.batch.fs.FilePredicate;
+ import org.sonar.api.batch.fs.FilePredicates;
+ import org.sonar.api.batch.fs.FileSystem;
+ import org.sonar.api.batch.fs.InputFile;
+ import org.sonar.plugins.java.api.JavaResourceLocator;
+ 
+ import java.io.File;
+ import java.io.IOException;
+-import java.net.URI;
+-import java.net.URISyntaxException;
+ import java.nio.file.Files;
+ import java.nio.file.Path;
+ import java.util.ArrayList;
+ import java.util.Collections;
+-
+ import java.util.Arrays;
+ 
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.times;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

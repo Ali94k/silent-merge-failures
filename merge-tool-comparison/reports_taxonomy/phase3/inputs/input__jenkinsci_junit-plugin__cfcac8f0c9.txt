@@ -1,0 +1,1864 @@
+UNIT jenkinsci_junit-plugin__cfcac8f0c9
+repo: jenkinsci_junit-plugin   merge: cfcac8f0c9b228340fa43da976db9470237659fb   stratum: B
+files shown: 5 of 5 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/5: src/main/java/hudson/tasks/junit/JUnitResultArchiver.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -40,34 +40,34 @@
+ import hudson.tasks.BuildStepMonitor;
+ import hudson.tasks.Publisher;
+ import hudson.tasks.Recorder;
+ import hudson.tasks.junit.TestResultAction.Data;
+ import hudson.util.DescribableList;
+ import hudson.util.FormValidation;
+ import org.apache.tools.ant.DirectoryScanner;
+ import org.apache.tools.ant.types.FileSet;
+-import org.jenkinsci.Symbol;
+ import org.kohsuke.stapler.AncestorInPath;
+ import org.kohsuke.stapler.DataBoundConstructor;
+ import org.kohsuke.stapler.QueryParameter;
+ 
+ import java.io.IOException;
+ import java.util.Collections;
+ import java.util.List;
++import javax.annotation.CheckForNull;
+ import javax.annotation.Nonnull;
+ import jenkins.tasks.SimpleBuildStep;
+ import org.kohsuke.stapler.DataBoundSetter;
+ 
+ /**
+  * Generates HTML report from JUnit test result XML files.
+  *
+  * @author Kohsuke Kawaguchi
+  */
+-public class JUnitResultArchiver extends Recorder implements SimpleBuildStep {
++public class JUnitResultArchiver extends Recorder implements SimpleBuildStep, JUnitTask {
+ 
+     /**
+      * {@link FileSet} "includes" string, like "foo/bar/*.xml"
+      */
+     private final String testResults;
+ 
+     /**
+      * If true, retain a suite's complete stdout/stderr even if this is huge and the suite passed.
+@@ -119,87 +119,104 @@
+         setTestDataPublishers(testDataPublishers == null ? Collections.<TestDataPublisher>emptyList() : testDataPublishers);
+         setHealthScaleFactor(healthScaleFactor);
+         setAllowEmptyResults(false);
+     }
+ 
+     private TestResult parse(String expandedTestResults, Run<?,?> run, @Nonnull FilePath workspace, Launcher launcher, TaskListener listener)
+             throws IOException, InterruptedException
+     {
+-        return new JUnitParser(this.isKeepLongStdio(),
+-                               this.isAllowEmptyResults()).parseResult(expandedTestResults, run, workspace, launcher, listener);
++        return parse(this, null, null, expandedTestResults, run, workspace, launcher, listener);
++
++    }
++
++    private static TestResult parse(@Nonnull JUnitTask task, @CheckForNull String nodeId, List<String> enclosingBlocks,
++                                    String expandedTestResults, Run<?,?> run, @Nonnull FilePath workspace,
++                                    Launcher launcher, TaskListener listener)
++            throws IOException, InterruptedException {
++        return new JUnitParser(task.isKeepLongStdio(), task.isAllowEmptyResults())
++                .parseResult(expandedTestResults, run, nodeId, enclosingBlocks, workspace, launcher, listener);
+     }
+ 
+     @Deprecated
+     protected TestResult parse(String expandedTestResults, AbstractBuild build, Launcher launcher, BuildListener listener)
+             throws IOException, InterruptedException
+     {
+         final FilePath workspace = build.getWorkspace();
+         if (workspace == null) {
+             throw new IllegalArgumentException("The provided build has no workspace");
+         }
+         return parse(expandedTestResults, build, workspace, launcher, listener);
+     }
+ 
+     @Override
+     public void perform(Run build, FilePath workspace, Launcher launcher,
+             TaskListener listener) throws InterruptedException, IOException {
++        TestResultAction action = parseAndAttach(this, null, null, build, workspace, launcher, listener);
++
++        if (action != null && action.getResult().getFailCount() > 0)
++            build.setResult(Result.UNSTABLE);
++    }
++
++    public static TestResultAction parseAndAttach(@Nonnull JUnitTask task, @CheckForNull String nodeId,
++                                                  List<String> enclosingBlocks, Run build, FilePath workspace,
++                                                  Launcher launcher, TaskListener listener)
++            throws InterruptedException, IOException {
+         listener.getLogger().println(Messages.JUnitResultArchiver_Recording());
+ 
+-        final String testResults = build.getEnvironment(listener).expand(this.testResults);
+-
+-        TestResult result = parse(testResults, build, workspace, launcher, listener);
++        final String testResults = build.getEnvironment(listener).expand(task.getTestResults());
++
++        TestResult result = parse(task, nodeId, enclosingBlocks, testResults, build, workspace, launcher, listener);
+ 
+         synchronized (build) {
+             // TODO can the build argument be omitted now, or is it used prior to the call to addAction?
+             TestResultAction action = build.getAction(TestResultAction.class);
+             boolean appending;
+             if (action == null) {
+                 appending = false;
+                 action = new TestResultAction(build, result, listener);
+             } else {
+                 appending = true;
+                 result.freeze(action);
+                 action.mergeResult(result, listener);
+             }
+-            action.setHealthScaleFactor(getHealthScaleFactor()); // overwrites previous value if appending
++            action.setHealthScaleFactor(task.getHealthScaleFactor()); // overwrites previous value if appending
+             if (result.isEmpty()) {
+                 if (build.getResult() == Result.FAILURE) {
+                     // most likely a build failed before it gets to the test phase.
+                     // don't report confusing error message.
+-                    return;
++                    return null;
+                 }
+-                if (this.allowEmptyResults) {
++                if (task.isAllowEmptyResults()) {
+                     // User allow empty results
+                     listener.getLogger().println(Messages.JUnitResultArchiver_ResultIsEmpty());
+-                    return;
++                    return null;
+                 }
+                 // most likely a configuration error in the job - e.g. false pattern to match the JUnit result files
+                 throw new AbortException(Messages.JUnitResultArchiver_ResultIsEmpty());
+             }
+ 
+             // TODO: Move into JUnitParser [BUG 3123310]
+             List<Data> data = action.getData();
+-            if (testDataPublishers != null) {
+-                for (TestDataPublisher tdp : testDataPublishers) {
++            if (task.getTestDataPublishers() != null) {
++                for (TestDataPublisher tdp : task.getTestDataPublishers()) {
+                     Data d = tdp.contributeTestData(build, workspace, launcher, listener, result);
+                     if (d != null) {
+                         data.add(d);
+                     }
+                 }
+             }
+ 
+             if (appending) {
+                 build.save();
+             } else {
+                 build.addAction(action);
+             }
+ 
+-        if (action.getResult().getFailCount() > 0)
+-            build.setResult(Result.UNSTABLE);
++            return action;
+         }
+     }
+ 
+     /**
+      * Not actually used, but left for backward compatibility
+      * @param ds Directory scanner.
+      * @param buildTime Build Time.
+      *
+@@ -273,17 +290,17 @@
+ 
+     @DataBoundSetter public final void setAllowEmptyResults(boolean allowEmptyResults) {
+         this.allowEmptyResults = allowEmptyResults;
+     }
+ 
+ 
+     private static final long serialVersionUID = 1L;
+ 
+-    @Extension @Symbol("junit")
++    @Extension
+     public static class DescriptorImpl extends BuildStepDescriptor<Publisher> {
+         public String getDisplayName() {
+             return Messages.JUnitResultArchiver_DisplayName();
+         }
+ 
+         /**
+          * Performs on-the-fly validation on the file mask wildcard.
+          * @param project Project.
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -172,22 +172,21 @@
+                     listener.getLogger().println(Messages.JUnitResultArchiver_ResultIsEmpty());
+                     return;
+                 }
+                 // most likely a configuration error in the job - e.g. false pattern to match the JUnit result files
+                 throw new AbortException(Messages.JUnitResultArchiver_ResultIsEmpty());
+             }
+ 
+             // TODO: Move into JUnitParser [BUG 3123310]
+-            List<Data> data = action.getData();
+             if (testDataPublishers != null) {
+                 for (TestDataPublisher tdp : testDataPublishers) {
+                     Data d = tdp.contributeTestData(build, workspace, launcher, listener, result);
+                     if (d != null) {
+-                        data.add(d);
++                        action.addData(d);
+                     }
+                 }
+             }
+ 
+             if (appending) {
+                 build.save();
+             } else {
+                 build.addAction(action);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/5: src/main/java/hudson/tasks/junit/SuiteResult.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -18,25 +18,33 @@
+  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  * THE SOFTWARE.
+  */
+ package hudson.tasks.junit;
+ 
++import hudson.model.Run;
+ import hudson.tasks.test.TestObject;
+ import hudson.util.io.ParserConfigurator;
+ import org.dom4j.Document;
+ import org.dom4j.DocumentException;
+ import org.dom4j.Element;
+ import org.dom4j.io.SAXReader;
++import org.jenkinsci.plugins.workflow.actions.LabelAction;
++import org.jenkinsci.plugins.workflow.actions.ThreadNameAction;
++import org.jenkinsci.plugins.workflow.flow.FlowExecution;
++import org.jenkinsci.plugins.workflow.graph.FlowNode;
++import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+ import org.kohsuke.stapler.export.Exported;
+ import org.kohsuke.stapler.export.ExportedBean;
+ 
++import javax.annotation.CheckForNull;
++import javax.annotation.Nonnull;
+ import java.io.File;
+ import java.io.IOException;
+ import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Map;
+@@ -64,124 +72,180 @@
+     private final String stdout;
+     private final String stderr;
+     private float duration;
+     /**
+      * The 'timestamp' attribute of  the test suite.
+      * AFAICT, this is not a required attribute in XML, so the value may be null.
+      */
+     private String timestamp;
+-    /** Optional ID attribute of a test suite. E.g., Eclipse plug-ins tests always have the name 'tests' but a different id. **/
++    /**
++     * Optional ID attribute of a test suite. E.g., Eclipse plug-ins tests always have the name 'tests' but a different id.
++     **/
+     private String id;
+ 
+-    /** Optional time attribute of a test suite. E.g., Suites can use their own time attribute or the sum of their cases' times as before.**/
++    /**
++     * Optional time attribute of a test suite. E.g., Suites can use their own time attribute or the sum of their cases' times as before.
++     **/
+     private String time;
+ 
+     /**
++     * Optional {@link Run#getExternalizableId()} this suite was generated in.
++     */
++    private String runId;
++
++    /**
++     * Optional {@link FlowNode#getId()} this suite was generated in.
++     */
++    private String nodeId;
++
++    private final List<String> enclosingBlocks = new ArrayList<>();
++
++    private final List<String> enclosingBlockNames = new ArrayList<>();
++
++    /**
+      * All test cases.
+      */
+     private final List<CaseResult> cases = new ArrayList<CaseResult>();
+-    private transient Map<String,CaseResult> casesByName;
++    private transient Map<String, CaseResult> casesByName;
+     private transient hudson.tasks.junit.TestResult parent;
+ 
++    @Deprecated
+     SuiteResult(String name, String stdout, String stderr) {
++        this(name, stdout, stderr, null, null, null);
++    }
++
++    /**
++     * @since 1.21
++     */
++    SuiteResult(String name, String stdout, String stderr, @CheckForNull String runId, @CheckForNull String nodeId,
++                @CheckForNull List<String> enclosingBlocks) {
+         this.name = name;
+         this.stderr = stderr;
+         this.stdout = stdout;
++        // runId is generally going to be not null, but we only care about it if both it and nodeId are not null.
++        if (runId != null && nodeId != null) {
++            this.runId = runId;
++            this.nodeId = nodeId;
++            if (enclosingBlocks != null) {
++                this.enclosingBlocks.addAll(enclosingBlocks);
++            }
++        } else {
++            this.runId = null;
++            this.nodeId = null;
++        }
+         this.file = null;
+     }
+ 
+-    private synchronized Map<String,CaseResult> casesByName() {
++    private synchronized Map<String, CaseResult> casesByName() {
+         if (casesByName == null) {
+-            casesByName = new HashMap<String,CaseResult>();
++            casesByName = new HashMap<String, CaseResult>();
+             for (CaseResult c : cases) {
+                 casesByName.put(c.getName(), c);
+             }
+         }
+         return casesByName;
+     }
+ 
+     /**
+      * Passed to {@link ParserConfigurator}.
++     *
+      * @since 1.416
+      */
+     public static class SuiteResultParserConfigurationContext {
+         public final File xmlReport;
+ 
+         SuiteResultParserConfigurationContext(File xmlReport) {
+             this.xmlReport = xmlReport;
+         }
+     }
+ 
+     /**
+      * Parses the JUnit XML file into {@link SuiteResult}s.
+      * This method returns a collection, as a single XML may have multiple &lt;testsuite>
+      * elements wrapped into the top-level &lt;testsuites>.
+      */
+-    static List<SuiteResult> parse(File xmlReport, boolean keepLongStdio) throws DocumentException, IOException, InterruptedException {
++    static List<SuiteResult> parse(File xmlReport, boolean keepLongStdio, String runId, String nodeId,
++                                   List<String> enclosingBlocks)
++            throws DocumentException, IOException, InterruptedException {
+         List<SuiteResult> r = new ArrayList<SuiteResult>();
+ 
+         // parse into DOM
+         SAXReader saxReader = new SAXReader();
+         saxReader.setEntityResolver(new XMLEntityResolver());
+ 
+         Document result = saxReader.read(xmlReport);
+         Element root = result.getRootElement();
+ 
+-        parseSuite(xmlReport,keepLongStdio,r,root);
++        parseSuite(xmlReport, keepLongStdio, r, root, runId, nodeId, enclosingBlocks);
+ 
+         return r;
+     }
+ 
+-    private static void parseSuite(File xmlReport, boolean keepLongStdio, List<SuiteResult> r, Element root) throws DocumentException, IOException {
++    private static void parseSuite(File xmlReport, boolean keepLongStdio, List<SuiteResult> r, Element root, String runId,
++                                   String nodeId, List<String> enclosingBlocks) throws DocumentException, IOException {
+         // nested test suites
+         @SuppressWarnings("unchecked")
+-        List<Element> testSuites = (List<Element>)root.elements("testsuite");
++        List<Element> testSuites = (List<Element>) root.elements("testsuite");
+         for (Element suite : testSuites)
+-            parseSuite(xmlReport, keepLongStdio, r, suite);
++            parseSuite(xmlReport, keepLongStdio, r, suite, runId, nodeId, enclosingBlocks);
+ 
+         // child test cases
+         // FIXME: do this also if no testcases!
+-        if (root.element("testcase")!=null || root.element("error")!=null)
+-            r.add(new SuiteResult(xmlReport, root, keepLongStdio));
+-    }
+-
+-    /**
+-     * @param xmlReport
+-     *      A JUnit XML report file whose top level element is 'testsuite'.
+-     * @param suite
+-     *      The parsed result of {@code xmlReport}
+-     */
+-    private SuiteResult(File xmlReport, Element suite, boolean keepLongStdio) throws DocumentException, IOException {
+-    	this.file = xmlReport.getAbsolutePath();
++        if (root.element("testcase") != null || root.element("error") != null)
++            r.add(new SuiteResult(xmlReport, root, keepLongStdio, runId, nodeId, enclosingBlocks));
++    }
++
++    /**
++     * @param xmlReport A JUnit XML report file whose top level element is 'testsuite'.
++     * @param suite     The parsed result of {@code xmlReport}
++     */
++    private SuiteResult(File xmlReport, Element suite, boolean keepLongStdio, @CheckForNull String runId,
++                        @CheckForNull String nodeId, @CheckForNull List<String> enclosingBlocks)
++            throws DocumentException, IOException {
++        this.file = xmlReport.getAbsolutePath();
+         String name = suite.attributeValue("name");
+-        if(name==null)
++        if (name == null)
+             // some user reported that name is null in their environment.
+             // see http://www.nabble.com/Unexpected-Null-Pointer-Exception-in-Hudson-1.131-tf4314802.html
+-            name = '('+xmlReport.getName()+')';
++            name = '(' + xmlReport.getName() + ')';
+         else {
+             String pkg = suite.attributeValue("package");
+-            if(pkg!=null&& pkg.length()>0)   name=pkg+'.'+name;
++            if (pkg != null && pkg.length() > 0) name = pkg + '.' + name;
+         }
+         this.name = TestObject.safe(name);
+         this.timestamp = suite.attributeValue("timestamp");
+         this.id = suite.attributeValue("id");
++        if (runId != null && nodeId != null) {
++            this.runId = runId;
++            this.nodeId = nodeId;
++            if (enclosingBlocks != null) {
++                Run<?, ?> r = Run.fromExternalizableId(runId);
++                if (r instanceof WorkflowRun) {
++                    for (String enc : enclosingBlocks) {
++                        this.enclosingBlockNames.add(getEnclosingNodeDisplayName((WorkflowRun)r, enc));
++                    }
++                }
++                this.enclosingBlocks.addAll(enclosingBlocks);
++            }
++        }
++
+         // check for test suite time attribute
+-        if( ( this.time = suite.attributeValue("time") ) != null ){
++        if ((this.time = suite.attributeValue("time")) != null) {
+             duration = new TimeToFloat(this.time).parse();
+         }
+-        
++
+         Element ex = suite.element("error");
+-        if(ex!=null) {
++        if (ex != null) {
+             // according to junit-noframes.xsl l.229, this happens when the test class failed to load
+             addCase(new CaseResult(this, suite, "<init>", keepLongStdio));
+         }
+-        
++
+         @SuppressWarnings("unchecked")
+-        List<Element> testCases = (List<Element>)suite.elements("testcase");
++        List<Element> testCases = (List<Element>) suite.elements("testcase");
+         for (Element e : testCases) {
+             // https://issues.jenkins-ci.org/browse/JENKINS-1233 indicates that
+             // when <testsuites> is present, we are better off using @classname on the
+             // individual testcase class.
+ 
+             // https://issues.jenkins-ci.org/browse/JENKINS-1463 indicates that
+             // @classname may not exist in individual testcase elements. We now
+             // also test if the testsuite element has a package name that can be used
+@@ -197,54 +261,116 @@
+             // one wants to use @name from <testsuite>,
+             // the other wants to use @classname from <testcase>.
+ 
+             addCase(new CaseResult(this, e, classname, keepLongStdio));
+         }
+ 
+         String stdout = CaseResult.possiblyTrimStdio(cases, keepLongStdio, suite.elementText("system-out"));
+         String stderr = CaseResult.possiblyTrimStdio(cases, keepLongStdio, suite.elementText("system-err"));
+-        if (stdout==null && stderr==null) {
++        if (stdout == null && stderr == null) {
+             // Surefire never puts stdout/stderr in the XML. Instead, it goes to a separate file (when ${maven.test.redirectTestOutputToFile}).
+             Matcher m = SUREFIRE_FILENAME.matcher(xmlReport.getName());
+             if (m.matches()) {
+                 // look for ***-output.txt from TEST-***.xml
+-                File mavenOutputFile = new File(xmlReport.getParentFile(),m.group(1)+"-output.txt");
++                File mavenOutputFile = new File(xmlReport.getParentFile(), m.group(1) + "-output.txt");
+                 if (mavenOutputFile.exists()) {
+                     try {
+                         stdout = CaseResult.possiblyTrimStdio(cases, keepLongStdio, mavenOutputFile);
+                     } catch (IOException e) {
+-                        throw new IOException("Failed to read "+mavenOutputFile,e);
++                        throw new IOException("Failed to read " + mavenOutputFile, e);
+                     }
+                 }
+             }
+         }
+ 
+         this.stdout = stdout;
+         this.stderr = stderr;
+     }
+ 
+     /*package*/ void addCase(CaseResult cr) {
+         cases.add(cr);
+         casesByName().put(cr.getName(), cr);
+-        
++
+         //if suite time was not specified use sum of the cases' times
+-        if(this.time == null){
++        if (this.time == null) {
+             duration += cr.getDuration();
+         }
++    }
++
++    @Nonnull
++    private String getEnclosingNodeDisplayName(@Nonnull WorkflowRun run, @Nonnull String nodeId) {
++        FlowExecution execution = run.getExecution();
++        try {
++            FlowNode node = execution.getNode(nodeId);
++            if (node.getAction(LabelAction.class) != null) {
++                ThreadNameAction threadNameAction = node.getAction(ThreadNameAction.class);
++                if (threadNameAction != null) {
++                    return threadNameAction.getThreadName();
++                }
++            }
++            return node.getDisplayName();
++        } catch (Exception e) {
++            // TODO: Something in that odd case where we can get an NPE
++        }
++        return "";
+     }
+ 
+     @Exported(visibility=9)
+     public String getName() {
+         return name;
+     }
+ 
+     @Exported(visibility=9)
+     public float getDuration() {
+         return duration;
++    }
++
++    /**
++     * The possibly-null {@link Run#getExternalizableId()} this suite was generated in.
++     *
++     * @since 1.21
++     */
++    @CheckForNull
++    @Exported(visibility=9)
++    public String getRunId() {
++        return runId;
++    }
++
++    /**
++     * The possibly-null {@link FlowNode#id} this suite was generated in.
++     *
++     * @since 1.21
++     */
++    @Exported(visibility=9)
++    @CheckForNull
++    public String getNodeId() {
++        return nodeId;
++    }
++
++    /**
++     * The possibly-empty list of {@link FlowNode#id}s for enclosing blocks within which this suite was generated.
++     *
++     * @since 1.21
++     */
++    @Exported(visibility=9)
++    @Nonnull
++    public List<String> getEnclosingBlocks() {
++        return enclosingBlocks;
++    }
++
++    /**
++     * The possibly-empty list of display names of enclosing blocks within which this suite was generated.
++     *
++     * @since 1.21
++     */
++    @Exported(visibility=9)
++    @Nonnull
++    public List<String> getEnclosingBlockNames() {
++        return enclosingBlockNames;
+     }
+ 
+     /**
+      * The stdout of this test.
+      *
+      * @return the stdout of this test.
+      * @since 1.281
+      * @see CaseResult#getStdout()
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -28,24 +28,26 @@
+ import org.dom4j.Document;
+ import org.dom4j.DocumentException;
+ import org.dom4j.Element;
+ import org.dom4j.io.SAXReader;
+ import org.kohsuke.stapler.export.Exported;
+ import org.kohsuke.stapler.export.ExportedBean;
+ 
+ import java.io.File;
++import java.io.FileInputStream;
+ import java.io.IOException;
+ import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
++import java.util.logging.Logger;
+ import java.util.regex.Matcher;
+ import java.util.regex.Pattern;
+ 
+ /**
+  * Result of one test suite.
+  *
+  * <p>
+  * The notion of "test suite" is rather arbitrary in JUnit ant task.
+@@ -54,16 +56,17 @@
+  * <p>
+  * This object is really only used as a part of the persisted
+  * object tree.
+  *
+  * @author Kohsuke Kawaguchi
+  */
+ @ExportedBean
+ public final class SuiteResult implements Serializable {
++    private static final Logger LOGGER = Logger.getLogger(SuiteResult.class.getName());
+     private final String file;
+     private final String name;
+     private final String stdout;
+     private final String stderr;
+     private float duration;
+     /**
+      * The 'timestamp' attribute of  the test suite.
+      * AFAICT, this is not a required attribute in XML, so the value may be null.
+@@ -97,17 +100,19 @@
+             }
+         }
+         return casesByName;
+     }
+ 
+     /**
+      * Passed to {@link ParserConfigurator}.
+      * @since 1.416
+-     */
++     * @deprecated with no replacement.
++     */
++    @Deprecated
+     public static class SuiteResultParserConfigurationContext {
+         public final File xmlReport;
+ 
+         SuiteResultParserConfigurationContext(File xmlReport) {
+             this.xmlReport = xmlReport;
+         }
+     }
+ 
+@@ -118,20 +123,26 @@
+      */
+     static List<SuiteResult> parse(File xmlReport, boolean keepLongStdio) throws DocumentException, IOException, InterruptedException {
+         List<SuiteResult> r = new ArrayList<SuiteResult>();
+ 
+         // parse into DOM
+         SAXReader saxReader = new SAXReader();
+         saxReader.setEntityResolver(new XMLEntityResolver());
+ 
+-        Document result = saxReader.read(xmlReport);
+-        Element root = result.getRootElement();
+-
+-        parseSuite(xmlReport,keepLongStdio,r,root);
++        FileInputStream xmlReportStream = new FileInputStream(xmlReport);
++        try {
++
++            Document result = saxReader.read(xmlReportStream);
++            Element root = result.getRootElement();
++
++            parseSuite(xmlReport,keepLongStdio,r,root);
++        } finally {
++            xmlReportStream.close();
++        }
+ 
+         return r;
+     }
+ 
+     private static void parseSuite(File xmlReport, boolean keepLongStdio, List<SuiteResult> r, Element root) throws DocumentException, IOException {
+         // nested test suites
+         @SuppressWarnings("unchecked")
+         List<Element> testSuites = (List<Element>)root.elements("testsuite");
+@@ -163,17 +174,17 @@
+         }
+         this.name = TestObject.safe(name);
+         this.timestamp = suite.attributeValue("timestamp");
+         this.id = suite.attributeValue("id");
+         // check for test suite time attribute
+         if( ( this.time = suite.attributeValue("time") ) != null ){
+             duration = new TimeToFloat(this.time).parse();
+         }
+-        
++
+         Element ex = suite.element("error");
+         if(ex!=null) {
+             // according to junit-noframes.xsl l.229, this happens when the test class failed to load
+             addCase(new CaseResult(this, suite, "<init>", keepLongStdio));
+         }
+         
+         @SuppressWarnings("unchecked")
+         List<Element> testCases = (List<Element>)suite.elements("testcase");
+@@ -222,19 +233,26 @@
+         this.stderr = stderr;
+     }
+ 
+     /*package*/ void addCase(CaseResult cr) {
+         cases.add(cr);
+         casesByName().put(cr.getName(), cr);
+         
+         //if suite time was not specified use sum of the cases' times
+-        if(this.time == null){
++        if( !hasTimeAttr() ){
+             duration += cr.getDuration();
+         }
++    }
++
++    /**
++     * Returns true if the time attribute is present in this Suite.
++     */
++    private boolean hasTimeAttr() {
++        return time != null;
+     }
+ 
+     @Exported(visibility=9)
+     public String getName() {
+         return name;
+     }
+ 
+     @Exported(visibility=9)
+@@ -343,9 +361,27 @@
+         for (CaseResult c : cases)
+             c.freeze(this);
+         return true;
+     }
+ 
+     private static final long serialVersionUID = 1L;
+ 
+     private static final Pattern SUREFIRE_FILENAME = Pattern.compile("TEST-(.+)\\.xml");
++
++    /**
++     * Merges another SuiteResult into this one.
++     * 
++     * @param sr the SuiteResult to merge into this one
++     */
++    public void merge(SuiteResult sr) {
++        if (sr.hasTimeAttr() ^ hasTimeAttr()){
++            LOGGER.warning("Merging of suiteresults with incompatible time attribute may lead to incorrect durations in reports.( "+getFile()+", "+sr.getFile()+")");
++        }
++        if (hasTimeAttr()) {
++            duration += sr.getDuration();
++        }
++        for (CaseResult cr : sr.getCases()) {
++            addCase(cr);
++            cr.replaceParent(this);
++        }
++    }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -174,17 +174,16 @@
+         List<SuiteResult> r = new ArrayList<SuiteResult>();
+ 
+         // parse into DOM
+         SAXReader saxReader = new SAXReader();
+         saxReader.setEntityResolver(new XMLEntityResolver());
+ 
+         FileInputStream xmlReportStream = new FileInputStream(xmlReport);
+         try {
+-
+             Document result = saxReader.read(xmlReportStream);
+             Element root = result.getRootElement();
+ 
+             parseSuite(xmlReport, keepLongStdio, r, root, runId, nodeId, enclosingBlocks);
+         } finally {
+             xmlReportStream.close();
+         }
+ 
+@@ -297,17 +296,17 @@
+         this.stderr = stderr;
+     }
+ 
+     /*package*/ void addCase(CaseResult cr) {
+         cases.add(cr);
+         casesByName().put(cr.getName(), cr);
+ 
+         //if suite time was not specified use sum of the cases' times
+-        if ( !hasTimeAttr() ) {
++        if( !hasTimeAttr() ){
+             duration += cr.getDuration();
+         }
+     }
+ 
+     @Nonnull
+     private String getEnclosingNodeDisplayName(@Nonnull WorkflowRun run, @Nonnull String nodeId) {
+         FlowExecution execution = run.getExecution();
+         try {
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/5: src/main/java/hudson/tasks/junit/TestResult.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -28,30 +28,37 @@
+ import hudson.model.Run;
+ import hudson.tasks.test.AbstractTestResultAction;
+ import hudson.tasks.test.MetaTabulatedResult;
+ import hudson.tasks.test.TestObject;
+ 
+ import java.io.File;
+ import java.io.IOException;
+ import java.io.PrintWriter;
++import java.io.Serializable;
+ import java.io.StringWriter;
+ import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
++import java.util.Set;
+ import java.util.TreeMap;
++import java.util.TreeSet;
+ 
+ import org.apache.tools.ant.DirectoryScanner;
+ import org.dom4j.DocumentException;
++import org.jenkinsci.plugins.workflow.graph.FlowNode;
+ import org.kohsuke.stapler.StaplerRequest;
+ import org.kohsuke.stapler.StaplerResponse;
+ import org.kohsuke.stapler.export.Exported;
++
++import javax.annotation.CheckForNull;
++import javax.annotation.Nonnull;
+ 
+ /**
+  * Root of all the test results for one build.
+  *
+  * @author Kohsuke Kawaguchi
+  */
+ public final class TestResult extends MetaTabulatedResult {
+ 
+@@ -62,40 +69,50 @@
+     private final List<SuiteResult> suites = new ArrayList<SuiteResult>();
+ 
+     /**
+      * {@link #suites} keyed by their names for faster lookup.
+      */
+     private transient Map<String,SuiteResult> suitesByName;
+ 
+     /**
++     * {@link #suites} keyed by their run ID and node ID for faster lookup. May be empty.
++     */
++    private transient Map<String,Map<String,List<SuiteResult>>> suitesByRunAndNode;
++
++    /**
++     * TODO: javadoc
++     */
++    private transient Map<String,Map<String,BlocksWithChildren>> testsByRunAndBlock;
++
++    /**
+      * Results tabulated by package.
+      */
+     private transient Map<String,PackageResult> byPackages;
+ 
+     // set during the freeze phase
+     private transient AbstractTestResultAction parentAction;
+ 
+     private transient TestObject parent;
+ 
+     /**
+-     * Number of all tests.
++     * Number of all leafNodes.
+      */
+     private transient int totalTests;
+ 
+     private transient List<CaseResult> passedTests;
+ 
+     private transient List<CaseResult> skippedTests;
+ 
+     private transient int skippedTestsCounter;
+ 
+     private float duration;
+ 
+     /**
+-     * Number of failed/error tests.
++     * Number of failed/error leafNodes.
+      */
+     private transient List<CaseResult> failedTests;
+ 
+     private final boolean keepLongStdio;
+ 
+     /**
+      * Creates an empty result.
+      */
+@@ -110,172 +127,215 @@
+         this.keepLongStdio = keepLongStdio;
+     }
+ 
+     @Deprecated
+     public TestResult(long buildTime, DirectoryScanner results) throws IOException {
+         this(buildTime, results, false);
+     }
+ 
++    @Deprecated
++    public TestResult(long buildTime, DirectoryScanner results, boolean keepLongStdio) throws IOException {
++        this(buildTime, results, keepLongStdio, null, null, null);
++    }
++
+     /**
+      * Collect reports from the given {@link DirectoryScanner}, while
+      * filtering out all files that were created before the given time.
+      * @param keepLongStdio if true, retain a suite's complete stdout/stderr even if this is huge and the suite passed
+-     * @since 1.358
+-     */
+-    public TestResult(long buildTime, DirectoryScanner results, boolean keepLongStdio) throws IOException {
++     * @param runId an optional {@link Run#getExternalizableId()} this test result was initially generated in.
++     * @param nodeId an optional {@link org.jenkinsci.plugins.workflow.graph.FlowNode#id} for mapping between suite results and step executions.
++     * @param enclosingBlocks Optional, possibly null list of enclosing {@link FlowNode#getId()}
++     * @since 1.21
++     */
++    public TestResult(long buildTime, DirectoryScanner results, boolean keepLongStdio, String runId, String nodeId,
++                      List<String> enclosingBlocks) throws IOException {
+         this.keepLongStdio = keepLongStdio;
+-        parse(buildTime, results);
++        parse(buildTime, results, runId, nodeId, enclosingBlocks);
+     }
+ 
+     public TestObject getParent() {
+     	return parent;
+     }
+ 
+     @Override
+     public void setParent(TestObject parent) {
+         this.parent = parent;
+     }
+ 
+     @Override
+     public TestResult getTestResult() {
+     	return this;
++    }
++
++    @Deprecated
++    public void parse(long buildTime, DirectoryScanner results) throws IOException {
++        parse(buildTime, results, null, null, null);
+     }
+ 
+     /**
+      * Collect reports from the given {@link DirectoryScanner}, while
+      * filtering out all files that were created before the given time.
+      * @param buildTime Build time.
+      * @param results Directory scanner.
++     * @param runId Optional {@link Run#getExternalizableId()}
++     * @param nodeId Optional {@link FlowNode#getId()}
++     * @param enclosingBlocks Optional, possibly null list of enclosing {@link FlowNode#getId()}
+      *
+      * @throws IOException if an error occurs.
+-     */
+-    public void parse(long buildTime, DirectoryScanner results) throws IOException {
++     * @since 1.21
++     */
++    public void parse(long buildTime, DirectoryScanner results, String runId, String nodeId, List<String> enclosingBlocks)
++            throws IOException {
+         String[] includedFiles = results.getIncludedFiles();
+         File baseDir = results.getBasedir();
+-        parse(buildTime,baseDir,includedFiles);
+-    }
+-        
++        parse(buildTime,baseDir,runId,nodeId,enclosingBlocks,includedFiles);
++    }
++
++    @Deprecated
++    public void parse(long buildTime, File baseDir, String[] reportFiles)
++            throws IOException {
++        parse(buildTime, baseDir, null, null, null, reportFiles);
++    }
++
+     /**
+      * Collect reports from the given report files, while
+      * filtering out all files that were created before the given time.
+      * @param buildTime Build time.
+      * @param baseDir Base directory.
++     * @param runId Optional, possibly null {@link Run#getExternalizableId()}
++     * @param nodeId Optional, possibly null {@link FlowNode#getId()}
++     * @param enclosingBlocks Optional, possibly null list of enclosing {@link FlowNode#getId()}
+      * @param reportFiles Report files.
+      *
+      * @throws IOException if an error occurs.
+-     * @since 1.426
+-     */
+-    public void parse(long buildTime, File baseDir, String[] reportFiles) throws IOException {
++     * @since 1.21
++     */
++    public void parse(long buildTime, File baseDir, String runId, String nodeId, List<String> enclosingBlocks,
++                      String[] reportFiles) throws IOException {
+ 
+         boolean parsed=false;
+ 
+         for (String value : reportFiles) {
+             File reportFile = new File(baseDir, value);
+             // only count files that were actually updated during this build
+             if (buildTime-3000/*error margin*/ <= reportFile.lastModified()) {
+-                parsePossiblyEmpty(reportFile);
++                parsePossiblyEmpty(reportFile, runId, nodeId, enclosingBlocks);
+                 parsed = true;
+             }
+         }
+ 
+         if(!parsed) {
+             long localTime = System.currentTimeMillis();
+             if(localTime < buildTime-1000) /*margin*/
+                 // build time is in the the future. clock on this slave must be running behind
+                 throw new AbortException(
+                     "Clock on this slave is out of sync with the master, and therefore \n" +
+                     "I can't figure out what test results are new and what are old.\n" +
+                     "Please keep the slave clock in sync with the master.");
+ 
+             File f = new File(baseDir,reportFiles[0]);
+             throw new AbortException(
+                 String.format(
+-                "Test reports were found but none of them are new. Did tests run? %n"+
++                "Test reports were found but none of them are new. Did leafNodes run? %n"+
+                 "For example, %s is %s old%n", f,
+                 Util.getTimeSpanString(buildTime-f.lastModified())));
+         }
+     }
+-    
++
++    @Deprecated
++    public void parse(long buildTime, Iterable<File> reportFiles) throws IOException {
++        parse(buildTime, reportFiles, null, null, null);
++    }
++
+     /**
+      * Collect reports from the given report files
+      *
+      * @param buildTime Build time.
+      * @param reportFiles Report files.
++     * @param runId Optional, possibly null {@link Run#getExternalizableId()}
++     * @param nodeId Optional, possibly null {@link FlowNode#getId()}
++     * @param enclosingBlocks Optional, possibly null list of enclosing {@link FlowNode#getId()}
+      *
+      * @throws IOException if an error occurs.
+-     * @since 1.500
+-     */
+-    public void parse(long buildTime, Iterable<File> reportFiles) throws IOException {
++     * @since 1.21
++     */
++    public void parse(long buildTime, Iterable<File> reportFiles, String runId, String nodeId, List<String> enclosingBlocks)
++            throws IOException {
+         boolean parsed=false;
+ 
+         for (File reportFile : reportFiles) {
+             // only count files that were actually updated during this build
+             if (buildTime-3000/*error margin*/ <= reportFile.lastModified()) {
+-                parsePossiblyEmpty(reportFile);
++                parsePossiblyEmpty(reportFile, runId, nodeId, enclosingBlocks);
+                 parsed = true;
+             }
+         }
+ 
+         if(!parsed) {
+             long localTime = System.currentTimeMillis();
+             if(localTime < buildTime-1000) /*margin*/
+                 // build time is in the the future. clock on this slave must be running behind
+                 throw new AbortException(
+                     "Clock on this slave is out of sync with the master, and therefore \n" +
+                     "I can't figure out what test results are new and what are old.\n" +
+                     "Please keep the slave clock in sync with the master.");
+ 
+             File f = reportFiles.iterator().next();
+             throw new AbortException(
+                 String.format(
+-                "Test reports were found but none of them are new. Did tests run? %n"+
++                "Test reports were found but none of them are new. Did leafNodes run? %n"+
+                 "For example, %s is %s old%n", f,
+                 Util.getTimeSpanString(buildTime-f.lastModified())));
+         }
+         
+     }
+     
+-    private void parsePossiblyEmpty(File reportFile) throws IOException {
++    private void parsePossiblyEmpty(File reportFile, String runId, String nodeId, List<String> enclosingBlocks) throws IOException {
+         if(reportFile.length()==0) {
+             // this is a typical problem when JVM quits abnormally, like OutOfMemoryError during a test.
+-            SuiteResult sr = new SuiteResult(reportFile.getName(), "", "");
++            SuiteResult sr = new SuiteResult(reportFile.getName(), "", "", runId, nodeId, enclosingBlocks);
+             sr.addCase(new CaseResult(sr,"[empty]","Test report file "+reportFile.getAbsolutePath()+" was length 0"));
+             add(sr);
+         } else {
+-            parse(reportFile);
++            parse(reportFile, runId, nodeId, enclosingBlocks);
+         }
+     }
+     
+     private void add(SuiteResult sr) {
+         for (SuiteResult s : suites) {
+             // JENKINS-12457: If a testsuite is distributed over multiple files, merge it into a single SuiteResult:
+-            if(s.getName().equals(sr.getName())  && nullSafeEq(s.getId(),sr.getId())) {
++            if(s.getName().equals(sr.getName()) &&
++                    nullSafeEq(s.getId(),sr.getId()) &&
++                    nullSafeEq(s.getRunId(),sr.getRunId()) &&
++                    nullSafeEq(s.getNodeId(),sr.getNodeId()) &&
++                    nullSafeEq(s.getEnclosingBlocks(),sr.getEnclosingBlocks())) {
+             
+                 // However, a common problem is that people parse TEST-*.xml as well as TESTS-TestSuite.xml.
+                 // In that case consider the result file as a duplicate and discard it.
+                 // see http://jenkins.361315.n4.nabble.com/Problem-with-duplicate-build-execution-td371616.html for discussion.
+                 if(strictEq(s.getTimestamp(),sr.getTimestamp())) {
+                     return;
+                 }
+             
+                 for (CaseResult cr: sr.getCases()) {
+                     s.addCase(cr);
+                     cr.replaceParent(s);
+                 }
+                 duration += sr.getDuration();
+                 return;
+             }
+         }
++
+         suites.add(sr);
+         duration += sr.getDuration();
+     }
+ 
+     /**
+-     * Adds the suites from another test result to this one.
++     * Adds the leafNodes from another test result to this one.
+      */
+     void merge(TestResult other) {
+         for (SuiteResult suite : other.suites) {
+             suite.setParent(null); // otherwise freeze ignores it
+             add(suite);
+         }
+         tally();
+     }
+@@ -286,36 +346,45 @@
+ 
+     private boolean nullSafeEq(Object lhs, Object rhs) {
+         if (lhs == null) {
+             return rhs == null;
+         }
+         return lhs.equals(rhs);
+     }
+ 
++    @Deprecated
++    public void parse(File reportFile) throws IOException {
++        parse(reportFile, null, null, null);
++    }
++
+     /**
+      * Parses an additional report file.
+      * @param reportFile Report file to parse.
++     * @param runId Optional, possibly null {@link Run#getExternalizableId()}
++     * @param nodeId Optional, possibly null {@link FlowNode#getId()}
++     * @param enclosingBlocks Optional, possibly null list of enclosing {@link FlowNode#getId()}
+      *
+      * @throws IOException if an error occurs.
+-     */
+-    public void parse(File reportFile) throws IOException {
++     * @since 1.21
++     */
++    public void parse(File reportFile, String runId, String nodeId, List<String> enclosingBlocks) throws IOException {
+         try {
+-            for (SuiteResult suiteResult : SuiteResult.parse(reportFile, keepLongStdio))
++            for (SuiteResult suiteResult : SuiteResult.parse(reportFile, keepLongStdio, runId, nodeId, enclosingBlocks))
+                 add(suiteResult);
+         } catch (InterruptedException e) {
+             throw new IOException("Failed to read "+reportFile,e);
+         } catch (RuntimeException e) {
+             throw new IOException("Failed to read "+reportFile,e);
+         } catch (DocumentException e) {
+             if (!reportFile.getPath().endsWith(".xml")) {
+                 throw new IOException("Failed to read "+reportFile+"\n"+
+                     "Is this really a JUnit report file? Your configuration must be matching too many files",e);
+             } else {
+-                SuiteResult sr = new SuiteResult(reportFile.getName(), "", "");
++                SuiteResult sr = new SuiteResult(reportFile.getName(), "", "", null, null, null);
+                 StringWriter writer = new StringWriter();
+                 e.printStackTrace(new PrintWriter(writer));
+                 String error = "Failed to read test report file "+reportFile.getAbsolutePath()+"\n"+writer.toString();
+                 sr.addCase(new CaseResult(sr,"[failed-to-read]",error));
+                 add(sr);
+             }
+         }
+     }
+@@ -526,25 +595,25 @@
+         return sb.toString();
+     }
+ 
+     /**
+      * If there was an error or a failure, this is the stack trace, or otherwise null.
+      */
+     @Override
+     public String getErrorStackTrace() {
+-        return "No error stack traces available at this level. Drill down to individual tests to find stack traces.";
++        return "No error stack traces available at this level. Drill down to individual leafNodes to find stack traces.";
+     }
+ 
+     /**
+      * If there was an error or a failure, this is the text from the message.
+      */
+     @Override
+     public String getErrorDetails() {
+-        return "No error details available at this level. Drill down to individual tests to find details.";
++        return "No error details available at this level. Drill down to individual leafNodes to find details.";
+     }
+ 
+     /**
+      * @return true if the test was not skipped and did not fail, false otherwise.
+      */
+     @Override
+     public boolean isPassed() {
+        return getFailCount() == 0;
+@@ -591,16 +660,55 @@
+     public PackageResult byPackage(String packageName) {
+         return byPackages.get(packageName);
+     }
+ 
+     public SuiteResult getSuite(String name) {
+         return suitesByName.get(name);
+     }
+ 
++    public boolean hasMultipleBlocksForRun(@Nonnull String runId) {
++        Map<String,BlocksWithChildren> blocksForRun = testsByRunAndBlock.get(runId);
++        if (blocksForRun != null && blocksForRun.size() > 1) {
++            // Check for nested runs.
++            int nonNested = 0;
++            for (BlocksWithChildren b : blocksForRun.values()) {
++                if (!b.leafNodes.isEmpty()) {
++                    nonNested++;
++                }
++            }
++            return nonNested > 1;
++        }
++
++        return false;
++    }
++
++    @Nonnull
++    public TestResult getResultByRunAndNode(@Nonnull String runId, @Nonnull String nodeId) {
++        return getResultByRunAndNodes(runId, Collections.singletonList(nodeId));
++    }
++
++    @Nonnull
++    public TestResult getResultByRunAndNodes(@Nonnull String runId, @Nonnull List<String> nodeIds) {
++        TestResult result = new TestResult();
++        if (suitesByRunAndNode.containsKey(runId)) {
++            for (String n : nodeIds) {
++                List<SuiteResult> suites = suitesByRunAndNode.get(runId).get(n);
++                if (suites != null) {
++                    for (SuiteResult s : suites) {
++                        result.add(s);
++                    }
++                }
++            }
++        }
++        result.setParentAction(parentAction);
++
++        return result;
++    }
++
+      @Override
+      public void setParentAction(AbstractTestResultAction action) {
+         this.parentAction = action;
+         tally(); // I want to be sure to inform our children when we get an action.
+      }
+ 
+      @Override
+      public AbstractTestResultAction getParentAction() {
+@@ -610,28 +718,34 @@
+     /**
+      * Recount my children.
+      */
+     @Override
+     public void tally() {
+         /// Empty out data structures
+         // TODO: free children? memmory leak?
+         suitesByName = new HashMap<String,SuiteResult>();
++        suitesByRunAndNode = new HashMap<>();
++        testsByRunAndBlock = new HashMap<>();
+         failedTests = new ArrayList<CaseResult>();
+         skippedTests = null;
+         passedTests = null;
+         byPackages = new TreeMap<String,PackageResult>();
+ 
+         totalTests = 0;
+         skippedTestsCounter = 0;
+ 
+         // Ask all of our children to tally themselves
+         for (SuiteResult s : suites) {
+             s.setParent(this); // kluge to prevent double-counting the results
+             suitesByName.put(s.getName(),s);
++            if (s.getRunId() != null && s.getNodeId() != null) {
++                addSuiteByRunAndNode(s);
++            }
++
+             List<CaseResult> cases = s.getCases();
+ 
+             for (CaseResult cr: cases) {
+                 cr.setParentAction(this.parentAction);
+                 cr.setParentSuiteResult(s);
+                 cr.tally();
+                 String pkg = cr.getPackageName(), spkg = safe(pkg);
+                 PackageResult pr = byPackage(spkg);
+@@ -657,28 +771,34 @@
+      * After the data is frozen, more files can be parsed
+      * and then freeze can be called again.
+      */
+     public void freeze(TestResultAction parent) {
+         this.parentAction = parent;
+         if(suitesByName==null) {
+             // freeze for the first time
+             suitesByName = new HashMap<String,SuiteResult>();
++            suitesByRunAndNode = new HashMap<>();
++            testsByRunAndBlock = new HashMap<>();
+             totalTests = 0;
+             failedTests = new ArrayList<CaseResult>();
+             skippedTests = null;
+             passedTests = null;
+             byPackages = new TreeMap<String,PackageResult>();
+         }
+ 
+         for (SuiteResult s : suites) {
+             if(!s.freeze(this))      // this is disturbing: has-a-parent is conflated with has-been-counted
+                 continue;
+ 
+             suitesByName.put(s.getName(),s);
++
++            if (s.getRunId() != null && s.getNodeId() != null) {
++                addSuiteByRunAndNode(s);
++            }
+ 
+             totalTests += s.getCases().size();
+             for(CaseResult cr : s.getCases()) {
+                 if(cr.isSkipped()) {
+                     skippedTestsCounter++;
+                     if (skippedTests != null) {
+                         skippedTests.add(cr);
+                     }
+@@ -707,11 +827,180 @@
+         if(skippedTests != null) {
+             Collections.sort(skippedTests,CaseResult.BY_AGE);
+         }
+ 
+         for (PackageResult pr : byPackages.values())
+             pr.freeze();
+     }
+ 
++    private void addSuiteByRunAndNode(SuiteResult s) {
++        String runId = s.getRunId();
++        String nodeId = s.getNodeId();
++
++        if (runId != null && nodeId != null) {
++            // If we don't already have an entry for this run ID, initialize a map for it.
++            if (suitesByRunAndNode.get(runId) == null) {
++                suitesByRunAndNode.put(runId, new HashMap<String, List<SuiteResult>>());
++            }
++            // If we don't already have an entry in the run's map for this node, initialize a list for it.
++            if (suitesByRunAndNode.get(runId).get(nodeId) == null) {
++                suitesByRunAndNode.get(runId).put(nodeId, new ArrayList<SuiteResult>());
++            }
++            // Add the suite to the list for the node in the map for the run. Phew.
++            suitesByRunAndNode.get(runId).get(nodeId).add(s);
++
++            List<String> enclosingBlocks = new ArrayList<>(s.getEnclosingBlocks());
++            if (!enclosingBlocks.isEmpty()) {
++                if (testsByRunAndBlock.get(runId) == null) {
++                    testsByRunAndBlock.put(runId, new HashMap<String, BlocksWithChildren>());
++                }
++                populateBlocks(runId, enclosingBlocks, nodeId, null);
++            }
++        }
++    }
++
++    private void addOrMergeBlock(@Nonnull String runId, @Nonnull BlocksWithChildren b) {
++        if (testsByRunAndBlock.get(runId).containsKey(b.getBlockId())) {
++            testsByRunAndBlock.get(runId).get(b.getBlockId()).merge(b);
++        } else {
++            testsByRunAndBlock.get(runId).put(b.getBlockId(), b);
++        }
++
++    }
++
++    @CheckForNull
++    public BlocksWithChildren getBlockWithChildren(@Nonnull String runId, @Nonnull String blockId) {
++        if (testsByRunAndBlock.containsKey(runId)) {
++            Map<String,BlocksWithChildren> runBlocks = testsByRunAndBlock.get(runId);
++
++            if (runBlocks.containsKey(blockId)) {
++                return runBlocks.get(blockId);
++            }
++        }
++        return null;
++    }
++
++    private void populateBlocks(@Nonnull String runId, @Nonnull List<String> innermostFirst,
++                                @Nonnull String nodeId, @CheckForNull BlocksWithChildren nested) {
++        if (innermostFirst.isEmpty()) {
++            if (nested != null) {
++                addOrMergeBlock(runId, nested);
++            }
++        } else {
++            String innermost = innermostFirst.remove(0);
++            if (nested == null) {
++                nested = new BlocksWithChildren(innermost);
++                nested.addLeafNode(nodeId);
++                addOrMergeBlock(runId, nested);
++                populateBlocks(runId, innermostFirst, nodeId, nested);
++            } else {
++                BlocksWithChildren nextLevel = new BlocksWithChildren(innermost);
++                nextLevel.addChildBlock(nested);
++                addOrMergeBlock(runId, nextLevel);
++                populateBlocks(runId, innermostFirst, nodeId, nextLevel);
++            }
++        }
++    }
++
+     private static final long serialVersionUID = 1L;
+ 
++    public static class BlocksWithChildren implements Serializable {
++        private final String blockId;
++        private final Map<String,BlocksWithChildren> childBlocks = new TreeMap<>();
++        private final Set<String> leafNodes = new TreeSet<>();
++
++        public BlocksWithChildren(@Nonnull String blockId) {
++            this.blockId = blockId;
++        }
++
++        @Nonnull
++        public String getBlockId() {
++            return blockId;
++        }
++
++        @Nonnull
++        public Map<String,BlocksWithChildren> getChildBlocks() {
++            return childBlocks;
++        }
++
++        @Nonnull
++        public Set<String> getLeafNodes() {
++            return leafNodes;
++        }
++
++        public void addChildBlock(@Nonnull BlocksWithChildren child) {
++            childBlocks.put(child.getBlockId(), child);
++        }
++        
++        public void addLeafNode(@Nonnull String leafNode)  {
++            leafNodes.add(leafNode);
++        }
++
++        public void merge(@Nonnull BlocksWithChildren toMerge) {
++            if (toMerge.getBlockId().equals(blockId)) {
++                if (!this.equals(toMerge)) {
++                    for (String childId : toMerge.getChildBlocks().keySet()) {
++                        if (!childBlocks.containsKey(childId)) {
++                            childBlocks.put(childId, toMerge.getChildBlocks().get(childId));
++                        } else {
++                            childBlocks.get(childId).merge(toMerge.getChildBlocks().get(childId));
++                        }
++                    }
++                    leafNodes.addAll(toMerge.getLeafNodes());
++                }
++            }
++        }
++
++        @Override
++        public boolean equals(Object o) {
++            if (this == o) {
++                return true;
++            }
++            if (o == null || getClass() != o.getClass()) {
++                return false;
++            }
++            if (!super.equals(o)) {
++                return false;
++            }
++            BlocksWithChildren that = (BlocksWithChildren) o;
++
++            return that.getBlockId().equals(getBlockId()) &&
++                    that.getChildBlocks().equals(getChildBlocks()) &&
++                    that.getLeafNodes().equals(getLeafNodes());
++        }
++
++        @Nonnull
++        public Set<String> nodesWithTests() {
++            Set<String> nodes = new TreeSet<>();
++
++            nodes.addAll(leafNodes);
++            for (BlocksWithChildren child : childBlocks.values()) {
++                nodes.addAll(child.nodesWithTests());
++            }
++
++            return nodes;
++        }
++
++        /**
++         * Get an aggregated {@link TestResult} for all test results in this block and any children it may have.
++         */
++        @Nonnull
++        public TestResult toTestResult(@Nonnull String runId, @Nonnull TestResult fullResult) {
++            TestResult result = new TestResult();
++            for (BlocksWithChildren child : childBlocks.values()) {
++                TestResult childResult = child.toTestResult(runId, fullResult);
++                for (SuiteResult s : childResult.getSuites()) {
++                    result.add(s);
++                }
++            }
++            TestResult leafResult = fullResult.getResultByRunAndNodes(runId, new ArrayList<>(leafNodes));
++            for (SuiteResult s : leafResult.getSuites()) {
++                result.add(s);
++            }
++            result.setParentAction(fullResult.parentAction);
++
++            return result;
++        }
++
++        private static final long serialVersionUID = 1L;
++    }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -251,22 +251,19 @@
+             if(s.getName().equals(sr.getName())  && nullSafeEq(s.getId(),sr.getId())) {
+             
+                 // However, a common problem is that people parse TEST-*.xml as well as TESTS-TestSuite.xml.
+                 // In that case consider the result file as a duplicate and discard it.
+                 // see http://jenkins.361315.n4.nabble.com/Problem-with-duplicate-build-execution-td371616.html for discussion.
+                 if(strictEq(s.getTimestamp(),sr.getTimestamp())) {
+                     return;
+                 }
+-            
+-                for (CaseResult cr: sr.getCases()) {
+-                    s.addCase(cr);
+-                    cr.replaceParent(s);
+-                }
++
+                 duration += sr.getDuration();
++                s.merge(sr);
+                 return;
+             }
+         }
+         suites.add(sr);
+         duration += sr.getDuration();
+     }
+ 
+     /**
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/5: src/main/java/hudson/tasks/junit/TestResultAction.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -236,17 +236,17 @@
+ 
+     public void setData(List<Data> testData) {
+ 	this.testData = testData;
+     }
+ 
+     /**
+      * Merges an additional test result into this one.
+      */
+-    void mergeResult(TestResult additionalResult, TaskListener listener) {
++    public void mergeResult(TestResult additionalResult, TaskListener listener) {
+         TestResult original = getResult();
+         original.merge(additionalResult);
+         setResult(original, listener);
+     }
+ 
+     /**
+      * Resolves {@link TestAction}s for the given {@link TestObject}.
+      *
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -217,30 +217,53 @@
+     public Object getTarget() {
+         return getResult();
+     }
+ 
+     public List<TestAction> getActions(TestObject object) {
+         List<TestAction> result = new ArrayList<TestAction>();
+         // Added check for null testData to avoid NPE from issue 4257.
+         if (testData != null) {
+-            for (Data data : testData)
+-                for (TestAction ta : data.getTestAction(object))
+-                    if (ta != null)
+-                        result.add(ta);
++            synchronized (testData) {
++                for (Data data : testData)
++                    for (TestAction ta : data.getTestAction(object))
++                        if (ta != null)
++                            result.add(ta);
++            }
+         }
+         return Collections.unmodifiableList(result);
+     }
+ 
+     List<Data> getData() {
+         return testData;
+     }
+ 
++    /**
++     * Replaces to collection of test data associated with this action.
++     *
++     * <p>
++     * This method will not automatically persist the data at the time of addition.
++     *
++     */
+     public void setData(List<Data> testData) {
+-	this.testData = testData;
++	      this.testData = testData;
++    }
++
++    /**
++     * Adds a {@link Data} to the test data associated with this action.
++     *
++     * <p>
++     * This method will not automatically persist the data at the time of addition.
++     *
++     * @since 1.21
++     */
++    public void addData(Data data) {
++        synchronized (testData) {
++            this.testData.add(data);
++        }
+     }
+ 
+     /**
+      * Merges an additional test result into this one.
+      */
+     void mergeResult(TestResult additionalResult, TaskListener listener) {
+         TestResult original = getResult();
+         original.merge(additionalResult);
+@@ -253,32 +276,32 @@
+      * <p>
+      * This object itself is persisted as a part of {@link Run}, so it needs to be XStream-serializable.
+      *
+      * @see TestDataPublisher
+      */
+     public static abstract class Data {
+     	/**
+     	 * Returns all TestActions for the testObject.
+-         * 
++         *
+          * @return
+          *      Can be empty but never null. The caller must assume that the returned list is read-only.
+     	 */
+     	public abstract List<? extends TestAction> getTestAction(hudson.tasks.junit.TestObject testObject);
+     }
+ 
+     public Object readResolve() {
+         super.readResolve(); // let it do the post-deserialization work
+     	if (testData == null) {
+     		testData = new ArrayList<Data>(0);
+     	}
+-    	
++
+     	return this;
+     }
+-    
++
+     private static final Logger logger = Logger.getLogger(TestResultAction.class.getName());
+ 
+     private static final XStream XSTREAM = new XStream2();
+ 
+     static {
+         XSTREAM.alias("result",TestResult.class);
+         XSTREAM.alias("suite",SuiteResult.class);
+         XSTREAM.alias("case",CaseResult.class);
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/5: src/test/java/hudson/tasks/junit/TestResultTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -53,17 +53,17 @@
+ 
+     /**
+      * Verifies that all suites of an Eclipse Plug-in Test Suite are collected.
+      * These suites don't differ by name (and timestamp), the y differ by 'id'.
+      */
+     @Test
+     public void testIpsTests() throws Exception {
+         TestResult testResult = new TestResult();
+-        testResult.parse(getDataFile("eclipse-plugin-test-report.xml"));
++        testResult.parse(getDataFile("eclipse-plugin-test-report.xml"), null, null, null);
+ 
+         Collection<SuiteResult> suites = testResult.getSuites();
+         assertEquals("Wrong number of test suites", 16, suites.size());
+         int testCaseCount = 0;
+         for (SuiteResult suite : suites) {
+             testCaseCount += suite.getCases().size();
+         }
+         assertEquals("Wrong number of test cases", 3366, testCaseCount);
+@@ -107,70 +107,70 @@
+     /**
+      * When test methods are parametrized, they can occur multiple times in the testresults XMLs.
+      * Test that these are counted correctly.
+      */
+     @Issue("JENKINS-13214")
+     @Test
+     public void testDuplicateTestMethods() throws IOException, URISyntaxException {
+         TestResult testResult = new TestResult();
+-        testResult.parse(getDataFile("JENKINS-13214/27449.xml"));
+-        testResult.parse(getDataFile("JENKINS-13214/27540.xml"));
+-        testResult.parse(getDataFile("JENKINS-13214/29734.xml"));
++        testResult.parse(getDataFile("JENKINS-13214/27449.xml"), null, null, null);
++        testResult.parse(getDataFile("JENKINS-13214/27540.xml"), null, null, null);
++        testResult.parse(getDataFile("JENKINS-13214/29734.xml"), null, null, null);
+         testResult.tally();
+         
+         assertEquals("Wrong number of test suites", 1, testResult.getSuites().size());
+         assertEquals("Wrong number of test cases", 3, testResult.getTotalCount());
+     }
+     
+     @Bug(12457)
+     public void testTestSuiteDistributedOverMultipleFilesIsCountedAsOne() throws IOException, URISyntaxException {
+         TestResult testResult = new TestResult();
+-        testResult.parse(getDataFile("JENKINS-12457/TestSuite_a1.xml"));
+-        testResult.parse(getDataFile("JENKINS-12457/TestSuite_a2.xml"));
++        testResult.parse(getDataFile("JENKINS-12457/TestSuite_a1.xml"), null, null, null);
++        testResult.parse(getDataFile("JENKINS-12457/TestSuite_a2.xml"), null, null, null);
+         testResult.tally();
+         
+         assertEquals("Wrong number of testsuites", 1, testResult.getSuites().size());
+         assertEquals("Wrong number of test cases", 2, testResult.getTotalCount());
+         
+         // check duration: 157.980 (TestSuite_a1.xml) and 15.000 (TestSuite_a2.xml) = 172.98 
+         assertEquals("Wrong duration for test result", 172.98, testResult.getDuration(), 0.1);
+     }
+     
+     /**
+      * A common problem is that people parse TEST-*.xml as well as TESTS-TestSuite.xml.
+      * See http://jenkins.361315.n4.nabble.com/Problem-with-duplicate-build-execution-td371616.html for discussion.
+      */
+     public void testDuplicatedTestSuiteIsNotCounted() throws IOException, URISyntaxException {
+         TestResult testResult = new TestResult();
+-        testResult.parse(getDataFile("JENKINS-12457/TestSuite_b.xml"));
+-        testResult.parse(getDataFile("JENKINS-12457/TestSuite_b_duplicate.xml"));
++        testResult.parse(getDataFile("JENKINS-12457/TestSuite_b.xml"), null, null, null);
++        testResult.parse(getDataFile("JENKINS-12457/TestSuite_b_duplicate.xml"), null, null, null);
+         testResult.tally();
+         
+         assertEquals("Wrong number of testsuites", 1, testResult.getSuites().size());
+         assertEquals("Wrong number of test cases", 1, testResult.getTotalCount());
+         assertEquals("Wrong duration for test result", 1.0, testResult.getDuration(), 0.01);
+     }
+ 
+     @Issue("JENKINS-41134")
+     @Test
+     public void testMerge() throws IOException, URISyntaxException {
+         TestResult first = new TestResult();
+         TestResult second = new TestResult();
+ 
+-        first.parse(getDataFile("JENKINS-41134/TestSuite_first.xml"));
+-        second.parse(getDataFile("JENKINS-41134/TestSuite_second.xml"));
++        first.parse(getDataFile("JENKINS-41134/TestSuite_first.xml"), null, null, null);
++        second.parse(getDataFile("JENKINS-41134/TestSuite_second.xml"), null, null, null);
+         assertEquals("Fail count should be 0", 0, first.getFailCount());
+         first.merge(second);
+         assertEquals("Fail count should now be 1", 1, first.getFailCount());
+ 
+         first = new TestResult();
+         second = new TestResult();
+-        first.parse(getDataFile("JENKINS-41134/TestSuite_first.xml"));
+-        second.parse(getDataFile("JENKINS-41134/TestSuite_second_dup_first.xml"));
++        first.parse(getDataFile("JENKINS-41134/TestSuite_first.xml"), null, null, null);
++        second.parse(getDataFile("JENKINS-41134/TestSuite_second_dup_first.xml"), null, null, null);
+         assertEquals("Fail count should be 0", 0, first.getFailCount());
+         first.merge(second);
+         assertEquals("Fail count should now be 1", 1, first.getFailCount());
+     }
+ 
+     private static final XStream XSTREAM = new XStream2();
+ 
+     static {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -166,17 +166,43 @@
+         second = new TestResult();
+         first.parse(getDataFile("JENKINS-41134/TestSuite_first.xml"));
+         second.parse(getDataFile("JENKINS-41134/TestSuite_second_dup_first.xml"));
+         assertEquals("Fail count should be 0", 0, first.getFailCount());
+         first.merge(second);
+         assertEquals("Fail count should now be 1", 1, first.getFailCount());
+     }
+ 
++    @Issue("JENKINS-37598")
++    @Test
++    public void testMergeWithTime() throws Exception {
++        TestResult testResult = new TestResult();
++        testResult.parse(getDataFile("junit-report-time-aggregation.xml"));
++        testResult.tally();
++
++        assertEquals(1, testResult.getSuites().size());
++        SuiteResult suite = testResult.getSuite("test.fs.FileSystemTests");
++        assertEquals(3, suite.getCases().size());
++        assertEquals(100, suite.getDuration(), 2);
++    }
++
++    @Issue("JENKINS-37598")
++    @Test
++    public void testMergeWithoutTime() throws Exception {
++        TestResult testResult = new TestResult();
++        testResult.parse(getDataFile("junit-report-time-aggregation2.xml"));
++        testResult.tally();
++
++        assertEquals(1, testResult.getSuites().size());
++        SuiteResult suite = testResult.getSuite("test.fs.FileSystemTests");
++        assertEquals(3, suite.getCases().size());
++        assertEquals(30, suite.getDuration(), 2);
++    }
++
+     private static final XStream XSTREAM = new XStream2();
+ 
+     static {
+         XSTREAM.alias("result",TestResult.class);
+         XSTREAM.alias("suite",SuiteResult.class);
+         XSTREAM.alias("case",CaseResult.class);
+         XSTREAM.registerConverter(new HeapSpaceStringConverter(),100);
+     }
+-}+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -200,9 +200,9 @@
+     private static final XStream XSTREAM = new XStream2();
+ 
+     static {
+         XSTREAM.alias("result",TestResult.class);
+         XSTREAM.alias("suite",SuiteResult.class);
+         XSTREAM.alias("case",CaseResult.class);
+         XSTREAM.registerConverter(new HeapSpaceStringConverter(),100);
+     }
+-}+}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

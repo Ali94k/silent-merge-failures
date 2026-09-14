@@ -1,0 +1,197 @@
+UNIT prism_prism-bukkit__6dfb9ef0cf
+repo: prism_prism-bukkit   merge: 6dfb9ef0cf2730eb09914af0afd8724a30f46efc   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/main/java/me/botsko/prism/commands/NearCommand.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -78,17 +78,17 @@
+ 						"All changes within " + parameters.getRadius() + " blocks of you..."));
+ 				call.getPlayer().sendMessage(Prism.messenger.playerHeaderMsg("Showing " + results.getTotalResults()
+ 						+ " results. Page 1 of " + results.getTotal_pages()));
+ 				final List<Handler> paginated = results.getPaginatedActionResults();
+ 				if (paginated != null) {
+ 					int result_count = results.getIndexOfFirstResult();
+ 					for (final Handler a : paginated) {
+ 						final ActionMessage am = new ActionMessage(a);
+-						if (parameters.allowsNoRadius() || parameters.hasFlag(Flag.EXTENDED)
++						if (parameters.hasFlag(Flag.EXTENDED)
+ 								|| plugin.getConfig().getBoolean("prism.messenger.always-show-extended")) {
+ 							am.showExtended();
+ 						}
+ 						am.setResultIndex(result_count);
+ 						call.getPlayer().sendMessage(Prism.messenger.playerMsg(am.getMessage()));
+ 						result_count++;
+ 					}
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,10 +1,11 @@
+ package me.botsko.prism.commands;
+ 
++import me.botsko.prism.utils.MiscUtils;
+ import me.botsko.prism.utils.TypeUtils;
+ import me.botsko.prism.Prism;
+ import me.botsko.prism.actionlibs.ActionMessage;
+ import me.botsko.prism.actionlibs.ActionsQuery;
+ import me.botsko.prism.actionlibs.QueryParameters;
+ import me.botsko.prism.actionlibs.QueryResult;
+ import me.botsko.prism.actions.Handler;
+ import me.botsko.prism.commandlibs.CallInfo;
+@@ -83,19 +84,20 @@
+ 					int result_count = results.getIndexOfFirstResult();
+ 					for (final Handler a : paginated) {
+ 						final ActionMessage am = new ActionMessage(a);
+ 						if (parameters.allowsNoRadius() || parameters.hasFlag(Flag.EXTENDED)
+ 								|| plugin.getConfig().getBoolean("prism.messenger.always-show-extended")) {
+ 							am.showExtended();
+ 						}
+ 						am.setResultIndex(result_count);
+-						call.getPlayer().sendMessage(Prism.messenger.playerMsg(am.getMessage()));
++						MiscUtils.sendClickableTPRecord(am, call.getPlayer());
+ 						result_count++;
+ 					}
++					MiscUtils.sendPageButtons(results, call.getPlayer());
+ 
+ 					// Flush timed data
+ 					plugin.eventTimer.printTimeRecord();
+ 
+ 				} else {
+ 					call.getPlayer().sendMessage(Prism.messenger
+ 							.playerError("Pagination can't find anything. Do you have the right page number?"));
+ 				}
+--- MERGED RESULT (mergiraf; full) ---
+package me.botsko.prism.commands;
+
+import me.botsko.prism.utils.MiscUtils;
+import me.botsko.prism.utils.TypeUtils;
+import me.botsko.prism.Prism;
+import me.botsko.prism.actionlibs.ActionMessage;
+import me.botsko.prism.actionlibs.ActionsQuery;
+import me.botsko.prism.actionlibs.QueryParameters;
+import me.botsko.prism.actionlibs.QueryResult;
+import me.botsko.prism.actions.Handler;
+import me.botsko.prism.commandlibs.CallInfo;
+import me.botsko.prism.commandlibs.Flag;
+import me.botsko.prism.commandlibs.SubHandler;
+
+import java.util.List;
+
+public class NearCommand implements SubHandler {
+
+	/**
+	 * 
+	 */
+	private final Prism plugin;
+
+	/**
+	 * 
+	 * @param plugin
+	 * @return
+	 */
+	public NearCommand(Prism plugin) {
+		this.plugin = plugin;
+	}
+
+	/**
+	 * Handle the command
+	 */
+	@Override
+	public void handle(final CallInfo call) {
+
+		// Build params
+		final QueryParameters parameters = new QueryParameters();
+		parameters.setPerPage(plugin.getConfig().getInt("prism.queries.default-results-per-page"));
+		parameters.setWorld(call.getPlayer().getWorld().getName());
+
+		// allow a custom near radius
+		int radius = plugin.getConfig().getInt("prism.near.default-radius");
+		if (call.getArgs().length == 2) {
+			if (TypeUtils.isNumeric(call.getArg(1))) {
+				final int _tmp_radius = Integer.parseInt(call.getArg(1));
+				if (_tmp_radius > 0) {
+					radius = _tmp_radius;
+				}
+				else {
+					call.getPlayer().sendMessage(Prism.messenger.playerError(
+							"Radius must be greater than zero. Or leave it off to use the default. Use /prism ? for help."));
+					return;
+				}
+			}
+			else {
+				call.getPlayer().sendMessage(Prism.messenger.playerError(
+						"Radius must be a number. Or leave it off to use the default. Use /prism ? for help."));
+				return;
+			}
+		}
+
+		parameters.setRadius(radius);
+		parameters.setMinMaxVectorsFromPlayerLocation(call.getPlayer().getLocation());
+		parameters.setLimit(plugin.getConfig().getInt("prism.near.max-results"));
+
+		/*
+		  Run the lookup itself in an async task so the lookup query isn't done on the
+		  main thread
+		 */
+		plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+
+			final ActionsQuery aq = new ActionsQuery(plugin);
+			final QueryResult results = aq.lookup(parameters, call.getPlayer());
+			if (!results.getActionResults().isEmpty()) {
+				call.getPlayer().sendMessage(Prism.messenger.playerSubduedHeaderMsg(
+						"All changes within " + parameters.getRadius() + " blocks of you..."));
+				call.getPlayer().sendMessage(Prism.messenger.playerHeaderMsg("Showing " + results.getTotalResults()
+						+ " results. Page 1 of " + results.getTotal_pages()));
+				final List<Handler> paginated = results.getPaginatedActionResults();
+				if (paginated != null) {
+					int result_count = results.getIndexOfFirstResult();
+					for (final Handler a : paginated) {
+						final ActionMessage am = new ActionMessage(a);
+						if (parameters.hasFlag(Flag.EXTENDED)
+								|| plugin.getConfig().getBoolean("prism.messenger.always-show-extended")) {
+							am.showExtended();
+						}
+						am.setResultIndex(result_count);
+						MiscUtils.sendClickableTPRecord(am, call.getPlayer());
+						result_count++;
+					}
+					MiscUtils.sendPageButtons(results, call.getPlayer());
+
+					// Flush timed data
+					plugin.eventTimer.printTimeRecord();
+
+				} else {
+					call.getPlayer().sendMessage(Prism.messenger
+							.playerError("Pagination can't find anything. Do you have the right page number?"));
+				}
+			} else {
+				call.getPlayer().sendMessage(Prism.messenger.playerError("Couldn't find anything."));
+			}
+		});
+	}
+
+	@Override
+	public List<String> handleComplete(CallInfo call) {
+		return null;
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

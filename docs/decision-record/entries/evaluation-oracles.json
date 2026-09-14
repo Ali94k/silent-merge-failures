@@ -1,0 +1,2564 @@
+{
+  "entries": [
+    {
+      "slug": "reporting-requirements-unconfirmed",
+      "title": "Required report contents \u2014 metric set, latency, CIs, per-scenario pivot \u2014 stated but not confirmed shipped",
+      "date_from": "2026-04-16",
+      "date_to": "2026-07-02",
+      "decision": "Every evaluation step is required to record TP/FN/FP/TN, precision, recall, F1, categories-covered (of 7) and separate merge/analysis/total runtimes on a standardized hardware profile, filled into the \u00a75.2 comparison and \u00a75.4 latency tables. Two later gaps in the reporting stack were flagged against this requirement: Wilson CI computation should move into src/evaluation/metrics.py compute_metrics() (adding precision/recall CI bound keys to ToolMetrics.to_dict() and CI columns to report.py), and the per-scenario \u00d7 tool pivot (ISSUES #9) cannot be served by report.py at all because it exports only per-tool aggregates and would need new aggregation logic beyond ToolMetrics.",
+      "rationale_recorded": true,
+      "rationale": "For the CI integration: working wilson() helpers already exist in tools/detect_validate.py and tools/migrate_decl_w3.py but are not wired into the main aggregator, and the existing CI-enhanced reports_ci/ CSVs appear to have been produced externally with no implementation visible in src/. For the per-scenario pivot: no code path in report.py pivots results by scenario \u00d7 tool.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the reporting stack carries the requirement \u2014 wilson() lives in src/evaluation/metrics.py:8 (the recommended integration), report.py has the per-scenario pivot exporter (to_per_scenario, :78, 'ISSUES #9') plus to_table/csv/json/latex and to_charts (:106), and runtime columns ship in reports/results.csv.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-14",
+        "a:fb0fa5c5-sub-sub-agent-a7dbb3-02",
+        "a:fb0fa5c5-sub-sub-agent-a7dbb3-04"
+      ],
+      "evidence": [
+        {
+          "text": "### 5.1 Metrics (recorded at every step)",
+          "line": 774,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "**Per-scenario breakdown infrastructure missing entirely:** No code path in report.py to pivot results by scenario (rows) \u00d7 tool (columns). Would require new aggregation logic beyond current ToolMetrics model.",
+          "line": 214,
+          "file": "2026-07-02_fb0fa5c5_sub-agent-a7dbb3.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/metrics.py",
+        "merge-tool-comparison/src/evaluation/report.py",
+        "merge-tool-comparison/tools/detect_validate.py",
+        "merge-tool-comparison/ISSUES.md"
+      ],
+      "actors": "unclear",
+      "actors_note": "The plan requirement has no recorded author; the two reporting-stack findings are Claude's sub-agent survey.",
+      "corroboration": "both",
+      "provenance": "mixed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "wilson-ci-reporting-standard",
+      "title": "Headline numbers carry Wilson 95% CIs and tool-superiority claims require non-overlapping CIs",
+      "date_from": "2026-04-21",
+      "date_to": "2026-06-20",
+      "decision": "Any headline F1/precision/recall figure on an n<1000 dataset is reported with a Wilson 95% confidence interval, and a claim that tool A beats tool B (Spork vs Mergiraf, Weave vs Mergiraf) counts only when the CIs do not overlap; the same applies to per-cluster recall deltas and to any \"X wins Y% of cases\" line in a commit message. In practice the intervals are recomputed independently before a verdict is endorsed \u2014 the pooled per-cluster precision CIs behind ISSUES #27's DROP conclusion were re-derived from reports_ci/results.csv, and the drafted CI for \"11 CAUSAL of 164\" was corrected from [3.7, 11.6] to [3.8, 11.6] before publication.",
+      "rationale_recorded": true,
+      "rationale": "Without CIs, n=50 comparisons are suggestive rather than defensible; the rule unifies with ISSUES.md #5 on statistical confidence. The independent recomputation was undertaken because a possible discrepancy in strict-win counts between files was noticed and because strict-win reasoning needed the comparator's TP/FP/TN/FN semantics pinned down.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-06",
+        "preA:pre-rm2-integration-11",
+        "preA:pre-spork-driver-integration-06",
+        "preA:pre-weave-integration-13",
+        "b:3302d287-05",
+        "a:0e14484d-08"
+      ],
+      "evidence": [
+        {
+          "text": "Wilson 95% CI for F1/precision/recall on any n<1000 dataset; a claim \"tool A better than tool B\" requires non-overlapping CIs",
+          "line": 27,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "without this, n=50 comparisons are suggestive, not defensible",
+          "line": 27,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "I recomputed the pooled Wilson 95% CIs \u2014 Spork [0.378, 0.603], Mergiraf [0.664, 0.865] \u2014 they match the cited intervals and are non-overlapping. The DROP conclusion is well-supported.",
+          "line": 33,
+          "file": "2026-05-27_3302d287.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/ISSUES.md #5",
+        "merge-tool-comparison/reports_ci/results.csv",
+        "FINDINGS.md"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the standing rule is recorded as Ali's in the mergiraf/spork/weave plans (one source unclear); the independent recomputation and the CI correction are Claude's.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "ground-truth-escalation-ladder",
+      "title": "Ground truth follows a \u03b3\u21923e\u21923j\u21923b ladder; test-suite ground truth demoted to maximalist fallback",
+      "date_from": "2026-04-30",
+      "date_to": "2026-05-14",
+      "decision": "Ground-truth resolution escalates: stage \u03b3 diagnostic first, then 3e formatter-based normalisation (google-java-format), then 3j stratified manual labelling of the residual FPs, upgrading to 3b AST-aware normalisation only if 3e+3j leave more than ~10% unexplained, and to 3a test-suite ground truth only if thesis defence specifically requires it. The earlier 3a-first recommendation is withdrawn as the default and preserved only as the maximalist option; the Mergiraf P3 plan section was rewritten accordingly with options 3d/3e/3g/3h/3i/3j added.",
+      "rationale_recorded": true,
+      "rationale": "3e is closest to what the tools actually do \u2014 Spork claims token-preservation, so a formatter gives both sides a fair lexical baseline \u2014 at ~0.5d. 3a requires per-project build/test infrastructure and far more runtime per scenario; the timebox-escape rule is likely to fire on it, leaving the work falling back to 3e/3b having burned days, and the \u03b3 diagnostic did not justify the 1\u20135d build-infra investment when 3e was expected to recover \u226590% of the FPs.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "3a-first ground-truth recommendation in the Mergiraf integration plan (pre-2026-04-30)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-17",
+        "preA:pre-mergiraf-integration-09",
+        "preA:pre-mergiraf-integration-10",
+        "preA:pre-stage-gamma-fp-diagnostic-07"
+      ],
+      "evidence": [
+        {
+          "text": "**\u03b3 first \u2192 3e \u2192 3j on remaining FPs \u2192 upgrade to 3b only if 3e+3j leave > ~10% unexplained \u2192 3a only if thesis defence specifically requires test-suite methodology.**",
+          "line": 123,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "Skip 3a unless \u22652 weeks earmarked; the timebox-escape rule is likely to fire and you fall back to 3e/3b having burned days.",
+          "line": 123,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "713b337",
+        "docs/plans/mergiraf-integration.md",
+        "docs/plans/stage-gamma-fp-diagnostic.md",
+        "merge-tool-comparison/ISSUES.md"
+      ],
+      "actors": "claude",
+      "actors_note": "One source records claude making the call; the other(s) do not record who decided. Taken as claude on the only positive evidence, not by majority.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "gamma-fp-bucketing-method",
+      "title": "Bucket every false positive by the cheapest normalization that makes it match, per tool",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "The stage-\u03b3 diagnostic classifies each claims-CLEAN false positive by applying progressively stricter normalizations (baseline normalize, aggressive whitespace, strip imports, imports+whitespace) and assigns it to the cheapest one that produced a match, or to `structural` if none did. The same bucketing plus a size-stratified three-case eyeball was extended beyond the original Spork-only scope to Mastery's 44 FPs; JDime is excluded from the treatment entirely.",
+      "rationale_recorded": true,
+      "rationale": "Extending the bucketing to Mastery revealed a qualitatively different failure mode \u2014 content loss rather than AST-formatter artefacts. JDime is excluded because its crashes happen before the comparator runs, so formatter normalisation cannot apply.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-stage-gamma-fp-diagnostic-01",
+        "preA:pre-stage-gamma-fp-diagnostic-09",
+        "preA:pre-stage-gamma-fp-diagnostic-11"
+      ],
+      "evidence": [
+        {
+          "text": "Bucketed each FP by the cheapest normalization that produced a match (or `structural` if none did).",
+          "line": 25,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        },
+        {
+          "text": "For **JDime**: unchanged \u2014 crashes happen before the comparator runs; 3e doesn't apply.",
+          "line": 121,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/stage-gamma-fp-diagnostic.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "adopt-gjf-formatter-normalisation",
+      "title": "Adopt google-java-format roundtrip (3e) as the primary comparator fix, implemented as a cached two-tier match",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-14",
+      "decision": "Formatter-based normalisation via a google-java-format roundtrip (option 3e) is the primary M3 comparator fix, with 3i (upstream citation) and 3h (multi-criteria reporting) additive and 3j (manual labelling) validating the residual; 3a is deferred unless 3e+3j leave more than ~10% unexplained. It is implemented in `comparator.py::contents_match` as two tiers \u2014 cheap whitespace normalisation, then a gjf 1.22.0 Docker roundtrip on mismatch \u2014 cached per sha256 content hash, shipped as its own `merge-tools/google-java-format:1.22.0` image in docker-build, disableable via `MERGE_COMPARATOR_FORMATTER=off`, with conftest.py setting it off so the suite stays Docker-free; a missing docker, parse error or timeout returns False.",
+      "rationale_recorded": true,
+      "rationale": "Mapped against the three inspected diffs, gjf handles import reordering, whitespace/blank-line insertion, redundant cast parens, brace style, method-signature line breaks and boolean-expression parens, and was expected to recover \u226590% of the FPs; 3e is more specific than the 3a-vs-3b binary in the original \u03b3 acceptance wording and matches the richer mergiraf-integration \u00a7Phase 3 taxonomy. The recommendation was explicitly contingent on M3.5 empirically confirming gjf normalises the observed differences. The implementation fails closed rather than masking real disagreement as a match.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-08",
+        "preA:pre-commits-50",
+        "preA:pre-stage-gamma-fp-diagnostic-05",
+        "preA:pre-mergiraf-integration-12",
+        "preA:pre-commits-60"
+      ],
+      "evidence": [
+        {
+          "text": "**M3 option chosen:** **3e** (formatter-based normalisation via `google-java-format` roundtrip) as primary **for Spork**",
+          "line": 78,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        },
+        {
+          "text": "contents_match now tries cheap whitespace normalize first, then falls back",
+          "line": 1175,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/comparator.py",
+        "merge-tool-comparison/docker/google-java-format/Dockerfile",
+        "merge-tool-comparison/tests/conftest.py",
+        "d7a4046",
+        "6c272da",
+        "10c8a54"
+      ],
+      "actors": "claude",
+      "actors_note": "One source records claude making the call; the other(s) do not record who decided. Taken as claude on the only positive evidence, not by majority.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "ast-equivalence-hypothesis-downgrade",
+      "title": "Downgrade \"all structural FPs are AST-equivalent reformatting\" to a 3-of-39 hypothesis",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "The claim that all `structural` Spork FPs are AST-equivalent reformatting is restated as a hypothesis supported by 3 confirmed instances out of 39 \u2014 \"3 of 39 sampled structural cases are AST-equivalent; 36 unsampled\" \u2014 with the extension to the unsampled 36 flagged as hypothesis-not-measurement. It is further documented that 0\u20135 of the 39 may be genuine Spork pathologies (e.g. the aerogear comment duplication), that a 3-case sample cannot estimate that residual fraction, and that the 3e recommendation itself came from prior knowledge of google-java-format rather than from running it on the sampled diffs.",
+      "rationale_recorded": true,
+      "rationale": "The qualitative finding rests on 3 of 39 eyeballed structural cases; the original wording overclaimed from a 3-sample eyeball to a 39-case property. The observed comment duplication is not a pretty-printing artefact and would survive a formatter roundtrip because formatters preserve content, so the 3e prediction was presented as empirically backed when it was not \u2014 M3.5 implementation is the verification step.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-stage-gamma-fp-diagnostic-03",
+        "preA:pre-stage-gamma-fp-diagnostic-04",
+        "preA:pre-commits-57",
+        "preA:pre-commits-58"
+      ],
+      "evidence": [
+        {
+          "text": "Treat \"all structural FPs are AST-equivalent reformatting\" as a hypothesis backed by 3 confirmed instances, not a measured property of the full bucket.",
+          "line": 10,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        },
+        {
+          "text": "Original \u03b3 doc presented the 3e recommendation as if empirically",
+          "line": 1129,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/stage-gamma-fp-diagnostic.md \u00a77",
+        "c099187",
+        "STATUS.md",
+        "merge-tool-comparison/ISSUES.md #2"
+      ],
+      "actors": "claude",
+      "actors_note": "One source records claude making the call; the other(s) do not record who decided. Taken as claude on the only positive evidence, not by majority.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "gjf-prediction-withdrawn-comparator-gap",
+      "title": "gjf recovered 1 of 42 FPs: prediction withdrawn, Spork's FP rate reframed as a comparator gap",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "The M3.5 acceptance criterion (Spork FP rate drops sharply under formatter normalisation) is recorded as NOT met \u2014 Spork TP 1\u21922, FP 42\u219241, Mastery 0 recovery \u2014 so ISSUES #2 stays at `decided` rather than `resolved`; the structural bucket is declared heterogeneous rather than uniformly formatter-erasable. No fix is made to the 3e code: the implementation is correct and the \u00a75 recommendation was over-confident. After 3j stratified manual labelling put 15/15 sampled residuals at AST-equivalent, Spork's FP rate is reframed as a comparator-ground-truth gap, distinct from Mastery's content-loss family weakness with JDime.",
+      "rationale_recorded": true,
+      "rationale": "The dominant residuals \u2014 `} else { if (X) }` \u2194 `} else if (X)` restructuring, comment placement, redundant cast parens \u2014 are patterns gjf does not normalise, and those patterns were unrepresented in the 3-case inspection; the formatter does what it advertises and the \u00a75 cast-paren prediction was empirically false. No content loss, duplication, reordering or different-resolution disagreement appeared in any of the 15 manual labels, so the \u00a73 hypothesis survives at higher sample size \u2014 what failed in \u00a78 was specifically gjf's inability to normalise these patterns.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-stage-gamma-fp-diagnostic-12",
+        "preA:pre-mergiraf-integration-14",
+        "preA:pre-stage-gamma-fp-diagnostic-13",
+        "preA:pre-commits-63"
+      ],
+      "evidence": [
+        {
+          "text": "The hypothesis \"all 39 unsampled structural FPs follow the small-sample reformatting pattern\" was wrong \u2014 the structural bucket is heterogeneous.",
+          "line": 162,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        },
+        {
+          "text": "Reframing: Spork's FP rate is a comparator-ground-truth gap, NOT a tool",
+          "line": 1229,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "reports/results.csv",
+        "merge-tool-comparison/ISSUES.md #2",
+        "docs/plans/stage-gamma-fp-diagnostic.md",
+        "caf33e2"
+      ],
+      "actors": "claude",
+      "actors_note": "One source records claude making the call; the other(s) do not record who decided. Taken as claude on the only positive evidence, not by majority.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "mastery-content-loss-framing",
+      "title": "Mastery's FPs are intrinsic content loss, later refined to 10 comment-only and 34 genuine",
+      "date_from": "2026-05-14",
+      "date_to": "2026-05-15",
+      "decision": "3e is not the primary fix for Mastery: its FP rate is reported with an intrinsic-limitation caveat parallel to JDime's crash-rate caveat instead. The blanket framing is then refined \u2014 10 of 44 Mastery scenarios are exclusively comment loss and normalise to byte-identical canonical text under strip_comments plus token_canonical_fold (the unplanned +10 recovery under Tier D), while the JDime-family framing stands only for the remaining 34 genuine code-content-loss cases, recoverable only via 3a if at all. The plan's prediction that Mastery and JDime rows would be unchanged under Tier D is withdrawn, and the recoveries are accepted as legitimate under the existing comment-equivalence threat.",
+      "rationale_recorded": true,
+      "rationale": "Mastery systematically discards comments and blank-line structure during AST roundtrip, and no amount of formatting recovers textual equivalence when one side is missing content entirely \u2014 the same family weakness Schesch cites for JDime. D.6's token-canonical fold then revealed that in 10/44 scenarios the dev side has 80+ comment tokens and Mastery's output has 0, so canonical forms coincide after comment-strip; the spot-check of 47deg_firebrand showed 84 comment tokens vs 0 with identical 18473-char canonical forms.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "uniform 3e treatment across Spork and Mastery"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-56",
+        "preA:pre-stage-gamma-fp-diagnostic-28",
+        "preA:pre-commits-81",
+        "preA:pre-comparator-3d-extended-ast-transforms-19"
+      ],
+      "evidence": [
+        {
+          "text": "For **Mastery**, 3e is *not the primary fix*. No amount of formatting",
+          "line": 1097,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "\u00a76 framed Mastery as \"intrinsic content loss\" parallel to JDime. Tier D's D.6 token-canonical fold revealed a finer-grained truth",
+          "line": 302,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        }
+      ],
+      "artifacts": [
+        "c099187",
+        "8cd83c1",
+        "docs/plans/stage-gamma-fp-diagnostic.md",
+        "comparator-3b-ast-normalize.md \u00a77.1",
+        "reports/results.csv"
+      ],
+      "actors": "claude",
+      "actors_note": "Two sources record actors as unclear and two as claude; the reasoning is Claude's in the transcript-era-adjacent plan text.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "rule-out-token-level-comparison",
+      "title": "Rule out token-level comparison (3d); AST normalize (3b) is the next defensible step",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "Token-level normalisation is ruled out as the follow-up comparator and 3b AST normalize (javalang/tree-sitter canonicalisation \u2014 collapse redundant blocks, harmonise cast paren style) is designated the next defensible step, with 3j manual labelling as a parallel re-test.",
+      "rationale_recorded": true,
+      "rationale": "Token-level comparison would recover even less than 3e for these residuals because the else-if restructuring is also token-different.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "tier-d-expanded-and-shipped",
+      "sources": [
+        "preB:pre-mergiraf-integration-18",
+        "preA:pre-stage-gamma-fp-diagnostic-15"
+      ],
+      "evidence": [
+        {
+          "text": "3d (token-level) is unlikely to recover the else-if residuals (token-different). 3b (AST normalize via javalang/tree-sitter \u2014 collapse redundant blocks, harmonise cast paren style) is the next defensible step.",
+          "line": 172,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "token-level (3d) would recover even less than 3e for these residuals (else-if restructuring is also token-different)",
+          "line": 168,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/comparator-3b-ast-normalize.md"
+      ],
+      "actors": "claude",
+      "actors_note": "One source records actors as unclear, the other as claude; the argument is Claude's in the plan text.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "tier-c-scope-and-deferral",
+      "title": "Scope 3b to Tier C's five tree-sitter transforms, deferred out of M3.5 to a follow-up phase",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "3b AST normalize is named the principled fix but pushed out of M3.5 scope onto the Mergiraf plan's post-tool-integration TODO (together with 3h and 3i), then scoped to Tier C: exactly five canonicalisation transforms \u2014 strip_comments, strip_blank_lines, flatten_else_if, strip_redundant_parens (paren-wrapping-paren only), strip_javalang_fqn \u2014 added as a Tier 3 inside contents_match via tree-sitter-java 0.23.5, with a point estimate of TP 37 / FP 6 and an acceptance floor of TP \u2265 32 / FP \u2264 11. Pattern 6 (long array-literal line breaks) is deferred to a later Tier D.",
+      "rationale_recorded": true,
+      "rationale": "Deferral out of M3.5 is recorded as per user direction; all three deferred items become more valuable once the full tool comparison ships, and 3h only becomes informative after 3b adds the AST-equivalent column while 3i is doc-only and can land any time. Tier C is scoped this way as closing ISSUES #2 cleanly at ~2.5\u20133d; pattern 6 is dropped on 1-of-15 evidence frequency, edge-case-heaviness and low marginal return.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-stage-gamma-fp-diagnostic-19",
+        "preA:pre-mergiraf-integration-16",
+        "preA:pre-mergiraf-integration-17",
+        "preA:pre-comparator-3b-ast-normalize-01",
+        "preA:pre-stage-gamma-fp-diagnostic-20"
+      ],
+      "evidence": [
+        {
+          "text": "Tier C scope: 5 transforms (blank-strip, comment-strip, block-flatten, paren-strip, java.lang FQN-strip) via tree-sitter-java as a Tier 3 in `contents_match`. Defers Tier D (long array-literal handling).",
+          "line": 179,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "Defer pattern 6 (long array-literal handling) to Tier D \u2014 1-of-15 evidence frequency, edge-case-heavy, low marginal return.",
+          "line": 32,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/comparator-3b-ast-normalize.md",
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "merge-tool-comparison/src/evaluation/comparator.py"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the M3.5 deferral is recorded as Ali's direction, the Tier C scoping as unclear/claude plan authorship \u2014 options were put and Ali set the scheduling.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "tier-3-wiring-single-kill-switch",
+      "title": "Tier 3 is strictly additive with parse-fail fall-through and one whole-tier kill switch",
+      "date_from": "2026-05-14",
+      "date_to": "2026-05-16",
+      "decision": "AST canonicalisation is wired as comparator Tier 3, running only when Tiers 1 and 2 disagree and only on Tier 2's gjf-formatted output; a parse failure returns None so the verdict falls through to Tier 2's already-False result. It is controlled by its own env switch `MERGE_COMPARATOR_AST_NORMALIZE` (default on; conftest sets it off to keep the suite parser-free), leaving `MERGE_COMPARATOR_FORMATTER` in charge of Tier 2; the proposal to rename FORMATTER\u2192NORMALIZE and control both tiers together is rejected. No per-transform env vars are introduced at any tier: Tier D and Tier E extend `_collect_edits` in place with no new tier and no new variable, so AST_NORMALIZE=off disables Tier C+D+E together, and finer rollback means reverting the phase commits.",
+      "rationale_recorded": true,
+      "rationale": "Tier 3 must never make Tier 2 worse, so parse failure degrades to the existing verdict. The independent switch lets per-tier recovery be measured cleanly when validating Tier C against the \u00a73 acceptance criteria, whereas the combined rename is simpler but harder to A/B-test. Per-transform env vars are overkill for kill-switch scope; a separate Tier 4 would allow independent toggling but adds matrix complexity for marginal value when both default on, and Tier C's existing switch already covers the later transforms, which are AST-level and conservative with the same parse-fail semantics.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3b-ast-normalize-03",
+        "preA:pre-commits-68",
+        "preA:pre-comparator-3b-ast-normalize-04",
+        "preA:pre-comparator-3b-ast-normalize-17",
+        "preA:pre-comparator-3d-extended-ast-transforms-05",
+        "preA:pre-comparator-3d-extended-ast-transforms-06",
+        "preA:pre-comparator-3e-tier-e-transforms-14",
+        "preA:pre-comparator-3e-tier-e-transforms-15"
+      ],
+      "evidence": [
+        {
+          "text": "Tier 3 is **strictly additive**.",
+          "line": 96,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "Recommend (a). Both default `on`. The independent switch lets us measure per-tier recovery cleanly when validating Tier C against the \u00a73 acceptance criteria.",
+          "line": 129,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "Per-transform env vars NOT introduced (overkill for a kill-switch scope). The whole AST tier flips together.",
+          "line": 421,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/comparator.py",
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "MERGE_COMPARATOR_AST_NORMALIZE",
+        "MERGE_COMPARATOR_FORMATTER",
+        "7354b15"
+      ],
+      "actors": "claude",
+      "actors_note": "Sources split between unclear and claude authorship of the plan text; no source attributes the wiring choice to Ali.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "tree-sitter-java-parser-choice",
+      "title": "Use tree-sitter-java for AST canonicalisation; reject javalang, JavaParser, Spoon and gjf internals",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "tree-sitter-java via its Python bindings is the parser for comparator Tier C (pinned tree-sitter>=0.21,<1.0 and tree-sitter-java>=0.21,<1.0), documented against the alternatives in plan \u00a75. javalang, JavaParser-via-subprocess, Spoon and reusing google-java-format internals are all rejected.",
+      "rationale_recorded": true,
+      "rationale": "tree-sitter-java has active maintenance, prebuilt wheels for macOS arm64 and linux/amd64, Java 17+ support, fast in-process parsing, and a concrete syntax tree that preserves comments and whitespace as nodes \u2014 at the cost of ~2\u20133h of unfamiliar API learning. javalang is unmaintained since ~2017 and Java 8 only, so it would break on Schesch scenarios using modern lambdas or var-binding; JavaParser needs JVM startup per parse (~1\u20132s) and puts the work back in Docker territory; Spoon is massive overkill with a JVM dependency; gjf exposes no AST API and would require forking.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-67",
+        "preA:pre-comparator-3b-ast-normalize-09",
+        "preA:pre-comparator-3b-ast-normalize-10",
+        "preA:pre-comparator-3b-ast-normalize-11"
+      ],
+      "evidence": [
+        {
+          "text": "active maintenance; binary wheels for macOS arm64 + linux/amd64; Java 17+ support; fast in-process parse; concrete syntax tree preserves comments/whitespace as nodes",
+          "line": 191,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "unmaintained (~2017); Java 8 only; will break on Schesch scenarios using lambdas-with-modern-types or var-binding | rejected",
+          "line": 192,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "merge-tool-comparison/pyproject.toml",
+        "6cfcdfc",
+        "3c39f8b"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "tier-c-conservative-guards",
+      "title": "Tier C guards else-if flattening and paren stripping ultra-conservatively",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "flatten_else_if fires only when the wrapping block has exactly one structural child that is an if_statement AND contains no variable_declarator / local_variable_declaration descendant; strip_redundant_parens matches only a parenthesized_expression whose sole structural child is itself a parenthesized_expression, with no precedence analysis.",
+      "rationale_recorded": true,
+      "rationale": "The variable-declaration check prevents scope-change bugs, since block removal is only semantics-preserving when the block declares nothing \u2014 a conservative trade of a few unrecovered FPs for zero scope-change risk. Paren-wrapping-paren is unambiguously redundant so no operator-precedence reasoning is needed; the admitted cost is that `(a + b) * c` is preserved and cases like `(Long) value` vs `(Long) (value)` do not close, while the dominant double-paren-on-cast pattern does.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "tier-d-expanded-and-shipped",
+      "sources": [
+        "preA:pre-comparator-3b-ast-normalize-13",
+        "preA:pre-comparator-3b-ast-normalize-14",
+        "preA:pre-commits-69",
+        "preA:pre-commits-70"
+      ],
+      "evidence": [
+        {
+          "text": "Conservative variable-decl check prevents scoping-change bugs.",
+          "line": 241,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "only matches paren-wrapping-paren \u2014 does NOT try to remove single parens based on precedence analysis",
+          "line": 328,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "0b1cfc0",
+        "c857675"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "javalang-fqn-allowlist",
+      "title": "Strip java.lang FQNs only for a hardcoded allowlist of common names",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "strip_javalang_fqn collapses scoped_identifier / scoped_type_identifier of the form \"java.lang.\" + name only for names in a hardcoded JAVALANG_SIMPLE_NAMES frozenset of ~30\u201340 common members; names outside the set and non-java.lang FQNs keep their prefix, and out-of-grammar method-invocation chains are not matched.",
+      "rationale_recorded": true,
+      "rationale": "Conservative by design: covering only common cases gives at-most-equal recovery and never false matches against user-shadowed types; the user-shadowed-name risk (e.g. a user-defined `class String`) is vanishingly rare and, if hit, simply leaves the FP as an FP. The observed \u00a79 cases were all in type position.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3b-ast-normalize-15",
+        "preA:pre-commits-71"
+      ],
+      "evidence": [
+        {
+          "text": "conservative; produces at-most-equal recovery, never false matches",
+          "line": 339,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "outside the set retain the prefix (conservative \u2014 at-most-equal recovery,",
+          "line": 1360,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "535a1a3"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "comments-treated-as-equivalent",
+      "title": "Treat all comments as semantically irrelevant, with a threats-to-validity entry instead of a warning",
+      "date_from": "2026-05-14",
+      "date_to": "2026-05-27",
+      "decision": "strip_comments skips line_comment, block_comment and Javadoc nodes during emit, so comment-only differences never register as tool disagreement \u2014 knowingly making the \u00a73 comment-duplication finding invisible. The risk is handled by a documented threats-to-validity entry in STATUS.md only; an informational report warning (\"N scenarios have differential comments stripped before comparison\") is deferred as separate work. The consequence is applied downstream: the 3 synthetic comment cases score TP for both tools because the canonical oracle's AST tier strips comments, and would favour Mergiraf only under a raw byte oracle the numbers do not use.",
+      "rationale_recorded": true,
+      "rationale": "Comments are declared not semantically meaningful for AST equivalence. The acknowledged risk is that stripping them could hide a real Spork pathology such as comment duplication; the \u00a79 evidence found no comment-duplication residuals across 15 samples, and the earlier aerogear observation was one example on a different scenario set, not the population. In the synthetic-cases correction, the docstring described raw byte-comparison behaviour while labelling it the normalized-oracle outcome, and Spork's FP=0 confirms it never produced a wrong clean merge there.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3b-ast-normalize-16",
+        "preB:pre-comparator-3b-ast-normalize-21",
+        "preA:pre-stage-gamma-fp-diagnostic-22",
+        "a:3302d287-02"
+      ],
+      "evidence": [
+        {
+          "text": "comments are not semantically meaningful for AST equivalence",
+          "line": 296,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "But the canonical oracle the docstring claims to use **strips comments** ([comparator.py:119](merge-tool-comparison/src/evaluation/comparator.py:119)) \u2014 so those quality differences wash out to TP-for-both",
+          "line": 43,
+          "file": "2026-05-27_3302d287.txt"
+        }
+      ],
+      "artifacts": [
+        "STATUS.md",
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "merge-tool-comparison/src/evaluation/comparator.py:119",
+        "merge-tool-comparison/tools/make_synthetic_spork_cases.py"
+      ],
+      "actors": "joint",
+      "actors_note": "Plan-era sources record unclear authorship; the 2026-05-27 application is recorded as joint (Claude proposed the rewrite, Ali's challenge prompted it).",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "tier-c-estimate-withdrawn-code-kept",
+      "title": "Withdraw the ~90% Tier C recovery estimate but keep the tier landed and the AST-equivalence finding",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "The \u00a73/\u00a76 prediction that Tier C's five transforms would recover ~90% of the 39 still-differ Spork FPs (target TP 37 / FP 6) is withdrawn \u2014 actual recovery was X=5 (TP 7 / FP 36) \u2014 and with it the mapping from \"AST-equivalent\" to \"recoverable by these five transforms\". \u00a79's conclusion that the sampled residuals are AST-equivalent reformatting is explicitly NOT withdrawn, and \u00a79's per-scenario pattern labels are corrected as descriptions of the raw pre-gjf diff rather than of the residual. Only one end-of-phase n=50 report was run (per user direction) rather than the plan's per-phase re-runs, and the Tier C code is not reverted despite missing the acceptance floor.",
+      "rationale_recorded": true,
+      "rationale": "Tier C is a strict subset of a full AST normalizer: gjf absorbs the blank-line and comment churn that dominated the raw-diff labels, leaving residuals dominated by paren-wrapping-cast, single-statement block unwrap, paren-around-binary-chain and hex-literal case \u2014 patterns Tier C does not cover and which were minor or invisible in the raw-diff labelling. The code stays because it closes 5 real FPs that the M3.5 + 3j pipeline did not, and reverting would lose verified recovery.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3b-ast-normalize-24",
+        "preA:pre-stage-gamma-fp-diagnostic-23",
+        "preB:pre-commits-77",
+        "preA:pre-stage-gamma-fp-diagnostic-24",
+        "preA:pre-comparator-3b-ast-normalize-21",
+        "preA:pre-comparator-3b-ast-normalize-23"
+      ],
+      "evidence": [
+        {
+          "text": "\u00a79's 15/15 \"AST-equivalent reformatting\" conclusion is empirically intact. The \u00a73 + \u00a76 estimate that Tier C's 5 transforms would recover ~90% of those FPs was the failed prediction.",
+          "line": 502,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "Tier C code remains landed (it closes 5 real FPs that the M3.5 + 3j pipeline did not; reverting would lose verified recovery).",
+          "line": 526,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/stage-gamma-fp-diagnostic.md \u00a710",
+        "merge-tool-comparison/reports/results.csv",
+        "merge-tool-comparison/src/evaluation/ast_normalize.py"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the withdrawal analyses are unclear/claude-authored plan text, while the single-end-of-phase evaluation cadence is recorded as Ali's direction.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "prototype-measured-recovery-estimates",
+      "title": "Measure recovery with an in-memory prototype and attribute it only cumulatively",
+      "date_from": "2026-05-14",
+      "date_to": "2026-05-16",
+      "decision": "Recovery estimates must not be derived by matching \u00a79-style per-scenario pattern labels onto a transform set: each scenario is verified against the actual transforms and against the post-gjf residual rather than the raw diff. Tier D and Tier E targets are therefore established by running an in-memory prototype of all transforms over the residual scenarios / the full n=50 dataset before the plan is drafted, and per-phase attribution is obtained by progressively enabling phases. Per-transform recovery is treated as meaningful only cumulatively; per-phase delta tables are labelled approximate and only the final cumulative figure is exact.",
+      "rationale_recorded": true,
+      "rationale": "3b's \u00a73 estimation error showed that recovery estimates inferred from raw-diff pattern labels do not hold, because the labels overstate the post-gjf relevance of blank-line and comment patterns and understate paren-wrapping-cast and single-statement block patterns. Multiple residual patterns co-occur in single scenarios, so closing one without the others does not change a scenario's TP/FP status \u2014 a lesson confirmed across all four tiers.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3b-ast-normalize-25",
+        "preA:pre-comparator-3d-extended-ast-transforms-02",
+        "preB:pre-comparator-3e-tier-e-transforms-06",
+        "preA:pre-comparator-3e-tier-e-transforms-04"
+      ],
+      "evidence": [
+        {
+          "text": "Measured empirically via in-memory prototype (all 6 transforms enabled) before drafting this plan \u2014 the lesson from 3b's \u00a73 estimation error is that recovery estimates must be measured against the actual transform set, not inferred from raw-diff pattern labels.",
+          "line": 52,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        },
+        {
+          "text": "The lesson \u2014 confirmed across all four tiers \u2014 is that per-transform recovery is meaningful only cumulatively, never independently.",
+          "line": 410,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/stage-gamma-fp-diagnostic.md",
+        "workspace/tier_e_prototype_v3.py",
+        "docs/plans/comparator-3e-tier-e-transforms.md \u00a73"
+      ],
+      "actors": "claude",
+      "actors_note": "Two sources record unclear and two claude; the methodology is stated in Claude-authored plan text with no Ali involvement recorded.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "tier-d-expanded-and-shipped",
+      "title": "Expand Tier D to six transforms absorbing Tier E's paren strip and token fold, and ship them",
+      "date_from": "2026-05-15",
+      "date_to": null,
+      "decision": "Tier D's scope is widened from D.1\u2013D.4 to six phases, pulling in what the 3b plan had filed as Tier E work \u2014 precedence-aware binary paren strip (D.5) and token-canonical whitespace fold (D.6) \u2014 with acceptance floor TP \u2265 10 and stretch TP \u2265 14. All six ship: unwrap_single_stmt_block (superseding flatten_else_if, loosening the guard to direct-children-only plus a dangling-else guard), strip_paren_around_primary over ~17 JLS primaries (superseding Tier C's paren-wrapping-paren rule) with a syntactic-paren guard, strip_paren_around_cast, strip_paren_around_binary_safe_parent over ten no-outer-op parents, precedence-aware same-op strip limited to {&&,||,&,|,^}, and token_canonical_fold with atomic literal leaves and re-parse fall-through. Measured recovery on n=50: Spork FP 36\u219229, Mastery 44\u219234, JDime 2\u21921.",
+      "rationale_recorded": true,
+      "rationale": "The scope expansion is recorded as user direction of 2026-05-15. The looser var-decl guard is semantically equivalent because var-decls inside the inner statement's own block are already scoped there, so stripping the outer braces changes no scoping \u2014 Tier C's rule was over-conservative; the dangling-else case could re-bind under Java's dangling-else rule. Parens are preserved where Java syntax requires them (`if (cond)`), where postfix would rebind a cast, and where an outer operator could re-bind; `+`, `-`, `*`, `/`, `%` are excluded because `+` is non-associative with mixed types (string-concat-vs-numeric) and the others carry mixed-type concerns. The token fold exists because gjf line-wrap decisions differ when token counts differ, and literals are atomic because naively joining tree-sitter's decomposition with spaces would corrupt their contents.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "tier-c-conservative-guards",
+        "rule-out-token-level-comparison",
+        "defer-tier-d-and-3a-interim",
+        "Tier D draft with D.1-D.4 only",
+        "3b plan \u00a711/\u00a713 filing of precedence-aware paren strip and whitespace fold as Tier E"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-73",
+        "preA:pre-comparator-3d-extended-ast-transforms-01",
+        "preA:pre-stage-gamma-fp-diagnostic-26",
+        "preA:pre-commits-75",
+        "preA:pre-commits-76",
+        "preA:pre-commits-77",
+        "preA:pre-commits-78",
+        "preA:pre-commits-79",
+        "preA:pre-commits-80"
+      ],
+      "evidence": [
+        {
+          "text": "**Expanded scope** per user direction 2026-05-15: includes precedence-aware paren strip (D.5) and token-canonical whitespace fold (D.6) \u2014 what the original 3b plan \u00a711 / \u00a713 had filed as Tier E.",
+          "line": 6,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        },
+        {
+          "text": "semantically equivalent: var-decls inside the inner statement's own block",
+          "line": 1465,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/comparator-3d-extended-ast-transforms.md",
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "3dfecf0",
+        "99a5f90",
+        "9333692",
+        "ac9114e",
+        "1eff174",
+        "9e90b23",
+        "1c6eb87"
+      ],
+      "actors": "joint",
+      "actors_note": "The scope expansion is explicitly Ali's direction; the individual transform designs are recorded as unclear/claude.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "tier-d-paren-safety-guards",
+      "title": "Tier D paren-stripping is fenced by syntactic, postfix, safe-parent and precedence guards",
+      "date_from": "2026-05-15",
+      "date_to": null,
+      "decision": "Tier D's paren transforms carry explicit guards, each with a unit or integration test: skip when the parent is if/while/do/synchronized/switch (syntax requires the paren); strip around a cast only when the parent is not field_access, method_invocation or array_access; strip around binary/ternary only for the ten whitelisted SAFE_BINARY_PAREN_PARENTS, excluding binary, unary, cast and postfix parents; strip same-op parens only for {&&,||,&,|,^} with arithmetic operators deferred to Tier E; refuse single-statement unwrap when the outer `if` has no else and the inner statement is an `if`, or when the single child is a local_variable_declaration; and fall back to the unfolded emit whenever the token fold's re-parse reports has_error, never raising.",
+      "rationale_recorded": true,
+      "rationale": "Java syntax requires the parentheses in those statement contexts, so stripping would produce invalid Java. In the unsafe cast parents the postfix `.`, `()` or `[]` would rebind from the cast result to the cast value; in all other contexts the outer paren adds no semantic information. The whitelisted binary parents are \"no-outer-operator\" contexts where the paren can never affect precedence, while excluded ones would change meaning (`-(a + b)` \u2260 `-a + b`, `(Long)(a + b)` \u2260 `(Long) a + b`). The associative-safe set is pure boolean/bitwise with no implicit type promotion; `+` carries the string-concat associativity gotcha and `*` similar mixed-type concerns, which would need type inference. The dangling-else skip is conservative because the dev source may have written the explicit block to clarify scoping, and the re-parse fall-through avoids corrupting a bad emit.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3d-extended-ast-transforms-09",
+        "preA:pre-comparator-3d-extended-ast-transforms-10",
+        "preA:pre-comparator-3d-extended-ast-transforms-11",
+        "preA:pre-comparator-3d-extended-ast-transforms-12",
+        "preA:pre-comparator-3d-extended-ast-transforms-13",
+        "preA:pre-comparator-3d-extended-ast-transforms-14",
+        "preA:pre-stage-gamma-fp-diagnostic-29"
+      ],
+      "evidence": [
+        {
+          "text": "**Syntactic-paren guard:** skip when parent is `if_statement`, `while_statement`, `do_statement`, `synchronized_statement`, `switch_statement`, or `switch_expression` \u2014 Java syntax requires the paren in these contexts.",
+          "line": 34,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        },
+        {
+          "text": "These parent types are all \"no-outer-operator\" contexts where the paren can never affect precedence \u2014 the expression is the full RHS / arg / return value / etc.",
+          "line": 285,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "merge-tool-comparison/tests/test_comparator.py",
+        "comparator-3d-extended-ast-transforms.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "tier-c-rule-housekeeping",
+      "title": "Delete Tier C's paren rule once D.2 subsumes it, but keep flatten_else_if",
+      "date_from": "2026-05-15",
+      "date_to": null,
+      "decision": "When D.2 strip_paren_around_primary lands, Tier C's narrower strip_redundant_parens is removed rather than kept alongside, with its tests retained but reframed as primary-paren-strip cases. flatten_else_if is retained rather than folded into D.1: D.1's else-clause handling fires only when the else block contains a single non-if statement, and the final call is deferred to D.1 implementation when the dangling-else interaction is concrete.",
+      "rationale_recorded": true,
+      "rationale": "Single source of truth for paren-strip logic avoids two rules expressing the same intent, and the new rule is a strict superset so existing tests should pass unchanged. Generalising D.1 to cover `else { if }` would require also recursing the dangling-else question; absent that, keeping the specific safe handler is preferred.",
+      "status": "superseded",
+      "status_note": "S12 (2026-07-26): half enacted, half resolved the other way at exactly the deferred decision point \u2014 strip_redundant_parens is gone as recommended, but flatten_else_if was not kept: ast_normalize.py:227 records 'Supersedes Tier C's narrower flatten_else_if per plan \u00a74.3', with the dangling-else guard (:431-432) covering the concern that motivated keeping it. The Tier-D implementation decision governs.",
+      "supersedes": [],
+      "superseded_by": "tier-d-expanded-and-shipped",
+      "sources": [
+        "preA:pre-comparator-3d-extended-ast-transforms-07",
+        "preA:pre-comparator-3d-extended-ast-transforms-08"
+      ],
+      "evidence": [
+        {
+          "text": "Tier C's `strip_redundant_parens` (paren-wrapping-paren) is now a subset; remove it in favor of D.2 to avoid two rules expressing the same intent.",
+          "line": 156,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        },
+        {
+          "text": "Keep `flatten_else_if`; D.1 fires for else-block-containing-non-if-stmt only.",
+          "line": 146,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "merge-tool-comparison/tests/test_ast_normalize.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "defer-tier-d-and-3a-interim",
+      "title": "Defer both Tier D and 3a after Tier C and publish the post-Tier-C numbers as interim",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "After Tier C, both closure routes stay deferred \u2014 Tier D's broader transforms (cast-aware paren strip, single-statement block unwrap, precedence-guarded binary paren strip, ~3\u20135 days) and 3a test-suite ground truth \u2014 and the post-3b Tier C numbers are committed in reports/results.csv as the current honest interim state.",
+      "rationale_recorded": true,
+      "rationale": "Each Tier D transform adds the same risk/scope discussion as the original Tier C transforms and collectively amounts to a separate cycle; 3a is expensive per the mergiraf-integration \u00a73 cost analysis, though principled.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "tier-d-expanded-and-shipped",
+      "sources": [
+        "preA:pre-stage-gamma-fp-diagnostic-25"
+      ],
+      "evidence": [
+        {
+          "text": "Both remain deferred. The post-3b Tier C numbers are committed in `reports/results.csv` as the current honest interim state.",
+          "line": 280,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        }
+      ],
+      "artifacts": [
+        "reports/results.csv",
+        "mergiraf-integration.md \u00a73"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "deferrals-and-comparator-ceiling",
+      "title": "Defer long-array, hex and typed paren work to Tier E/F and bound the comparator-side ceiling",
+      "date_from": "2026-05-15",
+      "date_to": "2026-05-16",
+      "decision": "Out of Tier D scope and deferred: same-op `+`/`*` paren strip (needs type inference), hex literal case/leading-zero normalisation, long array-literal whitespace canonicalisation, and text-level line-wrap collapse; the ~15-scenario mixed-pattern long tail is not pursued. The 3a test-suite ground-truth approach is rejected outright on cost. Tier E then fixes an upper bound on comparator-side normalization of roughly Spork TP 38\u201339 / FP 4\u20135, with 4 scenarios (2 gjf parse-fails, 2 genuine content disagreements) declared irrecoverable \u2014 anything beyond requires test-suite execution.",
+      "rationale_recorded": true,
+      "rationale": "Long-array work is heavy effort and even D.6's token fold may stop short on multi-MB array literals \u2014 gjf wraps them differently depending on token count and the fold cannot normalise that without exponential time; hex case affects ~0\u20131 dominant cases; each long-tail scenario has multiple residual patterns needing several transforms in concert, so returns diminish. 3a is a different approach entirely and was rejected per the mergiraf-integration \u00a73 cost analysis. The four irrecoverable scenarios are irrecoverable by construction, since gjf parse-fails never reach Tier 3.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3d-extended-ast-transforms-18",
+        "preA:pre-stage-gamma-fp-diagnostic-30",
+        "preA:pre-comparator-3e-tier-e-transforms-22"
+      ],
+      "evidence": [
+        {
+          "text": "**3a test-suite ground truth.** Different approach entirely; bypasses textual ground truth. Far larger; rejected per `mergiraf-integration.md \u00a73` cost analysis.",
+          "line": 356,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        },
+        {
+          "text": "Maximum reachable Spork TP via any combination of comparator-side transforms is ~38-39 / FP 4-5. Beyond that needs test-suite execution (3a).",
+          "line": 325,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "mergiraf-integration.md",
+        "docs/plans/comparator-3e-tier-e-transforms.md \u00a710",
+        "docs/plans/comparator-3e-tier-e-transforms.md \u00a712"
+      ],
+      "actors": "claude",
+      "actors_note": "One source records unclear authorship; two record claude. No Ali involvement is recorded.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "tier-e-scope-after-d1-fix",
+      "title": "Fix D.1's node-identity bug, replace the non-discriminating test, and set Tier E scope from measured residuals",
+      "date_from": "2026-05-16",
+      "date_to": null,
+      "decision": "Phase 3e.0 changes `c is cons` / `c is body` to `==` (with an is-not-None guard) in _try_unwrap_if/_try_unwrap_loop, and the 3e.0 regression test \u2014 which passed identically against buggy and fixed code \u2014 is replaced with a trailing-comment fixture that fails under the bug. Tier E's scope is then set from the empirically measured residual patterns on the 29 remaining Spork FPs (same-op arithmetic paren strip, unary paren, array-creation shorthand, enum trailing `;`, trailing comma, float suffix, hex case) rather than the brief's predicted list, and long-array whitespace is dropped as a residual driver.",
+      "rationale_recorded": true,
+      "rationale": "tree-sitter returns fresh Python Node wrappers per access so `is` is always False; the cons-block including leading comments got walked twice, producing overlapping edits that corrupt brace balance and make D.6's token fold parse-fail on 6 of the 29 still-FP scenarios. The original test was non-discriminating. The measured prototype patterns contradicted the brief's list, and long-array whitespace closes correctly under D.6's token fold once the D.1 bug is fixed.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "Tier D D.1 `_try_unwrap_if`/`_try_unwrap_loop` identity check using `is`"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3e-tier-e-transforms-01",
+        "preA:pre-commits-84",
+        "preA:pre-comparator-3e-tier-e-transforms-03"
+      ],
+      "evidence": [
+        {
+          "text": "but tree-sitter returns fresh Python `Node` wrappers per access \u2014 `is` is always False",
+          "line": 21,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        },
+        {
+          "text": "**The dominant residual patterns are NOT what the brief expected.** Brief listed: `+`/`*` paren strip, long-array whitespace, hex case.",
+          "line": 23,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "docs/plans/comparator-3e-tier-e-transforms.md",
+        "workspace/tier_e_prototype_v3.py",
+        "4db9329"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "tier-e-guards-and-accepted-losses",
+      "title": "Tier E's eleven transforms are narrowly guarded, with normalization losses admitted as corpus-contingent",
+      "date_from": "2026-05-16",
+      "date_to": null,
+      "decision": "Tier E's transforms are each fenced: unary paren strip only for `!`/`~` in safe parents; same-op arithmetic strip only when the parenthesized expression is the LEFT operand, declined for `+` when the outer-right side contains a string_literal descendant and the inner does not; assignment paren strip only under parenthesized_expression or expression_statement; array-creation shorthand only under variable_declarator or array_initializer; float suffixes stripped and `Nd` canonicalised to `N.0`; hex literals lowercased with no leading-zero normalization; and `assert_statement`/`array_access` added to the existing SAFE_BINARY_PAREN_PARENTS rather than given a new branch. The two text-level transforms emit replacement bytes through the existing _collect_edits mechanism. ISSUES #25 records that 3e.2 and 3e.9 are normalization-loss rather than semantics-preserving in general \u2014 sound on this corpus only, hardening deferred.",
+      "rationale_recorded": true,
+      "rationale": "`!` and `~` bind tighter than all binary ops (precedence 14 vs max 12), whereas `-`/`+` have the tricky `(-a).method()` postfix rebind, so those are skipped until needed. Left-associativity makes `(a + b) + c` equal to `a + b + c` while the right position would re-bind, and the string-concat guard is deliberately conservative \u2014 worst case a few `+` chains don't close. Assignment is right-associative so changing AST shape in operator contexts could change the parse; the array-creation whitelist excludes method-return and argument contexts; the float-suffix loss is documented as accepted because such suffixes vary cosmetically in numeric-heavy code and the masked disagreement is cosmetic; hex leading-zero direction is ambiguous on the dataset and rarely matters; the widened parent set needs no new branch because no outer operator can rebind there. The independent audit reproduced results byte-identically and found no fake TPs on this corpus.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3e-tier-e-transforms-06",
+        "preA:pre-comparator-3e-tier-e-transforms-07",
+        "preA:pre-comparator-3e-tier-e-transforms-08",
+        "preA:pre-comparator-3e-tier-e-transforms-09",
+        "preA:pre-comparator-3e-tier-e-transforms-10",
+        "preA:pre-comparator-3e-tier-e-transforms-11",
+        "preA:pre-comparator-3e-tier-e-transforms-12",
+        "preA:pre-comparator-3e-tier-e-transforms-13",
+        "preB:pre-comparator-3e-tier-e-transforms-02",
+        "preA:pre-commits-85"
+      ],
+      "evidence": [
+        {
+          "text": "Conservative direction: skip the strip if guard fires. Worst case: a few `+` chains don't close that could have.",
+          "line": 296,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        },
+        {
+          "text": "ISSUES.md: #25 added (3e.2/3e.9 are normalization-loss, not",
+          "line": 1687,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/ast_normalize.py",
+        "ISSUES.md #25",
+        "THREATS_TO_VALIDITY.md",
+        "4db9329"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "pivot-on-ours-union-theirs",
+      "title": "Pivot per-cluster evidence on ours\u222atheirs, rejecting the resolution axis as circular",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-18",
+      "decision": "Per-cluster tool-performance metrics bucket each scenario by the file-level refactoring cluster of union(base\u2192ours, base\u2192theirs) \u2014 computed by running RM2 on the two sides separately, as the runtime dispatcher does \u2014 instead of the rm2-integration plan's base\u2192resolution axis. Clustering the developer's final merged file is explicitly rejected even though it is the cleaner and cheaper single-axis label. The cost is accepted: two RM2 runs per scenario (~100 cached Docker calls instead of ~50) and a noisier label that counts intended refactorings later discarded and can over-count when ours and theirs disagree.",
+      "rationale_recorded": true,
+      "rationale": "The resolution defines TP/FP, so bucketing by a function of it makes grouping and outcome variables derive from the same artifact \u2014 a confounded, quasi-circular statistic that cannot justify the W5/S2 per-cluster routing elifs. A resolution-based cluster is also not computable at dispatch time: the runtime classifier only ever sees base/ours/theirs, so mirroring it keeps the evidence dispatch-faithful and makes negative evidence valid \u2014 if cluster does not predict tool performance, that honestly refutes the routing elifs, whereas under the resolution axis any result is uninformative. The added noise is the right noise, because the dispatcher faces exactly it, seeing only branch attempts before reconciliation.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "rm2-integration.md R2 spec pivoting on the resolution axis",
+        "R1 running RM2 only on base \u2192 resolution"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-04",
+        "preA:pre-execution-sequence-18",
+        "preA:pre-rm2-integration-01",
+        "a:20b53f98-07",
+        "a:dc624d63-01",
+        "b:dc624d63-02",
+        "a:dc624d63-02",
+        "a:dc624d63-04"
+      ],
+      "evidence": [
+        {
+          "text": "If you also bucket by a function of the resolution, the grouping variable and the outcome variable are both derived from the same artifact.",
+          "line": 25,
+          "file": "2026-05-18_dc624d63.txt"
+        },
+        {
+          "text": "`ours\u222atheirs` is the only axis that can do the job \u2014 which is why the plan overrides `rm2-integration.md` here.",
+          "line": 38,
+          "file": "2026-05-18_dc624d63.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/categorizer.py",
+        "merge-tool-comparison/src/evaluation/metrics.py",
+        "semantic_merge_driver/core/refactoring_classifier.py",
+        "docs/plans/rm2-integration.md",
+        "2b95aa3"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split between claude, unclear and joint; the 2026-05-18 session records the deviation as put to Ali and resolved with him, so joint.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "issues-23-fixed-in-metrics",
+      "title": "ISSUES #23/#3 corrected: the fix is a metrics.py concat guard, report.py is untouched",
+      "date_from": "2026-05-18",
+      "date_to": null,
+      "decision": "The plan's and ISSUES' characterisations are rejected as false: report.py contains no dead per-category code path to activate (R2 touches it 0 lines), and compute_metrics's scenarios_categories parameter is wired and passed from cli.py \u2014 it is a live wire fed the constant \"unknown\". ISSUES #23 is fixed by guarding the unconditional concat of tool_metrics and category_metrics at metrics.py:138 so per-category rows are emitted only when more than one distinct category exists; the real remedy for #3 is upstream, producing real categories.",
+      "rationale_recorded": true,
+      "rationale": "report.py (98 lines) has zero category logic and merely renders whatever rows metrics contains, so the duplicate all/unknown rows are produced entirely by metrics.py's unconditional list concatenation. cli.py populates categories[sid] = scenario.category and passes it; interfaces.py defaults category to \"unknown\" and all 50 cached JSONs contain \"unknown\".",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "rm2-integration.md R2 spec \u00a74/\u00a77: activate the dead per-category path in report.py",
+        "ISSUES #3 wording that scenarios_categories is never populated"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-03",
+        "a:20b53f98-06",
+        "a:20b53f98-05",
+        "a:20b53f98-14"
+      ],
+      "evidence": [
+        {
+          "text": "1. **`report.py` \"dead code path; activate it\"** \u2014 false; no such path. R2 touches `report.py` **0 lines**.",
+          "line": 115,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "Plan/ISSUES wording **wrong**. Not \"dead param to activate\" \u2014 it's a live wire fed a constant.",
+          "line": 107,
+          "file": "2026-05-18_20b53f98.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/metrics.py",
+        "merge-tool-comparison/src/evaluation/report.py",
+        "merge-tool-comparison/src/cli.py",
+        "merge-tool-comparison/ISSUES.md #23",
+        "2b95aa3"
+      ],
+      "actors": "claude",
+      "actors_note": "One source records claude making the call; the other(s) do not record who decided. Taken as claude on the only positive evidence, not by majority.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "per-cluster-partition-regression-test",
+      "title": "Turn the per-cluster-rows-partition-the-all-row property into a regression test",
+      "date_from": "2026-05-18",
+      "date_to": null,
+      "decision": "Proposed: assert as a regression test that per-cluster rows sum exactly to the 'all' row (scenarios/tp/fp/tn/fn/crashes across all four tools).",
+      "rationale_recorded": true,
+      "rationale": "It is the strongest correctness evidence for the pivot and was not checked in the original run, where only the existence of categories was verified.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): tests/test_metrics.py:78-113 pins the partition property \u2014 single-category input must emit only 'all' rows, and the multi-category case asserts per-cluster cells that exactly partition the 'all' row. Case-pinned rather than property-quantified, but the regression is covered.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:20b53f98-20"
+      ],
+      "evidence": [
+        {
+          "text": "I did *not* check this in the original run (only that categories existed); it's the strongest correctness evidence and arguably belongs as a regression test.",
+          "line": 262,
+          "file": "2026-05-18_20b53f98.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/metrics.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "r2-outcome-weak-yes",
+      "title": "Record R2's per-cluster result as weak-yes, not statistically defensible",
+      "date_from": "2026-05-18",
+      "date_to": null,
+      "decision": "The R2 answer is recorded as weak-yes: the direction is consistent with the routing hypotheses (Spork's best cluster is INTRA_BODY, F1 0.88) but per-cluster n is 4\u201318, so R2 informs but does not by itself justify a future S2/W5 routing elif \u2014 a routing cycle still needs S3/W3 evidence at adequate n.",
+      "rationale_recorded": true,
+      "rationale": "Per-cluster n of 4\u201318 is far below the Wilson-CI bar set in \u00a72, so the signal cannot carry a routing justification on its own.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "Tier C framing that a 'Yes' from R2 justifies adding W5/S2 elifs in a follow-up cycle"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-scope-tier-options-14"
+      ],
+      "evidence": [
+        {
+          "text": "performance on this dataset?\"*: **weak-yes, not statistically defensible.** The",
+          "line": 36,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        },
+        {
+          "text": "*informs* but does not by itself *justify* a future S2/W5 elif. A routing cycle",
+          "line": 41,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        }
+      ],
+      "artifacts": [
+        "tools/rm2_tag.py",
+        "src/evaluation/categorizer.py",
+        "reports/results.csv",
+        "ISSUES.md #3",
+        "ISSUES.md #23"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "none-cluster-recall-blindspot",
+      "title": "Accept that NONE absorbs RM2 recall failures and measure the gap with a dual-mode F-harness",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-06",
+      "decision": "The design accepts that \"no refactoring found\" is indistinguishable from \"RM2 missed it\", so the NONE cluster silently absorbs RM2's recall failures; the only way to measure it is dual-mode tagging. The measurement harness tools/rm2_fharness.py runs RM2 twice per scenario \u2014 once on single-file directories holding base/ours content at the scenario's file_path, once on full project trees materialised via git worktree at the merge-base and ours-side parent SHAs \u2014 and diffs the refactoring-type sets, with the project-level set filtered to refactorings touching the scenario's file_path before comparison. The unfiltered 26.1% result is discarded (the unfiltered set kept per row as proj_full), and the filtered n=10 recall is restated as 66.7% (was 75.0% under RM 3.0.13), still inside the 50\u201380% Path D bracket.",
+      "rationale_recorded": true,
+      "rationale": "RM2's recall is below 100% and the file-level pipeline has no other signal for a missed detection. At merge time the driver only sees the merging file, so the apples-to-apples question is whether file-level recall matches project-level for refactorings in THIS file; the unfiltered measurement conflates whole-project refactoring volume with single-file recall. The 75.0%\u219266.7% restatement follows from re-measuring under the 2.4.0 pin, whose detector roster differs from 3.0.13.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-19",
+        "preA:pre-rm2-integration-recon-08",
+        "preA:pre-rm2-integration-recon-09",
+        "preA:pre-commits-25"
+      ],
+      "evidence": [
+        {
+          "text": "**Caveat:** \"no refactoring found\" is *indistinguishable from* \"RM2 missed it\" (recall <100%). The `NONE` cluster silently absorbs RM2's recall failures.",
+          "line": 79,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "An earlier (unfiltered) measurement gave 26.1% \u2014 discarded because it conflates whole-project refactoring volume with single-file recall.",
+          "line": 71,
+          "file": "2026-05-05_pre-rm2-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/rm2_fharness.py",
+        "docs/plans/rm2-recon-samples/fharness-10.json",
+        "5e687ce"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "version-comparison-reproducibility",
+      "title": "Record the exact command per version-comparison finding and recover old numbers from git history",
+      "date_from": "2026-05-06",
+      "date_to": null,
+      "decision": "Every empirical claim in the RM2-vs-RM3 comparison document carries its provenance command \u2014 javap -v for bytecode version, ls/du/docker images for sizes, RefactoringMiner -h for CLI flags, diffed javap -classpath output for API surface, per-scenario `types` comparison for detector roster, diff against committed JSON for output format, and manual date-bracketed docker runs (3 runs after warm-up) for latency. The RM 3.0.13 side of the detector-roster comparison is sourced from the prior committed fharness-10.json at revision 1f76a00 rather than re-run, with regeneration instructions documented for anyone needing fresh 3.0.13 numbers.",
+      "rationale_recorded": true,
+      "rationale": "Stated explicitly as being \"For reproducibility\"; the F-harness was executed once, on RM 2.4.0, during the rollback session, so the 3.0.13 numbers were not re-measured.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preB:pre-rm2-vs-rm3-differences-11",
+        "preA:pre-rm2-vs-rm3-differences-11"
+      ],
+      "evidence": [
+        {
+          "text": "For reproducibility:",
+          "line": 216,
+          "file": "2026-05-06_pre-rm2-vs-rm3-differences.txt"
+        },
+        {
+          "text": "The F-harness was run once during the rollback session on RM 2.4.0; the 3.0.13 numbers were not re-measured here.",
+          "line": 222,
+          "file": "2026-05-06_pre-rm2-vs-rm3-differences.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/rm2-vs-rm3-differences.md",
+        "1f76a00",
+        "docs/plans/rm2-recon-samples/fharness-10.json"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "rm2-recall-revised-at-n50",
+      "title": "Revise file-level RM2 recall from 66.7% at n=10 to 90.7% at n=50",
+      "date_from": "2026-07-03",
+      "date_to": "2026-07-18",
+      "decision": "The recall-delta analysis computes per-side and pooled recall (file-level detected types / project-level detected types) with Wilson 95% CIs plus the cluster-assignment impact, and restates file-level RM2 recall as 90.7% [83.8, 94.9] pooled at n=50 (98/108; ours 81.6%, theirs 98.3%), superseding R0's 66.7% point estimate at n=10. File-level detections are a strict subset of project-level (0 hallucinations) and the residual routing-visible miss is a false-NONE of ~2% [0.4, 10.5] that fails safe to conservative git.",
+      "rationale_recorded": true,
+      "rationale": "The n=10 sample's sole gap-driver (ab0oo_javaprslib, 4 cross-file refactorings) reproduces exactly in the larger run \u2014 it was the extreme, not the norm; the larger measurement confirmed the direction but corrected the magnitude roughly 4\u00d7, and the residual gap fails safe.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "file-level RM2 recall 66.7% at n=10 (R0 recon)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "b:7b3b2669-07",
+        "a:dc3bc182-sub-sub-agent-ab4c4f-08"
+      ],
+      "evidence": [
+        {
+          "text": "3. Compute per-side and pooled recall delta (file-level detected types /",
+          "line": 30,
+          "file": "2026-07-03_7b3b2669.txt"
+        },
+        {
+          "text": "R0's pessimistic n=10 point estimate (66.7%) tightened to 90.7% at n=50 \u2014 direction confirmed, magnitude corrected ~4\u00d7, and the residual gap fails safe.",
+          "line": 73,
+          "file": "2026-07-18_dc3bc182_sub-agent-ab4c4f.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/rm2_recall_delta.py",
+        "reports_rm2_recall/FINDINGS.md",
+        "ISSUES.md #26"
+      ],
+      "actors": "joint",
+      "actors_note": "The measurement design is recorded as Ali's instruction; the revised finding is Claude's (recorded unclear in the audit source).",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "rm2-fitness-checks-deferred",
+      "title": "Benchmark RM2 on isolated scenario files, but skip replicating its published oracle numbers",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "Before committing to RM 2.0, benchmark its detection quality on n=50 isolated Schesch-style scenario files rather than assuming project-level performance carries over; reproducing RM2's published 99.6% precision / 94% recall against its own ~538-commit oracle is treated as an optional ~1\u20132h sanity check, skipped unless the F harness produces unexpected results.",
+      "rationale_recorded": true,
+      "rationale": "RM was designed for full-project analysis, so on isolated scenario files detection quality may drop \u2014 that is the question worth measuring. The oracle replication's only purpose is confirming the install isn't broken.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): both halves resolved as specified \u2014 the scenario-file benchmark exists (tools/rm2_fharness.py; the recall question was answered at n=50 in reports_rm2_recall/), and the published-oracle replication was skipped exactly as the plan allowed (no surprise from the F harness; no replication artifact exists).",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-15",
+        "preA:pre-tool-evaluation-findings-10"
+      ],
+      "evidence": [
+        {
+          "text": "RM was designed for full-project analysis. On isolated scenario files (Schesch dataset style), detection quality may drop. Benchmark on n=50 before committing.",
+          "line": 168,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        },
+        {
+          "text": "Reproduces the published 99.6% precision / 94% recall \u2014 confirms install isn't broken. Skip unless F harness produces unexpected results.",
+          "line": 141,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/rm2_fharness.py"
+      ],
+      "actors": "claude",
+      "actors_note": "One source records unclear, one claude; both are recommendations in Claude-authored plan text.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "cite-upstream-mergiraf-numbers",
+      "title": "Cite upstream's published Mergiraf numbers as free credibility and check its test-suite ground truth",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-11",
+      "decision": "Mergiraf plan Phase 0 must verify whether Schesch's upstream AST-Merging-Evaluation has already published Mergiraf numbers and whether adopting upstream's test-suite ground truth is feasible for this thesis; the numbers computed from upstream's results/combined/result_adjusted.csv (n=5971: 57.9% Tests_passed / 5.6% Tests_failed / 36.5% Merge_failed) are then cited directly as M3 option 3i, marked unambiguously free since M0 already captured them.",
+      "rationale_recorded": true,
+      "rationale": "It is free credibility \u2014 the numbers come from the same code that produced upstream's published results, at no additional cost \u2014 and adopting upstream's test-suite ground truth would retire ISSUES #2 by construction while potentially saving Phase 4 work. Mergiraf's 5.6% silent-error rate is the headline number justifying a semantic-conflict detection layer downstream of any merge tool, including Mergiraf itself.",
+      "status": "proposed",
+      "status_note": "S12 (2026-07-26): half done, half pending \u2014 Phase 0 verified and captured upstream's numbers (the recon doc records n=5971: 3456/335/2180), but the 3i citation appears in no report or thesis text (no draft exists; reports/ carries only the project's own numbers). Settled only when the thesis cites or declines to cite them.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-tool-evaluation-findings-15",
+        "preA:pre-mergiraf-integration-recon-03"
+      ],
+      "evidence": [
+        {
+          "text": "**Cite upstream's Mergiraf numbers directly** under M3 option 3i. This is free credibility",
+          "line": 133,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        },
+        {
+          "text": "Mergiraf's silent-error rate (5.6%) is the headline number that justifies a semantic-conflict detection layer downstream of any merge tool, including Mergiraf itself.",
+          "line": 151,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "results/combined/result_adjusted.csv",
+        "docs/plans/mergiraf-integration.md",
+        "merge-tool-comparison/ISSUES.md #2"
+      ],
+      "actors": "claude",
+      "actors_note": "One source records claude, one unclear; both sit in Claude-authored plan text.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "extra-report-pivots-proposed",
+      "title": "Add a multi-criteria FP matrix and a separate granularity-axis pivot to the report",
+      "date_from": "2026-04-21",
+      "date_to": "2026-04-25",
+      "decision": "Two report artefacts are proposed on top of the primary comparison: multi-criteria reporting (3h), where classify_result emits a label per criterion \u2014 textual, formatter-equivalent, token- or AST-equivalent, compiles, passes-tests \u2014 and report.py renders the matrix; and a dedicated granularity-axis pivot reports/granularity-axis.{csv,tex} (scenarios \u00d7 tools, coloured by outcome, focused on disagreement cases and segmented by RM2 cluster if R1 has landed), regenerable via `make all`, with results.csv still carrying the Weave row.",
+      "rationale_recorded": true,
+      "rationale": "Showing the FP rate under multiple criteria is itself a thesis result \u2014 the report can say \"under criterion X, Spork's FP rate is 42; under Y, it's 7\" and let the reader pick \u2014 and 3h adds columns rather than replacing the comparator. The thesis claim is about the granularity axis rather than about Weave specifically, so a separate pivot makes the axis visible as a thesis artefact.",
+      "status": "abandoned",
+      "status_note": "S12 (2026-07-26): neither artifact was ever built \u2014 no reports/granularity-axis.csv, no per-criterion columns in report.py or comparator.py. 3h's deferral was recorded by the adopted Tier-C scope decision; the comparator results have been frozen since Tier E. Dropped without a ruling.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-11",
+        "preA:pre-weave-integration-17"
+      ],
+      "evidence": [
+        {
+          "text": "Add **3h** to the report regardless of primary comparator \u2014 showing FP rate under multiple criteria *is* a thesis result.",
+          "line": 123,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "A separate pivot makes the axis visible as a thesis artefact.",
+          "line": 268,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/evaluation/comparator.py",
+        "merge-tool-comparison/src/evaluation/report.py",
+        "reports/granularity-axis.csv"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "rm2-output-shape-probe-test",
+      "title": "Pin the RM2 output-shape contract with an image-gated shape-probe test",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "Add test_integration_rename_class_shape_probe, an image-gated test that runs real RM2 and asserts the codeElement is FQN-shaped and that _extract_identifier returns the bare class name.",
+      "rationale_recorded": true,
+      "rationale": "The test will fire if a future RM2 upgrade changes the shape, preventing silent regression.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preB:pre-commits-61"
+      ],
+      "evidence": [
+        {
+          "text": "- New `test_integration_rename_class_shape_probe` \u2014 image-gated. Runs",
+          "line": 1046,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "tests/test_rename_conflict.py"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "mergiraf-fallback-marker-detection",
+      "title": "Detect Mergiraf's fallback-to-markers by counting conflict markers as spork.py does",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "The classifier must detect Mergiraf's fallback-to-conflict-markers behaviour using the same logic as spork.py:68 \u2014 counting `^<<<<<<<`.",
+      "rationale_recorded": true,
+      "rationale": "Mergiraf falls back to conflict markers when structural resolution is uncertain, and that behaviour must be detected by the classifier; the logic is identical to the existing Spork adapter.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): implemented exactly \u2014 src/tools/mergiraf.py:20-21 classifies 'rc 0 or 1 + no <<<<<<< -> CLEAN; rc 0 or 1 + <<<<<<< -> CONFLICT', the spork.py-style marker detection this entry required.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preB:pre-tool-evaluation-findings-04"
+      ],
+      "evidence": [
+        {
+          "text": "Fallback-to-markers must be detected by the classifier; identical logic to [`spork.py:68`](../../merge-tool-comparison/src/tools/spork.py) (count `^<<<<<<<`).",
+          "line": 54,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/tools/spork.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "canonical-oracle-evaluation-only",
+      "title": "The four-tier canonical oracle is an evaluation-only scoring device applied uniformly to all tools",
+      "date_from": "2026-05-26",
+      "date_to": "2026-07-25",
+      "decision": "contents_match's cumulative canonicalization pipeline \u2014 whitespace, gjf Docker roundtrip, Tier C's 5 tree-sitter transforms, Tier D's 6 further AST/token transforms, Tier E's 11 phases, with MERGE_COMPARATOR_AST_NORMALIZE defaulting on \u2014 replaces naive normalization and is applied identically to all six tools, inside the comparator only. The driver decides clean-vs-conflict purely by conflict markers / exit code and applies no normalization. The oracle is therefore textual/AST equality after the normalizer, not compilation or test execution, and developer resolutions are assumed correct and canonical (unmitigated). The FP-inflation figure for naive textual oracles on AST-reforming tools is stated as ~4\u00d7 (Spork 42\u219211), replacing an earlier ~30\u00d7 characterisation of the same change.",
+      "rationale_recorded": true,
+      "rationale": "Naive text comparison systematically inflates the FP rate of AST-reforming tools (Spork TP 1 / FP 42 under naive normalization), conflating \"textually different but semantically identical\" with \"silently wrong\", so a shared canonicalization oracle was needed to separate measurement artifact from intrinsic tool defect. The comparator has ground truth \u2014 the developer's resolution \u2014 and must avoid scoring reformatting as a wrong merge, while the driver has nothing to compare against at merge time, so there is nothing to normalize-and-compare. Uniform application also answers the objection that Spork looks bad because normalization is not applied to it: normalization benefits Spork most (25 FP recovered) and Mergiraf still dominates.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "naive normalization (strip trailing whitespace + line endings only)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-27",
+        "a:dc3bc182-sub-sub-agent-ab4c4f-01",
+        "a:dc3bc182-sub-sub-agent-a74c7a-07",
+        "a:dc3bc182-39"
+      ],
+      "evidence": [
+        {
+          "text": "So the AST normalizer is a **scoring device**, not a merge step.",
+          "line": 1327,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "naive text comparison **systematically inflates the FP rate of AST-reforming tools**, conflating \"textually different but semantically identical\" with \"silently wrong.\"",
+          "line": 55,
+          "file": "2026-07-18_dc3bc182_sub-agent-ab4c4f.txt"
+        }
+      ],
+      "artifacts": [
+        "src/evaluation/comparator.py",
+        "semantic_merge_driver/core/backends/mergiraf_backend.py",
+        "ISSUES.md #2",
+        "reports/results.csv",
+        "THREATS_TO_VALIDITY.md"
+      ],
+      "actors": "claude",
+      "actors_note": "Two sources record unclear (audit sub-agent findings) and two claude; no Ali decision is recorded.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "test-suite-label-truer-oracle",
+      "title": "Cross-tab comparator FPs against Schesch test labels and treat the test label as the truer oracle",
+      "date_from": "2026-05-26",
+      "date_to": "2026-07-18",
+      "decision": "FP diagnosis re-classifies already-stored tool outputs with normalization off and reports every expansion run at both normalization levels; for each scenario the stored spork.json output is then re-classified under full normalization and crossed with the Schesch test-suite label, splitting FPs into \"passes Schesch tests but \u2260 dev resolution\" (valid alternative merge / comparator gap) and \"fails Schesch tests\" (genuine wrong merge) \u2014 only 16/60 (27%) genuinely wrong. Where exact-dev-match scoring and the test label disagree, the test-suite label is treated as the truer oracle.",
+      "rationale_recorded": true,
+      "rationale": "Exact dev-resolution match overstates errors, and the test-suite label provides an independent ground truth, so the cross-tab is what separates Spork's genuine errors from comparator artefacts. Normalization happens in the report step (re-reading stored tool outputs), so the raw/normalized split needs no tool re-run and no Docker contention with the running clone job. An irreducible floor of residuals remains after canonicalization \u2014 including gjf parse-fails and genuine content disagreements \u2014 and several exact-dev-match \"FPs\" actually pass tests.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-20",
+        "a:e1df1610-21",
+        "a:dc3bc182-sub-sub-agent-ab4c4f-02"
+      ],
+      "evidence": [
+        {
+          "text": "the per-scenario cross-tab that separates Spork's *genuine* errors from comparator-artefacts (does the hard-residual FP fall on Schesch test-failures or test-passes?)",
+          "line": 1142,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "an irreducible floor remains (11 Spork residuals, incl. gjf parse-fails and genuine content disagreements), which is *why* the project ultimately treats the Schesch test-suite label as the truer oracle: several exact-dev-match \"FPs\" actually pass tests (valid alternative merges).",
+          "line": 55,
+          "file": "2026-07-18_dc3bc182_sub-agent-ab4c4f.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_spork/",
+        "merge-tool-comparison/reports_spork_raw/",
+        "merge-tool-comparison/data/results_spork/",
+        "reports/results.csv"
+      ],
+      "actors": "claude",
+      "actors_note": "One source records claude making the call; the other(s) do not record who decided. Taken as claude on the only positive evidence, not by majority.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "four-to-six-tool-pivot",
+      "title": "Pivot the comparison from four academic tools to six centred on the driver's own backends",
+      "date_from": "2026-07-18",
+      "date_to": null,
+      "decision": "The tool comparison moves from the legacy 4-tool academic table (git, jdime, mastery, spork; no Wilson CIs) to a six-tool table adding Mergiraf and Weave \u2014 the driver's own backends \u2014 with all six adapters enabled in config/tools.yaml and the old table kept as reports/results_4tool_legacy.csv.",
+      "rationale_recorded": true,
+      "rationale": "Two of the four original academic tools give no usable signal: JDime crashes on 96% of cases in this harness and Mastery is intrinsically lossy (drops GPL headers, Javadoc), so the pivot was forced by the data.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "4-tool academic comparison (reports/results_4tool_legacy.csv)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:dc3bc182-sub-sub-agent-ab4c4f-09"
+      ],
+      "evidence": [
+        {
+          "text": "so the 4-tool\u21926-tool pivot toward the driver's own backends was itself forced by the data.",
+          "line": 76,
+          "file": "2026-07-18_dc3bc182_sub-agent-ab4c4f.txt"
+        }
+      ],
+      "artifacts": [
+        "config/tools.yaml",
+        "src/tools/",
+        "reports/results_4tool_legacy.csv"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "harness-reuse-and-cache-keys",
+      "title": "Reuse the driver-faithful harness and key every cache on the driver commit",
+      "date_from": "2026-06-11",
+      "date_to": "2026-07-03",
+      "decision": "The scoring harness detect_validate.py is built with driver-faithful invocation of the frozen strategies, Mergiraf-reproduced merges, fail-closed UNANALYZABLE verdicts, a resumable cache keyed on the driver commit, per-merge any-file-flag aggregation, Wilson CIs and G0/G1 gate enforcement; later work extends it (adding a per-category report dimension) rather than writing new harnesses. whole_driver_eval.py's cache key is changed from `{cfg}::{sid}` to include the driver commit for the two subprocess configs, and for the post-fix detector run the four unchanged detectors' cached verdicts are carried across to the new commit key exactly while only the RM2RenameConflict lane is recomputed, with a fresh G1 sanity gate each round.",
+      "rationale_recorded": true,
+      "rationale": "The commit-keyed cache is what makes runs resumable and the frozen numbers auditable. Without the commit in whole_driver_eval's key, a post-flip driver-auto run would silently return pre-flip results for all 471 files with no error or warning, leading to the wrong conclusion \u2014 the code fix removes a \"remember to clear the cache\" step from a trap that fails silently, and detect_validate already keyed by commit. Carrying the four untouched detectors across is exact because their code is identical, and it avoids injecting Joern's margin nondeterminism, cutting the run from ~9h to ~1h.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:bfc672b4-41",
+        "a:8740dbd3-02",
+        "a:fb0fa5c5-25",
+        "b:fb0fa5c5-54"
+      ],
+      "evidence": [
+        {
+          "text": "driver-faithful invocation of the four v1 strategies, Mergiraf-reproduced merges, fail-closed UNANALYZABLE, resumable cache keyed on driver commit `2eed882`, per-merge any-file-flag aggregation, Wilson CIs, G0/G1 gates",
+          "line": 51,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "The code fix is better because it removes the \"remember to\" from a trap that fails silently.",
+          "line": 1396,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/detect_validate.py",
+        "tools/whole_driver_eval.py",
+        "9e25b4e"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split: the harness reuse mandate is recorded as Ali's, the cache-key fixes as Claude's.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "fail-closed-reported-separately",
+      "title": "Report fail-closed blocks and defect-shaped control blocks in separate decomposition rows",
+      "date_from": "2026-06-11",
+      "date_to": null,
+      "decision": "The single RM2 UNANALYZABLE crash counts as blocked but is reported in R2's fail-closed decomposition row, separated from genuine detector flags; the Stage-C report likewise decomposes control-side blocks by shape, quantifying how much of R1 the `old_name(`-pattern defect accounts for, without touching the frozen detectors.",
+      "rationale_recorded": true,
+      "rationale": "Separating the fail-closed component means it cannot inflate the headline detection claim \u2014 plan \u00a71 anticipated exactly this \u2014 and the old_name( pattern is mechanically identifiable in the recorded issues, so its contribution can be measured without modifying frozen code.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-30",
+        "a:bfc672b4-29"
+      ],
+      "evidence": [
+        {
+          "text": "that lands in R2's `fail-closed` decomposition row \u2014 reported separately from genuine detector flags, so it can't inflate the headline detection claim",
+          "line": 556,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "the report will decompose control blocks by shape (the `old_name(`-pattern is mechanically identifiable in the recorded issues, so I can quantify exactly how much of R1 this one bug accounts for, without touching the detectors)",
+          "line": 603,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detection/full/FINDINGS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "whole-merge-labels-noisy-oracle",
+      "title": "Whole-merge test labels are a noisy per-file oracle; judge recall against attributable mass",
+      "date_from": "2026-06-11",
+      "date_to": "2026-07-24",
+      "decision": "The file-level divergence asymmetry (5/30 positives vs 0 controls in the pilot; 16/180 vs 2/195 at scale) is recorded as evidence that whole-merge test labels are a noisy per-file oracle \u2014 a methods-chapter point and a constraint on future experiment design, not a code change. Consequently the 43.3% attributed share of the taxonomy census is treated as the honest ceiling for any file-local detection layer on this population, and detector recall is judged against attributable mass rather than against all 275 units.",
+      "rationale_recorded": true,
+      "rationale": "Positive merges dissolve into file-level Mergiraf conflicts despite the whole-merge \"clean\" label, and the asymmetry against controls replicates three times, echoing the #28 lesson. The Tests_failed signal is merge-level while the coder only sees intersecting Java files, so the escape mass is a property of the evidence, not a labeling failure \u2014 and the ~43% split holds in both strata and across truncation levels.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-39",
+        "a:16127d04-04"
+      ],
+      "evidence": [
+        {
+          "text": "the 16-vs-2 file-level-divergence asymmetry is now a three-times-replicated argument that whole-merge test labels are a noisy per-file oracle \u2014 that's a methods-chapter point and a constraint on any future experiment design, not a code change",
+          "line": 685,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "the 43.3% is the honest ceiling for what any file-local detection layer can address on this population \u2014 so detector recall gets judged against attributable mass, not against all 275",
+          "line": 47,
+          "file": "2026-07-24_16127d04.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detection/full/FINDINGS.md",
+        "reports_taxonomy/FINDINGS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "p2-five-config-cost-table",
+      "title": "Scope P2 as one cost-model table over five configs, reusing Stage C as the driver-mergiraf arm",
+      "date_from": "2026-06-18",
+      "date_to": "2026-06-24",
+      "decision": "P2 \u2014 the whole-driver end-to-end evaluation against the cost model \u2014 is named as the next experiment and scoped as a single unified cost-model table over five configurations (bare-git, bare-mergiraf, driver-git, driver-mergiraf, driver-auto) on P1's 164 positives + 193 controls, reporting the three-outcome decomposition per config, the bare\u2192driver cost delta, Wilson CIs and latency with the native-amd64 caveat. The existing Stage C detection run is reused as the driver-mergiraf arm, so only driver-git and driver-auto need fresh Docker compute plus two fast bare baselines. The delta attribution line is corrected to count all 12 merges that became non-clean, not just the 11 FP\u2192conflict cases.",
+      "rationale_recorded": true,
+      "rationale": "P2 is \"the actual three-outcome claim, never yet run\". Running the detectors over Mergiraf-merged files is exactly what SEMANTIC_MERGE_BACKEND=mergiraf does end-to-end, so re-running Stage C would duplicate ~15h of compute for identical results. The \"cost saved \u224899\" line undercounted by omitting the fail-closed crash, even though the net cost of 104, computed from real weighted cost, was already right.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "driver-mergiraf 'cost saved \u224899' (11 FP\u2192conflict only)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:12c77ea5-08",
+        "a:fb0fa5c5-01",
+        "b:fb0fa5c5-02",
+        "b:fb0fa5c5-11"
+      ],
+      "evidence": [
+        {
+          "text": "**Stage C already *is* the `driver-mergiraf` arm** (running the detectors over Mergiraf-merged files is exactly what `SEMANTIC_MERGE_BACKEND=mergiraf` does end-to-end)",
+          "line": 91,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "**P2 = one unified cost-model table across 5 configs** on P1's 164+193 corpus, with the hybrid oracle you chose.",
+          "line": 101,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "tools/whole_driver_eval.py",
+        "reports_detection/full/raw_results.json",
+        "presentation/thesis_progress_late_jun2026.pptx"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split between claude and joint; the scope was proposed by Claude and settled with Ali in the same session.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "p2-hybrid-oracle",
+      "title": "Score P2 with a hybrid oracle: test label where output matches Mergiraf, dev-match otherwise",
+      "date_from": "2026-06-24",
+      "date_to": null,
+      "decision": "P2 correctness uses a hybrid oracle \u2014 the Schesch test-suite label where the driver's output matches Mergiraf's reference output, developer-resolution matching otherwise \u2014 with the asymmetry documented as a threat.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:fb0fa5c5-03"
+      ],
+      "evidence": [
+        {
+          "text": "**Hybrid oracle.** Correctness = test-suite label where the driver's output matches Mergiraf's, developer-match otherwise \u2014 a documented asymmetry.",
+          "line": 1097,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "tools/whole_driver_eval.py",
+        "reports_whole_driver/FINDINGS.md"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "derive-post-flip-table",
+      "title": "Derive the post-flip driver-auto table from existing per-file data rather than re-running 12 h",
+      "date_from": "2026-07-02",
+      "date_to": null,
+      "decision": "Recommendation adopted at the time: obtain the post-flip driver-auto numbers by derivation (~1 h, zero compute) from the existing 471 route records plus the complete driver-git and driver-mergiraf results, keeping the measured 12 h re-run as optional confirmation.",
+      "rationale_recorded": true,
+      "rationale": "Post-flip auto is by construction \"git result if cluster=NONE, else mergiraf result\", and RM2 classification is deterministic, so the derivation is exact rather than an estimate \u2014 only latency would differ.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "move-compute-to-aws",
+      "sources": [
+        "a:fb0fa5c5-28"
+      ],
+      "evidence": [
+        {
+          "text": "Post-flip auto is *by construction* \"git result if cluster=NONE, else mergiraf result\" \u2014 so the post-flip table can be assembled exactly from existing data. RM2 classification is deterministic, so this isn't an estimate",
+          "line": 1441,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "tools/whole_driver_eval.py",
+        "reports_whole_driver/FINDINGS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "aws-canonical-never-mix",
+      "title": "Declare the AWS run the canonical scoring environment and never mix environments in a table",
+      "date_from": "2026-07-02",
+      "date_to": null,
+      "decision": "A single scoring environment is declared canonical \u2014 initially the AWS run, as the apparently more-normalized one \u2014 results scored in different environments are never mixed in one table, and THREATS records that scoring is environment-sensitive at the \u00b11-file level.",
+      "rationale_recorded": true,
+      "rationale": "Identical bare-git merge outputs scored differently locally and on AWS (TP 5/FP 126/TN 92/FN 9 vs 6/125/101/0) because contents_match's gjf normalization behaved differently; if one cited table were scored locally and another on AWS, a sharp reader could find rows that disagree.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "repaired-scoring-environment",
+      "sources": [
+        "a:fb0fa5c5-24"
+      ],
+      "evidence": [
+        {
+          "text": "**Rule that follows: pick one scoring environment as canonical (AWS \u2014 its normalization is the more complete one) and never mix.**",
+          "line": 1384,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "THREATS_TO_VALIDITY.md",
+        "reports_whole_driver/FINDINGS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "repaired-scoring-environment",
+      "title": "An arm64 gjf image had silently disabled normalization: re-score everything in the repaired environment",
+      "date_from": "2026-06-24",
+      "date_to": "2026-07-22",
+      "decision": "P2 must run with Docker up for the whole run so contents_match uses the canonical oracle (gjf + AST normalization, both defaulting on), with a \"Docker-up required for the citable numbers\" reproducibility note in FINDINGS. The earlier attribution of the local/AWS scoring discrepancy to local gjf timeouts is then withdrawn: the google-java-format image had been built on Apple Silicon without --platform linux/amd64, so it exec-format-errored on x86 EC2 and contents_match silently degraded to whitespace-only \u2014 it was AWS, and P2's committed AWS scoring, that were under-normalized. The P2 cache, Job A and Job B are re-scored in the repaired instance environment (native amd64 + working gjf + AST), which becomes the definition of canonical; the re-scored pre-flip 5-config table replaces the degraded numbers as the citable pre-flip baseline with pre-flip cache entries migrated to ::843e5f5 keys. CLI-DEPLOY.md records the standing rule to platform-pin images, probe the formatter live, and validate a scoring environment by reproducing the committed canonical numbers; a local re-score verification that had \"passed\" from the wrong working directory (comparing two missing files) was redone with absolute paths and came back byte-identical. Whole-driver v1's numbers and its stated mechanism are superseded by v2 (pre-flip cost 2055\u21921925, Spork silent-wrong 64/79\u219253/79).",
+      "rationale_recorded": true,
+      "rationale": "With Docker down, contents_match silently degrades to whitespace-only normalization and the numbers shift (bare-git pos TN 101/FN 0 \u2192 92/9); the gjf-normalized numbers are the correct ones and match reports/results.csv. The gjf image was the only one in the set without the platform pin, and rebuilding it natively on the instance restored the full 3-tier pipeline. Re-scoring is cheap and loses no compute because all caches store outcomes and content rather than scores, and scoring the same P2 data in one environment makes pre- and post-flip directly comparable. The four legacy tools reproducing exactly \u2014 Spork's 32/11 being the acid test since it rides on all 21 normalization transforms \u2014 is what proved the repaired instance equalled the canonical environment. The first local diff was a false pass, not evidence.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "aws-canonical-never-mix",
+        "whole-driver v1 scoring and its stated mechanism",
+        "P2 AWS-scored pre-flip cost table as citable"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:fb0fa5c5-07",
+        "a:fb0fa5c5-32",
+        "a:fb0fa5c5-33",
+        "b:fb0fa5c5-51",
+        "a:fb0fa5c5-34",
+        "a:dc3bc182-sub-sub-agent-ab4c4f-07",
+        "a:06ec13eb-07"
+      ],
+      "evidence": [
+        {
+          "text": "The **gjf image was arm64** (built on your Mac without `--platform linux/amd64` \u2014 the only image in the set without that pin). On x86 EC2 it exec-format-errors on every call, and `contents_match` silently degrades to whitespace-only",
+          "line": 1892,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "the \"platform-pin + probe the formatter + validate scoring environments by reproducing canonical numbers\" rule in CLI-DEPLOY",
+          "line": 2037,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_whole_driver/FINDINGS.md",
+        "deploy/aws/CLI-DEPLOY.md",
+        "THREATS_TO_VALIDITY.md",
+        "ISSUES.md #27",
+        "b6ae027"
+      ],
+      "actors": "claude",
+      "actors_note": "One source records unclear (audit sub-agent); the rest are Claude's diagnosis and remediation.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "sd5-two-arm-evaluation-design",
+      "title": "S-D5 runs a baseline arm in a new two-arm harness that refuses no-op runs",
+      "date_from": "2026-07-15",
+      "date_to": "2026-07-23",
+      "decision": "S-D5 runs two arms \u2014 a baseline arm with current lanes and the experimental flag off, plus the experimental arm \u2014 and reports *added* recall as a first-class deliverable. It must use a new two-arm harness rather than the frozen, flag-blind detect_validate.py or its cache keys, adopting ::exp1-style flag-state namespacing, wiring D1/D2 into the experimental arm explicitly, keying the verdict classifier on the \"<Lane> analysis inconclusive:\" prefix, and attributing D3-widened vs Joern findings by message prefix. detector_tune_run.py is a thin wrapper reusing Stage-C conventions (same mergiraf image, same CLEAN/FLAG/UNANALYZABLE mapping, merge reproductions cached by image and detector verdicts by driver commit), sets the experimental env var before importing the lane, and refuses to score at all unless the lane first FLAGs an embedded positive micro-fixture. Held-out recall is counted any-lane per unit for the citable number, with per-lane attribution reported separately; and because the two arms ran sequentially, within-arm runtime drift must be checked before the paired latency delta is cited.",
+      "rationale_recorded": true,
+      "rationale": "D3 widens existing lanes, so some held-out units in its categories would be flagged by the current lanes anyway \u2014 without a baseline run the FINDINGS cannot honestly claim *added* recall, the one number that justifies the cycle. The frozen detect_validate.py is flag-blind, so its cache keys cannot distinguish flag-ON from flag-OFF verdicts and would corrupt a default-vs-experimental comparison; reusing rather than reimplementing the Stage-C machinery keeps the numbers comparable-in-kind, and the micro-fixture precondition ensures a 0-flag run cannot silently be a no-op lane. Per-lane attribution does not matter for the citable number, which is pooled any-lane family recall, so a D2-category unit caught by the rename lane still counts. Sequential arm order means EBS lazy-restore and RAM caches favour the second arm, so the latency delta could be confounded.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "single-arm S-D5 evaluation design"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-31",
+        "a:82dd479f-17",
+        "a:f0d70a59-08",
+        "b:f0d70a59-08",
+        "a:acf7e1d0-16",
+        "a:68c24033-15"
+      ],
+      "evidence": [
+        {
+          "text": "S-D5 now runs a **baseline arm** (current lanes, flag off) and the **experimental arm**, reporting *added recall* as a first-class deliverable.",
+          "line": 1805,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "it refuses to score at all unless the lane FLAGs an embedded positive micro-fixture first \u2014 a 0-flag run can't silently be a no-op lane",
+          "line": 147,
+          "file": "2026-07-16_f0d70a59.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md \u00a79",
+        "merge-tool-comparison/tools/detector_tune_run.py",
+        "merge-tool-comparison/tools/detect_validate.py",
+        "merge-tool-comparison/reports_detectors/FINDINGS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "detector-fp-adjudication-test",
+      "title": "A flag is a detector FP only if its claim about the scored artifact is false",
+      "date_from": "2026-07-22",
+      "date_to": null,
+      "decision": "The standing adjudication test is restated and applied: a flag counts as a DETECTOR-FP only when the claim about the scored artifact is false \u2014 the name resolves, the uses are in comments or strings, or the breakage pre-existed in theirs. A stale `Tests_passed` label disagreeing with the flag does not make it an FP.",
+      "rationale_recorded": true,
+      "rationale": "D1's claim is verifiably true of the scored file (javac rejects it), and calling it an FP would require D1 to stay silent on a file that provably cannot compile, inverting the lane's purpose; the version-skew problem lives in the corpus and its labels, recorded in THREATS, not in the lane.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:06ec13eb-10"
+      ],
+      "evidence": [
+        {
+          "text": "**The FP test this program has used since Stage-C \u00a74.6 is: \"is the detector's claim about the scored artifact true?\"**",
+          "line": 208,
+          "file": "2026-07-22_06ec13eb.txt"
+        },
+        {
+          "text": "if we called it DETECTOR-FP, the required \"fix\" would be to make D1 stay silent on a file that provably can't compile because a stale label disagrees \u2014 which inverts what the lane is for.",
+          "line": 212,
+          "file": "2026-07-22_06ec13eb.txt"
+        }
+      ],
+      "artifacts": [
+        "Stage-C \u00a74.6",
+        "THREATS_TO_VALIDITY.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "error-prone-zero-fp-precedent",
+      "title": "Cite Error Prone's default-on ERROR criteria as precedent for the lane's zero-FP bar",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Use Error Prone's published criteria for default-on ERROR checks \u2014 \"the bug pattern should have no false positives\" \u2014 as the citable external precedent justifying the stale-reference lane's zero-false-positive criterion, while treating Error Prone itself as non-applicable at the mechanism level.",
+      "rationale_recorded": true,
+      "rationale": "Error Prone runs inside javac after attribution, so an unresolved name is a compile error before any check fires and it can have no dangling-reference check; what transfers is not the mechanism but its published FP bar.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): formally adopted into the review record \u2014 ISSUES.md #31 (c) reads 'Error Prone (javac-resolved only; zero-FP ERROR-check policy = citable precedent)', with the comparison in reports_detectors/tune_d3/review_oss_comparison.md. The thesis text does not exist yet; the precedent is on the record it would cite.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-sub-sub-agent-aadfd1-02"
+      ],
+      "evidence": [
+        {
+          "text": "its published bar for default-on ERROR checks \u2014 \"the bug pattern should have no false positives; in essentially no cases should the detected code actually be working as intended\" \u2014 is direct precedent for the lane's zero-FP criterion.",
+          "line": 27,
+          "file": "2026-07-16_82dd479f_sub-agent-aadfd1.txt"
+        }
+      ],
+      "artifacts": [
+        "https://errorprone.info/docs/criteria"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "verdict-substring-collision-nonblocking",
+      "title": "Classify the verdict_of \"inconclusive\" substring collision as harness-only, not blocking",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "The finding that verdict_of distinguishes fail-closed blocks from genuine flags purely by the substring \"inconclusive\" in the issue message \u2014 while SignatureStaleCall interpolates raw Java identifiers and full declaration strings \u2014 is reported as a candidate finding but explicitly not treated as a blocking defect.",
+      "rationale_recorded": true,
+      "rationale": "Impact is harness-only: driver.py uses result.is_clean directly so the merge is still rejected, and in detector_tune_run.py both buckets fail the gate so the FAIL verdict is preserved and only the reported reason is wrong; the same fragility already exists in RM2RenameConflict and ImportPruneUsage messages.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the non-blocking disposition was enacted and recorded \u2014 detect_validate.py:227-234 still keys on the 'inconclusive' substring (the frozen Stage-C instrument, deliberately untouched), and ISSUES.md #31 records the non-fix with its reason plus the S-D5 guidance that the new harness key on a message prefix.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:acf7e1d0-sub-sub-agent-a5d889-02"
+      ],
+      "evidence": [
+        {
+          "text": "Impact is harness-only (driver.py uses `result.is_clean` directly, so the merge is still rejected)",
+          "line": 49,
+          "file": "2026-07-16_acf7e1d0_sub-agent-a5d889.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/detect_validate.py:234",
+        "semantic_merge_driver/strategies/rm2_strategies/signature_stale_call.py:277-284"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "firewalled-detection-instruments",
+      "title": "Keep the four detection instruments firewalled and never blend their numbers",
+      "date_from": "2026-07-18",
+      "date_to": null,
+      "decision": "The Stage-C real-data evaluation, the spgroup external oracle, the taxonomy census and the D1/D2/D3 detector cycle are treated as four separate instruments whose results are reported separately and never pooled into a combined figure.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:dc3bc182-sub-sub-agent-a495a0-01"
+      ],
+      "evidence": [
+        {
+          "text": "Four deliberately firewalled instruments (never blended): Stage-C real-data eval, the spgroup external oracle, the taxonomy census, and the in-flight D1/D2/D3 detector cycle.",
+          "line": 32,
+          "file": "2026-07-18_dc3bc182_sub-agent-a495a0.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detection/",
+        "merge-tool-comparison/reports_taxonomy/FINDINGS.md",
+        "merge-tool-comparison/reports_detectors/"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "per-corpus-base-rates",
+      "title": "Always present base rates per corpus with the selection predicate attached",
+      "date_from": "2026-07-08",
+      "date_to": null,
+      "decision": "Never report a single pooled \"in the wild\" base-rate number; always present base rates per corpus with the mining/selection predicate stated alongside.",
+      "rationale_recorded": true,
+      "rationale": "The two corpora disagree about the dominant category because of their mining predicates, and that disagreement is itself informative and honest.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): enacted throughout the reporting \u2014 reports_taxonomy/FINDINGS.md states its population predicate in the header ('all Schesch rows with mergiraf == Tests_failed and a Java diff \u2014 census n = 308') and opens with the never-blend banner; STATUS.md reports Stage-C, Phase-2b and census rates separately, each with its predicate; no pooled 'in the wild' number appears anywhere.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-09"
+      ],
+      "evidence": [
+        {
+          "text": "**Always present base rates per-corpus with the selection predicate attached** \u2014 never a single pooled \"in the wild\" number.",
+          "line": 616,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/FINDINGS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "spgroup-external-oracle",
+      "title": "Adopt spgroup/mergedataset as the external oracle, scored on the developer's shipped merge",
+      "date_from": "2026-07-04",
+      "date_to": "2026-07-17",
+      "decision": "Phase 2b uses spgroup/mergedataset (UFPE, pinned 04a18017, GPL-3.0) sample-semantic-conflicts.csv as the external benchmark: 17 positives and 66 materializable negatives at method-declaration granularity with in-repo {base,left,right,merge}.java quadruples. detect_validate.py gains `--merged-source developer` as the primary oracle-faithful arm, scoring the developer's shipped merge.java with Mergiraf not used at all for this population, and the Mergiraf re-merge arm runs second as the deployment view; for other populations Mergiraf reproduces the merged file and textual conflicts are marked DIVERGED and skipped. Expectations are anchored on spgroup's own purpose-built OA static analysis (recall 0.28 / precision 0.47, 9 FPs) on the same dataset, and the definitional gap is pre-registered: the broad behavioral-interference label maps to #1\u00d76, #2\u00d76, #3\u00d71, #6\u00d71, none-of-7\u00d73 with zero units for #4/#5/#7.",
+      "rationale_recorded": true,
+      "rationale": "The source quadruples ship in-repo so all 17/17 positives and 66/74 negatives materialize without cloning original repos, and merge.java is the developer's real merge \u2014 it is the ground-truth family behind all their papers. Scoring the shipped merge is oracle-faithful (the phase2b pattern), while the Mergiraf arm answers the deployment question of how many units even survive re-merge as silent merges. Because their own purpose-built analysis scores 0.28 recall, nobody should expect big recall numbers here; and because the label taxonomy does not align with the 7 categories, per-category recall for covered categories will be point estimates and the evidential weight sits in the 66-negative FP arm and the single genuine #3-family unit.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:8740dbd3-08",
+        "a:8740dbd3-24",
+        "a:8740dbd3-11",
+        "a:8740dbd3-12",
+        "a:2e726dc0-06"
+      ],
+      "evidence": [
+        {
+          "text": "**Source quadruples ship in-repo** \u2014 `{base,left,right,merge}.java` per unit, no original-repo cloning.",
+          "line": 222,
+          "file": "2026-07-03_8740dbd3.txt"
+        },
+        {
+          "text": "Calibration anchor: their own purpose-built OA static analysis scores **recall 0.28 / precision 0.47** on this same dataset \u2014 nobody should expect big recall numbers here.",
+          "line": 223,
+          "file": "2026-07-03_8740dbd3.txt"
+        }
+      ],
+      "artifacts": [
+        "research/outputs/phase2b-recon.md",
+        "merge-tool-comparison/tools/materialize_phase2b.py",
+        "merge-tool-comparison/tools/detect_validate.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "three-phase-inductive-coding",
+      "title": "Three-phase inductive coding with a javac compile delta, truncation ladder and parent-side rule",
+      "date_from": "2026-07-08",
+      "date_to": null,
+      "decision": "The taxonomy is derived in three phases: Phase 1 per-unit open coding with structured extraction and open-vocabulary tags; Phase 2 consolidation into a codebook with an explicit granularity rule (mechanism, not symptom) and label arity fixed up front; Phase 3 closed coding of all units with the frozen codebook, reporting pass-1-vs-pass-2 label stability. Per-unit inputs are the per-side diffs, a windowed merged file, the merged-vs-dev diff and a javac compile-delta (single-file javac on each merged and dev file, failures classified PARSE/RESOLVE/OTHER, only the merged-minus-dev delta entering the prompt, raw results to reports_taxonomy/compile_checks.json with the image digest in the manifest), sized by a measured T0\u2013T3 truncation ladder capped at 30k tokens. The prompt requires that the mechanism be constructible from the parent-side interaction alone with the merged-vs-dev diff as corroboration only (rule R2) and that any attributed verdict carry at least two verbatim quotes. The brief's requirement to supply failing-test names is dropped, the dev diff taking its place. No sampling-parameter control is used: run-to-run variance is characterised solely by the pass-1-vs-pass-2 stability metric.",
+      "rationale_recorded": true,
+      "rationale": "The dev-diff is demoted to corroborating evidence by rule R2 to contain anchoring bias. Failing-test names are unavailable because the Schesch table carries no per-test traces. Sampling parameters do not exist on the chosen models, so variance must be measured by the stability metric rather than by temperature.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "brief requirement that per-unit inputs include failing-test names"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:cfe6365a-02",
+        "a:cfe6365a-12",
+        "a:cfe6365a-14",
+        "a:cfe6365a-16",
+        "a:92a3e464-27",
+        "a:cfe6365a-07"
+      ],
+      "evidence": [
+        {
+          "text": "the mechanism must be constructible from the parent-side interaction (dev-diff is corroboration only), and attributed verdicts need \u22652 verbatim quotes",
+          "line": 91,
+          "file": "2026-07-08_cfe6365a.txt"
+        },
+        {
+          "text": "\"failing-test names\" were replaced by the merged-vs-developer diff because the Schesch table carries no per-test traces",
+          "line": 95,
+          "file": "2026-07-08_cfe6365a.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/outputs/taxonomy-protocol.md",
+        "merge-tool-comparison/prompts_taxonomy/phase1_open_coding.md",
+        "merge-tool-comparison/prompts_taxonomy/phase1_output.schema.json",
+        "reports_taxonomy/compile_checks.json"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources split between ali (the protocol design brief) and claude (the prompt rules and substitutions); options were put and Ali set the design.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "escape-hatches-first-class",
+      "title": "Escape hatches are first-class outputs and the escape mass is a reported stratum",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-10",
+      "decision": "The Phase-1 prompt protocol includes mandatory escape hatches (none-identified / indeterminate / flaky-suspect), required evidence quotes drawn from the actual diffs, and per-side change summaries before any mechanism claim, with the 13/23 pilot precedent quoted in the prompt to make the hatches legitimate outputs. The resulting 105 escape-hatch units are reported as a first-class \"not-cleanly-merge-attributable\" stratum in FINDINGS; the codebook covers only the 60 attributed units and must not invent categories to rescue escapes, stated explicitly in the draft preamble.",
+      "rationale_recorded": true,
+      "rationale": "In the pilot only 13/23 misses were attributable to the scored files; an LLM run overnight without escape hatches will produce a confident causal story for every unit, including the unattributable ones, and plausible hallucinated mechanisms are the failure mode. The G1(iii) ruling then found the user's four raw spot-check rejects were population objections rather than mechanism hallucinations, making the escape mass a real, first-class stratum rather than a labeling failure.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:4c7b0828-12",
+        "a:cfe6365a-03",
+        "a:4c7b0828-21"
+      ],
+      "evidence": [
+        {
+          "text": "An LLM run overnight without escape hatches will produce a confident causal story for every unit, including the unattributable ones \u2014 plausible hallucinated mechanisms are the failure mode.",
+          "line": 639,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "\"not-cleanly-merge-attributable\" stratum reported in FINDINGS \u2014 do NOT\n   invent categories for them, and say so in the draft's preamble.",
+          "line": 1211,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "prompts_taxonomy/",
+        "merge-tool-comparison/prompts_taxonomy/phase1_open_coding.md",
+        "reports_taxonomy/phase2/codebook_draft.md",
+        "reports_taxonomy/FINDINGS.md"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources record claude, ali and joint; the design was Claude's recommendation, adopted and then ruled on by Ali.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "amendment-two-boundaries",
+      "title": "Clarify only the escape-hatch boundary, and not via the merged-vs-developer diff",
+      "date_from": "2026-07-11",
+      "date_to": null,
+      "decision": "Amendment 2 clarifies only the escape-hatch boundary between none-identified and indeterminate, and must not use \"merged output equals the developer's shipped resolution\" as the discriminator; the 3 named-category\u2194category disagreements are deliberately left unaddressed by rule.",
+      "rationale_recorded": true,
+      "rationale": "merged==dev is the normal case for this population \u2014 Schesch units are developer merge commits and Mergiraf reproducing them is expected (144/275, 36 of them carrying real named-category mechanisms) \u2014 so it is not a no-mechanism signal, and rule R2 forbids leaning on the dev-diff. The named-category instability is 3 idiosyncratic one-off boundary calls across three different pairs: noise, not systematic, and not fixable by one rule.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:9e4b6896-07",
+        "a:9e4b6896-09"
+      ],
+      "evidence": [
+        {
+          "text": "I explicitly did *not* key it on \"merged == developer resolution\" \u2014 that's the normal case here (144/275, 36 with real mechanisms) and R2 forbids leaning on the dev-diff.",
+          "line": 235,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "The named-category instability is just 3 idiosyncratic one-off boundary calls (three different pairs) \u2014 noise, not systematic, and not fixable by one rule.",
+          "line": 213,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/phase3/amendment2_proposal.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "s4-full-census-closed-coding",
+      "title": "Scope S4 as the full 308-merge double closed-coding census under the frozen codebook",
+      "date_from": "2026-07-11",
+      "date_to": null,
+      "decision": "Session 4 will closed-code the full census (all 308 merges, both splits) twice with the frozen codebook, evaluate G3 stability (agreement \u226580% \u2227 \u03ba\u22650.70), take Ali's reliability adjudication, and produce FINDINGS.md with base rates and Wilson CIs.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): executed as specified \u2014 reports_taxonomy/FINDINGS.md records the S4 census (2026-07-09\u219212): both splits closed-coded twice under the frozen codebook, G3 stability 82.9%/\u03ba0.788 PASS, Ali's reliability adjudication 12/12, base rates with Wilson CIs.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:6296f4f6-20"
+      ],
+      "evidence": [
+        {
+          "text": "that's Session 4: closed-code the **full census** (all 308, both splits) twice with this frozen codebook \u2192 G3 stability (agreement \u226580% \u2227 \u03ba\u22650.70) + your reliability adjudication \u2192 `FINDINGS.md` with base rates + Wilson CIs",
+          "line": 420,
+          "file": "2026-07-10_6296f4f6.txt"
+        }
+      ],
+      "artifacts": [
+        "FINDINGS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "quote-provenance-precheck",
+      "title": "Add a machine quote-provenance precheck to future closed-coding instruments",
+      "date_from": "2026-07-15",
+      "date_to": null,
+      "decision": "Recommended as an optional, not-started follow-up: a machine precheck that verifies model-supplied evidence quotes actually occur in the model's input.",
+      "rationale_recorded": true,
+      "rationale": "The fabricated-quote instance caught during adjudication is recorded in THREATS \u00a74.4.9 as the motivation.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the optional follow-up was built \u2014 the adopted quote-grading decision put a machine quote-provenance check into the spec-batch tooling (the detector-cycle instrument), and this decision-record's own pipeline enforces the same check mechanically (verify_extractions.py G-QUOTE).",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:9e4b6896-32"
+      ],
+      "evidence": [
+        {
+          "text": "One optional follow-up worth considering (not started): a machine quote-provenance precheck for future closed-coding instruments \u2014 the fabricated-quote instance you caught is recorded in THREATS \u00a74.4.9 as the motivation.",
+          "line": 1304,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [
+        "THREATS_TO_VALIDITY.md \u00a74.4.9"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "quote-grading-machine-precheck",
+      "title": "Build quote grading into the spec batch tooling as a machine precheck",
+      "date_from": "2026-07-15",
+      "date_to": null,
+      "decision": "Extracted specs must carry verbatim quotes with file+line and an explicit cannot-extract escape per field, and quote grading runs as a machine precheck (91 exact / 3 normalized / 0 absent on 48 units) rather than being left to manual inspection.",
+      "rationale_recorded": true,
+      "rationale": "The fabricated-quote lesson from program #30 is now enforced mechanically instead of by review.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:506d875b-07"
+      ],
+      "evidence": [
+        {
+          "text": "**Zero fabricated quotes** (91 exact / 3 normalized / 0 absent) \u2014 the #30 fabricated-quote lesson is now a built-in machine precheck.",
+          "line": 133,
+          "file": "2026-07-15_506d875b.txt"
+        }
+      ],
+      "artifacts": [
+        "detector_specs_batch.py",
+        "specs/specs.csv"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "tcurdt-flag-retired",
+      "title": "Retire the defect-dependent tcurdt flag, revising the headline R2 from 7.3% to 6.7%",
+      "date_from": "2026-07-06",
+      "date_to": "2026-09-04",
+      "decision": "The headline detection rate is cited as 11 causal / 164 = 6.7% [3.8, 11.6] rather than the June deck's 12/164 = 7.3%; the tcurdt flag is retired because it fired only through a missing call-site exclusion bug.",
+      "rationale_recorded": true,
+      "rationale": "\"It was a lucky detection that depended on a bug \u2014 so an honest eleven beats a lucky twelve.\"",
+      "status": "superseded",
+      "status_note": "Superseded 2026-09-04 \u2014 decision text left verbatim; no numbered successor entry (post-close chat ruling, no distilled transcript) (Ali's re-ruling on the audit in merge-tool-comparison/reports_detection/full/audit_2026-09-04.md; recorded 2026-09-05 on branch housekeeping/stage-c-amendment-2026-09-04). The headline is now 9 CAUSAL of 164 = 5.5% [2.9, 10.1]. Two of the eleven positive rulings were changed to DETECTOR-FP: tcurdt (this entry's flag \u2014 merged L95 is the method call options.compression() on a live TarOptions parameter, so the 2026-06-20 'undeclared' check was wrong, not merely defect-dependent) and atam4j (merged L27 is the surviving declaration of the renamed method, the file compiles, and the merge-induced break sits in the unflagged sibling PassingTestAcceptanceTest.java \u2014 a measured cross-file false negative). The frozen-run block rate stays 12/164 = 7.3% and the post-fix block rate 11/164 = 6.7% (10 flags = 9 causal + the atam4j FP, plus 1 fail-closed); 6.7% is no longer the causal catch. Records amended in place: hit_adjudications.md, FINDINGS.md, claims-ledger [StageCCatch]/[StageCFlagged]/[StageCPostFixBlocked]. Actors: the 2026-07 retirement reasoning was Claude's (see actors_note); the 2026-09-04 re-ruling is Ali's.",
+      "supersedes": [
+        "June deck headline R2 = 12/164 (7.3%)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-01"
+      ],
+      "evidence": [
+        {
+          "text": "the adjudication moved the headline R2 from the June deck's 7.3% (12/164) to **6.7% (11/164)** \u2014 the tcurdt flag was retired as defect-dependent",
+          "line": 79,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "It was a lucky detection that depended on a bug \u2014 so an honest eleven beats a lucky twelve.",
+          "line": 102,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "presentation/thesis_progress_jul2026.pptx",
+        "ISSUES #29",
+        "merge-tool-comparison/reports_detection/full/audit_2026-09-04.md",
+        "merge-tool-comparison/reports_detection/full/hit_adjudications.md (amended 2026-09-04)",
+        "thesis/claims-ledger.md [StageCCatch]"
+      ],
+      "actors": "claude",
+      "actors_note": "Source records actors unclear; the reasoning and the retirement are Claude's in the transcript, with no separate Ali ruling recorded.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "cost-model-deltas-only",
+      "title": "Read only cost-model deltas, never the raw per-config column",
+      "date_from": "2026-07-06",
+      "date_to": null,
+      "decision": "In the whole-driver cost tables only deltas that share the corpus bias on both sides \u2014 bare\u2192driver and pre\u2192post-flip \u2014 may be cited; the raw per-config column (e.g. bare-git 2.94 < bare-mergiraf 4.45) must not be read as a backend comparison.",
+      "rationale_recorded": true,
+      "rationale": "The corpus is defined relative to Mergiraf (positives = \"Mergiraf merged clean but tests failed\"), so by construction Mergiraf-like configs carry the maximal silent-wrong mass on the positive arm, making the raw column an artifact of corpus construction rather than a backend result.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-03"
+      ],
+      "evidence": [
+        {
+          "text": "**This is not a backend beauty contest, and the raw column is biased.**",
+          "line": 347,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "The only readings that are valid are the **deltas that share the bias on both sides**: bare\u2192driver (the value of detection) and pre\u2192post-flip (the value of the routing repair). Lead with the deltas; never the raw column.",
+          "line": 347,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_whole_driver/FINDINGS.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "verify-claims-primary-sources",
+      "title": "Verify a methodological claim against code, corpus or the primary text before recording it",
+      "date_from": "2026-05-20",
+      "date_to": "2026-07-18",
+      "decision": "An incoming methodological caveat is treated as a candidate only: first confirm the literal claim at the code sites (schesch_loader.py:180, collector.py:76), then measure its actual prevalence on the n=50 corpus using the locally present repos, before writing it into THREATS_TO_VALIDITY.md. The same discipline is applied to the baseline paper: a sub-agent must first confirm that repo-root evolution.md really is the Schesch et al. text, and if not say so and reconstruct the method from the most detailed secondary descriptions, explicitly marked as secondhand \u2014 with the review scoped specifically to how the baseline judges a merge correct (textual equality vs normalization vs test execution) and whether semantic/silent failures were measured at all.",
+      "rationale_recorded": true,
+      "rationale": "A true statement is not automatically a meaningful threat \u2014 \"The crux is prevalence\" \u2014 and since the repos are present locally the prevalence can be measured rather than speculated about. The paper file only \"reportedly\" contains the text, so its provenance must be established before its content is used, and any fallback is lower-grade evidence that must be labelled; the oracle question matters because the thesis positions itself on how much output normalization the baseline did and whether it measured silent failures at all.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4f4f0f87-01",
+        "a:dc3bc182-sub-sub-agent-a71788-03"
+      ],
+      "evidence": [
+        {
+          "text": "But before validating it as worth adding, I'll measure actual prevalence on the n=50 corpus, since the repos are present locally.",
+          "line": 15,
+          "file": "2026-05-20_4f4f0f87.txt"
+        },
+        {
+          "text": "This matters: I need to know how much output normalization THEY did, and whether they measured semantic/silent failures at all.",
+          "line": 8,
+          "file": "2026-07-18_dc3bc182_sub-agent-a71788.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/data/schesch_loader.py:180",
+        "merge-tool-comparison/src/data/collector.py:76",
+        "THREATS_TO_VALIDITY.md",
+        "evolution.md"
+      ],
+      "actors": "joint",
+      "actors_note": "Sources disagree: the threat-verification decision is Claude's, the baseline-paper review scoping is Ali's brief to a sub-agent.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    }
+  ],
+  "not_promoted": [
+    {
+      "uid": "preA:pre-commits-48",
+      "reason": "Deferring the destructive live crash-fallback smoke test in favour of mocked unit coverage is a test-scope call with no bearing on how a claim is measured or what counts as ground truth \u2014 too minor to carry in this theme."
+    }
+  ],
+  "cross_theme": [
+    {
+      "slug": "pivot-on-ours-union-theirs",
+      "other_theme": "routing/dispatch (W5/S2 elifs)",
+      "other_uid": "preA:pre-scope-tier-options-15",
+      "relation": "depends-on",
+      "note": "The pivot exists to make evidence bear on the deferred W5/S2 per-cluster routing arms; the also-placed scope-tier decision states the same deviation from that theme's side."
+    },
+    {
+      "slug": "four-to-six-tool-pivot",
+      "other_theme": "tool selection / backends",
+      "other_uid": null,
+      "relation": "duplicates",
+      "note": "Centre of gravity is which tools are compared, which likely belongs to the tool-selection theme; kept here because it changes what the comparison measures."
+    },
+    {
+      "slug": "derive-post-flip-table",
+      "other_theme": null,
+      "other_uid": null,
+      "relation": "superseded-by",
+      "note": "Extraction marked this superseded but no superseding decision is visible in this slice; the actual post-flip numbers may have come from the measured re-run recorded elsewhere."
+    },
+    {
+      "slug": "detector-fp-adjudication-test",
+      "other_theme": "detector design / adjudication",
+      "other_uid": "a:bfc672b4-14",
+      "relation": "depends-on",
+      "note": "The blockchain reclassification (also-placed) is an application of this FP test and adjusts the confirmed-compile-error count from 5 to 4."
+    },
+    {
+      "slug": "quote-grading-machine-precheck",
+      "other_theme": "process/meta (decision-record extraction)",
+      "other_uid": "a:c4c4d030-08",
+      "relation": "depends-on",
+      "note": "The also-placed two-pass extraction proposal reuses the same G3 stability protocol and quote-provenance discipline for a different corpus."
+    },
+    {
+      "slug": "sd5-two-arm-evaluation-design",
+      "other_theme": "detector design",
+      "other_uid": "a:fb0fa5c5-39",
+      "relation": "depends-on",
+      "note": "The discriminating-regression-test standard (also-placed) is the companion requirement to the two-arm harness; both come from the 2026-05-16 audit."
+    }
+  ],
+  "notes": "Coverage: all 202 primary uids are accounted for \u2014 201 in entry `sources`, 1 in `not_promoted`. 63 entries at ~3.2 sources/entry, denser than 1:1 but below the 5-9 guide. Two reasons. (1) The slice is dominated by the comparator-normalization arc (Tiers C/D/E, ~90 sources), where I merged aggressively \u2014 the transform-guard entries carry 7-10 sources each \u2014 but the arc also contains many genuine reversals and corrections (Tier C guards superseded by Tier D, the deferral of Tier D reversed, three separate withdrawn recovery predictions, the AWS-canonical rule superseded by the arm64-gjf discovery) which the instructions require be kept as separate linked entries rather than collapsed. (2) The transcript-era half is a long tail of one-off methodological rulings from different sessions and instruments (spgroup, taxonomy, detector cycle, P2) that share no rationale and constrain different things; merging them further would flatten distinctions the passes preserved. Statuses: I downgraded four plan-sourced clusters to `proposed` because no `pre-commits-` or transcript-era source in my slice confirms them (reporting-requirements-unconfirmed, rm2-fitness-checks-deferred, cite-upstream-mergiraf-numbers, extra-report-pivots-proposed, mergiraf-fallback-marker-detection). Merges I was least sure of: `comments-treated-as-equivalent` pulls a 2026-05-27 transcript correction (a:3302d287-02) onto a pre-transcript plan decision because it is the same rule being applied; `repaired-scoring-environment` merges seven sources spanning the Docker-up requirement, the arm64 diagnosis and the re-scoring, which could reasonably have been split into two or three entries. `rule-out-token-level-comparison` retains extraction's `superseded` status even though what superseded it (Tier D's D.6 token-canonical fold) only partly contradicts it.",
+  "theme": "evaluation-oracles",
+  "slice_primary_total": 202
+}

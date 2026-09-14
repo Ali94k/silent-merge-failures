@@ -1,0 +1,1056 @@
+UNIT javaparser_javaparser__e6063bb10d
+repo: javaparser_javaparser   merge: e6063bb10d6d41cb2b258540bb47edbd18b4646b   stratum: B
+files shown: 4 of 4 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/4: javaparser-core-testing/src/test/java/com/github/javaparser/ast/expr/SwitchExprTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,17 +1,17 @@
+ package com.github.javaparser.ast.expr;
+ 
+ import com.github.javaparser.ast.NodeList;
+ import com.github.javaparser.ast.stmt.BlockStmt;
+ import com.github.javaparser.ast.stmt.SwitchEntry;
+ import org.junit.jupiter.api.Test;
+ 
+-import static com.github.javaparser.QuickJavaParser.*;
+ import static com.github.javaparser.ast.stmt.SwitchEntry.Type.*;
++import static com.github.javaparser.utils.TestParser.*;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ 
+ class SwitchExprTest {
+     @Test
+     void jep325Example2() {
+         NodeList<Expression> entry2labels = parseStatement("int numLetters = switch (day) {\n" +
+                 "    case MONDAY, FRIDAY, SUNDAY -> 6;\n" +
+                 "    case TUESDAY                -> 7;\n" +
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,16 +1,16 @@
+ package com.github.javaparser.ast.expr;
+ 
+ import com.github.javaparser.ast.NodeList;
+ import com.github.javaparser.ast.stmt.BlockStmt;
+ import com.github.javaparser.ast.stmt.SwitchEntry;
+ import org.junit.jupiter.api.Test;
+ 
+-import static com.github.javaparser.QuickJavaParser.*;
++import static com.github.javaparser.StaticJavaParser.*;
+ import static com.github.javaparser.ast.stmt.SwitchEntry.Type.*;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ 
+ class SwitchExprTest {
+     @Test
+     void jep325Example2() {
+         NodeList<Expression> entry2labels = parseStatement("int numLetters = switch (day) {\n" +
+                 "    case MONDAY, FRIDAY, SUNDAY -> 6;\n" +
+--- MERGED RESULT (mergiraf; full) ---
+package com.github.javaparser.ast.expr;
+
+import com.github.javaparser.ast.NodeList;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.ast.stmt.SwitchEntry;
+import org.junit.jupiter.api.Test;
+
+import static com.github.javaparser.StaticJavaParser.*;
+import static com.github.javaparser.ast.stmt.SwitchEntry.Type.*;
+import static com.github.javaparser.utils.TestParser.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class SwitchExprTest {
+    @Test
+    void jep325Example2() {
+        NodeList<Expression> entry2labels = parseStatement("int numLetters = switch (day) {\n" +
+                "    case MONDAY, FRIDAY, SUNDAY -> 6;\n" +
+                "    case TUESDAY                -> 7;\n" +
+                "    case THURSDAY, SATURDAY     -> 8;\n" +
+                "    case WEDNESDAY              -> 9;\n" +
+                "};").findAll(SwitchEntry.class).get(0).getLabels();
+
+        assertEquals(3, entry2labels.size());
+        assertEquals("MONDAY", entry2labels.get(0).toString());
+        assertEquals("FRIDAY", entry2labels.get(1).toString());
+        assertEquals("SUNDAY", entry2labels.get(2).toString());
+    }
+
+    @Test
+    void funkyExpressions() {
+        parseStatement("int numLetters = switch (day) {\n" +
+                "    case 1+1, 2+2 -> 6;\n" +
+                "    case \"Henk\"-> 7;\n" +
+                "    case ((3)+3)+3 -> 8;\n" +
+                "};");
+    }
+
+    @Test
+    void jep325Example3() {
+        parseBodyDeclaration("static void howMany(int k) {\n" +
+                "    switch (k) {\n" +
+                "        case 1 -> System.out.println(\"one\");\n" +
+                "        case 2 -> System.out.println(\"two\");\n" +
+                "        case 3 -> System.out.println(\"many\");\n" +
+                "    }\n" +
+                "}");
+    }
+
+
+    @Test
+    void aThrowStatement() {
+        SwitchExpr switchExpr = parseExpression("switch (k) {\n" +
+                "        case 1 -> throw new Exception(\"one\");\n" +
+                "    }").findFirst(SwitchExpr.class).get();
+
+        assertEquals(THROWS_STATEMENT, switchExpr.getEntry(0).getType());
+    }
+
+    @Test
+    void jep325Example4() {
+        SwitchExpr switchExpr = parseStatement("T result = switch (arg) {\n" +
+                "    case L1 -> e1;\n" +
+                "    case L2 -> e2;\n" +
+                "    default -> e3;\n" +
+                "};").findFirst(SwitchExpr.class).get();
+
+        assertEquals(EXPRESSION, switchExpr.getEntry(0).getType());
+    }
+
+    @Test
+    void jep325Example5() {
+        SwitchExpr switchExpr = parseStatement("int j = switch (day) {\n" +
+                "    case MONDAY  -> 0;\n" +
+                "    case TUESDAY -> 1;\n" +
+                "    default      -> {\n" +
+                "        int k = day.toString().length();\n" +
+                "        int result = f(k);\n" +
+                "        break result;\n" +
+                "    }\n" +
+                "};").findFirst(SwitchExpr.class).get();
+
+        assertEquals(BLOCK, switchExpr.getEntry(2).getType());
+        assertEquals(BlockStmt.class, switchExpr.getEntry(2).getStatements().get(0).getClass());
+    }
+
+    @Test
+    void jep325Example6() {
+        parseStatement("int result = switch (s) {\n" +
+                "    case \"Foo\": \n" +
+                "        break 1;\n" +
+                "    case \"Bar\":\n" +
+                "        break 2;\n" +
+                "    default:\n" +
+                "        System.out.println(\"Neither Foo nor Bar, hmmm...\");\n" +
+                "        break 0;\n" +
+                "};");
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,16 +1,15 @@
+ package com.github.javaparser.ast.expr;
+ 
+ import com.github.javaparser.ast.NodeList;
+ import com.github.javaparser.ast.stmt.BlockStmt;
+ import com.github.javaparser.ast.stmt.SwitchEntry;
+ import org.junit.jupiter.api.Test;
+ 
+-import static com.github.javaparser.StaticJavaParser.*;
+ import static com.github.javaparser.ast.stmt.SwitchEntry.Type.*;
+ import static com.github.javaparser.utils.TestParser.*;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ 
+ class SwitchExprTest {
+     @Test
+     void jep325Example2() {
+         NodeList<Expression> entry2labels = parseStatement("int numLetters = switch (day) {\n" +
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/4: javaparser-core-testing/src/test/java/com/github/javaparser/ast/stmt/BreakStmtTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,29 +1,29 @@
+ package com.github.javaparser.ast.stmt;
+ 
+ import com.github.javaparser.ast.expr.BinaryExpr;
++import com.github.javaparser.utils.TestParser;
+ import org.junit.jupiter.api.Test;
+ 
+-import static com.github.javaparser.QuickJavaParser.parseStatement;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.junit.jupiter.api.Assertions.assertFalse;
+ 
+ class BreakStmtTest {
+     @Test
+     void simpleBreak() {
+-        BreakStmt statement = parseStatement("break;").asBreakStmt();
++        BreakStmt statement = TestParser.parseStatement("break;").asBreakStmt();
+         assertFalse(statement.getValue().isPresent());
+     }
+ 
+     @Test
+     void breakWithLabel() {
+-        BreakStmt statement = parseStatement("break hond;").asBreakStmt();
++        BreakStmt statement = TestParser.parseStatement("break hond;").asBreakStmt();
+         assertEquals("hond", statement.getValue().get().asNameExpr().getName().asString());
+ 
+     }
+ 
+     @Test
+     void breakWithExpression() {
+-        BreakStmt statement = parseStatement("break 12*12;").asBreakStmt();
++        BreakStmt statement = TestParser.parseStatement("break 12*12;").asBreakStmt();
+         assertEquals(BinaryExpr.class, statement.getValue().get().getClass());
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,14 +1,14 @@
+ package com.github.javaparser.ast.stmt;
+ 
+ import com.github.javaparser.ast.expr.BinaryExpr;
+ import org.junit.jupiter.api.Test;
+ 
+-import static com.github.javaparser.QuickJavaParser.parseStatement;
++import static com.github.javaparser.StaticJavaParser.parseStatement;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.junit.jupiter.api.Assertions.assertFalse;
+ 
+ class BreakStmtTest {
+     @Test
+     void simpleBreak() {
+         BreakStmt statement = parseStatement("break;").asBreakStmt();
+         assertFalse(statement.getValue().isPresent());
+--- MERGED RESULT (mergiraf; full) ---
+package com.github.javaparser.ast.stmt;
+
+import com.github.javaparser.ast.expr.BinaryExpr;
+import com.github.javaparser.utils.TestParser;
+import org.junit.jupiter.api.Test;
+
+import static com.github.javaparser.StaticJavaParser.parseStatement;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+
+class BreakStmtTest {
+    @Test
+    void simpleBreak() {
+        BreakStmt statement = TestParser.parseStatement("break;").asBreakStmt();
+        assertFalse(statement.getValue().isPresent());
+    }
+
+    @Test
+    void breakWithLabel() {
+        BreakStmt statement = TestParser.parseStatement("break hond;").asBreakStmt();
+        assertEquals("hond", statement.getValue().get().asNameExpr().getName().asString());
+
+    }
+
+    @Test
+    void breakWithExpression() {
+        BreakStmt statement = TestParser.parseStatement("break 12*12;").asBreakStmt();
+        assertEquals(BinaryExpr.class, statement.getValue().get().getClass());
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,15 +1,14 @@
+ package com.github.javaparser.ast.stmt;
+ 
+ import com.github.javaparser.ast.expr.BinaryExpr;
+ import com.github.javaparser.utils.TestParser;
+ import org.junit.jupiter.api.Test;
+ 
+-import static com.github.javaparser.StaticJavaParser.parseStatement;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.junit.jupiter.api.Assertions.assertFalse;
+ 
+ class BreakStmtTest {
+     @Test
+     void simpleBreak() {
+         BreakStmt statement = TestParser.parseStatement("break;").asBreakStmt();
+         assertFalse(statement.getValue().isPresent());
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/4: javaparser-core-testing/src/test/java/com/github/javaparser/bdd/steps/PrettyPrintingSteps.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -16,17 +16,16 @@
+  * JavaParser is distributed in the hope that it will be useful,
+  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  * GNU Lesser General Public License for more details.
+  */
+ 
+ package com.github.javaparser.bdd.steps;
+ 
+-import com.github.javaparser.ParseException;
+ import com.github.javaparser.ast.CompilationUnit;
+ import com.github.javaparser.ast.Node;
+ import com.github.javaparser.ast.visitor.ModifierVisitor;
+ import org.jbehave.core.annotations.Given;
+ import org.jbehave.core.annotations.Then;
+ import org.jbehave.core.annotations.When;
+ 
+ import java.io.File;
+@@ -45,17 +44,17 @@
+     private String sourceUnderTest;
+ 
+     @Given("the {class|compilation unit|expression|block|statement|import|annotation|body|class body|interface body}:$classSrc")
+     public void givenTheClass(String classSrc) {
+         this.sourceUnderTest = classSrc.trim();
+     }
+ 
+     @Given("the {class|compilation unit|expression|block|statement|import|annotation|body|class body|interface body} in the file \"$classFile\"")
+-    public void givenTheClassInTheFile(String classFile) throws URISyntaxException, IOException, ParseException {
++    public void givenTheClassInTheFile(String classFile) throws URISyntaxException, IOException {
+         URL url = getClass().getResource("../samples/" + classFile);
+         sourceUnderTest = readerToString(new FileReader(new File(url.toURI()))).trim();
+     }
+ 
+     @When("the {class|compilation unit} is parsed by the Java parser")
+     public void whenTheClassIsParsedByTheJavaParser() {
+         resultNode = parse(sourceUnderTest);
+     }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -30,17 +30,17 @@
+ import org.jbehave.core.annotations.When;
+ 
+ import java.io.File;
+ import java.io.FileReader;
+ import java.io.IOException;
+ import java.net.URISyntaxException;
+ import java.net.URL;
+ 
+-import static com.github.javaparser.QuickJavaParser.*;
++import static com.github.javaparser.StaticJavaParser.*;
+ import static com.github.javaparser.utils.Utils.readerToString;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ 
+ public class PrettyPrintingSteps {
+ 
+     private Node resultNode;
+     private String sourceUnderTest;
+ 
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2016 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser.bdd.steps;
+
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.visitor.ModifierVisitor;
+import org.jbehave.core.annotations.Given;
+import org.jbehave.core.annotations.Then;
+import org.jbehave.core.annotations.When;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
+
+import static com.github.javaparser.StaticJavaParser.*;
+import static com.github.javaparser.utils.Utils.readerToString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class PrettyPrintingSteps {
+
+    private Node resultNode;
+    private String sourceUnderTest;
+
+    @Given("the {class|compilation unit|expression|block|statement|import|annotation|body|class body|interface body}:$classSrc")
+    public void givenTheClass(String classSrc) {
+        this.sourceUnderTest = classSrc.trim();
+    }
+
+    @Given("the {class|compilation unit|expression|block|statement|import|annotation|body|class body|interface body} in the file \"$classFile\"")
+    public void givenTheClassInTheFile(String classFile) throws URISyntaxException, IOException {
+        URL url = getClass().getResource("../samples/" + classFile);
+        sourceUnderTest = readerToString(new FileReader(new File(url.toURI()))).trim();
+    }
+
+    @When("the {class|compilation unit} is parsed by the Java parser")
+    public void whenTheClassIsParsedByTheJavaParser() {
+        resultNode = parse(sourceUnderTest);
+    }
+
+    @When("the expression is parsed by the Java parser")
+    public void whenTheExpressionIsParsedByTheJavaParser() {
+        resultNode = parseExpression(sourceUnderTest);
+    }
+
+    @When("the block is parsed by the Java parser")
+    public void whenTheBlockIsParsedByTheJavaParser() {
+        resultNode = parseBlock(sourceUnderTest);
+    }
+
+    @When("the statement is parsed by the Java parser")
+    public void whenTheStatementIsParsedByTheJavaParser() {
+        resultNode = parseStatement(sourceUnderTest);
+    }
+
+    @When("the import is parsed by the Java parser")
+    public void whenTheImportIsParsedByTheJavaParser() {
+        resultNode = parseImport(sourceUnderTest);
+    }
+
+    @When("the annotation is parsed by the Java parser")
+    public void whenTheAnnotationIsParsedByTheJavaParser() {
+        resultNode = parseAnnotation(sourceUnderTest);
+    }
+
+    @When("the annotation body declaration is parsed by the Java parser")
+    public void whenTheBodyDeclarationIsParsedByTheJavaParser() {
+        resultNode = parseAnnotationBodyDeclaration(sourceUnderTest);
+    }
+
+    @When("the class body declaration is parsed by the Java parser")
+    public void whenTheClassBodyDeclarationIsParsedByTheJavaParser() {
+        resultNode = parseBodyDeclaration(sourceUnderTest);
+    }
+
+    @When("the interface body declaration is parsed by the Java parser")
+    public void whenTheInterfaceBodyDeclarationIsParsedByTheJavaParser() {
+        resultNode = parseBodyDeclaration(sourceUnderTest);
+    }
+
+    @When("the class is visited by an empty ModifierVisitorAdapter")
+    public void whenTheClassIsVisitedByAnEmptyModifierVisitorAdapter() {
+        (new ModifierVisitor<Void>() {
+        }).visit((CompilationUnit) resultNode, null);
+    }
+
+    @Then("it is printed as:$src")
+    public void isPrintedAs(String src) {
+        assertEquals(src.trim(), resultNode.toString().trim());
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/4: javaparser-core/src/main/java/com/github/javaparser/JavaParser.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -109,29 +109,28 @@
+ 
+         for (PreProcessor preProcessor : configuration.getPreProcessors()) {
+             provider = preProcessor.process(provider);
+         }
+ 
+         final GeneratedJavaParser parser = getParserForProvider(provider);
+         try {
+             N resultNode = start.parse(parser);
+-            ParseResult<N> result = new ParseResult<>(resultNode, parser.problems, parser.getTokens(),
+-                    parser.getCommentsCollection());
++            ParseResult<N> result = new ParseResult<>(resultNode, parser.problems, parser.getCommentsCollection());
+ 
+             configuration.getPostProcessors().forEach(postProcessor ->
+                     postProcessor.process(result, configuration));
+ 
+             result.getProblems().sort(PROBLEM_BY_BEGIN_POSITION);
+ 
+             return result;
+         } catch (Exception e) {
+             final String message = e.getMessage() == null ? "Unknown error" : e.getMessage();
+             parser.problems.add(new Problem(message, null, e));
+-            return new ParseResult<>(null, parser.problems, parser.getTokens(), parser.getCommentsCollection());
++            return new ParseResult<>(null, parser.problems, parser.getCommentsCollection());
+         } finally {
+             try {
+                 provider.close();
+             } catch (IOException e) {
+                 // Since we're done parsing and have our result, we don't care about any errors.
+             }
+         }
+     }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -46,17 +46,17 @@
+ import static com.github.javaparser.Problem.PROBLEM_BY_BEGIN_POSITION;
+ import static com.github.javaparser.Providers.*;
+ import static com.github.javaparser.utils.Utils.assertNotNull;
+ 
+ /**
+  * Parse Java source code and creates Abstract Syntax Trees.
+  *
+  * @author Júlio Vilmar Gesser
+- * @see QuickJavaParser
++ * @see StaticJavaParser
+  */
+ public final class JavaParser {
+     private final ParserConfiguration configuration;
+ 
+     private GeneratedJavaParser astParser = null;
+ 
+     /**
+      * Instantiate the parser with default configuration. Note that parsing can also be done with the static methods on
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright (C) 2007-2010 Júlio Vilmar Gesser.
+ * Copyright (C) 2011, 2013-2016 The JavaParser Team.
+ *
+ * This file is part of JavaParser.
+ *
+ * JavaParser can be used either under the terms of
+ * a) the GNU Lesser General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ * b) the terms of the Apache License
+ *
+ * You should have received a copy of both licenses in LICENCE.LGPL and
+ * LICENCE.APACHE. Please refer to those files for details.
+ *
+ * JavaParser is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ */
+
+package com.github.javaparser;
+
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.ImportDeclaration;
+import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.PackageDeclaration;
+import com.github.javaparser.ast.body.BodyDeclaration;
+import com.github.javaparser.ast.body.Parameter;
+import com.github.javaparser.ast.body.TypeDeclaration;
+import com.github.javaparser.ast.expr.*;
+import com.github.javaparser.ast.modules.ModuleDeclaration;
+import com.github.javaparser.ast.modules.ModuleDirective;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.ast.stmt.ExplicitConstructorInvocationStmt;
+import com.github.javaparser.ast.stmt.Statement;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
+import com.github.javaparser.ast.type.Type;
+import com.github.javaparser.ast.type.TypeParameter;
+
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
+
+import static com.github.javaparser.ParseStart.*;
+import static com.github.javaparser.Problem.PROBLEM_BY_BEGIN_POSITION;
+import static com.github.javaparser.Providers.*;
+import static com.github.javaparser.utils.Utils.assertNotNull;
+
+/**
+ * Parse Java source code and creates Abstract Syntax Trees.
+ *
+ * @author Júlio Vilmar Gesser
+ * @see StaticJavaParser
+ */
+public final class JavaParser {
+    private final ParserConfiguration configuration;
+
+    private GeneratedJavaParser astParser = null;
+
+    /**
+     * Instantiate the parser with default configuration. Note that parsing can also be done with the static methods on
+     * this class.
+     * Creating an instance will reduce setup time between parsing files.
+     */
+    public JavaParser() {
+        this(new ParserConfiguration());
+    }
+
+    /**
+     * Instantiate the parser. Note that parsing can also be done with the static methods on this class.
+     * Creating an instance will reduce setup time between parsing files.
+     */
+    public JavaParser(ParserConfiguration configuration) {
+        this.configuration = configuration;
+    }
+
+    /**
+     * @return The configuration for this parser.
+     */
+    public ParserConfiguration getParserConfiguration() {
+        return this.configuration;
+    }
+
+    private GeneratedJavaParser getParserForProvider(Provider provider) {
+        if (astParser == null) {
+            astParser = new GeneratedJavaParser(provider);
+        } else {
+            astParser.reset(provider);
+        }
+        astParser.setTabSize(configuration.getTabSize());
+        astParser.setStoreTokens(configuration.isStoreTokens());
+        return astParser;
+    }
+
+    /**
+     * Parses source code.
+     * It takes the source code from a Provider.
+     * The start indicates what can be found in the source code (compilation unit, block, import...)
+     *
+     * @param start refer to the constants in ParseStart to see what can be parsed.
+     * @param provider refer to Providers to see how you can read source. The provider will be closed after parsing.
+     * @param <N> the subclass of Node that is the result of parsing in the start.
+     * @return the parse result, a collection of encountered problems, and some extra data.
+     */
+    public <N extends Node> ParseResult<N> parse(ParseStart<N> start, Provider provider) {
+        assertNotNull(start);
+        assertNotNull(provider);
+
+        for (PreProcessor preProcessor : configuration.getPreProcessors()) {
+            provider = preProcessor.process(provider);
+        }
+
+        final GeneratedJavaParser parser = getParserForProvider(provider);
+        try {
+            N resultNode = start.parse(parser);
+            ParseResult<N> result = new ParseResult<>(resultNode, parser.problems, parser.getCommentsCollection());
+
+            configuration.getPostProcessors().forEach(postProcessor ->
+                    postProcessor.process(result, configuration));
+
+            result.getProblems().sort(PROBLEM_BY_BEGIN_POSITION);
+
+            return result;
+        } catch (Exception e) {
+            final String message = e.getMessage() == null ? "Unknown error" : e.getMessage();
+            parser.problems.add(new Problem(message, null, e));
+            return new ParseResult<>(null, parser.problems, parser.getCommentsCollection());
+        } finally {
+            try {
+                provider.close();
+            } catch (IOException e) {
+                // Since we're done parsing and have our result, we don't care about any errors.
+            }
+        }
+    }
+
+    /**
+     * Parses the Java code contained in the {@link InputStream} and returns a
+     * {@link CompilationUnit} that represents it.
+     *
+     * @param in {@link InputStream} containing Java source code. It will be closed after parsing.
+     * @param encoding encoding of the source code
+     * @return CompilationUnit representing the Java source code
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<CompilationUnit> parse(final InputStream in, Charset encoding) {
+        return parse(COMPILATION_UNIT, provider(in, encoding));
+    }
+
+    /**
+     * Parses the Java code contained in the {@link InputStream} and returns a
+     * {@link CompilationUnit} that represents it.<br>
+     * Note: Uses UTF-8 encoding
+     *
+     * @param in {@link InputStream} containing Java source code. It will be closed after parsing.
+     * @return CompilationUnit representing the Java source code
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<CompilationUnit> parse(final InputStream in) {
+        return parse(in, UTF8);
+    }
+
+    /**
+     * Parses the Java code contained in a {@link File} and returns a
+     * {@link CompilationUnit} that represents it.
+     *
+     * @param file {@link File} containing Java source code. It will be closed after parsing.
+     * @param encoding encoding of the source code
+     * @return CompilationUnit representing the Java source code
+     * @throws ParseProblemException if the source code has parser errors
+     * @throws FileNotFoundException the file was not found
+     */
+    public ParseResult<CompilationUnit> parse(final File file, final Charset encoding) throws FileNotFoundException {
+        ParseResult<CompilationUnit> result = parse(COMPILATION_UNIT, provider(file, encoding));
+        result.getResult().ifPresent(cu -> cu.setStorage(file.toPath()));
+        return result;
+    }
+
+    /**
+     * Parses the Java code contained in a {@link File} and returns a
+     * {@link CompilationUnit} that represents it.<br>
+     * Note: Uses UTF-8 encoding
+     *
+     * @param file {@link File} containing Java source code. It will be closed after parsing.
+     * @return CompilationUnit representing the Java source code
+     * @throws ParseProblemException if the source code has parser errors
+     * @throws FileNotFoundException the file was not found
+     */
+    public ParseResult<CompilationUnit> parse(final File file) throws FileNotFoundException {
+        ParseResult<CompilationUnit> result = parse(COMPILATION_UNIT, provider(file));
+        result.getResult().ifPresent(cu -> cu.setStorage(file.toPath()));
+        return result;
+    }
+
+    /**
+     * Parses the Java code contained in a file and returns a
+     * {@link CompilationUnit} that represents it.
+     *
+     * @param path path to a file containing Java source code
+     * @param encoding encoding of the source code
+     * @return CompilationUnit representing the Java source code
+     * @throws IOException the path could not be accessed
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<CompilationUnit> parse(final Path path, final Charset encoding) throws IOException {
+        ParseResult<CompilationUnit> result = parse(COMPILATION_UNIT, provider(path, encoding));
+        result.getResult().ifPresent(cu -> cu.setStorage(path));
+        return result;
+    }
+
+    /**
+     * Parses the Java code contained in a file and returns a
+     * {@link CompilationUnit} that represents it.<br>
+     * Note: Uses UTF-8 encoding
+     *
+     * @param path path to a file containing Java source code
+     * @return CompilationUnit representing the Java source code
+     * @throws ParseProblemException if the source code has parser errors
+     * @throws IOException the path could not be accessed
+     */
+    public ParseResult<CompilationUnit> parse(final Path path) throws IOException {
+        ParseResult<CompilationUnit> result = parse(COMPILATION_UNIT, provider(path));
+        result.getResult().ifPresent(cu -> cu.setStorage(path));
+        return result;
+    }
+
+    /**
+     * Parses the Java code contained in a resource and returns a
+     * {@link CompilationUnit} that represents it.<br>
+     * Note: Uses UTF-8 encoding
+     *
+     * @param path path to a resource containing Java source code. As resource is accessed through a class loader, a
+     * leading "/" is not allowed in pathToResource
+     * @return CompilationUnit representing the Java source code
+     * @throws ParseProblemException if the source code has parser errors
+     * @throws IOException the path could not be accessed
+     */
+    public ParseResult<CompilationUnit> parseResource(final String path) throws IOException {
+        return parse(COMPILATION_UNIT, resourceProvider(path));
+    }
+
+    /**
+     * Parses the Java code contained in a resource and returns a
+     * {@link CompilationUnit} that represents it.<br>
+     *
+     * @param path path to a resource containing Java source code. As resource is accessed through a class loader, a
+     * leading "/" is not allowed in pathToResource
+     * @param encoding encoding of the source code
+     * @return CompilationUnit representing the Java source code
+     * @throws ParseProblemException if the source code has parser errors
+     * @throws IOException the path could not be accessed
+     */
+    public ParseResult<CompilationUnit> parseResource(final String path, Charset encoding) throws IOException {
+        return parse(COMPILATION_UNIT, resourceProvider(path, encoding));
+    }
+
+    /**
+     * Parses the Java code contained in a resource and returns a
+     * {@link CompilationUnit} that represents it.<br>
+     *
+     * @param classLoader the classLoader that is asked to load the resource
+     * @param path path to a resource containing Java source code. As resource is accessed through a class loader, a
+     * leading "/" is not allowed in pathToResource
+     * @return CompilationUnit representing the Java source code
+     * @throws ParseProblemException if the source code has parser errors
+     * @throws IOException the path could not be accessed
+     */
+    public ParseResult<CompilationUnit> parseResource(final ClassLoader classLoader, final String path, Charset encoding) throws IOException {
+        return parse(COMPILATION_UNIT, resourceProvider(classLoader, path, encoding));
+    }
+
+    /**
+     * Parses Java code from a Reader and returns a
+     * {@link CompilationUnit} that represents it.<br>
+     *
+     * @param reader the reader containing Java source code. It will be closed after parsing.
+     * @return CompilationUnit representing the Java source code
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<CompilationUnit> parse(final Reader reader) {
+        return parse(COMPILATION_UNIT, provider(reader));
+    }
+
+    /**
+     * Parses the Java code contained in code and returns a
+     * {@link CompilationUnit} that represents it.
+     *
+     * @param code Java source code
+     * @return CompilationUnit representing the Java source code
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<CompilationUnit> parse(String code) {
+        return parse(COMPILATION_UNIT, provider(code));
+    }
+
+    /**
+     * Parses the Java block contained in a {@link String} and returns a
+     * {@link BlockStmt} that represents it.
+     *
+     * @param blockStatement {@link String} containing Java block code
+     * @return BlockStmt representing the Java block
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<BlockStmt> parseBlock(final String blockStatement) {
+        return parse(BLOCK, provider(blockStatement));
+    }
+
+    /**
+     * Parses the Java statement contained in a {@link String} and returns a
+     * {@link Statement} that represents it.
+     *
+     * @param statement {@link String} containing Java statement code
+     * @return Statement representing the Java statement
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<Statement> parseStatement(final String statement) {
+        return parse(STATEMENT, provider(statement));
+    }
+
+    /**
+     * Parses the Java import contained in a {@link String} and returns a
+     * {@link ImportDeclaration} that represents it.
+     *
+     * @param importDeclaration {@link String} containing Java import code
+     * @return ImportDeclaration representing the Java import declaration
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<ImportDeclaration> parseImport(final String importDeclaration) {
+        return parse(IMPORT_DECLARATION, provider(importDeclaration));
+    }
+
+    /**
+     * Parses the Java expression contained in a {@link String} and returns a
+     * {@link Expression} that represents it.
+     *
+     * @param expression {@link String} containing Java expression
+     * @return Expression representing the Java expression
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Expression> ParseResult<T> parseExpression(final String expression) {
+        return (ParseResult<T>) parse(EXPRESSION, provider(expression));
+    }
+
+    /**
+     * Parses the Java annotation contained in a {@link String} and returns a
+     * {@link AnnotationExpr} that represents it.
+     *
+     * @param annotation {@link String} containing Java annotation
+     * @return AnnotationExpr representing the Java annotation
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<AnnotationExpr> parseAnnotation(final String annotation) {
+        return parse(ANNOTATION, provider(annotation));
+    }
+
+    /**
+     * Parses the Java annotation body declaration(e.g fields or methods) contained in a
+     * {@link String} and returns a {@link BodyDeclaration} that represents it.
+     *
+     * @param body {@link String} containing Java body declaration
+     * @return BodyDeclaration representing the Java annotation
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<BodyDeclaration<?>> parseAnnotationBodyDeclaration(final String body) {
+        return parse(ANNOTATION_BODY, provider(body));
+    }
+
+    /**
+     * Parses a Java class or interface body declaration(e.g fields or methods) and returns a
+     * {@link BodyDeclaration} that represents it.
+     *
+     * @param body the body of a class or interface
+     * @return BodyDeclaration representing the Java interface body
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<BodyDeclaration<?>> parseBodyDeclaration(String body) {
+        return parse(CLASS_BODY, provider(body));
+    }
+
+    /**
+     * Parses a Java class or interface type name and returns a {@link ClassOrInterfaceType} that represents it.
+     *
+     * @param type the type name like a.b.c.X or Y
+     * @return ClassOrInterfaceType representing the type
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<ClassOrInterfaceType> parseClassOrInterfaceType(String type) {
+        return parse(CLASS_OR_INTERFACE_TYPE, provider(type));
+    }
+
+    /**
+     * Parses a Java type name and returns a {@link Type} that represents it.
+     *
+     * @param type the type name like a.b.c.X, Y, or int
+     * @return ClassOrInterfaceType representing the type
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<Type> parseType(String type) {
+        return parse(TYPE, provider(type));
+    }
+
+    /**
+     * Parses a variable declaration expression and returns a {@link com.github.javaparser.ast.expr.VariableDeclarationExpr}
+     * that represents it.
+     *
+     * @param declaration a variable declaration like <code>int x=2;</code>
+     * @return VariableDeclarationExpr representing the type
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<VariableDeclarationExpr> parseVariableDeclarationExpr(String declaration) {
+        return parse(VARIABLE_DECLARATION_EXPR, provider(declaration));
+    }
+
+    /**
+     * Parses the this(...) and super(...) statements that may occur at the start of a constructor.
+     *
+     * @param statement a statement like super("hello");
+     * @return the AST for the statement.
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<ExplicitConstructorInvocationStmt> parseExplicitConstructorInvocationStmt(String statement) {
+        return parse(EXPLICIT_CONSTRUCTOR_INVOCATION_STMT, provider(statement));
+    }
+
+    /**
+     * Parses a qualified name (one that can have "."s in it) and returns it as a Name.
+     *
+     * @param qualifiedName a name like "com.laamella.parameter_source"
+     * @return the AST for the name
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<Name> parseName(String qualifiedName) {
+        return parse(NAME, provider(qualifiedName));
+    }
+
+    /**
+     * Parses a simple name (one that can NOT have "."s in it) and returns it as a SimpleName.
+     *
+     * @param name a name like "parameter_source"
+     * @return the AST for the name
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<SimpleName> parseSimpleName(String name) {
+        return parse(SIMPLE_NAME, provider(name));
+    }
+
+    /**
+     * Parses a single parameter (a type and a name) and returns it as a Parameter.
+     *
+     * @param parameter a parameter like "int[] x"
+     * @return the AST for the parameter
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<Parameter> parseParameter(String parameter) {
+        return parse(PARAMETER, provider(parameter));
+    }
+
+    /**
+     * Parses a package declaration and returns it as a PackageDeclaration.
+     *
+     * @param packageDeclaration a declaration like "package com.microsoft.java;"
+     * @return the AST for the parameter
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<PackageDeclaration> parsePackageDeclaration(String packageDeclaration) {
+        return parse(PACKAGE_DECLARATION, provider(packageDeclaration));
+    }
+
+    /**
+     * Parses a type declaration and returns it as a TypeDeclaration.
+     *
+     * @param typeDeclaration a declaration like "class X {}"
+     * @return the AST for the type declaration
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<TypeDeclaration<?>> parseTypeDeclaration(String typeDeclaration) {
+        return parse(TYPE_DECLARATION, provider(typeDeclaration));
+    }
+
+    /**
+     * Parses a module declaration and returns it as a ModuleDeclaration.
+     *
+     * @param moduleDeclaration a declaration like "module X {}"
+     * @return the AST for the module declaration
+     * @throws ParseProblemException if the source code has parser errors
+     * @see ModuleDeclaration
+     */
+    public ParseResult<ModuleDeclaration> parseModuleDeclaration(String moduleDeclaration) {
+        return parse(MODULE_DECLARATION, provider(moduleDeclaration));
+    }
+
+    /**
+     * Parses a module directive and returns it as a ModuleDirective.
+     *
+     * @param moduleDirective a directive like "opens C;"
+     * @return the AST for the module directive
+     * @throws ParseProblemException if the source code has parser errors
+     * @see ModuleDirective
+     */
+    public ParseResult<ModuleDirective> parseModuleDirective(String moduleDirective) {
+        return parse(MODULE_DIRECTIVE, provider(moduleDirective));
+    }
+
+
+    /**
+     * Parses a type parameter and returns it as a TypeParameter
+     *
+     * @param typeParameter a parameter like "T extends Serializable"
+     * @return the AST for the type parameter
+     * @throws ParseProblemException if the source code has parser errors
+     */
+    public ParseResult<TypeParameter> parseTypeParameter(String typeParameter) {
+        return parse(TYPE_PARAMETER, provider(typeParameter));
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

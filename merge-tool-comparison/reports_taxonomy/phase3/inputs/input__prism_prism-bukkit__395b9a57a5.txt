@@ -1,0 +1,1303 @@
+UNIT prism_prism-bukkit__395b9a57a5
+repo: prism_prism-bukkit   merge: 395b9a57a5d6f79b51570f700b21bb9b1d743e21   stratum: B
+files shown: 10 of 10 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/10: Prism/src/main/java/me/botsko/prism/actionlibs/ActionMessage.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -42,17 +42,17 @@
+     /**
+      * Here, we don't use formatting or anything, we just use a regular message raw.
+      * This will automatically show extended information, as this can be passed to a
+      * paste service.
+      *
+      * @return String
+      */
+     public String getRawMessage() {
+-        String format1 = "<prefix> <handlerId> <target> <actor> <extendedInfo> <actorNice> <count>"
++        String format1 = "<prefix> <handlerId> <target> <actor> <extendedInfo><actorNice> <count>"
+                 + " <timeDiff> <location>";
+         ActionType action = handler.getActionType();
+         return PlainComponentSerializer.plain().serialize(getMainMessage(action, format1));
+     }
+ 
+     private TextComponent getMainMessage(ActionType action, String format1) {
+         final TextColor highlight = NamedTextColor.DARK_AQUA;
+         TextComponent out = Component.text().content(format1).build();
+@@ -93,17 +93,17 @@
+ 
+     /**
+      * Get the message.
+      *
+      * @return String[]
+      */
+     public TextComponent getMessage() {
+         String format1 =
+-                "<prefix> <index> <target> <description> <actorNice> <extendedInfo> <count> <timeDiff> <actionType>";
++                "<prefix> <index> <target> <description> <actorNice> <extendedInfo><count> <timeDiff> <actionType>";
+         String format2 = "-<handlerId>- <dateTime> - <location>";
+         ActionType action = handler.getActionType();
+         TextComponent out = getMainMessage(action, format1);
+         if (showExtended) {
+             out = out.append(Component.newline());
+             Component line2 = Component.text().content(format2).build()
+                     .replaceFirstText(Pattern.compile("<handlerId>"),
+                           builder -> Component.text(handler.getId()).toBuilder()
+@@ -133,17 +133,17 @@
+         if (description == null) {
+             description = action.getNiceDescription();
+         }
+         return description;
+     }
+ 
+     private TextComponent getExtendedInfo() {
+         if (showExtended && (handler.getMaterial() != Material.AIR)) {
+-            return Component.text(handler.getMaterial() + Utilities.dataString(handler.getBlockData()));
++            return Component.text(handler.getMaterial() + Utilities.dataString(handler.getBlockData()) + " ");
+         }
+         return Component.empty();
+     }
+ 
+     private TextComponent.Builder getActor(ActionTypeImpl action, TextColor highlight) {
+         String target = "unknown";
+         if (action.getHandler() != null) {
+             if (!handler.getNiceName().isEmpty()) {
+@@ -161,17 +161,17 @@
+         }
+         return Component.text()
+                 .content(target)
+                 .color(highlight);
+     }
+ 
+     private TextComponent getCount() {
+         if (handler.getAggregateCount() > 1) {
+-            return Component.text(" x" + handler.getAggregateCount());
++            return Component.text("x" + handler.getAggregateCount() + " ");
+         }
+         return Component.empty();
+     }
+ 
+     private TextComponent getTimeDiff() {
+         // Time since
+         if (!handler.getTimeSince().isEmpty()) {
+             return Component.text().content(handler.getTimeSince()).color(NamedTextColor.WHITE).build();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -42,17 +42,17 @@
+     /**
+      * Here, we don't use formatting or anything, we just use a regular message raw.
+      * This will automatically show extended information, as this can be passed to a
+      * paste service.
+      *
+      * @return String
+      */
+     public String getRawMessage() {
+-        String format1 = "<prefix> <handlerId> <target> <actor> <extendedInfo> <actorNice> <count>"
++        String format1 = "<prefix> <handlerId> <target> <actor> <extendedInfo><actorNice> <count>"
+                 + " <timeDiff> <location>";
+         ActionType action = handler.getActionType();
+         return PlainComponentSerializer.plain().serialize(getMainMessage(action, format1));
+     }
+ 
+     private TextComponent getMainMessage(ActionType action, String format1) {
+         final TextColor highlight = NamedTextColor.DARK_AQUA;
+         TextComponent out = Component.text().content(format1).build();
+@@ -93,17 +93,17 @@
+ 
+     /**
+      * Get the message.
+      *
+      * @return String[]
+      */
+     public TextComponent getMessage() {
+         String format1 =
+-                "<prefix> <index> <target> <description> <actorNice> <extendedInfo> <count> <timeDiff> <actionType>";
++                "<prefix> <index> <target> <description> <actorNice> <extendedInfo><count> <timeDiff> <actionType>";
+         String format2 = "-<handlerId>- <dateTime> - <location>";
+         ActionType action = handler.getActionType();
+         TextComponent out = getMainMessage(action, format1);
+         if (showExtended) {
+             out = out.append(Component.newline());
+             Component line2 = Component.text().content(format2).build()
+                     .replaceFirstText(Pattern.compile("<handlerId>"),
+                           builder -> Component.text(handler.getId()).toBuilder()
+@@ -133,17 +133,17 @@
+         if (description == null) {
+             description = action.getNiceDescription();
+         }
+         return description;
+     }
+ 
+     private TextComponent getExtendedInfo() {
+         if (showExtended && (handler.getMaterial() != Material.AIR)) {
+-            return Component.text(handler.getMaterial() + Utilities.dataString(handler.getBlockData()));
++            return Component.text(handler.getMaterial() + Utilities.dataString(handler.getBlockData()) + " ");
+         }
+         return Component.empty();
+     }
+ 
+     private TextComponent.Builder getActor(ActionTypeImpl action, TextColor highlight) {
+         String target = "unknown";
+         if (action.getHandler() != null) {
+             if (!handler.getNiceName().isEmpty()) {
+@@ -161,17 +161,17 @@
+         }
+         return Component.text()
+                 .content(target)
+                 .color(highlight);
+     }
+ 
+     private TextComponent getCount() {
+         if (handler.getAggregateCount() > 1) {
+-            return Component.text(" x" + handler.getAggregateCount());
++            return Component.text("x" + handler.getAggregateCount() + " ");
+         }
+         return Component.empty();
+     }
+ 
+     private TextComponent getTimeDiff() {
+         // Time since
+         if (!handler.getTimeSince().isEmpty()) {
+             return Component.text().content(handler.getTimeSince()).color(NamedTextColor.WHITE).build();
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/10: Prism/src/main/java/me/botsko/prism/actions/BlockAction.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -199,17 +199,17 @@
+ 
+     @Override
+     public String getNiceName() {
+         String name = "";
+         BlockActionData blockActionData = getActionData();
+         if (blockActionData != null) {
+             if (blockActionData instanceof SkullActionData) {
+                 final SkullActionData ad = (SkullActionData) blockActionData;
+-                name += ad.skullType + " ";
++                name += ad.owner + " ";
+             } else if (blockActionData instanceof SpawnerActionData) {
+                 final SpawnerActionData ad = (SpawnerActionData) blockActionData;
+                 name += ad.entityType + " ";
+             }
+         }
+         name += Prism.getItems().getAlias(getMaterial(), getBlockData());
+         if (blockActionData == null) {
+             return name;
+@@ -620,17 +620,16 @@
+     /**
+      * SkullActionData.
+      *
+      * @author botskonet
+      */
+     public static class SkullActionData extends RotatableActionData {
+ 
+         String owner;
+-        String skullType;
+ 
+     }
+ 
+     /**
+      * Not to be confused with SignChangeActionData, which records additional data
+      * we don't need here.
+      *
+      * @author botskonet
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -199,17 +199,17 @@
+ 
+     @Override
+     public String getNiceName() {
+         String name = "";
+         BlockActionData blockActionData = getActionData();
+         if (blockActionData != null) {
+             if (blockActionData instanceof SkullActionData) {
+                 final SkullActionData ad = (SkullActionData) blockActionData;
+-                name += ad.skullType + " ";
++                name += ad.owner + " ";
+             } else if (blockActionData instanceof SpawnerActionData) {
+                 final SpawnerActionData ad = (SpawnerActionData) blockActionData;
+                 name += ad.entityType + " ";
+             }
+         }
+         name += Prism.getItems().getAlias(getMaterial(), getBlockData());
+         if (blockActionData == null) {
+             return name;
+@@ -333,29 +333,38 @@
+      * @param originalBlock    BlockState
+      * @param parameters       QueryParameters
+      * @param cancelIfBadPlace cancelIfBadPlace
+      * @return ChangeResult.
+      */
+     private @NotNull ChangeResult handleApply(final Block block, final BlockState originalBlock,
+                                                   final PrismParameters parameters, final boolean cancelIfBadPlace) {
+         BlockState state = block.getState();
+-        // If lily pad, check that block below is water. Be sure
+-        // it's set to stationary water so the lily pad will sit
++
++        // We always track the FOOT of the bed when broken, regardless of which block is broken.
++        // But we always need to destroy the HEAD of the bed otherwise Minecraft drops a bed item.
++        // So this will ensure the head of the bed is broken when removing the bed during rollback.
++        if (MaterialTag.BEDS.isTagged(state.getType())) {
++            state = Utilities.getSiblingForDoubleLengthBlock(state).getState();
++        }
++
+         switch (getMaterial()) {
+             case LILY_PAD:
++                // If restoring a lily pad, check that block below is water.
++                // Be sure it's set to stationary water so the lily pad will stay
+                 final Block below = block.getRelative(BlockFace.DOWN);
+                 if (below.getType().equals(WATER) || below.getType().equals(AIR)) {
+                     below.setType(WATER);
+                 } else {
+                     // Prism.debug("Lilypad skipped because no water exists below.");
+                     return new ChangeResultImpl(ChangeResultType.SKIPPED, null);
+                 }
+                 break;
+-            case NETHER_PORTAL: // Only way is to set the portal on fire.
++            case NETHER_PORTAL:
++                // Only way to restore a nether portal is to set it on fire.
+                 final Block obsidian = Utilities.getFirstBlockOfMaterialBelow(OBSIDIAN, block.getLocation());
+                 if (obsidian != null) {
+                     final Block above = obsidian.getRelative(BlockFace.UP);
+                     if (!(above.getType() == NETHER_PORTAL)) {
+                         above.setType(FIRE);
+                         return new ChangeResultImpl(ChangeResultType.APPLIED, null);
+                     }
+                 }
+@@ -620,17 +629,16 @@
+     /**
+      * SkullActionData.
+      *
+      * @author botskonet
+      */
+     public static class SkullActionData extends RotatableActionData {
+ 
+         String owner;
+-        String skullType;
+ 
+     }
+ 
+     /**
+      * Not to be confused with SignChangeActionData, which records additional data
+      * we don't need here.
+      *
+      * @author botskonet
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/10: Prism/src/main/java/me/botsko/prism/actions/VehicleAction.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -3,16 +3,17 @@
+ import me.botsko.prism.api.ChangeResult;
+ import me.botsko.prism.api.ChangeResultType;
+ import me.botsko.prism.api.PrismParameters;
+ import me.botsko.prism.appliers.ChangeResultImpl;
+ import org.bukkit.entity.Boat;
+ import org.bukkit.entity.Entity;
+ import org.bukkit.entity.Minecart;
+ import org.bukkit.entity.Player;
++import org.bukkit.entity.minecart.CommandMinecart;
+ import org.bukkit.entity.minecart.ExplosiveMinecart;
+ import org.bukkit.entity.minecart.HopperMinecart;
+ import org.bukkit.entity.minecart.PoweredMinecart;
+ import org.bukkit.entity.minecart.SpawnerMinecart;
+ import org.bukkit.entity.minecart.StorageMinecart;
+ 
+ public class VehicleAction extends GenericAction {
+     private String vehicleName;
+@@ -63,16 +64,19 @@
+ 
+     /**
+      * {@inheritDoc}
+      */
+     @Override
+     public ChangeResult applyRollback(Player player, PrismParameters parameters, boolean isPreview) {
+         Entity vehicle = null;
+         switch (vehicleName) {
++            case "command block minecart":
++                vehicle = getWorld().spawn(getLoc(), CommandMinecart.class);
++                break;
+             case "powered minecart":
+                 vehicle = getWorld().spawn(getLoc(), PoweredMinecart.class);
+                 break;
+             case "storage minecart":
+                 vehicle = getWorld().spawn(getLoc(), StorageMinecart.class);
+                 break;
+             case "tnt minecart":
+                 vehicle = getWorld().spawn(getLoc(), ExplosiveMinecart.class);
+@@ -92,9 +96,9 @@
+             default:
+                 //null
+         }
+         if (vehicle != null) {
+             return new ChangeResultImpl(ChangeResultType.APPLIED, null);
+         }
+         return new ChangeResultImpl(ChangeResultType.SKIPPED, null);
+     }
+-}+}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -3,16 +3,17 @@
+ import me.botsko.prism.api.ChangeResult;
+ import me.botsko.prism.api.ChangeResultType;
+ import me.botsko.prism.api.PrismParameters;
+ import me.botsko.prism.appliers.ChangeResultImpl;
+ import org.bukkit.entity.Boat;
+ import org.bukkit.entity.Entity;
+ import org.bukkit.entity.Minecart;
+ import org.bukkit.entity.Player;
++import org.bukkit.entity.minecart.CommandMinecart;
+ import org.bukkit.entity.minecart.ExplosiveMinecart;
+ import org.bukkit.entity.minecart.HopperMinecart;
+ import org.bukkit.entity.minecart.PoweredMinecart;
+ import org.bukkit.entity.minecart.SpawnerMinecart;
+ import org.bukkit.entity.minecart.StorageMinecart;
+ 
+ public class VehicleAction extends GenericAction {
+     private String vehicleName;
+@@ -63,16 +64,19 @@
+ 
+     /**
+      * {@inheritDoc}
+      */
+     @Override
+     public ChangeResult applyRollback(Player player, PrismParameters parameters, boolean isPreview) {
+         Entity vehicle = null;
+         switch (vehicleName) {
++            case "command block minecart":
++                vehicle = getWorld().spawn(getLoc(), CommandMinecart.class);
++                break;
+             case "powered minecart":
+                 vehicle = getWorld().spawn(getLoc(), PoweredMinecart.class);
+                 break;
+             case "storage minecart":
+                 vehicle = getWorld().spawn(getLoc(), StorageMinecart.class);
+                 break;
+             case "tnt minecart":
+                 vehicle = getWorld().spawn(getLoc(), ExplosiveMinecart.class);
+@@ -92,9 +96,9 @@
+             default:
+                 //null
+         }
+         if (vehicle != null) {
+             return new ChangeResultImpl(ChangeResultType.APPLIED, null);
+         }
+         return new ChangeResultImpl(ChangeResultType.SKIPPED, null);
+     }
+-}+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -96,9 +96,9 @@
+             default:
+                 //null
+         }
+         if (vehicle != null) {
+             return new ChangeResultImpl(ChangeResultType.APPLIED, null);
+         }
+         return new ChangeResultImpl(ChangeResultType.SKIPPED, null);
+     }
+-}+}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/10: Prism/src/main/java/me/botsko/prism/commands/FlagsCommand.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -47,12 +47,13 @@
+         Prism.messenger.sendMessage(s, Prism.messenger.playerMsg(
+                 Il8nHelper.getMessage("flag-help-1").color(NamedTextColor.GRAY)));
+         Prism.messenger.sendMessage(s, Prism.messenger
+                 .playerMsg(Il8nHelper.getMessage("flag-help-2")));
+         for (final Flag flag : Flag.values()) {
+             Prism.messenger.sendMessage(s,Prism.messenger.playerMsg(
+                     Component.text(flag.getUsage().replace("_", "-"))
+                             .color(NamedTextColor.LIGHT_PURPLE)
+-                            .append(Component.text(" " + Il8nHelper.getMessage(flag.getDescription())))));
++                            .append(Component.text(" " + Il8nHelper.getRawMessage(flag.getDescription()))
++                                    .color(NamedTextColor.GRAY))));
+         }
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -47,12 +47,13 @@
+         Prism.messenger.sendMessage(s, Prism.messenger.playerMsg(
+                 Il8nHelper.getMessage("flag-help-1").color(NamedTextColor.GRAY)));
+         Prism.messenger.sendMessage(s, Prism.messenger
+                 .playerMsg(Il8nHelper.getMessage("flag-help-2")));
+         for (final Flag flag : Flag.values()) {
+             Prism.messenger.sendMessage(s,Prism.messenger.playerMsg(
+                     Component.text(flag.getUsage().replace("_", "-"))
+                             .color(NamedTextColor.LIGHT_PURPLE)
+-                            .append(Component.text(" " + Il8nHelper.getMessage(flag.getDescription())))));
++                            .append(Component.text(" " + Il8nHelper.getRawMessage(flag.getDescription()))
++                                    .color(NamedTextColor.GRAY))));
+         }
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,59 +1,59 @@
+-package me.botsko.prism.commands;
+-
+-import me.botsko.prism.Il8nHelper;
+-import me.botsko.prism.Prism;
+-import me.botsko.prism.api.commands.Flag;
+-import me.botsko.prism.commandlibs.CallInfo;
+-import me.botsko.prism.commandlibs.SubHandler;
+-import net.kyori.adventure.text.Component;
+-import net.kyori.adventure.text.format.NamedTextColor;
+-import org.bukkit.command.CommandSender;
+-
+-import java.util.List;
+-
+-public class FlagsCommand implements SubHandler {
+-
+-    /**
+-     * Handle the command.
+-     */
+-    @Override
+-    public void handle(CallInfo call) {
+-        help(call.getSender());
+-    }
+-
+-    @Override
+-    public List<String> handleComplete(CallInfo call) {
+-        return null;
+-    }
+-
+-    @Override
+-    public String[] getHelp() {
+-        return new String[]{Il8nHelper.getRawMessage("help-flag-list")};
+-    }
+-
+-    @Override
+-    public String getRef() {
+-        return "/flags.html";
+-    }
+-
+-    /**
+-     * Display param help.
+-     *
+-     * @param s CommandSender
+-     */
+-    private void help(CommandSender s) {
+-        Prism.messenger.sendMessage(s, Prism.messenger.playerHeaderMsg(
+-                Il8nHelper.getMessage("flag-help-header").color(NamedTextColor.GOLD)));
+-        Prism.messenger.sendMessage(s, Prism.messenger.playerMsg(
+-                Il8nHelper.getMessage("flag-help-1").color(NamedTextColor.GRAY)));
+-        Prism.messenger.sendMessage(s, Prism.messenger
+-                .playerMsg(Il8nHelper.getMessage("flag-help-2")));
+-        for (final Flag flag : Flag.values()) {
+-            Prism.messenger.sendMessage(s,Prism.messenger.playerMsg(
+-                    Component.text(flag.getUsage().replace("_", "-"))
+-                            .color(NamedTextColor.LIGHT_PURPLE)
+-                            .append(Component.text(" " + Il8nHelper.getRawMessage(flag.getDescription()))
+-                                    .color(NamedTextColor.GRAY))));
+-        }
+-    }
++package me.botsko.prism.commands;
++
++import me.botsko.prism.Il8nHelper;
++import me.botsko.prism.Prism;
++import me.botsko.prism.api.commands.Flag;
++import me.botsko.prism.commandlibs.CallInfo;
++import me.botsko.prism.commandlibs.SubHandler;
++import net.kyori.adventure.text.Component;
++import net.kyori.adventure.text.format.NamedTextColor;
++import org.bukkit.command.CommandSender;
++
++import java.util.List;
++
++public class FlagsCommand implements SubHandler {
++
++    /**
++     * Handle the command.
++     */
++    @Override
++    public void handle(CallInfo call) {
++        help(call.getSender());
++    }
++
++    @Override
++    public List<String> handleComplete(CallInfo call) {
++        return null;
++    }
++
++    @Override
++    public String[] getHelp() {
++        return new String[]{Il8nHelper.getRawMessage("help-flag-list")};
++    }
++
++    @Override
++    public String getRef() {
++        return "/flags.html";
++    }
++
++    /**
++     * Display param help.
++     *
++     * @param s CommandSender
++     */
++    private void help(CommandSender s) {
++        Prism.messenger.sendMessage(s, Prism.messenger.playerHeaderMsg(
++                Il8nHelper.getMessage("flag-help-header").color(NamedTextColor.GOLD)));
++        Prism.messenger.sendMessage(s, Prism.messenger.playerMsg(
++                Il8nHelper.getMessage("flag-help-1").color(NamedTextColor.GRAY)));
++        Prism.messenger.sendMessage(s, Prism.messenger
++                .playerMsg(Il8nHelper.getMessage("flag-help-2")));
++        for (final Flag flag : Flag.values()) {
++            Prism.messenger.sendMessage(s,Prism.messenger.playerMsg(
++                    Component.text(flag.getUsage().replace("_", "-"))
++                            .color(NamedTextColor.LIGHT_PURPLE)
++                            .append(Component.text(" " + Il8nHelper.getRawMessage(flag.getDescription()))
++                                    .color(NamedTextColor.GRAY))));
++        }
++    }
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/10: Prism/src/main/java/me/botsko/prism/database/sql/SqlSelectProcessQuery.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -7,17 +7,16 @@
+ import me.botsko.prism.database.SelectProcessActionQuery;
+ import me.botsko.prism.measurement.TimeTaken;
+ import org.bukkit.Bukkit;
+ 
+ import java.sql.Connection;
+ import java.sql.PreparedStatement;
+ import java.sql.ResultSet;
+ import java.sql.SQLException;
+-import java.util.UUID;
+ 
+ /**
+  * Created for use for the Add5tar MC Minecraft server
+  * Created by benjamincharlton on 6/04/2019.
+  */
+ public class SqlSelectProcessQuery extends SqlSelectQueryBuilder implements SelectProcessActionQuery {
+     private boolean getLastID;
+ 
+@@ -36,59 +35,58 @@
+ 
+     public void isLastProcessID() {
+         getLastID = true;
+     }
+ 
+     protected String select() {
+         if (getLastID) {
+             return "SELECT id FROM " + prefix + "data JOIN " + prefix + "players p ON p.player_id = " + prefix
+-                    + "data.player_id";
++                    + "data.player_id ";
+         }
+-        String sql = "SELECT id, action, epoch, world, player, player_uuid, x, y, z, data FROM " + prefix
++        String sql = "SELECT id, action, epoch, world, player, HEX(player_uuid), x, y, z, data FROM " + prefix
+                 + "data d";
+-        sql += " INNER JOIN " + prefix + "players p ON p.player_id = d.player_id ";
+-        sql += " INNER JOIN " + prefix + "actions a ON a.action_id = d.action_id ";
+-        sql += " INNER JOIN " + prefix + "worlds w ON w.world_id = d.world_id ";
++        sql += " INNER JOIN " + prefix + "players p ON p.player_id = d.player_id";
++        sql += " INNER JOIN " + prefix + "actions a ON a.action_id = d.action_id";
++        sql += " INNER JOIN " + prefix + "worlds w ON w.world_id = d.world_id";
+         sql += " LEFT JOIN " + prefix + "data_extra ex ON ex.data_id = d.id ";
+         return sql;
+     }
+ 
+     protected String where() {
+         if (getLastID) {
+             //bit hacky here we are using the id parameter which should generally refer to a player.
+             final int action_id = Prism.prismActions.get("prism-process");
+             String playerName = parameters.getKeyword();
+-            return "WHERE action_id = " + action_id + " AND p.player = " + playerName;
++            return "WHERE action_id = " + action_id + " AND p.player = '" + playerName + "' ";
+         }
+         //bit hacky here we are using the id parameter which should generally refer to a player.
+         final long id = parameters.getId();
+-        return " WHERE d.id = " + id;
++        return "WHERE d.id = " + id + " ";
+     }
+ 
+     @Override
+     protected String group() {
+-
+-        return " ";
++        return "";
+     }
+ 
+     @Override
+     protected String order() {
+         if (getLastID) {
+-            return " ORDER BY id DESC ";
++            return "ORDER BY id DESC ";
+         }
+-        return " ";
++        return "";
+     }
+ 
+     @Override
+     protected String limit() {
+         if (getLastID) {
+-            return " LIMIT 1";
++            return "LIMIT 1";
+         }
+-        return " ";
++        return "";
+     }
+ 
+     @Override
+     public QueryResult executeSelect(TimeTaken eventTimer) {
+         return super.executeSelect(eventTimer);
+     }
+ 
+     @Override
+@@ -106,17 +104,17 @@
+             if (rs.next()) {
+                 process = new PrismProcessAction();
+                 // Set all shared values
+                 process.setId(rs.getLong("id"));
+                 process.setActionType(rs.getString("action"));
+                 process.setUnixEpoch(rs.getLong("epoch"));
+                 process.setWorld(Bukkit.getWorld(rs.getString("world")));
+                 process.setSourceName(rs.getString("player"));
+-                process.setUuid(UUID.fromString(rs.getString("player_uuid")));
++                process.setUuid(SqlPlayerIdentificationHelper.uuidFromDbString(rs.getString("HEX(player_uuid)")));
+                 process.setX(rs.getInt("x"));
+                 process.setY(rs.getInt("y"));
+                 process.setZ(rs.getInt("z"));
+                 process.deserialize(rs.getString("data"));
+             }
+         } catch (SQLException e) {
+             dataSource.handleDataSourceException(e);
+         }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -7,17 +7,16 @@
+ import me.botsko.prism.database.SelectProcessActionQuery;
+ import me.botsko.prism.measurement.TimeTaken;
+ import org.bukkit.Bukkit;
+ 
+ import java.sql.Connection;
+ import java.sql.PreparedStatement;
+ import java.sql.ResultSet;
+ import java.sql.SQLException;
+-import java.util.UUID;
+ 
+ /**
+  * Created for use for the Add5tar MC Minecraft server
+  * Created by benjamincharlton on 6/04/2019.
+  */
+ public class SqlSelectProcessQuery extends SqlSelectQueryBuilder implements SelectProcessActionQuery {
+     private boolean getLastID;
+ 
+@@ -36,59 +35,58 @@
+ 
+     public void isLastProcessID() {
+         getLastID = true;
+     }
+ 
+     protected String select() {
+         if (getLastID) {
+             return "SELECT id FROM " + prefix + "data JOIN " + prefix + "players p ON p.player_id = " + prefix
+-                    + "data.player_id";
++                    + "data.player_id ";
+         }
+-        String sql = "SELECT id, action, epoch, world, player, player_uuid, x, y, z, data FROM " + prefix
++        String sql = "SELECT id, action, epoch, world, player, HEX(player_uuid), x, y, z, data FROM " + prefix
+                 + "data d";
+-        sql += " INNER JOIN " + prefix + "players p ON p.player_id = d.player_id ";
+-        sql += " INNER JOIN " + prefix + "actions a ON a.action_id = d.action_id ";
+-        sql += " INNER JOIN " + prefix + "worlds w ON w.world_id = d.world_id ";
++        sql += " INNER JOIN " + prefix + "players p ON p.player_id = d.player_id";
++        sql += " INNER JOIN " + prefix + "actions a ON a.action_id = d.action_id";
++        sql += " INNER JOIN " + prefix + "worlds w ON w.world_id = d.world_id";
+         sql += " LEFT JOIN " + prefix + "data_extra ex ON ex.data_id = d.id ";
+         return sql;
+     }
+ 
+     protected String where() {
+         if (getLastID) {
+             //bit hacky here we are using the id parameter which should generally refer to a player.
+             final int action_id = Prism.prismActions.get("prism-process");
+             String playerName = parameters.getKeyword();
+-            return "WHERE action_id = " + action_id + " AND p.player = " + playerName;
++            return "WHERE action_id = " + action_id + " AND p.player = '" + playerName + "' ";
+         }
+         //bit hacky here we are using the id parameter which should generally refer to a player.
+         final long id = parameters.getId();
+-        return " WHERE d.id = " + id;
++        return "WHERE d.id = " + id + " ";
+     }
+ 
+     @Override
+     protected String group() {
+-
+-        return " ";
++        return "";
+     }
+ 
+     @Override
+     protected String order() {
+         if (getLastID) {
+-            return " ORDER BY id DESC ";
++            return "ORDER BY id DESC ";
+         }
+-        return " ";
++        return "";
+     }
+ 
+     @Override
+     protected String limit() {
+         if (getLastID) {
+-            return " LIMIT 1";
++            return "LIMIT 1";
+         }
+-        return " ";
++        return "";
+     }
+ 
+     @Override
+     public QueryResult executeSelect(TimeTaken eventTimer) {
+         return super.executeSelect(eventTimer);
+     }
+ 
+     @Override
+@@ -106,17 +104,17 @@
+             if (rs.next()) {
+                 process = new PrismProcessAction();
+                 // Set all shared values
+                 process.setId(rs.getLong("id"));
+                 process.setActionType(rs.getString("action"));
+                 process.setUnixEpoch(rs.getLong("epoch"));
+                 process.setWorld(Bukkit.getWorld(rs.getString("world")));
+                 process.setSourceName(rs.getString("player"));
+-                process.setUuid(UUID.fromString(rs.getString("player_uuid")));
++                process.setUuid(SqlPlayerIdentificationHelper.uuidFromDbString(rs.getString("HEX(player_uuid)")));
+                 process.setX(rs.getInt("x"));
+                 process.setY(rs.getInt("y"));
+                 process.setZ(rs.getInt("z"));
+                 process.deserialize(rs.getString("data"));
+             }
+         } catch (SQLException e) {
+             dataSource.handleDataSourceException(e);
+         }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/10: Prism/src/main/java/me/botsko/prism/listeners/PrismEntityEvents.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -632,17 +632,17 @@
+ 
+         if (!Prism.getIgnore().event("item-remove", event.getEntity().getWorld())) {
+             return;
+         }
+ 
+         // If an item frame, track it's contents
+         if (e instanceof ItemFrame) {
+             final ItemFrame frame = (ItemFrame) e;
+-            if (frame.getItem() != null) {
++            if (!checkNotNullorAir(frame.getItem())) {
+                 if (player != null) {
+                     RecordingQueue.addToQueue(ActionFactory.createItemStack("item-remove", frame.getItem(),
+                             frame.getItem().getAmount(), -1, null, e.getLocation(), player));
+                 } else {
+                     RecordingQueue.addToQueue(ActionFactory.createItemStack("item-remove", frame.getItem(),
+                             frame.getItem().getAmount(), -1, null, e.getLocation(), value));
+                 }
+             }
+@@ -679,17 +679,17 @@
+                     .addToQueue(ActionFactory.createHangingItem("hangingitem-break", event.getEntity(), breakingName));
+         }
+         if (!Prism.getIgnore().event("item-remove", event.getEntity().getWorld())) {
+             return;
+         }
+         // If an item frame, track it's contents
+         if (event.getEntity() instanceof ItemFrame) {
+             final ItemFrame frame = (ItemFrame) event.getEntity();
+-            if (frame.getItem() != null) {
++            if (!checkNotNullorAir(frame.getItem())) {
+                 RecordingQueue.addToQueue(ActionFactory.createItemStack("item-remove", frame.getItem(),
+                         frame.getItem().getAmount(), -1, null, entity.getLocation(), breakingName));
+             }
+         }
+     }
+ 
+     /**
+      * EntityChangeBlockEvent.
+@@ -835,9 +835,9 @@
+                 counter--;
+             } else {
+                 return initial.getType().name();
+             }
+         }
+ 
+         return "tnt";
+     }
+-}+}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -632,17 +632,17 @@
+ 
+         if (!Prism.getIgnore().event("item-remove", event.getEntity().getWorld())) {
+             return;
+         }
+ 
+         // If an item frame, track it's contents
+         if (e instanceof ItemFrame) {
+             final ItemFrame frame = (ItemFrame) e;
+-            if (frame.getItem() != null) {
++            if (!checkNotNullorAir(frame.getItem())) {
+                 if (player != null) {
+                     RecordingQueue.addToQueue(ActionFactory.createItemStack("item-remove", frame.getItem(),
+                             frame.getItem().getAmount(), -1, null, e.getLocation(), player));
+                 } else {
+                     RecordingQueue.addToQueue(ActionFactory.createItemStack("item-remove", frame.getItem(),
+                             frame.getItem().getAmount(), -1, null, e.getLocation(), value));
+                 }
+             }
+@@ -679,17 +679,17 @@
+                     .addToQueue(ActionFactory.createHangingItem("hangingitem-break", event.getEntity(), breakingName));
+         }
+         if (!Prism.getIgnore().event("item-remove", event.getEntity().getWorld())) {
+             return;
+         }
+         // If an item frame, track it's contents
+         if (event.getEntity() instanceof ItemFrame) {
+             final ItemFrame frame = (ItemFrame) event.getEntity();
+-            if (frame.getItem() != null) {
++            if (!checkNotNullorAir(frame.getItem())) {
+                 RecordingQueue.addToQueue(ActionFactory.createItemStack("item-remove", frame.getItem(),
+                         frame.getItem().getAmount(), -1, null, entity.getLocation(), breakingName));
+             }
+         }
+     }
+ 
+     /**
+      * EntityChangeBlockEvent.
+@@ -835,9 +835,9 @@
+                 counter--;
+             } else {
+                 return initial.getType().name();
+             }
+         }
+ 
+         return "tnt";
+     }
+-}+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -835,9 +835,9 @@
+                 counter--;
+             } else {
+                 return initial.getType().name();
+             }
+         }
+ 
+         return "tnt";
+     }
+-}+}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/10: Prism/src/main/java/me/botsko/prism/utils/ChunkUtils.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,13 +1,14 @@
+ package me.botsko.prism.utils;
+ 
+ import org.bukkit.Chunk;
+ import org.bukkit.Material;
+ import org.bukkit.block.Block;
++import org.bukkit.block.data.BlockData;
+ import org.bukkit.entity.Player;
+ import org.bukkit.util.Vector;
+ 
+ import java.util.ArrayList;
+ 
+ public class ChunkUtils {
+ 
+     /**
+@@ -24,18 +25,19 @@
+ 
+     /**
+      * Sets a block in preview mode around the border of a chunk.
+      *
+      * @param player Player
+      * @param blocks Iterable Block list,
+      */
+     public static void setPreviewBoundaryBlocks(Player player, Iterable<Block> blocks, Material m) {
++        BlockData blockData = m.createBlockData();
+         for (Block block : blocks) {
+-            EntityUtils.sendBlockChange(player, block.getLocation(), block.getBlockData());
++            EntityUtils.sendBlockChange(player, block.getLocation(), blockData);
+         }
+     }
+ 
+     /**
+      * Returns the minimum vector for the chunk.
+      *
+      * @param chunk Chunk
+      * @return Vector
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,13 +1,14 @@
+ package me.botsko.prism.utils;
+ 
+ import org.bukkit.Chunk;
+ import org.bukkit.Material;
+ import org.bukkit.block.Block;
++import org.bukkit.block.data.BlockData;
+ import org.bukkit.entity.Player;
+ import org.bukkit.util.Vector;
+ 
+ import java.util.ArrayList;
+ 
+ public class ChunkUtils {
+ 
+     /**
+@@ -24,18 +25,19 @@
+ 
+     /**
+      * Sets a block in preview mode around the border of a chunk.
+      *
+      * @param player Player
+      * @param blocks Iterable Block list,
+      */
+     public static void setPreviewBoundaryBlocks(Player player, Iterable<Block> blocks, Material m) {
++        BlockData blockData = m.createBlockData();
+         for (Block block : blocks) {
+-            EntityUtils.sendBlockChange(player, block.getLocation(), block.getBlockData());
++            EntityUtils.sendBlockChange(player, block.getLocation(), blockData);
+         }
+     }
+ 
+     /**
+      * Returns the minimum vector for the chunk.
+      *
+      * @param chunk Chunk
+      * @return Vector
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 8/10: Prism/src/main/java/me/botsko/prism/utils/EnchantmentUtils.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -132,29 +132,30 @@
+             enchantName = "aqua affinity";
+         } else if (enchantment.equals(Enchantment.VANISHING_CURSE)) {
+             enchantName = "vanishing curse";
+         } else {
+             // can leave as-is: SILK_TOUCH, FIRE_ASPECT, KNOCKBACK, THORNS, LUCK, LURE
+             enchantName = enchantment.getKey().getKey().toLowerCase().replace("_", " ");
+         }
+         switch (level) {
++            case 1:
++                enchantName += " I";
++                break;
+             case 2:
+                 enchantName += " II";
+                 break;
+             case 3:
+                 enchantName += " III";
+                 break;
+             case 4:
+                 enchantName += " IV";
+                 break;
+             case 5:
+                 enchantName += " V";
+                 break;
+-            case 1:
+             default:
+-                enchantName += " I";
+-                break;
++                enchantName += " " + level;
+         }
+         return enchantName;
+ 
+     }
+-}+}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -132,29 +132,30 @@
+             enchantName = "aqua affinity";
+         } else if (enchantment.equals(Enchantment.VANISHING_CURSE)) {
+             enchantName = "vanishing curse";
+         } else {
+             // can leave as-is: SILK_TOUCH, FIRE_ASPECT, KNOCKBACK, THORNS, LUCK, LURE
+             enchantName = enchantment.getKey().getKey().toLowerCase().replace("_", " ");
+         }
+         switch (level) {
++            case 1:
++                enchantName += " I";
++                break;
+             case 2:
+                 enchantName += " II";
+                 break;
+             case 3:
+                 enchantName += " III";
+                 break;
+             case 4:
+                 enchantName += " IV";
+                 break;
+             case 5:
+                 enchantName += " V";
+                 break;
+-            case 1:
+             default:
+-                enchantName += " I";
+-                break;
++                enchantName += " " + level;
+         }
+         return enchantName;
+ 
+     }
+-}+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -153,9 +153,9 @@
+                 enchantName += " V";
+                 break;
+             default:
+                 enchantName += " " + level;
+         }
+         return enchantName;
+ 
+     }
+-}+}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 9/10: Prism/src/main/java/me/botsko/prism/utils/MaterialAliases.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -35,17 +35,17 @@
+ 
+     /**
+      * Load the yml file and save config to hashmap.
+      */
+     public MaterialAliases() {
+         FileConfiguration items = null;
+         InputStream defConfigStream = this.getClass().getResourceAsStream("/items.yml");
+         if (defConfigStream != null) {
+-            System.out.println("Elixr: Loaded items directory");
++            Prism.log("Elixr: Loaded items directory");
+             items = YamlConfiguration.loadConfiguration(new InputStreamReader(defConfigStream));
+         }
+ 
+ 
+         if (items != null) {
+ 
+             // Load all item ids/aliases
+             ConfigurationSection sec = items.getConfigurationSection("items");
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -35,17 +35,17 @@
+ 
+     /**
+      * Load the yml file and save config to hashmap.
+      */
+     public MaterialAliases() {
+         FileConfiguration items = null;
+         InputStream defConfigStream = this.getClass().getResourceAsStream("/items.yml");
+         if (defConfigStream != null) {
+-            System.out.println("Elixr: Loaded items directory");
++            Prism.log("Elixr: Loaded items directory");
+             items = YamlConfiguration.loadConfiguration(new InputStreamReader(defConfigStream));
+         }
+ 
+ 
+         if (items != null) {
+ 
+             // Load all item ids/aliases
+             ConfigurationSection sec = items.getConfigurationSection("items");
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 10/10: Prism/src/main/java/me/botsko/prism/wands/InspectorWand.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -3,16 +3,17 @@
+ import me.botsko.prism.Il8nHelper;
+ import me.botsko.prism.Prism;
+ import me.botsko.prism.actionlibs.ActionMessage;
+ import me.botsko.prism.actionlibs.QueryParameters;
+ import me.botsko.prism.actionlibs.QueryResult;
+ import me.botsko.prism.api.actions.MatchRule;
+ import me.botsko.prism.api.commands.Flag;
+ import me.botsko.prism.text.ReplaceableTextComponent;
++import me.botsko.prism.utils.MiscUtils;
+ import me.botsko.prism.utils.block.Utilities;
+ import net.kyori.adventure.text.format.NamedTextColor;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ import org.bukkit.block.Block;
+ import org.bukkit.entity.Entity;
+ import org.bukkit.entity.Player;
+ 
+@@ -85,36 +86,37 @@
+                 }
+             }
+             final QueryResult results = getResult(params, player);
+             if (!results.getActionResults().isEmpty()) {
+ 
+                 final String blockname = Prism.getItems().getAlias(block.getType(), block.getBlockData());
+                 Prism.messenger.sendMessage(player,
+                         Prism.messenger.playerHeaderMsg(ReplaceableTextComponent.builder("inspector-wand-header")
+-                                .replace("<block>",blockname)
++                                .replace("<blockname>",blockname)
+                                 .replace("<x>",loc.getBlockX())
+                                 .replace("<y>",loc.getBlockY())
+                                 .replace("<z>",loc.getBlockY())
+                                 .build().colorIfAbsent(NamedTextColor.GOLD)));
+-                if (results.getActionResults().size() > 5) {
+-                    Prism.messenger.sendMessage(player,
+-                            Prism.messenger.playerHeaderMsg(Il8nHelper.formatMessage("lookup.result.header",
+-                                    results.getTotalResults(), 1, results.getTotalPages())));
+-                }
++                Prism.messenger.sendMessage(player,
++                        Prism.messenger.playerHeaderMsg(Il8nHelper.formatMessage("lookup-header-message",
++                                results.getTotalResults(), 1, results.getTotalPages())));
++                int resultCount = results.getIndexOfFirstResult();
+                 for (final me.botsko.prism.api
+                         .actions.Handler a : results.getPaginatedActionResults()) {
+                     final ActionMessage am = new ActionMessage(a);
+                     if (parameters.hasFlag(Flag.EXTENDED)
+                             || plugin.getConfig().getBoolean("prism.messenger.always-show-extended")) {
+                         am.showExtended();
+                     }
+-                    Prism.messenger.sendMessage(player,
+-                            Prism.messenger.playerMsg(am.getMessage()));
++                    am.setResultIndex(resultCount);
++                    MiscUtils.sendClickableTpRecord(am, player);
++                    resultCount++;
+                 }
++                MiscUtils.sendPageButtons(results, player);
+             } else {
+                 final String space_name = (block.getType().equals(Material.AIR) ? "space"
+                         : block.getType().toString().replaceAll("_", " ").toLowerCase()
+                         + (block.getType().toString().endsWith("BLOCK") ? "" : " block"));
+                 Prism.messenger.sendMessage(player,
+                         Prism.messenger.playerError("No history for this " + space_name + " found."));
+             }
+         });
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -3,16 +3,17 @@
+ import me.botsko.prism.Il8nHelper;
+ import me.botsko.prism.Prism;
+ import me.botsko.prism.actionlibs.ActionMessage;
+ import me.botsko.prism.actionlibs.QueryParameters;
+ import me.botsko.prism.actionlibs.QueryResult;
+ import me.botsko.prism.api.actions.MatchRule;
+ import me.botsko.prism.api.commands.Flag;
+ import me.botsko.prism.text.ReplaceableTextComponent;
++import me.botsko.prism.utils.MiscUtils;
+ import me.botsko.prism.utils.block.Utilities;
+ import net.kyori.adventure.text.format.NamedTextColor;
+ import org.bukkit.Location;
+ import org.bukkit.Material;
+ import org.bukkit.block.Block;
+ import org.bukkit.entity.Entity;
+ import org.bukkit.entity.Player;
+ 
+@@ -85,36 +86,37 @@
+                 }
+             }
+             final QueryResult results = getResult(params, player);
+             if (!results.getActionResults().isEmpty()) {
+ 
+                 final String blockname = Prism.getItems().getAlias(block.getType(), block.getBlockData());
+                 Prism.messenger.sendMessage(player,
+                         Prism.messenger.playerHeaderMsg(ReplaceableTextComponent.builder("inspector-wand-header")
+-                                .replace("<block>",blockname)
++                                .replace("<blockname>",blockname)
+                                 .replace("<x>",loc.getBlockX())
+                                 .replace("<y>",loc.getBlockY())
+                                 .replace("<z>",loc.getBlockY())
+                                 .build().colorIfAbsent(NamedTextColor.GOLD)));
+-                if (results.getActionResults().size() > 5) {
+-                    Prism.messenger.sendMessage(player,
+-                            Prism.messenger.playerHeaderMsg(Il8nHelper.formatMessage("lookup.result.header",
+-                                    results.getTotalResults(), 1, results.getTotalPages())));
+-                }
++                Prism.messenger.sendMessage(player,
++                        Prism.messenger.playerHeaderMsg(Il8nHelper.formatMessage("lookup-header-message",
++                                results.getTotalResults(), 1, results.getTotalPages())));
++                int resultCount = results.getIndexOfFirstResult();
+                 for (final me.botsko.prism.api
+                         .actions.Handler a : results.getPaginatedActionResults()) {
+                     final ActionMessage am = new ActionMessage(a);
+                     if (parameters.hasFlag(Flag.EXTENDED)
+                             || plugin.getConfig().getBoolean("prism.messenger.always-show-extended")) {
+                         am.showExtended();
+                     }
+-                    Prism.messenger.sendMessage(player,
+-                            Prism.messenger.playerMsg(am.getMessage()));
++                    am.setResultIndex(resultCount);
++                    MiscUtils.sendClickableTpRecord(am, player);
++                    resultCount++;
+                 }
++                MiscUtils.sendPageButtons(results, player);
+             } else {
+                 final String space_name = (block.getType().equals(Material.AIR) ? "space"
+                         : block.getType().toString().replaceAll("_", " ").toLowerCase()
+                         + (block.getType().toString().endsWith("BLOCK") ? "" : " block"));
+                 Prism.messenger.sendMessage(player,
+                         Prism.messenger.playerError("No history for this " + space_name + " found."));
+             }
+         });
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

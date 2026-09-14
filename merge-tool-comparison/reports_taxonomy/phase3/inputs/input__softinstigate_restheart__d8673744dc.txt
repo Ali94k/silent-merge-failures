@@ -1,0 +1,1077 @@
+UNIT softinstigate_restheart__d8673744dc
+repo: softinstigate_restheart   merge: d8673744dc1e6e0322b5082d02a49108e8fc6019   stratum: A
+files shown: 2 of 2 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/2: src/main/java/org/restheart/handlers/RequestContext.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -32,21 +32,24 @@
+ import java.util.Collections;
+ import java.util.Deque;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.stream.Collectors;
+ import org.bson.BsonArray;
+ import org.bson.BsonDocument;
+ import org.bson.BsonInt32;
++import org.bson.BsonString;
+ import org.bson.BsonValue;
+ import org.bson.json.JsonParseException;
+ import org.restheart.Bootstrapper;
+ import org.restheart.db.CursorPool.EAGER_CURSOR_ALLOCATION_POLICY;
+ import org.restheart.db.OperationResult;
++import org.restheart.db.sessions.XClientSession;
++import org.restheart.representation.Resource.REPRESENTATION_FORMAT;
+ import org.restheart.utils.URLUtils;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ /**
+  *
+  * @author Andrea Di Cesare {@literal <andrea@softinstigate.com>}
+  */
+@@ -67,30 +70,36 @@
+     public static final String KEYS_QPARAM_KEY = "keys";
+     public static final String EAGER_CURSOR_ALLOCATION_POLICY_QPARAM_KEY = "eager";
+     public static final String HAL_QPARAM_KEY = "hal";
+     public static final String DOC_ID_TYPE_QPARAM_KEY = "id_type";
+     public static final String ETAG_CHECK_QPARAM_KEY = "checkEtag";
+     public static final String SHARDKEY_QPARAM_KEY = "shardkey";
+     public static final String NO_PROPS_KEY = "np";
+     public static final String REPRESENTATION_FORMAT_KEY = "rep";
++    public static final String CLIENT_SESSION_KEY = "cs";
+ 
+     // matadata
+     public static final String ETAG_DOC_POLICY_METADATA_KEY = "etagDocPolicy";
+     public static final String ETAG_POLICY_METADATA_KEY = "etagPolicy";
+ 
+     // special resource names
+     public static final String SYSTEM = "system.";
+     public static final String LOCAL = "local";
+     public static final String ADMIN = "admin";
+     public static final String _METRICS = "_metrics";
+     public static final String _SIZE = "_size";
++    public static final String _META = "_meta";
++    public static final String _TRANSACTIONS = "_txns";
+ 
+     public static final String FS_CHUNKS_SUFFIX = ".chunks";
+     public static final String FS_FILES_SUFFIX = ".files";
++    public static final String META_COLLNAME = "_properties";
++    public static final String DB_META_DOCID = "_properties";
++    public static final String COLL_META_DOCID_PREFIX = "_properties.";
+ 
+     public static final String RESOURCES_WILDCARD_KEY = "*";
+ 
+     public static final String _INDEXES = "_indexes";
+     public static final String _SCHEMAS = "_schemas";
+     public static final String _AGGREGATIONS = "_aggrs";
+ 
+     public static final String BINARY_CONTENT = "binary";
+@@ -139,18 +148,38 @@
+                 type = TYPE.FILES_BUCKET_SIZE;
+             } else if (pathTokens.length == 4 && pathTokens[2].endsWith(_SCHEMAS)) {
+                 type = TYPE.SCHEMA_STORE_SIZE;
+             } else if (pathTokens.length == 4) {
+                 type = TYPE.COLLECTION_SIZE;
+             } else {
+                 type = TYPE.INVALID;
+             }
+-        } else if (pathTokens.length < 2) {
++        } else if (pathTokens.length > 2 && pathTokens[pathTokens.length - 1].equalsIgnoreCase(_META)) {
++            if (pathTokens.length == 3) {
++                type = TYPE.DB_META;
++            } else if (pathTokens.length == 4 && pathTokens[2].endsWith(FS_FILES_SUFFIX)) {
++                type = TYPE.FILES_BUCKET_META;
++            } else if (pathTokens.length == 4 && pathTokens[2].endsWith(_SCHEMAS)) {
++                type = TYPE.SCHEMA_STORE_META;
++            } else if (pathTokens.length == 4) {
++                type = TYPE.COLLECTION_META;
++            } else {
++                type = TYPE.INVALID;
++            }
++        }  else if (pathTokens.length < 2) {
+             type = TYPE.ROOT;
++        } else if (pathTokens.length == 2 
++                && pathTokens[pathTokens.length - 1]
++                        .equalsIgnoreCase(_TRANSACTIONS)) {
++            type = TYPE.TRANSACTIONS;
++        } else if (pathTokens.length == 3
++                && pathTokens[pathTokens.length - 2]
++                        .equalsIgnoreCase(_TRANSACTIONS)) {
++            type = TYPE.TRANSACTION;
+         } else if (pathTokens.length < 3
+                 && pathTokens[1].equalsIgnoreCase(_METRICS)) {
+             type = TYPE.METRICS;
+         } else if (pathTokens.length < 3) {
+             type = TYPE.DB;
+         } else if (pathTokens.length >= 3
+                 && pathTokens[2].endsWith(FS_FILES_SUFFIX)) {
+             if (pathTokens.length == 3) {
+@@ -216,32 +245,34 @@
+     /**
+      *
+      * @param dbName
+      * @return true if the dbName is a reserved resource
+      */
+     public static boolean isReservedResourceDb(String dbName) {
+         return !dbName.equalsIgnoreCase(_METRICS)
+                 && !dbName.equalsIgnoreCase(_SIZE)
++                && !dbName.equalsIgnoreCase(_TRANSACTIONS)
+                 && (dbName.equals(ADMIN)
+                 || dbName.equals(LOCAL)
+                 || dbName.startsWith(SYSTEM)
+                 || dbName.startsWith(UNDERSCORE)
+                 || dbName.equals(RESOURCES_WILDCARD_KEY));
+     }
+ 
+     /**
+      *
+      * @param collectionName
+      * @return true if the collectionName is a reserved resource
+      */
+     public static boolean isReservedResourceCollection(String collectionName) {
+         return collectionName != null
+                 && !collectionName.equalsIgnoreCase(_SCHEMAS)
+                 && !collectionName.equalsIgnoreCase(_METRICS)
++                && !collectionName.equalsIgnoreCase(_META)
+                 && !collectionName.equalsIgnoreCase(_SIZE)
+                 && (collectionName.startsWith(SYSTEM)
+                 || collectionName.startsWith(UNDERSCORE)
+                 || collectionName.endsWith(FS_CHUNKS_SUFFIX)
+                 || collectionName.equals(RESOURCES_WILDCARD_KEY));
+     }
+ 
+     /**
+@@ -258,16 +289,19 @@
+         }
+ 
+         return (documentIdRaw.startsWith(UNDERSCORE)
+                 || (type != TYPE.AGGREGATION
+                 && _AGGREGATIONS.equalsIgnoreCase(documentIdRaw)))
+                 && !documentIdRaw.equalsIgnoreCase(_METRICS)
+                 && !documentIdRaw.equalsIgnoreCase(_SIZE)
+                 && !documentIdRaw.equalsIgnoreCase(_INDEXES)
++                && !documentIdRaw.equalsIgnoreCase(_META)
++                && !documentIdRaw.equalsIgnoreCase(DB_META_DOCID)
++                && !documentIdRaw.startsWith(COLL_META_DOCID_PREFIX)
+                 && !documentIdRaw.equalsIgnoreCase(MIN_KEY_ID)
+                 && !documentIdRaw.equalsIgnoreCase(MAX_KEY_ID)
+                 && !documentIdRaw.equalsIgnoreCase(NULL_KEY_ID)
+                 && !documentIdRaw.equalsIgnoreCase(TRUE_KEY_ID)
+                 && !documentIdRaw.equalsIgnoreCase(FALSE_KEY_ID)
+                 && !(type == TYPE.AGGREGATION)
+                 || (documentIdRaw.equals(RESOURCES_WILDCARD_KEY)
+                 && !(type == TYPE.BULK_DOCUMENTS));
+@@ -323,16 +357,18 @@
+ 
+     private BsonDocument shardKey = null;
+ 
+     private boolean noProps = false;
+ 
+     private boolean inError = false;
+ 
+     private Account authenticatedAccount = null;
++    
++    private XClientSession clientSession = null;
+ 
+     /**
+      * the HAL mode
+      */
+     private HAL_MODE halMode = HAL_MODE.FULL;
+ 
+     private final long requestStartTime = System.currentTimeMillis();
+ 
+@@ -759,18 +795,18 @@
+     }
+ 
+     /**
+      * @param filter the filter to set
+      */
+     public void setFilter(Deque<String> filter) {
+         this.filter = filter;
+     }
+-    
+-     /**
++
++    /**
+      * @return the hint
+      */
+     public Deque<String> getHint() {
+         return hint;
+     }
+ 
+     /**
+      * @param hint the hint to set
+@@ -830,17 +866,17 @@
+                         sort.put(_s, new BsonInt32(1));
+                     }
+                 }
+             });
+         }
+ 
+         return sort;
+     }
+-    
++
+     public BsonDocument getHintDocument() throws JsonParseException {
+         BsonDocument ret = new BsonDocument();
+ 
+         if (hint == null || hint.isEmpty()) {
+             return null;
+         } else {
+             hint.stream().forEach((s) -> {
+ 
+@@ -1065,17 +1101,23 @@
+     public void setDocumentId(BsonValue documentId) {
+         this.documentId = documentId;
+     }
+ 
+     /**
+      * @return the documentId
+      */
+     public BsonValue getDocumentId() {
+-        return documentId;
++        if (isDbMeta()) {
++            return new BsonString(DB_META_DOCID);
++        } else if (isCollectionMeta()) {
++            return new BsonString(COLL_META_DOCID_PREFIX.concat(getPathTokenAt(2)));
++        } else {
++            return documentId;
++        }
+     }
+ 
+     /**
+      * @return the responseContent
+      */
+     public BsonValue getResponseContent() {
+         return responseContent;
+     }
+@@ -1576,16 +1618,34 @@
+     /**
+      * helper method to check request resource type
+      *
+      * @return true if type is TYPE.ROOT
+      */
+     public boolean isRoot() {
+         return this.type == TYPE.ROOT;
+     }
++    
++    /**
++     * helper method to check request resource type
++     *
++     * @return true if type is TYPE.TRANSACTIONS
++     */
++    public boolean isTxns() {
++        return this.type == TYPE.TRANSACTIONS;
++    }
++    
++    /**
++     * helper method to check request resource type
++     *
++     * @return true if type is TYPE.TRANSACTION
++     */
++    public boolean isTxn() {
++        return this.type == TYPE.TRANSACTION;
++    }
+ 
+     /**
+      * helper method to check request resource type
+      *
+      * @return true if type is TYPE.SCHEMA
+      */
+     public boolean isSchema() {
+         return this.type == TYPE.SCHEMA;
+@@ -1616,38 +1676,74 @@
+      */
+     public boolean isDbSize() {
+         return this.type == TYPE.DB_SIZE;
+     }
+ 
+     /**
+      * helper method to check request resource type
+      *
++     * @return true if type is TYPE.DB_META
++     */
++    public boolean isDbMeta() {
++        return this.type == TYPE.DB_META;
++    }
++
++    /**
++     * helper method to check request resource type
++     *
+      * @return true if type is TYPE.COLLECTION_SIZE
+      */
+     public boolean isCollectionSize() {
+         return this.type == TYPE.COLLECTION_SIZE;
+     }
+ 
+     /**
+      * helper method to check request resource type
+      *
++     * @return true if type is TYPE.COLLECTION_META
++     */
++    public boolean isCollectionMeta() {
++        return this.type == TYPE.COLLECTION_META;
++    }
++
++    /**
++     * helper method to check request resource type
++     *
+      * @return true if type is TYPE.FILES_BUCKET_SIZE
+      */
+     public boolean isFilesBucketSize() {
+         return this.type == TYPE.FILES_BUCKET_SIZE;
+     }
+ 
+     /**
+      * helper method to check request resource type
+      *
++     * @return true if type is TYPE.FILES_BUCKET_META
++     */
++    public boolean isFilesBucketMeta() {
++        return this.type == TYPE.FILES_BUCKET_META;
++    }
++
++    /**
++     * helper method to check request resource type
++     *
+      * @return true if type is TYPE.SCHEMA_STORE_SIZE
+      */
+     public boolean isSchemaStoreSize() {
+         return this.type == TYPE.SCHEMA_STORE_SIZE;
++    }
++
++    /**
++     * helper method to check request resource type
++     *
++     * @return true if type is TYPE.SCHEMA_STORE_SIZE
++     */
++    public boolean isSchemaStoreMeta() {
++        return this.type == TYPE.SCHEMA_STORE_META;
+     }
+ 
+     /**
+      * helper method to check request resource type
+      *
+      * @return true if type is TYPE.METRICS
+      */
+     public boolean isMetrics() {
+@@ -1709,31 +1805,37 @@
+     }
+ 
+     public enum TYPE {
+         INVALID,
+         ROOT,
+         ROOT_SIZE,
+         DB,
+         DB_SIZE,
++        DB_META,
+         COLLECTION,
+         COLLECTION_SIZE,
++        COLLECTION_META,
+         DOCUMENT,
+         COLLECTION_INDEXES,
+         INDEX,
+         FILES_BUCKET,
+         FILES_BUCKET_SIZE,
++        FILES_BUCKET_META,
+         FILE,
+         FILE_BINARY,
+         AGGREGATION,
+         SCHEMA,
+         SCHEMA_STORE,
+         SCHEMA_STORE_SIZE,
++        SCHEMA_STORE_META,
+         BULK_DOCUMENTS,
+-        METRICS
++        METRICS,
++        TRANSACTIONS,
++        TRANSACTION,
+     }
+ 
+     public enum METHOD {
+         GET,
+         POST,
+         PUT,
+         DELETE,
+         PATCH,
+@@ -1748,28 +1850,36 @@
+         NUMBER, // any Number (including mongodb NumberLong)
+         DATE, // Date
+         MINKEY, // org.bson.types.MinKey;
+         MAXKEY, // org.bson.types.MaxKey
+         NULL, // null
+         BOOLEAN     // boolean
+     }
+ 
+-    public enum REPRESENTATION_FORMAT {
+-        PLAIN_JSON, // Plain Json
+-        PJ, // Alias for plain json
+-        HAL // Hypertext Application Language
+-    }
+-
+     public enum HAL_MODE {
+         FULL, // full mode
+         F, // alias for full
+         COMPACT, // new compact mode
+         C           // alias for compact
+     }
+ 
+     public enum ETAG_CHECK_POLICY {
+         REQUIRED, // always requires the etag, return PRECONDITION FAILED if missing
+         REQUIRED_FOR_DELETE, // only requires the etag for DELETE, return PRECONDITION FAILED if missing
+         OPTIONAL                // checks the etag only if provided by client via If-Match header
+     }
+ 
++    /**
++     * @return the clientSession
++     */
++    public XClientSession getClientSession() {
++        return clientSession;
++    }
++
++    /**
++     * @param clientSession the clientSession to set
++     */
++    public void setClientSession(XClientSession clientSession) {
++        this.clientSession = clientSession;
++    }
++
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -87,16 +87,17 @@
+     public static final String FS_CHUNKS_SUFFIX = ".chunks";
+     public static final String FS_FILES_SUFFIX = ".files";
+ 
+     public static final String RESOURCES_WILDCARD_KEY = "*";
+ 
+     public static final String _INDEXES = "_indexes";
+     public static final String _SCHEMAS = "_schemas";
+     public static final String _AGGREGATIONS = "_aggrs";
++    public static final String _FEEDS = "_feeds";
+ 
+     public static final String BINARY_CONTENT = "binary";
+ 
+     public static final String MAX_KEY_ID = "_MaxKey";
+     public static final String MIN_KEY_ID = "_MinKey";
+     public static final String NULL_KEY_ID = "_null";
+     public static final String TRUE_KEY_ID = "_true";
+     public static final String FALSE_KEY_ID = "_false";
+@@ -201,16 +202,22 @@
+                 && pathTokens[3].equalsIgnoreCase(_INDEXES)) {
+             type = TYPE.INDEX;
+         } else if (pathTokens.length == 4
+                 && pathTokens[3].equalsIgnoreCase(_AGGREGATIONS)) {
+             type = TYPE.INVALID;
+         } else if (pathTokens.length > 4
+                 && pathTokens[3].equalsIgnoreCase(_AGGREGATIONS)) {
+             type = TYPE.AGGREGATION;
++        } else if (pathTokens.length == 4
++                && pathTokens[3].equalsIgnoreCase(_FEEDS)) {
++            type = TYPE.INVALID;
++        } else if (pathTokens.length > 4
++                && pathTokens[3].equalsIgnoreCase(_FEEDS)) {
++            type = TYPE.FEED;
+         } else {
+             type = TYPE.DOCUMENT;
+         }
+ 
+         return type;
+     }
+ 
+     /**
+@@ -255,25 +262,29 @@
+             String documentIdRaw) {
+         if (documentIdRaw == null) {
+             return false;
+         }
+ 
+         return (documentIdRaw.startsWith(UNDERSCORE)
+                 || (type != TYPE.AGGREGATION
+                 && _AGGREGATIONS.equalsIgnoreCase(documentIdRaw)))
++                && (documentIdRaw.startsWith(UNDERSCORE)
++                || (type != TYPE.FEED
++                && _FEEDS.equalsIgnoreCase(documentIdRaw)))
+                 && !documentIdRaw.equalsIgnoreCase(_METRICS)
+                 && !documentIdRaw.equalsIgnoreCase(_SIZE)
+                 && !documentIdRaw.equalsIgnoreCase(_INDEXES)
+                 && !documentIdRaw.equalsIgnoreCase(MIN_KEY_ID)
+                 && !documentIdRaw.equalsIgnoreCase(MAX_KEY_ID)
+                 && !documentIdRaw.equalsIgnoreCase(NULL_KEY_ID)
+                 && !documentIdRaw.equalsIgnoreCase(TRUE_KEY_ID)
+                 && !documentIdRaw.equalsIgnoreCase(FALSE_KEY_ID)
+                 && !(type == TYPE.AGGREGATION)
++                && !(type == TYPE.FEED)
+                 || (documentIdRaw.equals(RESOURCES_WILDCARD_KEY)
+                 && !(type == TYPE.BULK_DOCUMENTS));
+     }
+ 
+     private final String whereUri;
+     private final String whatUri;
+ 
+     private final TYPE type;
+@@ -637,16 +648,27 @@
+      *
+      * @return collection name
+      */
+     public String getAggregationOperation() {
+         return getPathTokenAt(4);
+     }
+ 
+     /**
++     * @return feed operation name
++     */
++    public String getFeedOperation() {
++        return getPathTokenAt(4);
++    }
++
++    public String getFeedIdentifier() {
++        return getPathTokenAt(5);
++    }
++
++    /**
+      *
+      * @return URI
+      * @throws URISyntaxException
+      */
+     public URI getUri() throws URISyntaxException {
+         return new URI(Arrays.asList(pathTokens)
+                 .stream()
+                 .reduce(SLASH, (t1, t2) -> t1 + SLASH + t2));
+@@ -759,18 +781,18 @@
+     }
+ 
+     /**
+      * @param filter the filter to set
+      */
+     public void setFilter(Deque<String> filter) {
+         this.filter = filter;
+     }
+-    
+-     /**
++
++    /**
+      * @return the hint
+      */
+     public Deque<String> getHint() {
+         return hint;
+     }
+ 
+     /**
+      * @param hint the hint to set
+@@ -830,17 +852,17 @@
+                         sort.put(_s, new BsonInt32(1));
+                     }
+                 }
+             });
+         }
+ 
+         return sort;
+     }
+-    
++
+     public BsonDocument getHintDocument() throws JsonParseException {
+         BsonDocument ret = new BsonDocument();
+ 
+         if (hint == null || hint.isEmpty()) {
+             return null;
+         } else {
+             hint.stream().forEach((s) -> {
+ 
+@@ -1714,16 +1736,17 @@
+         ROOT_SIZE,
+         DB,
+         DB_SIZE,
+         COLLECTION,
+         COLLECTION_SIZE,
+         DOCUMENT,
+         COLLECTION_INDEXES,
+         INDEX,
++        FEED,
+         FILES_BUCKET,
+         FILES_BUCKET_SIZE,
+         FILE,
+         FILE_BINARY,
+         AGGREGATION,
+         SCHEMA,
+         SCHEMA_STORE,
+         SCHEMA_STORE_SIZE,
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/2: src/main/java/org/restheart/handlers/RequestDispatcherHandler.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -57,18 +57,23 @@
+ import org.restheart.handlers.metadata.CheckersListHandler;
+ import org.restheart.handlers.metadata.HookHandler;
+ import org.restheart.handlers.metadata.RequestTransformerHandler;
+ import org.restheart.handlers.metadata.ResponseTransformerHandler;
+ import org.restheart.handlers.metadata.TransformersListHandler;
+ import org.restheart.handlers.root.GetRootHandler;
+ import org.restheart.handlers.schema.JsonMetaSchemaChecker;
+ import org.restheart.handlers.schema.JsonSchemaTransformer;
+-import org.restheart.metadata.transformers.SizeRequestTransformer;
+-import org.restheart.metadata.transformers.PlainJsonTransformer;
++import org.restheart.handlers.transformers.MetaRequestTransformer;
++import org.restheart.handlers.transformers.SizeRequestTransformer;
++import org.restheart.handlers.transformers.RepresentationTransformer;
++import org.restheart.handlers.txns.DeleteTxnHandler;
++import org.restheart.handlers.txns.PatchTxnHandler;
++import org.restheart.handlers.txns.PostTxnsHandler;
++import org.restheart.handlers.txns.TestTxnHandler;
+ import org.restheart.metadata.transformers.RequestTransformer.PHASE;
+ import org.restheart.utils.HttpStatus;
+ import org.restheart.utils.ResponseHelper;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ /**
+  *
+@@ -113,17 +118,17 @@
+ 
+         // *** ROOT handlers
+         putPipedHttpHandler(TYPE.ROOT, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new GetRootHandler(
+                                 new TransformersListHandler(
+                                         new ResponseSenderHandler(null),
+                                         PHASE.RESPONSE,
+-                                        new PlainJsonTransformer()))));
++                                        new RepresentationTransformer()))));
+ 
+         putPipedHttpHandler(TYPE.ROOT_SIZE, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new TransformersListHandler(
+                                 new GetRootHandler(
+                                         new TransformersListHandler(
+                                                 new ResponseSenderHandler(null),
+                                                 PHASE.RESPONSE,
+@@ -136,28 +141,40 @@
+         putPipedHttpHandler(TYPE.DB, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new GetDBHandler(
+                                 new TransformersListHandler(
+                                         new ResponseTransformerHandler(
+                                                 new ResponseSenderHandler(null)),
+                                         PHASE.RESPONSE,
+                                         new AggregationTransformer(),
+-                                        new PlainJsonTransformer()))));
++                                        new RepresentationTransformer()))));
+         
+         putPipedHttpHandler(TYPE.DB_SIZE, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new TransformersListHandler(
+                                 new GetDBHandler(
+                                         new TransformersListHandler(
+                                                 new ResponseSenderHandler(null),
+                                                 PHASE.RESPONSE,
+                                                 new SizeRequestTransformer())),
+                                 PHASE.REQUEST,
+                                 new SizeRequestTransformer()))
++        );
++        
++        putPipedHttpHandler(TYPE.DB_META, METHOD.GET,
++                new RequestTransformerHandler(
++                        new TransformersListHandler(
++                                new GetDocumentHandler(
++                                        new TransformersListHandler(
++                                                new ResponseSenderHandler(null),
++                                                PHASE.RESPONSE,
++                                                new MetaRequestTransformer())),
++                                PHASE.REQUEST,
++                                new MetaRequestTransformer()))
+         );
+ 
+         putPipedHttpHandler(TYPE.DB, METHOD.PUT,
+                 new RequestTransformerHandler(
+                         new RequestTransformerHandler(
+                                 new PutDBHandler(
+                                         respTransformers()))));
+ 
+@@ -175,31 +192,43 @@
+         putPipedHttpHandler(TYPE.COLLECTION, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new GetCollectionHandler(
+                                 new ResponseTransformerHandler(
+                                         new TransformersListHandler(
+                                                 new HookHandler(
+                                                         new ResponseSenderHandler()),
+                                                 PHASE.RESPONSE,
+-                                                new PlainJsonTransformer(),
++                                                new RepresentationTransformer(),
+                                                 new AggregationTransformer())))));
+ 
+         putPipedHttpHandler(TYPE.COLLECTION_SIZE, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new TransformersListHandler(
+                                 new GetCollectionHandler(
+                                         new ResponseTransformerHandler(
+                                                 new TransformersListHandler(
+                                                         new HookHandler(
+                                                                 new ResponseSenderHandler()),
+                                                         PHASE.RESPONSE,
+                                                         new SizeRequestTransformer()))),
+                                 PHASE.REQUEST,
+                                 new SizeRequestTransformer()))
++        );
++        
++        putPipedHttpHandler(TYPE.COLLECTION_META, METHOD.GET,
++                new RequestTransformerHandler(
++                        new TransformersListHandler(
++                                new GetDocumentHandler(
++                                        new TransformersListHandler(
++                                                new ResponseSenderHandler(null),
++                                                PHASE.RESPONSE,
++                                                new MetaRequestTransformer())),
++                                PHASE.REQUEST,
++                                new MetaRequestTransformer()))
+         );
+ 
+         putPipedHttpHandler(TYPE.COLLECTION, METHOD.POST,
+                 new NormalOrBulkDispatcherHandler(
+                         new RequestTransformerHandler(
+                                 new BeforeWriteCheckHandler(
+                                         new PostCollectionHandler(
+                                                 new AfterWriteCheckHandler(
+@@ -303,32 +332,49 @@
+                                         new TransformersListHandler(
+                                                 new ResponseSenderHandler(null),
+                                                 PHASE.RESPONSE,
+                                                 new SizeRequestTransformer())),
+                                 PHASE.REQUEST,
+                                 new SizeRequestTransformer()))
+         );
+         
++        putPipedHttpHandler(TYPE.FILES_BUCKET_META, METHOD.GET,
++                new RequestTransformerHandler(
++                        new TransformersListHandler(
++                                new GetDocumentHandler(
++                                        new TransformersListHandler(
++                                                new ResponseSenderHandler(null),
++                                                PHASE.RESPONSE,
++                                                new MetaRequestTransformer())),
++                                PHASE.REQUEST,
++                                new MetaRequestTransformer()))
++        );
++        
+         putPipedHttpHandler(TYPE.FILES_BUCKET, METHOD.POST,
+                 new RequestTransformerHandler(
+                         new BeforeWriteCheckHandler(
+                                 new PostBucketHandler(
+                                         respTransformers()))));
+ 
+         putPipedHttpHandler(TYPE.FILE, METHOD.PUT,
+                 new RequestTransformerHandler(
+                         new BeforeWriteCheckHandler(
+                                 new PutFileHandler(
+                                         new FileMetadataHandler(
+                                                 respTransformers())))));
+ 
+         putPipedHttpHandler(TYPE.FILES_BUCKET, METHOD.PUT,
+                 new RequestTransformerHandler(
+                         new PutBucketHandler(
++                                respTransformers())));
++        
++        putPipedHttpHandler(TYPE.FILES_BUCKET, METHOD.PATCH,
++                new RequestTransformerHandler(
++                        new PatchCollectionHandler(
+                                 respTransformers())));
+ 
+         putPipedHttpHandler(TYPE.FILES_BUCKET, METHOD.DELETE,
+                 new RequestTransformerHandler(
+                         new DeleteBucketHandler(
+                                 respTransformers())));
+ 
+         putPipedHttpHandler(TYPE.FILE, METHOD.GET,
+@@ -365,16 +411,38 @@
+                                         new AfterWriteCheckHandler(
+                                                 respTransformers())))));
+          */
+         // *** AGGREGATION handler
+         putPipedHttpHandler(TYPE.AGGREGATION, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new GetAggregationHandler(
+                                 respTransformers())));
++        
++        // *** TXS handler
++        
++        putPipedHttpHandler(TYPE.TRANSACTIONS, METHOD.POST,
++                new RequestTransformerHandler(
++                        new PostTxnsHandler(
++                                        respTransformers())));
++        
++        putPipedHttpHandler(TYPE.TRANSACTION, METHOD.DELETE,
++                new RequestTransformerHandler(
++                        new DeleteTxnHandler(
++                                        respTransformers())));
++        
++        putPipedHttpHandler(TYPE.TRANSACTION, METHOD.PATCH,
++                new RequestTransformerHandler(
++                        new PatchTxnHandler(
++                                        respTransformers())));
++        
++        putPipedHttpHandler(TYPE.TRANSACTION, METHOD.PUT,
++                new RequestTransformerHandler(
++                        new TestTxnHandler(
++                                        respTransformers())));
+ 
+         // *** SCHEMA handlers
+         putPipedHttpHandler(TYPE.SCHEMA_STORE, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new GetCollectionHandler(
+                                 new TransformersListHandler(
+                                         respTransformers(),
+                                         PHASE.RESPONSE,
+@@ -387,19 +455,36 @@
+                                         new TransformersListHandler(
+                                                 new ResponseSenderHandler(null),
+                                                 PHASE.RESPONSE,
+                                                 new SizeRequestTransformer())),
+                                 PHASE.REQUEST,
+                                 new SizeRequestTransformer()))
+         );
+         
++        putPipedHttpHandler(TYPE.SCHEMA_STORE_META, METHOD.GET,
++                new RequestTransformerHandler(
++                        new TransformersListHandler(
++                                new GetDocumentHandler(
++                                        new TransformersListHandler(
++                                                new ResponseSenderHandler(null),
++                                                PHASE.RESPONSE,
++                                                new MetaRequestTransformer())),
++                                PHASE.REQUEST,
++                                new MetaRequestTransformer()))
++        );
++        
+         putPipedHttpHandler(TYPE.SCHEMA_STORE, METHOD.PUT,
+                 new RequestTransformerHandler(
+                         new PutCollectionHandler(
++                                respTransformers())));
++        
++        putPipedHttpHandler(TYPE.SCHEMA_STORE, METHOD.PATCH,
++                new RequestTransformerHandler(
++                        new PatchCollectionHandler(
+                                 respTransformers())));
+ 
+         putPipedHttpHandler(TYPE.SCHEMA_STORE, METHOD.POST,
+                 new RequestTransformerHandler(
+                         new CheckersListHandler(
+                                 new TransformersListHandler(
+                                         new PostCollectionHandler(
+                                                 respTransformers()),
+@@ -439,17 +524,17 @@
+     }
+ 
+     private PipedHttpHandler respTransformers() {
+         return new ResponseTransformerHandler(
+                 new TransformersListHandler(
+                         new HookHandler(
+                                 new ResponseSenderHandler()),
+                         PHASE.RESPONSE,
+-                        new PlainJsonTransformer()));
++                        new RepresentationTransformer()));
+     }
+ 
+     /**
+      * Given a type and method, return the appropriate PipedHttpHandler which
+      * can handle this request
+      *
+      * @param type
+      * @param method
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -36,16 +36,19 @@
+ import org.restheart.handlers.database.DeleteDBHandler;
+ import org.restheart.handlers.database.GetDBHandler;
+ import org.restheart.handlers.database.PatchDBHandler;
+ import org.restheart.handlers.database.PutDBHandler;
+ import org.restheart.handlers.document.DeleteDocumentHandler;
+ import org.restheart.handlers.document.GetDocumentHandler;
+ import org.restheart.handlers.document.PatchDocumentHandler;
+ import org.restheart.handlers.document.PutDocumentHandler;
++import org.restheart.handlers.feed.DeleteFeedHandler;
++import org.restheart.handlers.feed.GetFeedHandler;
++import org.restheart.handlers.feed.PostFeedHandler;
+ import org.restheart.handlers.files.DeleteBucketHandler;
+ import org.restheart.handlers.files.DeleteFileHandler;
+ import org.restheart.handlers.files.FileMetadataHandler;
+ import org.restheart.handlers.files.GetFileBinaryHandler;
+ import org.restheart.handlers.files.GetFileHandler;
+ import org.restheart.handlers.files.PostBucketHandler;
+ import org.restheart.handlers.files.PutBucketHandler;
+ import org.restheart.handlers.files.PutFileHandler;
+@@ -137,17 +140,17 @@
+                 new RequestTransformerHandler(
+                         new GetDBHandler(
+                                 new TransformersListHandler(
+                                         new ResponseTransformerHandler(
+                                                 new ResponseSenderHandler(null)),
+                                         PHASE.RESPONSE,
+                                         new AggregationTransformer(),
+                                         new PlainJsonTransformer()))));
+-        
++
+         putPipedHttpHandler(TYPE.DB_SIZE, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new TransformersListHandler(
+                                 new GetDBHandler(
+                                         new TransformersListHandler(
+                                                 new ResponseSenderHandler(null),
+                                                 PHASE.RESPONSE,
+                                                 new SizeRequestTransformer())),
+@@ -165,17 +168,17 @@
+                 new RequestTransformerHandler(
+                         new DeleteDBHandler(
+                                 respTransformers())));
+ 
+         putPipedHttpHandler(TYPE.DB, METHOD.PATCH,
+                 new RequestTransformerHandler(
+                         new PatchDBHandler(
+                                 respTransformers())));
+-        
++
+         // *** COLLECTION handlers
+         putPipedHttpHandler(TYPE.COLLECTION, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new GetCollectionHandler(
+                                 new ResponseTransformerHandler(
+                                         new TransformersListHandler(
+                                                 new HookHandler(
+                                                         new ResponseSenderHandler()),
+@@ -284,35 +287,34 @@
+                         new DeleteIndexHandler(
+                                 respTransformers())));
+ 
+         // *** FILES_BUCKET and FILE handlers
+         putPipedHttpHandler(TYPE.FILES_BUCKET, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new GetCollectionHandler(
+                                 respTransformers())));
+-        
+-        
++
+         putPipedHttpHandler(TYPE.FILES_BUCKET, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new GetCollectionHandler(
+                                 respTransformers())));
+-        
++
+         putPipedHttpHandler(TYPE.FILES_BUCKET_SIZE, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new TransformersListHandler(
+                                 new GetCollectionHandler(
+                                         new TransformersListHandler(
+                                                 new ResponseSenderHandler(null),
+                                                 PHASE.RESPONSE,
+                                                 new SizeRequestTransformer())),
+                                 PHASE.REQUEST,
+                                 new SizeRequestTransformer()))
+         );
+-        
++
+         putPipedHttpHandler(TYPE.FILES_BUCKET, METHOD.POST,
+                 new RequestTransformerHandler(
+                         new BeforeWriteCheckHandler(
+                                 new PostBucketHandler(
+                                         respTransformers()))));
+ 
+         putPipedHttpHandler(TYPE.FILE, METHOD.PUT,
+                 new RequestTransformerHandler(
+@@ -366,16 +368,32 @@
+                                                 respTransformers())))));
+          */
+         // *** AGGREGATION handler
+         putPipedHttpHandler(TYPE.AGGREGATION, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new GetAggregationHandler(
+                                 respTransformers())));
+ 
++        // *** FEED handlers
++        putPipedHttpHandler(TYPE.FEED, METHOD.GET,
++                new RequestTransformerHandler(
++                        new GetFeedHandler(
++                                responseSenderHandler)));
++
++        putPipedHttpHandler(TYPE.FEED, METHOD.POST,
++                new RequestTransformerHandler(
++                        new PostFeedHandler(
++                                responseSenderHandler)));
++
++        putPipedHttpHandler(TYPE.FEED, METHOD.DELETE,
++                new RequestTransformerHandler(
++                        new DeleteFeedHandler(
++                                responseSenderHandler)));
++
+         // *** SCHEMA handlers
+         putPipedHttpHandler(TYPE.SCHEMA_STORE, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new GetCollectionHandler(
+                                 new TransformersListHandler(
+                                         respTransformers(),
+                                         PHASE.RESPONSE,
+                                         new JsonSchemaTransformer()))));
+@@ -386,17 +404,17 @@
+                                 new GetCollectionHandler(
+                                         new TransformersListHandler(
+                                                 new ResponseSenderHandler(null),
+                                                 PHASE.RESPONSE,
+                                                 new SizeRequestTransformer())),
+                                 PHASE.REQUEST,
+                                 new SizeRequestTransformer()))
+         );
+-        
++
+         putPipedHttpHandler(TYPE.SCHEMA_STORE, METHOD.PUT,
+                 new RequestTransformerHandler(
+                         new PutCollectionHandler(
+                                 respTransformers())));
+ 
+         putPipedHttpHandler(TYPE.SCHEMA_STORE, METHOD.POST,
+                 new RequestTransformerHandler(
+                         new CheckersListHandler(
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -145,17 +145,17 @@
+                 new RequestTransformerHandler(
+                         new GetDBHandler(
+                                 new TransformersListHandler(
+                                         new ResponseTransformerHandler(
+                                                 new ResponseSenderHandler(null)),
+                                         PHASE.RESPONSE,
+                                         new AggregationTransformer(),
+                                         new RepresentationTransformer()))));
+-
++        
+         putPipedHttpHandler(TYPE.DB_SIZE, METHOD.GET,
+                 new RequestTransformerHandler(
+                         new TransformersListHandler(
+                                 new GetDBHandler(
+                                         new TransformersListHandler(
+                                                 new ResponseSenderHandler(null),
+                                                 PHASE.RESPONSE,
+                                                 new SizeRequestTransformer())),
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

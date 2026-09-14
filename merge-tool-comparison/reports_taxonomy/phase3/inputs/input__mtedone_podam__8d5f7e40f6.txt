@@ -1,0 +1,2220 @@
+UNIT mtedone_podam__8d5f7e40f6
+repo: mtedone_podam   merge: 8d5f7e40f691a8e83b766f7509dc1dda0de3ff64   stratum: B
+files shown: 14 of 14 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/14: src/main/java/uk/co/jemos/podam/common/PodamBooleanValue.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -11,16 +11,17 @@
+ 
+ /**
+  * Annotation used to customise a boolean value on the annotated field
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamBooleanValue {
+ 
+ 	/**
+ 	 * The value to assign to the annotated attribute.
+ 	 * 
+ 	 * @return The value to assign to the annotated attribute
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -11,16 +11,17 @@
+ 
+ /**
+  * Annotation used to customise a boolean value on the annotated field
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamBooleanValue {
+ 
+ 	/**
+ 	 * The value to assign to the annotated attribute.
+ 	 * 
+ 	 * @return The value to assign to the annotated attribute
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,31 +1,31 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * Annotation used to customise a boolean value on the annotated field
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamBooleanValue {
+-
+-	/**
+-	 * The value to assign to the annotated attribute.
+-	 * 
+-	 * @return The value to assign to the annotated attribute
+-	 */
+-	boolean boolValue() default false;
+-
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * Annotation used to customise a boolean value on the annotated field
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
++@Retention(RetentionPolicy.RUNTIME)
++public @interface PodamBooleanValue {
++
++	/**
++	 * The value to assign to the annotated attribute.
++	 * 
++	 * @return The value to assign to the annotated attribute
++	 */
++	boolean boolValue() default false;
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/14: src/main/java/uk/co/jemos/podam/common/PodamByteValue.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -13,16 +13,17 @@
+  * Annotation used to customise min and max values of a byte type attribute or
+  * constructor parameter.
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamByteValue {
+ 
+ 	/**
+ 	 * A precise value for the annotated attribute.
+ 	 * <p>
+ 	 * This attribute defaults to an empty string.
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,16 +13,17 @@
+  * Annotation used to customise min and max values of a byte type attribute or
+  * constructor parameter.
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamByteValue {
+ 
+ 	/**
+ 	 * A precise value for the annotated attribute.
+ 	 * <p>
+ 	 * This attribute defaults to an empty string.
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,68 +1,68 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * Annotation used to customise min and max values of a byte type attribute or
+- * constructor parameter.
+- * 
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamByteValue {
+-
+-	/**
+-	 * A precise value for the annotated attribute.
+-	 * <p>
+-	 * This attribute defaults to an empty string.
+-	 * </p>
+-	 * <p>
+-	 * Please note that the format should be String to allow for null values for
+-	 * this annotation attribute. If we set the type to be byte, then to allow
+-	 * for {@code null} values we should have set something arbitrary as
+-	 * {@code default 0}. If set, the value must be convertible to the type of
+-	 * this annotation or a {@link NumberFormatException} will be thrown.
+-	 * </p>
+-	 * <p>
+-	 * If set, it will take precedence over all other annotation attributes
+-	 * (e.g. min/max)
+-	 * </p>
+-	 * 
+-	 * @return The precise byte value to assign to the annotated attribute
+-	 */
+-	String numValue() default "";
+-
+-	/**
+-	 * The minimum value for the annotated field.
+-	 * 
+-	 * @return The minimum byte value to assign to the annotated attribute
+-	 */
+-	byte minValue() default 0;
+-
+-	/**
+-	 * The minimum value for the annotated field.
+-	 * 
+-	 * @return The maximum byte value to assign to the annotated attribute
+-	 */
+-	byte maxValue() default 0;
+-
+-	/**
+-	 * It allows clients to make comments.
+-	 * 
+-	 * @return A string representing comments for this annotation
+-	 */
+-	String comment() default "";
+-
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * Annotation used to customise min and max values of a byte type attribute or
++ * constructor parameter.
++ * 
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
++@Retention(RetentionPolicy.RUNTIME)
++public @interface PodamByteValue {
++
++	/**
++	 * A precise value for the annotated attribute.
++	 * <p>
++	 * This attribute defaults to an empty string.
++	 * </p>
++	 * <p>
++	 * Please note that the format should be String to allow for null values for
++	 * this annotation attribute. If we set the type to be byte, then to allow
++	 * for {@code null} values we should have set something arbitrary as
++	 * {@code default 0}. If set, the value must be convertible to the type of
++	 * this annotation or a {@link NumberFormatException} will be thrown.
++	 * </p>
++	 * <p>
++	 * If set, it will take precedence over all other annotation attributes
++	 * (e.g. min/max)
++	 * </p>
++	 * 
++	 * @return The precise byte value to assign to the annotated attribute
++	 */
++	String numValue() default "";
++
++	/**
++	 * The minimum value for the annotated field.
++	 * 
++	 * @return The minimum byte value to assign to the annotated attribute
++	 */
++	byte minValue() default 0;
++
++	/**
++	 * The minimum value for the annotated field.
++	 * 
++	 * @return The maximum byte value to assign to the annotated attribute
++	 */
++	byte maxValue() default 0;
++
++	/**
++	 * It allows clients to make comments.
++	 * 
++	 * @return A string representing comments for this annotation
++	 */
++	String comment() default "";
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/14: src/main/java/uk/co/jemos/podam/common/PodamCharValue.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -13,16 +13,17 @@
+  * Annotation used to customise min and max values of a char type attribute or
+  * constructor parameter.
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamCharValue {
+ 
+ 	/** The minimum value for the annotated field
+ 	 *
+ 	 * @return min value
+ 	 */
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,16 +13,17 @@
+  * Annotation used to customise min and max values of a char type attribute or
+  * constructor parameter.
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamCharValue {
+ 
+ 	/** The minimum value for the annotated field
+ 	 *
+ 	 * @return min value
+ 	 */
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,60 +1,60 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * Annotation used to customise min and max values of a char type attribute or
+- * constructor parameter.
+- * 
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamCharValue {
+-
+-	/** The minimum value for the annotated field
+-	 *
+-	 * @return min value
+-	 */
+-	char minValue() default 0;
+-
+-	/** The minimum value for the annotated field
+-	 *
+-	 * @return max value
+-	 */
+-	char maxValue() default 0;
+-
+-	/** It allows clients to make comments
+-	 *
+-	 * @return comment value
+-	 */
+-	String comment() default "";
+-
+-	/**
+-	 * A precise char value to assign to the annotated attribute.
+-	 * <p>
+-	 * If set, it will take precedence over all other annotation attributes
+-	 * (e.g. min/max). It is assumed that if the value of {@code charValue} is
+-	 * the default, the user didn't set it and therefore this value will not
+-	 * take precedence over {@code minValue} and {@code maxValue}.
+-	 * </p>
+-	 * <p>
+-	 * This attribute defaults to an empty char.
+-	 * </p>
+-	 * 
+-	 * @return A precise char value to assign to the annotated attribute.
+-	 */
+-	char charValue() default ' ';
+-
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * Annotation used to customise min and max values of a char type attribute or
++ * constructor parameter.
++ * 
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
++@Retention(RetentionPolicy.RUNTIME)
++public @interface PodamCharValue {
++
++	/** The minimum value for the annotated field
++	 *
++	 * @return min value
++	 */
++	char minValue() default 0;
++
++	/** The minimum value for the annotated field
++	 *
++	 * @return max value
++	 */
++	char maxValue() default 0;
++
++	/** It allows clients to make comments
++	 *
++	 * @return comment value
++	 */
++	String comment() default "";
++
++	/**
++	 * A precise char value to assign to the annotated attribute.
++	 * <p>
++	 * If set, it will take precedence over all other annotation attributes
++	 * (e.g. min/max). It is assumed that if the value of {@code charValue} is
++	 * the default, the user didn't set it and therefore this value will not
++	 * take precedence over {@code minValue} and {@code maxValue}.
++	 * </p>
++	 * <p>
++	 * This attribute defaults to an empty char.
++	 * </p>
++	 * 
++	 * @return A precise char value to assign to the annotated attribute.
++	 */
++	char charValue() default ' ';
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/14: src/main/java/uk/co/jemos/podam/common/PodamCollection.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -23,16 +23,17 @@
+  * The minimum number of elements is
+  * {@link PodamConstants#DEFAULT_NBR_COLLECTION_ELEMENTS}
+  * </p>
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamCollection {
+ 
+ 	/** The number of elements to create for the collection
+ 	 *
+ 	 * @return number of elements to place into collection
+ 	 */
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -23,16 +23,17 @@
+  * The minimum number of elements is
+  * {@link PodamConstants#DEFAULT_NBR_COLLECTION_ELEMENTS}
+  * </p>
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamCollection {
+ 
+ 	/** The number of elements to create for the collection
+ 	 *
+ 	 * @return number of elements to place into collection
+ 	 */
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,90 +1,90 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-import uk.co.jemos.podam.api.ObjectStrategy;
+-
+-/**
+- * Annotation used to customise collection-type elements
+- * 
+- * <p>
+- * Please note that this annotation can be used with all types of container
+- * elements, including arrays.
+- * </p>
+- * 
+- * <p>
+- * The minimum number of elements is
+- * {@link PodamConstants#DEFAULT_NBR_COLLECTION_ELEMENTS}
+- * </p>
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamCollection {
+-
+-	/** The number of elements to create for the collection
+-	 *
+-	 * @return number of elements to place into collection
+-	 */
+-	int nbrElements() default PodamConstants.DEFAULT_NBR_COLLECTION_ELEMENTS;
+-
+-	/**
+-	 * The strategy that will populate the annotated attribute.
+-	 * <p>
+-	 * The default, in order to make the strategy actually <i>optional</i> is
+-	 * type Object. At runtime, only if both the value of this annotation and
+-	 * the collection element type are Objects, then the collection will be set
+-	 * with type {@link Object}, otherwise the collection element type will win.
+-	 * </p>
+-	 * 
+-	 * @return The strategy that will populate the annotated attribute
+-	 */
+-	Class<? extends AttributeStrategy<?>> collectionElementStrategy() default ObjectStrategy.class;
+-
+-	/**
+-	 * The strategy that will populate a map key on an attribute of type Map.
+-	 * <p>
+-	 * The default, in order to make the strategy actually <i>optional</i> is
+-	 * type Object. At runtime, only if both the value of this annotation and
+-	 * the collection element type are Objects, then the collection will be set
+-	 * with type {@link Object}, otherwise the collection element type will win.
+-	 * </p>
+-	 * 
+-	 * @return The strategy that will populate a map key on an attribute of type
+-	 *         Map.
+-	 */
+-	Class<? extends AttributeStrategy<?>> mapKeyStrategy() default ObjectStrategy.class;
+-
+-	/**
+-	 * The strategy that will populate a map element on an attribute of type
+-	 * Map.
+-	 * <p>
+-	 * The default, in order to make the strategy actually <i>optional</i> is
+-	 * type Object. At runtime, only if both the value of this annotation and
+-	 * the collection element type are Objects, then the collection will be set
+-	 * with type {@link Object}, otherwise the collection element type will win.
+-	 * </p>
+-	 * 
+-	 * @return The strategy that will populate a map element on an attribute of
+-	 *         type Map.
+-	 */
+-	Class<? extends AttributeStrategy<?>> mapElementStrategy() default ObjectStrategy.class;
+-
+-	/** It allows clients to specify a comment on this annotation
+-	 *
+-	 * @return comment value
+-	 */
+-	String comment() default "";
+-
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++import uk.co.jemos.podam.api.ObjectStrategy;
++
++/**
++ * Annotation used to customise collection-type elements
++ * 
++ * <p>
++ * Please note that this annotation can be used with all types of container
++ * elements, including arrays.
++ * </p>
++ * 
++ * <p>
++ * The minimum number of elements is
++ * {@link PodamConstants#DEFAULT_NBR_COLLECTION_ELEMENTS}
++ * </p>
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
++@Retention(RetentionPolicy.RUNTIME)
++public @interface PodamCollection {
++
++	/** The number of elements to create for the collection
++	 *
++	 * @return number of elements to place into collection
++	 */
++	int nbrElements() default PodamConstants.DEFAULT_NBR_COLLECTION_ELEMENTS;
++
++	/**
++	 * The strategy that will populate the annotated attribute.
++	 * <p>
++	 * The default, in order to make the strategy actually <i>optional</i> is
++	 * type Object. At runtime, only if both the value of this annotation and
++	 * the collection element type are Objects, then the collection will be set
++	 * with type {@link Object}, otherwise the collection element type will win.
++	 * </p>
++	 * 
++	 * @return The strategy that will populate the annotated attribute
++	 */
++	Class<? extends AttributeStrategy<?>> collectionElementStrategy() default ObjectStrategy.class;
++
++	/**
++	 * The strategy that will populate a map key on an attribute of type Map.
++	 * <p>
++	 * The default, in order to make the strategy actually <i>optional</i> is
++	 * type Object. At runtime, only if both the value of this annotation and
++	 * the collection element type are Objects, then the collection will be set
++	 * with type {@link Object}, otherwise the collection element type will win.
++	 * </p>
++	 * 
++	 * @return The strategy that will populate a map key on an attribute of type
++	 *         Map.
++	 */
++	Class<? extends AttributeStrategy<?>> mapKeyStrategy() default ObjectStrategy.class;
++
++	/**
++	 * The strategy that will populate a map element on an attribute of type
++	 * Map.
++	 * <p>
++	 * The default, in order to make the strategy actually <i>optional</i> is
++	 * type Object. At runtime, only if both the value of this annotation and
++	 * the collection element type are Objects, then the collection will be set
++	 * with type {@link Object}, otherwise the collection element type will win.
++	 * </p>
++	 * 
++	 * @return The strategy that will populate a map element on an attribute of
++	 *         type Map.
++	 */
++	Class<? extends AttributeStrategy<?>> mapElementStrategy() default ObjectStrategy.class;
++
++	/** It allows clients to specify a comment on this annotation
++	 *
++	 * @return comment value
++	 */
++	String comment() default "";
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/14: src/main/java/uk/co/jemos/podam/common/PodamConstructor.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -15,16 +15,17 @@
+  * </p>
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
+ @Target({ElementType.CONSTRUCTOR, ElementType.METHOD})
+ @Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
+ public @interface PodamConstructor {
+ 
+ 	/** Gives users the possibility to leave comments
+ 	 *
+ 	 * @return comment value
+ 	 */
+ 	String comment() default "";
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,16 +13,17 @@
+  * A typical example are immutable classes, where attributes are final and
+  * declared in the constructor and they have getters but not setters.
+  * </p>
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target({ElementType.CONSTRUCTOR, ElementType.METHOD})
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamConstructor {
+ 
+ 	/** Gives users the possibility to leave comments
+ 	 *
+ 	 * @return comment value
+ 	 */
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,31 +1,32 @@
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * It identifies a constructor to use in order to create an instance of a class.
+- * <p>
+- * This annotation should be used in POJOs with attributes but without setters.
+- * A typical example are immutable classes, where attributes are final and
+- * declared in the constructor and they have getters but not setters.
+- * </p>
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target({ElementType.CONSTRUCTOR, ElementType.METHOD})
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamConstructor {
+-
+-	/** Gives users the possibility to leave comments
+-	 *
+-	 * @return comment value
+-	 */
+-	String comment() default "";
+-}
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * It identifies a constructor to use in order to create an instance of a class.
++ * <p>
++ * This annotation should be used in POJOs with attributes but without setters.
++ * A typical example are immutable classes, where attributes are final and
++ * declared in the constructor and they have getters but not setters.
++ * </p>
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target({ElementType.CONSTRUCTOR, ElementType.METHOD})
++@Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
++public @interface PodamConstructor {
++
++	/** Gives users the possibility to leave comments
++	 *
++	 * @return comment value
++	 */
++	String comment() default "";
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/14: src/main/java/uk/co/jemos/podam/common/PodamDoubleValue.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -15,16 +15,17 @@
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
+ public @interface PodamDoubleValue {
+ 
+ 	/** The minimum value for the annotated field
+ 	 *
+ 	 * @return min value
+ 	 */
+ 	double minValue() default 0.0;
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,16 +13,17 @@
+  * Annotation used to customise min and max values on a double type attribute or
+  * constructor parameter.
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamDoubleValue {
+ 
+ 	/** The minimum value for the annotated field
+ 	 *
+ 	 * @return min value
+ 	 */
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,67 +1,68 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * Annotation used to customise min and max values on a double type attribute or
+- * constructor parameter.
+- * 
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamDoubleValue {
+-
+-	/** The minimum value for the annotated field
+-	 *
+-	 * @return min value
+-	 */
+-	double minValue() default 0.0;
+-
+-	/** The minimum value for the annotated field
+-	 *
+-	 * @return max value
+-	 */
+-	double maxValue() default 0.0;
+-
+-	/** It allows clients to make comments
+-	 *
+-	 * @return comment value
+-	 */
+-	String comment() default "";
+-
+-	/**
+-	 * It returns the precise value to be assigned to the annotated attribute.
+-	 * <p>
+-	 * This attribute defaults to an empty string.
+-	 * </p>
+-	 * <p>
+-	 * Please note that the format should be String to allow for null values for
+-	 * this annotation attribute. If we set the type to the primitive for this
+-	 * annotation, then to allow for {@code null} values we should have set
+-	 * something arbitrary as {@code default 0}. If set, the value must be
+-	 * convertible to the type of this annotation or a
+-	 * {@link NumberFormatException} will be thrown.
+-	 * </p>
+-	 * <p>
+-	 * If set, it will take precedence over all other annotation attributes
+-	 * (e.g. min/max)
+-	 * </p>
+-	 * 
+-	 * @return The precise value to assign to the annotated attribute, in String
+-	 *         format
+-	 */
+-	String numValue() default "";
+-
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * Annotation used to customise min and max values on a double type attribute or
++ * constructor parameter.
++ * 
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
++@Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
++public @interface PodamDoubleValue {
++
++	/** The minimum value for the annotated field
++	 *
++	 * @return min value
++	 */
++	double minValue() default 0.0;
++
++	/** The minimum value for the annotated field
++	 *
++	 * @return max value
++	 */
++	double maxValue() default 0.0;
++
++	/** It allows clients to make comments
++	 *
++	 * @return comment value
++	 */
++	String comment() default "";
++
++	/**
++	 * It returns the precise value to be assigned to the annotated attribute.
++	 * <p>
++	 * This attribute defaults to an empty string.
++	 * </p>
++	 * <p>
++	 * Please note that the format should be String to allow for null values for
++	 * this annotation attribute. If we set the type to the primitive for this
++	 * annotation, then to allow for {@code null} values we should have set
++	 * something arbitrary as {@code default 0}. If set, the value must be
++	 * convertible to the type of this annotation or a
++	 * {@link NumberFormatException} will be thrown.
++	 * </p>
++	 * <p>
++	 * If set, it will take precedence over all other annotation attributes
++	 * (e.g. min/max)
++	 * </p>
++	 * 
++	 * @return The precise value to assign to the annotated attribute, in String
++	 *         format
++	 */
++	String numValue() default "";
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/14: src/main/java/uk/co/jemos/podam/common/PodamExclude.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -18,16 +18,17 @@
+  * </p>
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
+ @Target(value = ElementType.FIELD)
+ @Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
+ public @interface PodamExclude {
+ 
+ 	/** Gives users the possibility to leave comments
+ 	 *
+ 	 * @return comment value
+ 	 */
+ 	String comment() default "";
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -16,16 +16,17 @@
+  * PODAM will skip POJO attributes annotated with this annotation, thus their
+  * value will not be set.
+  * </p>
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = ElementType.FIELD)
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamExclude {
+ 
+ 	/** Gives users the possibility to leave comments
+ 	 *
+ 	 * @return comment value
+ 	 */
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,34 +1,35 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * Annotation which will have PODAM to skip the annotated attribute from
+- * consideration.
+- * <p>
+- * PODAM will skip POJO attributes annotated with this annotation, thus their
+- * value will not be set.
+- * </p>
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target(value = ElementType.FIELD)
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamExclude {
+-
+-	/** Gives users the possibility to leave comments
+-	 *
+-	 * @return comment value
+-	 */
+-	String comment() default "";
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * Annotation which will have PODAM to skip the annotated attribute from
++ * consideration.
++ * <p>
++ * PODAM will skip POJO attributes annotated with this annotation, thus their
++ * value will not be set.
++ * </p>
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target(value = ElementType.FIELD)
++@Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
++public @interface PodamExclude {
++
++	/** Gives users the possibility to leave comments
++	 *
++	 * @return comment value
++	 */
++	String comment() default "";
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 8/14: src/main/java/uk/co/jemos/podam/common/PodamFloatValue.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -15,16 +15,17 @@
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
+ public @interface PodamFloatValue {
+ 
+ 	/** The minimum value for the annotated field
+ 	 *
+ 	 * @return min value
+ 	 */
+ 	float minValue() default 0.0f;
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,16 +13,17 @@
+  * Annotation used to customise min and max values on a float type attribute or
+  * constructor parameter.
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamFloatValue {
+ 
+ 	/** The minimum value for the annotated field
+ 	 *
+ 	 * @return min value
+ 	 */
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,67 +1,68 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * Annotation used to customise min and max values on a float type attribute or
+- * constructor parameter.
+- * 
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamFloatValue {
+-
+-	/** The minimum value for the annotated field
+-	 *
+-	 * @return min value
+-	 */
+-	float minValue() default 0.0f;
+-
+-	/** The minimum value for the annotated field
+-	 *
+-	 * @return max value
+-	 */
+-	float maxValue() default 0.0f;
+-
+-	/** It allows clients to make comments
+-	 *
+-	 * @return comment value
+-	 */
+-	String comment() default "";
+-
+-	/**
+-	 * It returns the precise value to be assigned to the annotated attribute.
+-	 * <p>
+-	 * This attribute defaults to an empty string.
+-	 * </p>
+-	 * <p>
+-	 * Please note that the format should be String to allow for null values for
+-	 * this annotation attribute. If we set the type to the primitive for this
+-	 * annotation, then to allow for {@code null} values we should have set
+-	 * something arbitrary as {@code default 0}. If set, the value must be
+-	 * convertible to the type of this annotation or a
+-	 * {@link NumberFormatException} will be thrown.
+-	 * </p>
+-	 * <p>
+-	 * If set, it will take precedence over all other annotation attributes
+-	 * (e.g. min/max)
+-	 * </p>
+-	 * 
+-	 * @return The precise value to assign to the annotated attribute, in String
+-	 *         format
+-	 */
+-	String numValue() default "";
+-
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * Annotation used to customise min and max values on a float type attribute or
++ * constructor parameter.
++ * 
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
++@Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
++public @interface PodamFloatValue {
++
++	/** The minimum value for the annotated field
++	 *
++	 * @return min value
++	 */
++	float minValue() default 0.0f;
++
++	/** The minimum value for the annotated field
++	 *
++	 * @return max value
++	 */
++	float maxValue() default 0.0f;
++
++	/** It allows clients to make comments
++	 *
++	 * @return comment value
++	 */
++	String comment() default "";
++
++	/**
++	 * It returns the precise value to be assigned to the annotated attribute.
++	 * <p>
++	 * This attribute defaults to an empty string.
++	 * </p>
++	 * <p>
++	 * Please note that the format should be String to allow for null values for
++	 * this annotation attribute. If we set the type to the primitive for this
++	 * annotation, then to allow for {@code null} values we should have set
++	 * something arbitrary as {@code default 0}. If set, the value must be
++	 * convertible to the type of this annotation or a
++	 * {@link NumberFormatException} will be thrown.
++	 * </p>
++	 * <p>
++	 * If set, it will take precedence over all other annotation attributes
++	 * (e.g. min/max)
++	 * </p>
++	 * 
++	 * @return The precise value to assign to the annotated attribute, in String
++	 *         format
++	 */
++	String numValue() default "";
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 9/14: src/main/java/uk/co/jemos/podam/common/PodamIntValue.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -15,16 +15,17 @@
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
+ public @interface PodamIntValue {
+ 
+ 	/** The minimum value for the annotated field
+ 	 *
+ 	 * @return min value
+ 	 */
+ 	int minValue() default 0;
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,16 +13,17 @@
+  * Annotation used to customise min and max values on an integer type attribute
+  * or constructor parameter.
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamIntValue {
+ 
+ 	/** The minimum value for the annotated field
+ 	 *
+ 	 * @return min value
+ 	 */
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,67 +1,68 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * Annotation used to customise min and max values on an integer type attribute
+- * or constructor parameter.
+- * 
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamIntValue {
+-
+-	/** The minimum value for the annotated field
+-	 *
+-	 * @return min value
+-	 */
+-	int minValue() default 0;
+-
+-	/** The minimum value for the annotated field
+-	 *
+-	 * @return max value
+-	 */
+-	int maxValue() default 0;
+-
+-	/** It allows clients to make comments
+-	 *
+-	 * @return comment value
+-	 */
+-	String comment() default "";
+-
+-	/**
+-	 * It returns the precise value to be assigned to the annotated attribute.
+-	 * <p>
+-	 * This attribute defaults to an empty string.
+-	 * </p>
+-	 * <p>
+-	 * Please note that the format should be String to allow for null values for
+-	 * this annotation attribute. If we set the type to the primitive for this
+-	 * annotation, then to allow for {@code null} values we should have set
+-	 * something arbitrary as {@code default 0}. If set, the value must be
+-	 * convertible to the type of this annotation or a
+-	 * {@link NumberFormatException} will be thrown.
+-	 * </p>
+-	 * <p>
+-	 * If set, it will take precedence over all other annotation attributes
+-	 * (e.g. min/max)
+-	 * </p>
+-	 * 
+-	 * @return The precise value to assign to the annotated attribute, in String
+-	 *         format
+-	 */
+-	String numValue() default "";
+-
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * Annotation used to customise min and max values on an integer type attribute
++ * or constructor parameter.
++ * 
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
++@Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
++public @interface PodamIntValue {
++
++	/** The minimum value for the annotated field
++	 *
++	 * @return min value
++	 */
++	int minValue() default 0;
++
++	/** The minimum value for the annotated field
++	 *
++	 * @return max value
++	 */
++	int maxValue() default 0;
++
++	/** It allows clients to make comments
++	 *
++	 * @return comment value
++	 */
++	String comment() default "";
++
++	/**
++	 * It returns the precise value to be assigned to the annotated attribute.
++	 * <p>
++	 * This attribute defaults to an empty string.
++	 * </p>
++	 * <p>
++	 * Please note that the format should be String to allow for null values for
++	 * this annotation attribute. If we set the type to the primitive for this
++	 * annotation, then to allow for {@code null} values we should have set
++	 * something arbitrary as {@code default 0}. If set, the value must be
++	 * convertible to the type of this annotation or a
++	 * {@link NumberFormatException} will be thrown.
++	 * </p>
++	 * <p>
++	 * If set, it will take precedence over all other annotation attributes
++	 * (e.g. min/max)
++	 * </p>
++	 * 
++	 * @return The precise value to assign to the annotated attribute, in String
++	 *         format
++	 */
++	String numValue() default "";
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 10/14: src/main/java/uk/co/jemos/podam/common/PodamLongValue.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -15,16 +15,17 @@
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
+ public @interface PodamLongValue {
+ 
+ 	/** The minimum value for the annotated field
+ 	 *
+ 	 * @return min value
+ 	 */
+ 	long minValue() default 0;
+ 
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,16 +13,17 @@
+  * Annotation used to customise min and max values on a long type attribute or
+  * constructor parameter.
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamLongValue {
+ 
+ 	/** The minimum value for the annotated field
+ 	 *
+ 	 * @return min value
+ 	 */
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,67 +1,68 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * Annotation used to customise min and max values on a long type attribute or
+- * constructor parameter.
+- * 
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamLongValue {
+-
+-	/** The minimum value for the annotated field
+-	 *
+-	 * @return min value
+-	 */
+-	long minValue() default 0;
+-
+-	/** The minimum value for the annotated field
+-	 *
+-	 * @return max value
+-	 */
+-	long maxValue() default 0;
+-
+-	/** It allows clients to make comments
+-	 *
+-	 * @return comment value
+-	 */
+-	String comment() default "";
+-
+-	/**
+-	 * It returns the precise value to be assigned to the annotated attribute.
+-	 * <p>
+-	 * This attribute defaults to an empty string.
+-	 * </p>
+-	 * <p>
+-	 * Please note that the format should be String to allow for null values for
+-	 * this annotation attribute. If we set the type to the primitive for this
+-	 * annotation, then to allow for {@code null} values we should have set
+-	 * something arbitrary as {@code default 0}. If set, the value must be
+-	 * convertible to the type of this annotation or a
+-	 * {@link NumberFormatException} will be thrown.
+-	 * </p>
+-	 * <p>
+-	 * If set, it will take precedence over all other annotation attributes
+-	 * (e.g. min/max)
+-	 * </p>
+-	 * 
+-	 * @return The precise value to assign to the annotated attribute, in String
+-	 *         format
+-	 */
+-	String numValue() default "";
+-
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * Annotation used to customise min and max values on a long type attribute or
++ * constructor parameter.
++ * 
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
++@Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
++public @interface PodamLongValue {
++
++	/** The minimum value for the annotated field
++	 *
++	 * @return min value
++	 */
++	long minValue() default 0;
++
++	/** The minimum value for the annotated field
++	 *
++	 * @return max value
++	 */
++	long maxValue() default 0;
++
++	/** It allows clients to make comments
++	 *
++	 * @return comment value
++	 */
++	String comment() default "";
++
++	/**
++	 * It returns the precise value to be assigned to the annotated attribute.
++	 * <p>
++	 * This attribute defaults to an empty string.
++	 * </p>
++	 * <p>
++	 * Please note that the format should be String to allow for null values for
++	 * this annotation attribute. If we set the type to the primitive for this
++	 * annotation, then to allow for {@code null} values we should have set
++	 * something arbitrary as {@code default 0}. If set, the value must be
++	 * convertible to the type of this annotation or a
++	 * {@link NumberFormatException} will be thrown.
++	 * </p>
++	 * <p>
++	 * If set, it will take precedence over all other annotation attributes
++	 * (e.g. min/max)
++	 * </p>
++	 * 
++	 * @return The precise value to assign to the annotated attribute, in String
++	 *         format
++	 */
++	String numValue() default "";
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 11/14: src/main/java/uk/co/jemos/podam/common/PodamShortValue.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -15,16 +15,17 @@
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
+ public @interface PodamShortValue {
+ 
+ 	/**
+ 	 * The minimum value to assign to the annotated attribute.
+ 	 * 
+ 	 * @return The minimum value to assign to the annotated attribute.
+ 	 */
+ 	short minValue() default 0;
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -13,16 +13,17 @@
+  * Annotation used to customise min and max values of a short type attribute or
+  * constructor parameter.
+  * 
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamShortValue {
+ 
+ 	/**
+ 	 * The minimum value to assign to the annotated attribute.
+ 	 * 
+ 	 * @return The minimum value to assign to the annotated attribute.
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,73 +1,74 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * Annotation used to customise min and max values of a short type attribute or
+- * constructor parameter.
+- * 
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamShortValue {
+-
+-	/**
+-	 * The minimum value to assign to the annotated attribute.
+-	 * 
+-	 * @return The minimum value to assign to the annotated attribute.
+-	 */
+-	short minValue() default 0;
+-
+-	/**
+-	 * The maximum value for the annotated field.
+-	 * 
+-	 * @return The maximum value for the annotated field.
+-	 */
+-	short maxValue() default 0;
+-
+-	/**
+-	 * It allows clients to make comments on the annotated attribute.
+-	 * <p>
+-	 * This attribute defaults to an empty string.
+-	 * </p>
+-	 * 
+-	 * @return A string representing comments on the annotated attribute.
+-	 */
+-	String comment() default "";
+-
+-	/**
+-	 * It returns the precise value to be assigned to the annotated attribute.
+-	 * <p>
+-	 * This attribute defaults to an empty string.
+-	 * </p>
+-	 * <p>
+-	 * Please note that the format should be String to allow for null values for
+-	 * this annotation attribute. If we set the type to the primitive for this
+-	 * annotation, then to allow for {@code null} values we should have set
+-	 * something arbitrary as {@code default 0}. If set, the value must be
+-	 * convertible to the type of this annotation or a
+-	 * {@link NumberFormatException} will be thrown.
+-	 * </p>
+-	 * <p>
+-	 * If set, it will take precedence over all other annotation attributes
+-	 * (e.g. min/max)
+-	 * </p>
+-	 * 
+-	 * @return The precise value to assign to the annotated attribute, in String
+-	 *         format
+-	 */
+-	String numValue() default "";
+-
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * Annotation used to customise min and max values of a short type attribute or
++ * constructor parameter.
++ * 
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
++@Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
++public @interface PodamShortValue {
++
++	/**
++	 * The minimum value to assign to the annotated attribute.
++	 * 
++	 * @return The minimum value to assign to the annotated attribute.
++	 */
++	short minValue() default 0;
++
++	/**
++	 * The maximum value for the annotated field.
++	 * 
++	 * @return The maximum value for the annotated field.
++	 */
++	short maxValue() default 0;
++
++	/**
++	 * It allows clients to make comments on the annotated attribute.
++	 * <p>
++	 * This attribute defaults to an empty string.
++	 * </p>
++	 * 
++	 * @return A string representing comments on the annotated attribute.
++	 */
++	String comment() default "";
++
++	/**
++	 * It returns the precise value to be assigned to the annotated attribute.
++	 * <p>
++	 * This attribute defaults to an empty string.
++	 * </p>
++	 * <p>
++	 * Please note that the format should be String to allow for null values for
++	 * this annotation attribute. If we set the type to the primitive for this
++	 * annotation, then to allow for {@code null} values we should have set
++	 * something arbitrary as {@code default 0}. If set, the value must be
++	 * convertible to the type of this annotation or a
++	 * {@link NumberFormatException} will be thrown.
++	 * </p>
++	 * <p>
++	 * If set, it will take precedence over all other annotation attributes
++	 * (e.g. min/max)
++	 * </p>
++	 * 
++	 * @return The precise value to assign to the annotated attribute, in String
++	 *         format
++	 */
++	String numValue() default "";
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 12/14: src/main/java/uk/co/jemos/podam/common/PodamStrategyValue.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -18,16 +18,17 @@
+  * </p>
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
+ @Target({ElementType.FIELD, ElementType.PARAMETER})
+ @Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
+ public @interface PodamStrategyValue {
+ 
+ 	/**
+ 	 * The strategy that will populate the annotated attribute
+ 	 * 
+ 	 * @return The strategy that will populate the annotated attribute
+ 	 */
+ 	Class<? extends AttributeStrategy<?>> value();
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -16,16 +16,17 @@
+  * which influence the value of an attribute. In few words, this annotation
+  * dictates law in terms of which value the attribute ultimately will get.
+  * </p>
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target({ElementType.FIELD, ElementType.PARAMETER})
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamStrategyValue {
+ 
+ 	/**
+ 	 * The strategy that will populate the annotated attribute
+ 	 * 
+ 	 * @return The strategy that will populate the annotated attribute
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,43 +1,44 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * Annotation to drive the value of the annotated attribute.
+- * <p>
+- * If specified, this annotation will take precedence over all other annotations
+- * which influence the value of an attribute. In few words, this annotation
+- * dictates law in terms of which value the attribute ultimately will get.
+- * </p>
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target({ElementType.FIELD, ElementType.PARAMETER})
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamStrategyValue {
+-
+-	/**
+-	 * The strategy that will populate the annotated attribute
+-	 * 
+-	 * @return The strategy that will populate the annotated attribute
+-	 */
+-	Class<? extends AttributeStrategy<?>> value();
+-
+-	/**
+-	 * It allows clients to write a comment on the usage of this annotation
+-	 * 
+-	 * @return The comment string
+-	 */
+-	String comment() default "";
+-
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * Annotation to drive the value of the annotated attribute.
++ * <p>
++ * If specified, this annotation will take precedence over all other annotations
++ * which influence the value of an attribute. In few words, this annotation
++ * dictates law in terms of which value the attribute ultimately will get.
++ * </p>
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target({ElementType.FIELD, ElementType.PARAMETER})
++@Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
++public @interface PodamStrategyValue {
++
++	/**
++	 * The strategy that will populate the annotated attribute
++	 * 
++	 * @return The strategy that will populate the annotated attribute
++	 */
++	Class<? extends AttributeStrategy<?>> value();
++
++	/**
++	 * It allows clients to write a comment on the usage of this annotation
++	 * 
++	 * @return The comment string
++	 */
++	String comment() default "";
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 13/14: src/main/java/uk/co/jemos/podam/common/PodamStringValue.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -18,16 +18,17 @@
+  * </p>
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
+ public @interface PodamStringValue {
+ 
+ 	/**
+ 	 * The length of the String for the annotated attribute. It defaults to
+ 	 * {@link PodamConstants#STR_DEFAULT_LENGTH}
+ 	 * 
+ 	 * @return string length
+ 	 */
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -16,16 +16,17 @@
+  * The {@code strValue} attribute takes precedence over {@code length}. If the
+  * former was specified the latter will be ignored.
+  * </p>
+  * 
+  * @author mtedone
+  * 
+  */
+ @Documented
++@PodamAnnotation
+ @Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+ @Retention(RetentionPolicy.RUNTIME)
+ public @interface PodamStringValue {
+ 
+ 	/**
+ 	 * The length of the String for the annotated attribute. It defaults to
+ 	 * {@link PodamConstants#STR_DEFAULT_LENGTH}
+ 	 * 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,49 +1,50 @@
+-/**
+- * 
+- */
+-package uk.co.jemos.podam.common;
+-
+-import java.lang.annotation.Documented;
+-import java.lang.annotation.ElementType;
+-import java.lang.annotation.Retention;
+-import java.lang.annotation.RetentionPolicy;
+-import java.lang.annotation.Target;
+-
+-/**
+- * Annotation used to customise string type attributes or constructor parameter.
+- * 
+- * <p>
+- * The {@code strValue} attribute takes precedence over {@code length}. If the
+- * former was specified the latter will be ignored.
+- * </p>
+- * 
+- * @author mtedone
+- * 
+- */
+-@Documented
+-@PodamAnnotation
+-@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
+-@Retention(RetentionPolicy.RUNTIME)
+-public @interface PodamStringValue {
+-
+-	/**
+-	 * The length of the String for the annotated attribute. It defaults to
+-	 * {@link PodamConstants#STR_DEFAULT_LENGTH}
+-	 * 
+-	 * @return string length
+-	 */
+-	int length() default PodamConstants.STR_DEFAULT_LENGTH;
+-
+-	/** If specified, it allows clients to specify an exact value for the string
+-	 *
+-	 * @return string value
+-	 */
+-	String strValue() default "";
+-
+-	/** It allows clients to specify a comment on this annotation
+-	 *
+-	 * @return comment value
+-	 */
+-	String comment() default "";
+-
+-}
++/**
++ * 
++ */
++package uk.co.jemos.podam.common;
++
++import java.lang.annotation.Documented;
++import java.lang.annotation.ElementType;
++import java.lang.annotation.Retention;
++import java.lang.annotation.RetentionPolicy;
++import java.lang.annotation.Target;
++
++/**
++ * Annotation used to customise string type attributes or constructor parameter.
++ * 
++ * <p>
++ * The {@code strValue} attribute takes precedence over {@code length}. If the
++ * former was specified the latter will be ignored.
++ * </p>
++ * 
++ * @author mtedone
++ * 
++ */
++@Documented
++@PodamAnnotation
++@Target(value = { ElementType.FIELD, ElementType.PARAMETER })
++@Retention(RetentionPolicy.RUNTIME)
++@PodamAnnotation
++public @interface PodamStringValue {
++
++	/**
++	 * The length of the String for the annotated attribute. It defaults to
++	 * {@link PodamConstants#STR_DEFAULT_LENGTH}
++	 * 
++	 * @return string length
++	 */
++	int length() default PodamConstants.STR_DEFAULT_LENGTH;
++
++	/** If specified, it allows clients to specify an exact value for the string
++	 *
++	 * @return string value
++	 */
++	String strValue() default "";
++
++	/** It allows clients to specify a comment on this annotation
++	 *
++	 * @return comment value
++	 */
++	String comment() default "";
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 14/14: src/main/java/uk/co/jemos/podam/typeManufacturers/TypeManufacturerUtil.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -71,16 +71,17 @@
+                     annotationClass = tmp;
+                 }
+             }
+ 
+             Class<AttributeStrategy<?>> attrStrategyClass;
+             if ((attrStrategyClass = strategy.getStrategyForAnnotation(annotationClass)) != null) {
+                 return attrStrategyClass.newInstance();
+             }
++
+ 
+             if (annotation.annotationType().getAnnotation(Constraint.class) != null) {
+                 if (annotation instanceof NotNull ||
+                         annotation.annotationType().getName().equals("org.hibernate.validator.constraints.NotEmpty")) {
+ 					/* We don't need to do anything for NotNull constraint */
+                     iter.remove();
+                 } else if (!NotNull.class.getPackage().equals(annotationClass.getPackage())) {
+                     LOG.warn("Please, register AttributeStratergy for custom "
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -74,17 +74,18 @@
+ 
+             Class<AttributeStrategy<?>> attrStrategyClass;
+             if ((attrStrategyClass = strategy.getStrategyForAnnotation(annotationClass)) != null) {
+                 return attrStrategyClass.newInstance();
+             }
+ 
+             if (annotation.annotationType().getAnnotation(Constraint.class) != null) {
+                 if (annotation instanceof NotNull ||
+-                        annotation.annotationType().getName().equals("org.hibernate.validator.constraints.NotEmpty")) {
++                        annotation.annotationType().getName().equals("org.hibernate.validator.constraints.NotEmpty") ||
++                        annotation.annotationType().getName().equals("org.hibernate.validator.constraints.NotBlank")) {
+ 					/* We don't need to do anything for NotNull constraint */
+                     iter.remove();
+                 } else if (!NotNull.class.getPackage().equals(annotationClass.getPackage())) {
+                     LOG.warn("Please, register AttributeStratergy for custom "
+                             + "constraint {}, in DataProviderStrategy! Value "
+                             + "will be left to null", annotation);
+                 }
+             } else {
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

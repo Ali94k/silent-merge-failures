@@ -1,0 +1,1169 @@
+UNIT oxo42_stateless4j__4c7880ec0e
+repo: oxo42_stateless4j   merge: 4c7880ec0e20cabecb1c31043e95ff6b8a707543   stratum: B
+files shown: 8 of 8 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T2  (merged bodies omitted; diffs + dev-diff + compile delta only)
+
+=== FILE 1/8: src/main/java/com/github/oxo42/stateless4j/StateMachine.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -229,28 +229,28 @@
+ 
+ 
+     /**
+      * Determine if the state machine is in the supplied state
+      *
+      * @param state The state to test for
+      * @return True if the current state is equal to, or a substate of, the supplied state
+      */
+-    public Boolean isInState(TState state) {
++    public boolean isInState(TState state) {
+         return getCurrentRepresentation().isIncludedIn(state);
+     }
+ 
+ 
+     /**
+      * Returns true if {@code trigger} can be fired  in the current state
+      *
+      * @param trigger Trigger to test
+      * @return True if the trigger can be fired, false otherwise
+      */
+-    public Boolean canFire(TTrigger trigger) {
++    public boolean canFire(TTrigger trigger) {
+         return getCurrentRepresentation().canHandle(trigger);
+     }
+ 
+ 
+     /**
+      * A human-readable representation of the state machine
+      *
+      * @return A description of the current state and permitted triggers
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -11,24 +11,24 @@
+ import java.io.OutputStreamWriter;
+ import java.io.PrintWriter;
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Map.Entry;
+ 
+-
+ /**
+  * Models behaviour as transitions between a finite set of states
+  *
+  * @param <TState>   The type used to represent the states
+  * @param <TTrigger> The type used to represent the triggers that cause state transitions
+  */
+-public class StateMachine<TState , TTrigger > {
++public class StateMachine<TState, TTrigger> {
++
+     protected final Map<TState, StateRepresentation<TState, TTrigger>> stateConfiguration = new HashMap<>();
+     protected final Map<TTrigger, TriggerWithParameters<TState, TTrigger>> triggerConfiguration = new HashMap<>();
+     protected final Func<TState> stateAccessor;
+     protected final Action1<TState> stateMutator;
+     protected Action2<TState, TTrigger> unhandledTriggerAction = new Action2<TState, TTrigger>() {
+ 
+         public void doIt(TState state, TTrigger trigger) {
+             throw new IllegalStateException(
+@@ -55,17 +55,16 @@
+         };
+         stateMutator = new Action1<TState>() {
+             public void doIt(TState s) {
+                 reference.setState(s);
+             }
+         };
+     }
+ 
+-
+     /**
+      * The current state
+      *
+      * @return The current state
+      */
+     public TState getState() {
+         return stateAccessor.call();
+     }
+@@ -83,25 +82,24 @@
+         return getCurrentRepresentation().getPermittedTriggers();
+     }
+ 
+     StateRepresentation<TState, TTrigger> getCurrentRepresentation() {
+         return getRepresentation(getState());
+     }
+ 
+     protected StateRepresentation<TState, TTrigger> getRepresentation(TState state) {
+-
+-        if (!stateConfiguration.containsKey(state)) {
+-            StateRepresentation<TState, TTrigger> result = new StateRepresentation<>(state);
++        StateRepresentation<TState, TTrigger> result = stateConfiguration.get(state);
++        if (result == null) {
++            result = new StateRepresentation<>(state);
+             stateConfiguration.put(state, result);
+         }
+ 
+-        return stateConfiguration.get(state);
+-    }
+-
++        return result;
++    }
+ 
+     /**
+      * Begin configuration of the entry/exit actions and allowed transitions
+      * when the state machine is in a particular state
+      *
+      * @param state The state to configure
+      * @return A configuration object through which the state can be configured
+      */
+@@ -109,48 +107,45 @@
+         return new StateConfiguration<>(getRepresentation(state), new Func2<TState, StateRepresentation<TState, TTrigger>>() {
+ 
+             public StateRepresentation<TState, TTrigger> call(TState arg0) {
+                 return getRepresentation(arg0);
+             }
+         });
+     }
+ 
+-
+     /**
+      * Transition from the current state via the specified trigger.
+      * The target state is determined by the configuration of the current state.
+      * Actions associated with leaving the current state and entering the new one
+      * will be invoked
+      *
+      * @param trigger The trigger to fire
+      * @The current state does not allow the trigger to be fired
+      */
+     public void fire(TTrigger trigger) {
+         publicFire(trigger);
+     }
+ 
+-
+     /**
+      * Transition from the current state via the specified trigger.
+      * The target state is determined by the configuration of the current state.
+      * Actions associated with leaving the current state and entering the new one
+      * will be invoked.
+      *
+      * @param trigger The trigger to fire
+      * @param arg0    The first argument
+      * @param <TArg0> Type of the first trigger argument
+      * @The current state does not allow the trigger to be fired
+      */
+     public <TArg0> void fire(TriggerWithParameters1<TArg0, TState, TTrigger> trigger, TArg0 arg0) {
+         Enforce.argumentNotNull(trigger, "trigger");
+         publicFire(trigger.getTrigger(), arg0);
+     }
+ 
+-
+     /**
+      * Transition from the current state via the specified trigger.
+      * The target state is determined by the configuration of the current state.
+      * Actions associated with leaving the current state and entering the new one
+      * will be invoked.
+      *
+      * @param trigger The trigger to fire
+      * @param arg0    The first argument
+@@ -159,17 +154,16 @@
+      * @param <TArg1> Type of the second trigger argument
+      * @The current state does not allow the trigger to be fired
+      */
+     public <TArg0, TArg1> void fire(TriggerWithParameters2<TArg0, TArg1, TState, TTrigger> trigger, TArg0 arg0, TArg1 arg1) {
+         Enforce.argumentNotNull(trigger, "trigger");
+         publicFire(trigger.getTrigger(), arg0, arg1);
+     }
+ 
+-
+     /**
+      * Transition from the current state via the specified trigger.
+      * The target state is determined by the configuration of the current state.
+      * Actions associated with leaving the current state and entering the new one
+      * will be invoked.
+      *
+      * @param trigger The trigger to fire
+      * @param arg0    The first argument
+@@ -181,141 +175,128 @@
+      * @The current state does not allow the trigger to be fired
+      */
+     public <TArg0, TArg1, TArg2> void fire(TriggerWithParameters3<TArg0, TArg1, TArg2, TState, TTrigger> trigger, TArg0 arg0, TArg1 arg1, TArg2 arg2) {
+         Enforce.argumentNotNull(trigger, "trigger");
+         publicFire(trigger.getTrigger(), arg0, arg1, arg2);
+     }
+ 
+     protected void publicFire(TTrigger trigger, Object... args) {
+-        TriggerWithParameters<TState, TTrigger> configuration;
+-        if (triggerConfiguration.containsKey(trigger)) {
+-            configuration = triggerConfiguration.get(trigger);
++        TriggerWithParameters<TState, TTrigger> configuration = triggerConfiguration.get(trigger);
++        if (configuration != null) {
+             configuration.validateParameters(args);
+         }
+ 
+-        TriggerBehaviour<TState, TTrigger> triggerBehaviour;
+-        try {
+-            triggerBehaviour = getCurrentRepresentation().tryFindHandler(trigger);
+-        } catch (Exception e) {
++        TriggerBehaviour<TState, TTrigger> triggerBehaviour = getCurrentRepresentation().tryFindHandler(trigger);
++        if (triggerBehaviour == null) {
+             unhandledTriggerAction.doIt(getCurrentRepresentation().getUnderlyingState(), trigger);
+             return;
+         }
+ 
+         TState source = getState();
+-        TState destination;
+-        try {
+-            destination = triggerBehaviour.resultsInTransitionFrom(source, args);
+-            Transition<TState, TTrigger> transition = new Transition<>(source, destination, trigger);
++        OutVar<TState> destination = new OutVar<>();
++        if (triggerBehaviour.resultsInTransitionFrom(source, args, destination)) {
++            Transition<TState, TTrigger> transition = new Transition<>(source, destination.get(), trigger);
+ 
+             getCurrentRepresentation().exit(transition);
+-            setState(destination);
++            setState(destination.get());
+             getCurrentRepresentation().enter(transition, args);
+-        } catch (Exception e) {
+-
+-        }
+-    }
+-
++        }
++    }
+ 
+     /**
+      * Override the default behaviour of throwing an exception when an unhandled trigger is fired
+      *
+      * @param unhandledTriggerAction An action to call when an unhandled trigger is fired
+      */
+     public void onUnhandledTrigger(Action2<TState, TTrigger> unhandledTriggerAction) {
+         if (unhandledTriggerAction == null) {
+             throw new IllegalStateException("unhandledTriggerAction");
+         }
+         this.unhandledTriggerAction = unhandledTriggerAction;
+     }
+ 
+-
+     /**
+      * Determine if the state machine is in the supplied state
+      *
+      * @param state The state to test for
+      * @return True if the current state is equal to, or a substate of, the supplied state
+      */
+     public Boolean isInState(TState state) {
+         return getCurrentRepresentation().isIncludedIn(state);
+     }
+ 
+-
+     /**
+      * Returns true if {@code trigger} can be fired  in the current state
+      *
+      * @param trigger Trigger to test
+      * @return True if the trigger can be fired, false otherwise
+      */
+     public Boolean canFire(TTrigger trigger) {
+         return getCurrentRepresentation().canHandle(trigger);
+     }
+ 
+-
+     /**
+      * A human-readable representation of the state machine
+      *
+      * @return A description of the current state and permitted triggers
+      */
++    @Override
+     public String toString() {
+         List<TTrigger> permittedTriggers = getPermittedTriggers();
+         List<String> parameters = new ArrayList<>();
+ 
+         for (TTrigger tTrigger : permittedTriggers) {
+             parameters.add(tTrigger.toString());
+         }
+ 
+         StringBuilder params = new StringBuilder();
+         String delim = "";
+         for (String param : parameters) {
+             params.append(delim);
+             params.append(param);
+             delim = ", ";
+         }
+ 
+-
+         return String.format(
+                 "StateMachine {{ State = %s, PermittedTriggers = {{ %s }}}}",
+                 getState(),
+                 params.toString());
+     }
+ 
+-
+     /**
+      * Specify the arguments that must be supplied when a specific trigger is fired
+      *
+      * @param trigger The underlying trigger value
+      * @param classe0 Class argument
+      * @param <TArg0> Type of the first trigger argument
+      * @return An object that can be passed to the fire() method in order to fire the parameterised trigger
+      */
+     public <TArg0> TriggerWithParameters1<TArg0, TState, TTrigger> setTriggerParameters(TTrigger trigger, Class<TArg0> classe0) {
+         TriggerWithParameters1<TArg0, TState, TTrigger> configuration = new TriggerWithParameters1<>(trigger, classe0);
+         saveTriggerConfiguration(configuration);
+         return configuration;
+     }
+ 
+-
+     /**
+      * Specify the arguments that must be supplied when a specific trigger is fired
+      *
+      * @param trigger The underlying trigger value
+      * @param classe0 Class argument
+      * @param classe1 Class argument
+      * @param <TArg0> Type of the first trigger argument
+      * @param <TArg1> Type of the second trigger argument
+      * @return An object that can be passed to the fire() method in order to fire the parameterised trigger
+      */
+     public <TArg0, TArg1> TriggerWithParameters2<TArg0, TArg1, TState, TTrigger> setTriggerParameters(TTrigger trigger, Class<TArg0> classe0, Class<TArg1> classe1) {
+         TriggerWithParameters2<TArg0, TArg1, TState, TTrigger> configuration = new TriggerWithParameters2<>(trigger, classe0, classe1);
+         saveTriggerConfiguration(configuration);
+         return configuration;
+     }
+ 
+-
+     /**
+      * Specify the arguments that must be supplied when a specific trigger is fired
+      *
+      * @param trigger The underlying trigger value
+      * @param classe0 Class argument
+      * @param classe1 Class argument
+      * @param classe2 Class argument
+      * @param <TArg0> Type of the first trigger argument
+@@ -326,35 +307,37 @@
+     public <TArg0, TArg1, TArg2> TriggerWithParameters3<TArg0, TArg1, TArg2, TState, TTrigger> setTriggerParameters(TTrigger trigger, Class<TArg0> classe0, Class<TArg1> classe1, Class<TArg2> classe2) {
+         TriggerWithParameters3<TArg0, TArg1, TArg2, TState, TTrigger> configuration = new TriggerWithParameters3<>(trigger, classe0, classe1, classe2);
+         saveTriggerConfiguration(configuration);
+         return configuration;
+     }
+ 
+     private void saveTriggerConfiguration(TriggerWithParameters<TState, TTrigger> trigger) {
+         if (triggerConfiguration.containsKey(trigger.getTrigger())) {
+-            throw new IllegalStateException(
+-                    String.format("Parameters for the trigger '%s' have already been configured.", trigger));
++            throw new IllegalStateException("Parameters for the trigger '" + trigger + "' have already been configured.");
+         }
+ 
+         triggerConfiguration.put(trigger.getTrigger(), trigger);
+     }
+ 
+-    public void generateDotFileInto(OutputStream dotFile) {
++    public void generateDotFileInto(final OutputStream dotFile) throws IOException {
+         try (OutputStreamWriter w = new OutputStreamWriter(dotFile, "UTF-8")) {
+             PrintWriter writer = new PrintWriter(w);
+             writer.write("digraph G {\n");
++            OutVar<TState> destination = new OutVar<>();
+             for (Entry<TState, StateRepresentation<TState, TTrigger>> entry : this.stateConfiguration.entrySet()) {
+                 Map<TTrigger, List<TriggerBehaviour<TState, TTrigger>>> behaviours = entry.getValue().getTriggerBehaviours();
+                 for (Entry<TTrigger, List<TriggerBehaviour<TState, TTrigger>>> behaviour : behaviours.entrySet()) {
+                     for (TriggerBehaviour<TState, TTrigger> triggerBehaviour : behaviour.getValue()) {
+                         if (triggerBehaviour instanceof TransitioningTriggerBehaviour) {
+-                            writer.write(String.format("\t%s -> %s;\n", entry.getKey(), triggerBehaviour.resultsInTransitionFrom(null)));
++                            destination.set(null);
++                            triggerBehaviour.resultsInTransitionFrom(null, null, destination);
++                            writer.write(String.format("\t%s -> %s;\n", entry.getKey(), destination));
+                         }
+                     }
+                 }
+             }
+             writer.write("}");
+-        } catch (IOException ie) {
+-            //
++        } catch (IOException ex) {
++            throw ex;
+         }
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/8: src/main/java/com/github/oxo42/stateless4j/StateRepresentation.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -20,17 +20,17 @@
+     public StateRepresentation(TState state) {
+         this.state = state;
+     }
+ 
+     protected Map<TTrigger, List<TriggerBehaviour<TState, TTrigger>>> getTriggerBehaviours() {
+         return triggerBehaviours;
+     }
+ 
+-    public Boolean canHandle(TTrigger trigger) {
++    public boolean canHandle(TTrigger trigger) {
+         try {
+             tryFindHandler(trigger);
+             return true;
+         } catch (Exception e) {
+             return false;
+         }
+     }
+ 
+@@ -160,43 +160,39 @@
+         return state;
+     }
+ 
+     public void addSubstate(StateRepresentation<TState, TTrigger> substate) {
+         Enforce.argumentNotNull(substate, "substate");
+         substates.add(substate);
+     }
+ 
+-    public Boolean includes(TState stateToCheck) {
+-        Boolean isIncluded = false;
++    public boolean includes(TState stateToCheck) {
+         for (StateRepresentation<TState, TTrigger> s : substates) {
+             if (s.includes(stateToCheck)) {
+-                isIncluded = true;
+-            }
+-        }
+-        return this.state.equals(stateToCheck) || isIncluded;
+-    }
+-
+-    public Boolean isIncludedIn(TState stateToCheck) {
++                return true;
++            }
++        }
++        return this.state.equals(stateToCheck);
++    }
++
++    public boolean isIncludedIn(TState stateToCheck) {
+         return this.state.equals(stateToCheck) || (superstate != null && superstate.isIncludedIn(stateToCheck));
+     }
+ 
+     @SuppressWarnings("unchecked")
+     public List<TTrigger> getPermittedTriggers() {
+         Set<TTrigger> result = new HashSet<>();
+ 
+         for (TTrigger t : triggerBehaviours.keySet()) {
+-            boolean isOk = false;
+             for (TriggerBehaviour<TState, TTrigger> v : triggerBehaviours.get(t)) {
+                 if (v.isGuardConditionMet()) {
+-                    isOk = true;
++                    result.add(t);
++                    break;
+                 }
+-            }
+-            if (isOk) {
+-                result.add(t);
+             }
+         }
+ 
+         if (getSuperstate() != null) {
+             result.addAll(getSuperstate().getPermittedTriggers());
+         }
+ 
+         return new ArrayList<>(result);
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -21,58 +21,45 @@
+         this.state = state;
+     }
+ 
+     protected Map<TTrigger, List<TriggerBehaviour<TState, TTrigger>>> getTriggerBehaviours() {
+         return triggerBehaviours;
+     }
+ 
+     public Boolean canHandle(TTrigger trigger) {
+-        try {
+-            tryFindHandler(trigger);
+-            return true;
+-        } catch (Exception e) {
+-            return false;
+-        }
++        return tryFindHandler(trigger) != null;
+     }
+ 
+     public TriggerBehaviour<TState, TTrigger> tryFindHandler(TTrigger trigger) {
+-        try {
+-            return tryFindLocalHandler(trigger);
+-        } catch (Exception e) {
+-            return getSuperstate().tryFindHandler(trigger);
++        TriggerBehaviour result = tryFindLocalHandler(trigger);
++        if (result == null && superstate != null) {
++            result = superstate.tryFindHandler(trigger);
+         }
++        return result;
+     }
+ 
+     TriggerBehaviour<TState, TTrigger> tryFindLocalHandler(TTrigger trigger/*, out TriggerBehaviour handler*/) {
+-        List<TriggerBehaviour<TState, TTrigger>> possible;
+-        if (!triggerBehaviours.containsKey(trigger)) {
+-            throw new IllegalStateException();
++        List<TriggerBehaviour<TState, TTrigger>> possible = triggerBehaviours.get(trigger);
++        if (possible == null) {
++            return null;
+         }
+-        possible = triggerBehaviours.get(trigger);
+ 
+         List<TriggerBehaviour<TState, TTrigger>> actual = new ArrayList<>();
+         for (TriggerBehaviour<TState, TTrigger> triggerBehaviour : possible) {
+             if (triggerBehaviour.isGuardConditionMet()) {
+                 actual.add(triggerBehaviour);
+             }
+         }
+ 
+         if (actual.size() > 1) {
+-            throw new IllegalStateException(
+-                    String.format("Multiple permitted exit transitions are configured from state '%s' for trigger '%s'. Guard clauses must be mutually exclusive.",
+-                            trigger, state)
+-            );
++            throw new IllegalStateException("Multiple permitted exit transitions are configured from state '" + trigger + "' for trigger '" + state + "'. Guard clauses must be mutually exclusive.");
+         }
+ 
+-        TriggerBehaviour<TState, TTrigger> handler = actual.get(0);
+-        if (handler == null) {
+-            throw new IllegalStateException();
+-        }
+-        return handler;
++        return actual.get(0);
+     }
+ 
+     public void addEntryAction(final TTrigger trigger, final Action2<Transition<TState, TTrigger>, Object[]> action) {
+         Enforce.argumentNotNull(action, "action");
+ 
+ 
+         entryActions.add(new Action2<Transition<TState, TTrigger>, Object[]>() {
+             @Override
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -20,17 +20,17 @@
+     public StateRepresentation(TState state) {
+         this.state = state;
+     }
+ 
+     protected Map<TTrigger, List<TriggerBehaviour<TState, TTrigger>>> getTriggerBehaviours() {
+         return triggerBehaviours;
+     }
+ 
+-    public boolean canHandle(TTrigger trigger) {
++    public Boolean canHandle(TTrigger trigger) {
+         return tryFindHandler(trigger) != null;
+     }
+ 
+     public TriggerBehaviour<TState, TTrigger> tryFindHandler(TTrigger trigger) {
+         TriggerBehaviour result = tryFindLocalHandler(trigger);
+         if (result == null && superstate != null) {
+             result = superstate.tryFindHandler(trigger);
+         }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/8: src/main/java/com/github/oxo42/stateless4j/transitions/TransitioningTriggerBehaviour.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,17 +1,17 @@
+ package com.github.oxo42.stateless4j.transitions;
+ 
+-import com.github.oxo42.stateless4j.delegates.Func;
++import com.github.oxo42.stateless4j.delegates.FuncBoolean;
+ import com.github.oxo42.stateless4j.triggers.TriggerBehaviour;
+ 
+ public class TransitioningTriggerBehaviour<TState, TTrigger> extends TriggerBehaviour<TState, TTrigger> {
+     private final TState destination;
+ 
+-    public TransitioningTriggerBehaviour(TTrigger trigger, TState destination, Func<Boolean> guard) {
++    public TransitioningTriggerBehaviour(TTrigger trigger, TState destination, FuncBoolean guard) {
+         super(trigger, guard);
+         this.destination = destination;
+     }
+ 
+     public TState resultsInTransitionFrom(TState source, Object... args) {
+         return destination;
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,17 +1,21 @@
+ package com.github.oxo42.stateless4j.transitions;
+ 
++import com.github.oxo42.stateless4j.OutVar;
+ import com.github.oxo42.stateless4j.delegates.Func;
+ import com.github.oxo42.stateless4j.triggers.TriggerBehaviour;
+ 
+ public class TransitioningTriggerBehaviour<TState, TTrigger> extends TriggerBehaviour<TState, TTrigger> {
++
+     private final TState destination;
+ 
+     public TransitioningTriggerBehaviour(TTrigger trigger, TState destination, Func<Boolean> guard) {
+         super(trigger, guard);
+         this.destination = destination;
+     }
+ 
+-    public TState resultsInTransitionFrom(TState source, Object... args) {
+-        return destination;
++    @Override
++    public boolean resultsInTransitionFrom(TState source, Object[] args, OutVar<TState> dest) {
++        dest.set(destination);
++        return true;
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,12 +1,13 @@
+ package com.github.oxo42.stateless4j.transitions;
+ 
++
++import com.github.oxo42.stateless4j.OutVar;
+ import com.github.oxo42.stateless4j.delegates.FuncBoolean;
+-import com.github.oxo42.stateless4j.OutVar;
+ import com.github.oxo42.stateless4j.triggers.TriggerBehaviour;
+ 
+ public class TransitioningTriggerBehaviour<TState, TTrigger> extends TriggerBehaviour<TState, TTrigger> {
+ 
+     private final TState destination;
+ 
+     public TransitioningTriggerBehaviour(TTrigger trigger, TState destination, FuncBoolean guard) {
+         super(trigger, guard);
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/8: src/main/java/com/github/oxo42/stateless4j/triggers/DynamicTriggerBehaviour.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,18 +1,19 @@
+ package com.github.oxo42.stateless4j.triggers;
+ 
+-import com.github.oxo42.stateless4j.delegates.Func;
+ import com.github.oxo42.stateless4j.delegates.Func2;
++import com.github.oxo42.stateless4j.delegates.FuncBoolean;
+ import com.github.oxo42.stateless4j.validation.Enforce;
+ 
+ public class DynamicTriggerBehaviour<TState, TTrigger> extends TriggerBehaviour<TState, TTrigger> {
+     private Func2<Object[], TState> destination;
+ 
+-    public DynamicTriggerBehaviour(TTrigger trigger, Func2<Object[], TState> destination, Func<Boolean> guard) {
++    public DynamicTriggerBehaviour(TTrigger trigger, Func2<Object[], TState> destination, FuncBoolean guard) {
+         super(trigger, guard);
+         this.destination = Enforce.argumentNotNull(destination, "destination");
+     }
+ 
++    @Override
+     public TState resultsInTransitionFrom(TState source, Object... args) {
+         return destination.call(args);
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,18 +1,22 @@
+ package com.github.oxo42.stateless4j.triggers;
+ 
++import com.github.oxo42.stateless4j.OutVar;
+ import com.github.oxo42.stateless4j.delegates.Func;
+ import com.github.oxo42.stateless4j.delegates.Func2;
+ import com.github.oxo42.stateless4j.validation.Enforce;
+ 
+ public class DynamicTriggerBehaviour<TState, TTrigger> extends TriggerBehaviour<TState, TTrigger> {
+-    private Func2<Object[], TState> destination;
++
++    private final Func2<Object[], TState> destination;
+ 
+     public DynamicTriggerBehaviour(TTrigger trigger, Func2<Object[], TState> destination, Func<Boolean> guard) {
+         super(trigger, guard);
+         this.destination = Enforce.argumentNotNull(destination, "destination");
+     }
+ 
+-    public TState resultsInTransitionFrom(TState source, Object... args) {
+-        return destination.call(args);
++    @Override
++    public boolean resultsInTransitionFrom(TState source, Object[] args, OutVar<TState> dest) {
++        dest.set(destination.call(args));
++        return true;
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -9,14 +9,13 @@
+ 
+     private final Func2<Object[], TState> destination;
+ 
+     public DynamicTriggerBehaviour(TTrigger trigger, Func2<Object[], TState> destination, FuncBoolean guard) {
+         super(trigger, guard);
+         this.destination = Enforce.argumentNotNull(destination, "destination");
+     }
+ 
+-    @Override
+     public boolean resultsInTransitionFrom(TState source, Object[] args, OutVar<TState> dest) {
+         dest.set(destination.call(args));
+         return true;
+     }
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[OTHER] method does not override or implement a method from a supertype
+
+=== FILE 5/8: src/main/java/com/github/oxo42/stateless4j/triggers/IgnoredTriggerBehaviour.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,13 +1,14 @@
+ package com.github.oxo42.stateless4j.triggers;
+ 
+-import com.github.oxo42.stateless4j.delegates.Func;
++import com.github.oxo42.stateless4j.delegates.FuncBoolean;
+ 
+ public class IgnoredTriggerBehaviour<TState, TTrigger> extends TriggerBehaviour<TState, TTrigger> {
+-    public IgnoredTriggerBehaviour(TTrigger trigger, Func<Boolean> guard) {
++    public IgnoredTriggerBehaviour(TTrigger trigger, FuncBoolean guard) {
+         super(trigger, guard);
+     }
+ 
++    @Override
+     public TState resultsInTransitionFrom(TState source, Object... args) {
+         throw new IllegalStateException();
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,13 +1,16 @@
+ package com.github.oxo42.stateless4j.triggers;
+ 
++import com.github.oxo42.stateless4j.OutVar;
+ import com.github.oxo42.stateless4j.delegates.Func;
+ 
+ public class IgnoredTriggerBehaviour<TState, TTrigger> extends TriggerBehaviour<TState, TTrigger> {
++
+     public IgnoredTriggerBehaviour(TTrigger trigger, Func<Boolean> guard) {
+         super(trigger, guard);
+     }
+ 
+-    public TState resultsInTransitionFrom(TState source, Object... args) {
+-        throw new IllegalStateException();
++    @Override
++    public boolean resultsInTransitionFrom(TState source, Object[] args, OutVar<TState> dest) {
++        return false;
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,15 +1,14 @@
+ package com.github.oxo42.stateless4j.triggers;
+ 
++import com.github.oxo42.stateless4j.OutVar;
+ import com.github.oxo42.stateless4j.delegates.FuncBoolean;
+-import com.github.oxo42.stateless4j.OutVar;
+ 
+ public class IgnoredTriggerBehaviour<TState, TTrigger> extends TriggerBehaviour<TState, TTrigger> {
+-
+     public IgnoredTriggerBehaviour(TTrigger trigger, FuncBoolean guard) {
+         super(trigger, guard);
+     }
+ 
+     @Override
+     public boolean resultsInTransitionFrom(TState source, Object[] args, OutVar<TState> dest) {
+         return false;
+     }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 6/8: src/main/java/com/github/oxo42/stateless4j/triggers/TriggerBehaviour.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,24 +1,24 @@
+ package com.github.oxo42.stateless4j.triggers;
+ 
+-import com.github.oxo42.stateless4j.delegates.Func;
++import com.github.oxo42.stateless4j.delegates.FuncBoolean;
+ 
+ 
+ public abstract class TriggerBehaviour<TState, TTrigger> {
+     private final TTrigger trigger;
+-    private final Func<Boolean> guard;
++    private final FuncBoolean guard;
+ 
+-    protected TriggerBehaviour(TTrigger trigger, Func<Boolean> guard) {
++    protected TriggerBehaviour(TTrigger trigger, FuncBoolean guard) {
+         this.trigger = trigger;
+         this.guard = guard;
+     }
+ 
+     public TTrigger getTrigger() {
+         return trigger;
+     }
+ 
+-    public Boolean isGuardConditionMet() {
++    public boolean isGuardConditionMet() {
+         return guard.call();
+     }
+ 
+     public abstract TState resultsInTransitionFrom(TState source, Object... args);
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,10 +1,11 @@
+ package com.github.oxo42.stateless4j.triggers;
+ 
++import com.github.oxo42.stateless4j.OutVar;
+ import com.github.oxo42.stateless4j.delegates.Func;
+ 
+ 
+ public abstract class TriggerBehaviour<TState, TTrigger> {
+     private final TTrigger trigger;
+     private final Func<Boolean> guard;
+ 
+     protected TriggerBehaviour(TTrigger trigger, Func<Boolean> guard) {
+@@ -15,10 +16,10 @@
+     public TTrigger getTrigger() {
+         return trigger;
+     }
+ 
+     public Boolean isGuardConditionMet() {
+         return guard.call();
+     }
+ 
+-    public abstract TState resultsInTransitionFrom(TState source, Object... args);
++    public abstract boolean resultsInTransitionFrom(TState source, Object[] args, OutVar<TState> dest);
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 7/8: src/test/java/com/github/oxo42/stateless4j/IgnoredTriggerBehaviourTests.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,28 +1,28 @@
+ package com.github.oxo42.stateless4j;
+ 
+ import org.junit.Assert;
+ import org.junit.Test;
+ 
+-import com.github.oxo42.stateless4j.delegates.Func;
++import com.github.oxo42.stateless4j.delegates.FuncBoolean;
+ import com.github.oxo42.stateless4j.triggers.IgnoredTriggerBehaviour;
+ 
+ 
+ public class IgnoredTriggerBehaviourTests {
+-    public static Func<Boolean> returnTrue = new Func<Boolean>() {
++    public static FuncBoolean returnTrue = new FuncBoolean() {
+ 
+-        public Boolean call() {
++        public boolean call() {
+             return true;
+         }
+     };
+ 
+-    public static Func<Boolean> returnFalse = new Func<Boolean>() {
++    public static FuncBoolean returnFalse = new FuncBoolean() {
+ 
+-        public Boolean call() {
++        public boolean call() {
+             return false;
+         }
+     };
+ 
+     @Test
+     public void StateRemainsUnchanged() {
+         IgnoredTriggerBehaviour<State, Trigger> ignored = new IgnoredTriggerBehaviour<State, Trigger>(Trigger.X, returnTrue);
+         try {
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,59 +1,51 @@
+ package com.github.oxo42.stateless4j;
+ 
+ import org.junit.Assert;
+ import org.junit.Test;
+ 
+ import com.github.oxo42.stateless4j.delegates.Func;
+ import com.github.oxo42.stateless4j.triggers.IgnoredTriggerBehaviour;
+-
++import static org.junit.Assert.assertFalse;
+ 
+ public class IgnoredTriggerBehaviourTests {
++
+     public static Func<Boolean> returnTrue = new Func<Boolean>() {
+ 
++        @Override
+         public Boolean call() {
+             return true;
+         }
+     };
+ 
+     public static Func<Boolean> returnFalse = new Func<Boolean>() {
+ 
++        @Override
+         public Boolean call() {
+             return false;
+         }
+     };
+ 
+     @Test
+     public void StateRemainsUnchanged() {
+-        IgnoredTriggerBehaviour<State, Trigger> ignored = new IgnoredTriggerBehaviour<State, Trigger>(Trigger.X, returnTrue);
+-        try {
+-            ignored.resultsInTransitionFrom(State.B, new Object[0]);
+-            Assert.fail();
+-        } catch (Exception e) {
+-
+-        }
++        IgnoredTriggerBehaviour<State, Trigger> ignored = new IgnoredTriggerBehaviour<>(Trigger.X, returnTrue);
++        assertFalse(ignored.resultsInTransitionFrom(State.B, new Object[0], new OutVar<State>()));
+     }
+ 
+     @Test
+     public void ExposesCorrectUnderlyingTrigger() {
+-        IgnoredTriggerBehaviour<State, Trigger> ignored = new IgnoredTriggerBehaviour<State, Trigger>(
+-                Trigger.X, returnTrue);
+-
++        IgnoredTriggerBehaviour<State, Trigger> ignored = new IgnoredTriggerBehaviour<>(Trigger.X, returnTrue);
+         Assert.assertEquals(Trigger.X, ignored.getTrigger());
+     }
+ 
+     @Test
+     public void WhenGuardConditionFalse_IsGuardConditionMetIsFalse() {
+-        IgnoredTriggerBehaviour<State, Trigger> ignored = new IgnoredTriggerBehaviour<State, Trigger>(
+-                Trigger.X, returnFalse);
+-
++        IgnoredTriggerBehaviour<State, Trigger> ignored = new IgnoredTriggerBehaviour<>(Trigger.X, returnFalse);
+         Assert.assertFalse(ignored.isGuardConditionMet());
+     }
+ 
+     @Test
+     public void WhenGuardConditionTrue_IsGuardConditionMetIsTrue() {
+-        IgnoredTriggerBehaviour<State, Trigger> ignored = new IgnoredTriggerBehaviour<State, Trigger>(
+-                Trigger.X, returnTrue);
+-
++        IgnoredTriggerBehaviour<State, Trigger> ignored = new IgnoredTriggerBehaviour<>(Trigger.X, returnTrue);
+         Assert.assertTrue(ignored.isGuardConditionMet());
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -3,17 +3,17 @@
+ import org.junit.Assert;
+ import org.junit.Test;
+ 
+ import com.github.oxo42.stateless4j.delegates.FuncBoolean;
+ import com.github.oxo42.stateless4j.triggers.IgnoredTriggerBehaviour;
+ import static org.junit.Assert.assertFalse;
+ 
+ public class IgnoredTriggerBehaviourTests {
+-
++    
+     public static FuncBoolean returnTrue = new FuncBoolean() {
+ 
+         @Override
+         public boolean call() {
+             return true;
+         }
+     };
+ 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 8/8: src/test/java/com/github/oxo42/stateless4j/StateMachineTests.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,24 +1,24 @@
+ package com.github.oxo42.stateless4j;
+ 
+ import com.github.oxo42.stateless4j.delegates.Action;
+-import com.github.oxo42.stateless4j.delegates.Func;
++import com.github.oxo42.stateless4j.delegates.FuncBoolean;
+ import org.junit.Test;
+ 
+ import java.util.List;
+ 
+ import static org.junit.Assert.*;
+ 
+ 
+ public class StateMachineTests {
+     final Enum
+             StateA = State.A, StateB = State.B, StateC = State.C,
+             TriggerX = Trigger.X, TriggerY = Trigger.Y;
+-    Boolean fired = false;
++    boolean fired = false;
+     String entryArgS = null;
+     int entryArgI = 0;
+ 
+     @Test
+     public void CanUseReferenceTypeMarkers() {
+         RunSimpleTest(
+                 new Enum[]{StateA, StateB, StateC},
+                 new Enum[]{TriggerX, TriggerY});
+@@ -112,19 +112,20 @@
+         assertEquals(Trigger.X, permitted.get(0));
+     }
+ 
+     @Test
+     public void AcceptedTriggersRespectGuards() {
+         StateMachine<State, Trigger> sm = new StateMachine<State, Trigger>(State.B);
+ 
+         sm.configure(State.B)
+-                .permitIf(Trigger.X, State.A, new Func<Boolean>() {
+-
+-                    public Boolean call() {
++                .permitIf(Trigger.X, State.A, new FuncBoolean() {
++
++                    @Override
++                    public boolean call() {
+                         return false;
+                     }
+                 });
+ 
+         assertEquals(0, sm.getPermittedTriggers().size());
+     }
+ 
+     @Test
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -3,20 +3,19 @@
+ import com.github.oxo42.stateless4j.delegates.Action;
+ import com.github.oxo42.stateless4j.delegates.Func;
+ import org.junit.Test;
+ 
+ import java.util.List;
+ 
+ import static org.junit.Assert.*;
+ 
+-
+ public class StateMachineTests {
+-    final Enum
+-            StateA = State.A, StateB = State.B, StateC = State.C,
++
++    final Enum StateA = State.A, StateB = State.B, StateC = State.C,
+             TriggerX = Trigger.X, TriggerY = Trigger.Y;
+     Boolean fired = false;
+     String entryArgS = null;
+     int entryArgI = 0;
+ 
+     @Test
+     public void CanUseReferenceTypeMarkers() {
+         RunSimpleTest(
+@@ -147,17 +146,16 @@
+     @Test
+     public void WhenTriggerIsIgnored_ActionsNotExecuted() {
+         StateMachine<State, Trigger> sm = new StateMachine<State, Trigger>(State.B);
+ 
+         fired = false;
+ 
+         sm.configure(State.B)
+                 .onEntry(new Action() {
+-
+ 
+                     public void doIt() {
+                         setFired();
+                     }
+                 })
+                 .ignore(Trigger.X);
+ 
+         sm.fire(Trigger.X);
+@@ -169,54 +167,41 @@
+     public void IfSelfTransitionPermited_ActionsFire() {
+         StateMachine<State, Trigger> sm = new StateMachine<State, Trigger>(State.B);
+ 
+         fired = false;
+ 
+         sm.configure(State.B)
+                 .onEntry(new Action() {
+ 
+-
+                     public void doIt() {
+                         setFired();
+                     }
+                 })
+                 .permitReentry(Trigger.X);
+ 
+         sm.fire(Trigger.X);
+ 
+         assertTrue(fired);
+     }
+ 
+-    @Test
+-    //[Test, ExpectedException(typeof(ArgumentException))]
++    @Test(expected = IllegalStateException.class)
+     public void ImplicitReentryIsDisallowed() {
+-        try {
+-
+-            StateMachine<State, Trigger> sm = new StateMachine<State, Trigger>(State.B);
+-
+-            sm.configure(State.B)
+-                    .permit(Trigger.X, State.B);
+-        } catch (Exception e) {
+-
+-        }
+-    }
+-
+-    @Test
+-//        [Test, ExpectedException(typeof(InvalidOperationException))]
++        StateMachine<State, Trigger> sm = new StateMachine<State, Trigger>(State.B);
++
++        sm.configure(State.B)
++                .permit(Trigger.X, State.B);
++    }
++
++    @Test(expected = IllegalStateException.class)
+     public void TriggerParametersAreImmutableOnceSet() {
+-        try {
+-            StateMachine<State, Trigger> sm = new StateMachine<State, Trigger>(State.B);
+-
+-            sm.setTriggerParameters(Trigger.X, String.class, int.class);
+-            sm.setTriggerParameters(Trigger.X, String.class);
+-            fail();
+-        } catch (Exception e) {
+-
+-        }
++        StateMachine<State, Trigger> sm = new StateMachine<State, Trigger>(State.B);
++
++        sm.setTriggerParameters(Trigger.X, String.class, int.class);
++        sm.setTriggerParameters(Trigger.X, String.class);
+     }
+ 
+ //        @Test
+ //        public void ParametersSuppliedToFireArePassedToEntryAction()
+ //        {
+ //        	StateMachine<State, Trigger> sm = new StateMachine<State, Trigger>(State.B);
+ //
+ //        	TriggerWithParameters2<String, Integer, State, Trigger> x = sm.setTriggerParameters(Trigger.X, String.class, int.class);
+@@ -255,9 +240,8 @@
+ //                                      });
+ //
+ //            sm.fire(Trigger.Z);
+ //
+ //            AreEqual(State.B, state);
+ //            AreEqual(Trigger.Z, trigger);
+ //        }
+ }
+-
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

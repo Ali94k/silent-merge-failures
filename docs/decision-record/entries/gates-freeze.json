@@ -1,0 +1,2152 @@
+{
+  "entries": [
+    {
+      "slug": "significance-gate-and-timebox-escape",
+      "title": "Both integration plans gain a significance gate on F1 criteria and a 2\u00d7 timebox escape rule",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "Edit \u00a72 Constraints of both integration plans so that headline numbers must carry a Wilson 95% confidence interval, \"F1 \u2265 X\" acceptance criteria carry a statistical-significance gate, and any phase overrunning 2\u00d7 its estimate stops and writes a revisit note to STATUS.md before continuing. Landed as commit 77d988a together with the other plan-gap fixes (separate base\u2192ours/base\u2192theirs RM2 runs, R3 merged-file-only reality, a separate implementation phase for ISSUES #2).",
+      "rationale_recorded": true,
+      "rationale": "The pre-execution review found two concrete gaps: no statistical-significance gate existed on the F1 acceptance criteria, and nothing in the plans prevented phases ballooning.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-09",
+        "preA:pre-execution-sequence-03",
+        "preB:pre-execution-sequence-16"
+      ],
+      "evidence": [
+        {
+          "text": "4. No statistical-significance gate on \"F1 \u2265 X\" acceptance criteria.",
+          "line": 19,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        },
+        {
+          "text": "No timebox escape rule; nothing prevented phases ballooning.",
+          "line": 20,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        },
+        {
+          "text": "Both \u00a72 Constraints: Wilson 95% CI requirement on headline numbers,",
+          "line": 116,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "77d988a",
+        "docs/plans/mergiraf-integration.md",
+        "docs/plans/rm2-integration.md",
+        "STATUS.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "stage-gated-rollout-one-commit-per-stage",
+      "title": "Each execution stage is one commit, gated on the previous, with a mandatory stop and a replan gate at \u03b5",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "Structure the \u03b1/\u03b2/\u03b2.1/\u03b3/\u03b4/\u03b5 rollout so every stage is a single commit gated on the previous stage, with a mandatory stop-and-re-evaluate between stages and rollback by `git revert` or branch-drop of that one commit; constrain \u03b1\u2013\u03b4 so none of them touches merge-tool-comparison runtime code or published report numbers; and insert a replan gate at \u03b5 requiring both execution plans to be refreshed with stage \u03b3 and \u03b4 findings before execution proceeds.",
+      "rationale_recorded": true,
+      "rationale": "Stated in the rollback section: because each stage is exactly one commit, rollback is a single revert or branch drop, and because none of \u03b1\u2013\u03b4 touches merge-tool-comparison runtime code or published numbers, no stage can move a published number by accident.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): executed as specified \u2014 docs/plans/execution-sequence.md tracks every stage done with its commit (\u03b1 77d988a, \u03b2 044051f, \u03b2.1, \u03b3 2026-05-14, \u03b4 R0 1f76a00+5e687ce) and header 'Status: active \u2014 \u03b1, \u03b2, \u03b2.1, \u03b3, \u03b4 done; \u03b5 MVP track complete', including the \u03b5 replan gate outcomes recorded as dated items.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-02",
+        "preB:pre-execution-sequence-28",
+        "preB:pre-execution-sequence-23"
+      ],
+      "evidence": [
+        {
+          "text": "Each stage is one commit, gated on the previous. Stop between stages and re-evaluate.",
+          "line": 34,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        },
+        {
+          "text": "None of \u03b1\u2013\u03b4 modifies `merge-tool-comparison/` runtime code or published report numbers.",
+          "line": 139,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        },
+        {
+          "text": "After stages \u03b1\u2013\u03b4, refresh both execution plans with stage \u03b3 + \u03b4 findings.",
+          "line": 93,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/execution-sequence.md \u00a72",
+        "docs/plans/execution-sequence.md \u00a74"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "per-cluster-result-publishable-either-way",
+      "title": "R2's per-cluster answer is publishable either way and does not gate the dispatch mechanism",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-18",
+      "decision": "Commit in advance to reporting R2's answer to \"does refactoring cluster predict tool performance on this dataset?\" whichever way it comes out: a yes justifies adding the W5/S2 elifs in a follow-up cycle, a no means merge-layer dispatch is not load-bearing for this dataset and W5/S2 stay empirical-only data points while the R4b mechanism ships as honest plumbing. The per-cluster signal itself is labelled suggestive only (per-cluster n 4\u201318, sub-CI) and explicitly does not gate R4b. No tuning toward a desired answer is permitted.",
+      "rationale_recorded": true,
+      "rationale": "Per-cluster n of 4\u201318 is below confidence-interval sufficiency, so the signal cannot carry the routing claim statistically; and because the question is publishable either way, Tier C can be the strongest decision-grade output without committing to a specific routing claim.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-19",
+        "preA:pre-scope-tier-options-10",
+        "a:20b53f98-03"
+      ],
+      "evidence": [
+        {
+          "text": "Signal is **suggestive only** (per-cluster n 4\u201318, sub-CI)",
+          "line": 106,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        },
+        {
+          "text": "Never tune toward a desired answer.",
+          "line": 79,
+          "file": "2026-05-18_20b53f98.txt"
+        },
+        {
+          "text": "**What R2 produces:** a yes/no answer to *\"does refactoring cluster predict tool performance on this dataset?\"* Either outcome is publishable:",
+          "line": 98,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        }
+      ],
+      "artifacts": [
+        "reports/results.csv",
+        "ISSUES.md #3",
+        "src/evaluation/categorizer.py"
+      ],
+      "actors": "ali",
+      "actors_note": "Two sources attribute the position to Ali (the scope-tier options ruling and the transcript-era evidence-first statement); the plan-text source records actors as unclear. Attributed to Ali on the strength of the transcript-era source rather than by majority.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "evidence-gate-scoped-to-routing-claims",
+      "title": "Evidence-before-integration binds per-cluster routing claims, not the dispatch mechanism or the default",
+      "date_from": "2026-04-22",
+      "date_to": "2026-04-25",
+      "decision": "Scope the inherited \"evidence before integration\" constraint to per-cluster routing claims (W5's MIGRATE_DECL\u2192Weave, S2's INTRA_BODY+Java\u2192Spork), each of which carries its own evidence gate. Shipping the classifier and auto-mode skeleton (R4a+R4b) is exempt, and choosing Mergiraf as the default/fallback cluster target at MVP time is likewise accepted without empirical evidence.",
+      "rationale_recorded": true,
+      "rationale": "The dispatch mechanism is honest plumbing \u2014 it makes no routing claim \u2014 and Mergiraf is the fallback for unmatched clusters rather than a routing claim; a routing elif does encode a specific claim, and adding one without evidence is \"adding a tool because it seems nice\", the move the thesis argues against.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the scoping was honoured end to end \u2014 R4a+R4b shipped ungated (M6-lite 3fef834, default accepted pre-evidence per its own commit caveat), while the per-cluster claims got their evidence gates: the S2 arm fell to the CI-grade run (ISSUES #27) and W5 to the W3 gate run (ISSUES #28, reports_migrate_decl/), exactly the split this entry prescribed.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-10",
+        "preA:pre-weave-integration-19"
+      ],
+      "evidence": [
+        {
+          "text": "The dispatch *mechanism* itself (R4a + R4b shipping the classifier and auto-mode skeleton) is honest plumbing; it doesn't make a routing claim and so doesn't require routing evidence.",
+          "line": 84,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "is acceptable because Mergiraf is the *fallback* for unmatched clusters, not a routing claim",
+          "line": 266,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/mergiraf-integration.md Appendix A"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "w5-five-condition-evidence-gate",
+      "title": "W5 promotion originally gated on five conditions including a MIGRATE_DECL-specific W3 win",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "W5 (promoting Weave into semantic_merge_driver) may only proceed when all five triggers hold: W3 shows Weave strictly outperforming Mergiraf on the MIGRATE_DECL cluster with non-overlapping 95% CIs (or handling extraction cases Mergiraf crashes on), RM2 R4a has landed, mergiraf Phase 6-lite has landed, the rm2 R4b dispatch skeleton has landed, and W2/W3 show zero crashes. Without all five, Weave remains an empirical data point only.",
+      "rationale_recorded": true,
+      "rationale": "The elif arm encodes a specific routing claim (\"MIGRATE_DECL cluster \u2192 Weave\") which must be empirically justified; adding it without evidence is \"adding a tool because it seems nice\", the move the thesis argues against.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "two-phase-routing-decoupling",
+      "sources": [
+        "preA:pre-weave-integration-07"
+      ],
+      "evidence": [
+        {
+          "text": "**This is the load-bearing evidence gate for W5**",
+          "line": 196,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        },
+        {
+          "text": "Without all five, Weave stays an empirical data point only.",
+          "line": 202,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/mergiraf-integration.md",
+        "docs/plans/rm2-integration.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "two-phase-routing-decoupling",
+      "title": "Routing elifs ship as Phase-1 mechanism; the S3/W3 evidence gates become Phase-2 validation",
+      "date_from": "2026-04-25",
+      "date_to": "2026-05-19",
+      "decision": "Split routing work in two phases: the S2 (INTRA_BODY+Java) and W5 (MIGRATE_DECL) auto-mode elifs ship as a Phase-1 mechanism deliverable, wired and synthetic-verified end-to-end, while W0\u2013W4 and S3/S4 become Phase-2 soundness validation (real data, Wilson CIs) and are no longer preconditions for the mechanism. R4b's trigger likewise becomes only that R4a and M6-lite have landed, not R2 evidence plus W5/S2. Where the phase bodies of spork-driver-integration.md, weave-integration.md and scope-tier-options.md read as hard-coupling S2\u2194S3 or W5\u2194W3, the rm2-integration.md \u00a71.2 marked decision governs.",
+      "rationale_recorded": true,
+      "rationale": "The evidence gates are soundness validation and not a precondition for the mechanism; splitting R4a from R4b across the evidence gate had created a long dead-code window for R4a and forced cross-plan scheduling pressure, and R4b ships only the mechanism so per-cluster routing evidence belongs in W5/S2.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "w5-five-condition-evidence-gate",
+        "original rm2 draft in which R4b waited on R2 evidence plus W5/S2",
+        "spork-driver-integration.md \u00a7S3 'before flipping the router default' coupling text"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-weave-integration-06",
+        "preA:pre-rm2-integration-09",
+        "preA:pre-spork-driver-integration-03",
+        "preA:pre-rm2-integration-25"
+      ],
+      "evidence": [
+        {
+          "text": "The S2/W5 routing **elifs are wired and synthetic-verified end-to-end** as a *Phase-1 mechanism* deliverable.",
+          "line": 59,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "This is **decoupled** from the S3/W3 evidence gates: those are *Phase-2 soundness validation* (real data + Wilson CIs) and are **not** a precondition for the mechanism.",
+          "line": 59,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "Splitting them across the evidence gate (the original draft had R4b waiting on R2 + W5/S2) created a long dead-code window for R4a and forced cross-plan scheduling pressure.",
+          "line": 433,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/rm2-integration.md \u00a71.2",
+        "docs/plans/spork-driver-integration.md",
+        "docs/plans/weave-integration.md",
+        "AutoBackend._route()",
+        "memory routing-two-phase"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "mergiraf-promotion-gate-f1-zero-crashes",
+      "title": "Mergiraf may fill the structured-merge slot only on Phase 4 evidence: F1 \u2265 git merge-file, zero crashes",
+      "date_from": "2026-04-21",
+      "date_to": "2026-04-22",
+      "decision": "Gate Mergiraf's promotion into semantic_merge_driver's vacant structured-merge slot on Phase 4 empirical evidence: F1 at least that of `git merge-file` on the Schesch subset with zero crashes. Phase 6-validate is triggered once Phase 4 lands and checks exactly this; if satisfied, the default-flip is supported and STATUS.md records the outcome with no code change, and if not, a follow-up plan is filed (switch the default back to `git`, or pick another second backend such as Spork via S2) with STATUS.md flagging the open issue.",
+      "rationale_recorded": true,
+      "rationale": "Phase 6's role inverts versus the original pre-MVP plan \u2014 validation rather than gate \u2014 because under the MVP-first ordering the mechanism ships first, so the check retroactively confirms or refutes the MVP-time choice of Mergiraf as second backend.",
+      "status": "abandoned",
+      "status_note": "S12 (2026-07-26): the named procedure never ran \u2014 no Phase-4/Phase-6-validate execution record exists in docs/plans/mergiraf-integration.md, STATUS.md or the reports. The default shipped pre-evidence with a commit caveat (3fef834) and was later sustained by different instruments (the six-tool canonical table and P2), but the F1-vs-git zero-crash check as specified was dropped without a ruling.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-23",
+        "preA:pre-tool-evaluation-findings-02"
+      ],
+      "evidence": [
+        {
+          "text": "Confirm Mergiraf F1 \u2265 `git merge-file`'s on the Schesch subset, with zero crashes, against Phase 4 results.",
+          "line": 245,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "retroactively confirm \u2014 or refute \u2014 the MVP-time decision in Phase 6-lite to use Mergiraf as the second backend. Role inverts vs. the original (pre-MVP) Phase 6: validation rather than gate.",
+          "line": 242,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "Promote Mergiraf to `semantic_merge_driver` | Mergiraf plan Phase 4 evidence: F1 \u2265 git-merge-file, zero crashes",
+          "line": 290,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/mergiraf-integration.md",
+        "STATUS.md",
+        "semantic_merge_driver/initial architecture.md"
+      ],
+      "actors": "unclear",
+      "actors_note": "One source attributes the promotion gate to Claude and the other records actors as unclear; both are plan documents, so the record does not establish who chose the criterion.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "s3-w3-gated-on-issues-2",
+      "title": "S3 and W3 are hard-gated on ISSUES #2, with the failure branch pre-registered",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "S3 may not run until merge-tool-comparison/ISSUES.md #2 moves from `decided \u2014 see plan` to `resolved`, and no granularity-axis claims are published until then (with the same caveat attached to Weave's numbers if its FP count mirrors Spork/Mastery). The outcome branch is pre-registered: if S3 shows Spork's F1 is not strictly higher than Mergiraf's with non-overlapping CIs, the S2 router change is reverted \u2014 Mergiraf keeps the cluster, the plan lands only S1, and Spork stays available via explicit SEMANTIC_MERGE_BACKEND=spork; if Spork wins, `auto` is flipped to include the Spork dispatch branch.",
+      "rationale_recorded": true,
+      "rationale": "Spork's empirical numbers are currently distrusted \u2014 the suspected normalize_content() bug inflates its FP rate \u2014 so promoting on them would be promoting on numbers known to be wrong and F1 differences would be noise; the same FP inflation would muddy W2/W3, so the ground-truth methodology must be settled first.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the gate was honoured precisely \u2014 ISSUES.md #2 shows the pause trigger firing and #2 held at 'decided' (:84, :117) until the Tier-E floor was hit exactly and #2 moved to resolved (2026-05-15, :132); the granularity evidence runs came after (Spork CI-grade 2026-05-25/27, W3 2026-06-01), and the pre-registered failure branch executed as the router flip when both arms were refuted.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-spork-driver-integration-07",
+        "preA:pre-spork-driver-integration-13",
+        "preA:pre-weave-integration-18"
+      ],
+      "evidence": [
+        {
+          "text": "**Why gate on ISSUES.md #2?** Because Spork's empirical numbers are currently distrusted",
+          "line": 230,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        },
+        {
+          "text": "- If Spork's F1 is not strictly higher than Mergiraf's with non-overlapping CIs, **revert** the S2 router change; Mergiraf owns the cluster and this plan lands only S1",
+          "line": 173,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        },
+        {
+          "text": "W3 is gated on that having landed; don't publish granularity-axis claims until ISSUES.md #2 is `resolved`.",
+          "line": 240,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/ISSUES.md #2",
+        "docs/plans/spork-driver-integration.md",
+        "docs/plans/weave-integration.md"
+      ],
+      "actors": "unclear",
+      "actors_note": "The S3 gate is attributed to Ali in one source; the sibling revert rule and the W3 gate are recorded as unclear. Left unclear because all three are plan text and the record does not show the choice being put and taken.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "pin-formatter-version",
+      "title": "Pin the formatter version used by the comparator's Docker layer",
+      "date_from": "2026-04-21",
+      "date_to": null,
+      "decision": "The google-java-format (or spotless) version used in the comparator's Docker layer is pinned.",
+      "rationale_recorded": true,
+      "rationale": "Comparator output changes when the formatter changes.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): pinned \u2014 docker/google-java-format/Dockerfile:19 'ARG GJF_VERSION=1.22.0', image tagged merge-tools/google-java-format:1.22.0, jar fetched by that exact version.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-13"
+      ],
+      "evidence": [
+        {
+          "text": "pin the formatter version, since comparator output changes when the formatter changes",
+          "line": 138,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/docker/google-java-format/Dockerfile"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "tier-c-floor-and-escalation-ladder",
+      "title": "Pre-register the comparator's recovery floor from Wilson bounds, with per-phase floors and an escalation rule",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "Pre-register numeric acceptance criteria for the FP-diagnostic ladder before running it: Tier C's point estimate is Spork TP 37 / FP 6 (X\u224835 of the 39 still-differ residuals), its acceptance floor is TP \u2265 32 / FP \u2264 11 (X \u2265 30), and ISSUES.md #2 may move decided\u2192resolved only on hitting that floor; Mastery, git-merge-file and JDime rows are expected unchanged. Implement as five small commits (3b.0\u20133b.5), each one reviewable commit leaving the tree working, with cumulative per-phase Spork TP floors of \u22657 / \u226514 / \u226522 / \u226532 and STATUS.md/ISSUES.md touched only after the final phase. Earlier in the ladder, 3j manual labelling runs on the residual after 3e and escalation to 3b or 3a is triggered if more than ~10% of FPs remain unexplained.",
+      "rationale_recorded": true,
+      "rationale": "The point estimate comes from \u00a79's 15/15 stratified AST-equivalence labelling (~90% recovery \u00d7 39 = 35) and the floor from the Wilson 95% lower bound (~80% \u00d7 39 \u2248 30); the per-phase floors are deliberately conservative so that a miss is a real progress signal rather than a point-estimate shortfall. The later threats review records the same floor as the sole mitigation for the normalizer having been tuned iteratively against the very Spork residuals it scores, with no held-out validation.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-66",
+        "preA:pre-comparator-3b-ast-normalize-02",
+        "preB:pre-comparator-3b-ast-normalize-03",
+        "preA:pre-comparator-3b-ast-normalize-12",
+        "preA:pre-stage-gamma-fp-diagnostic-08",
+        "a:dc3bc182-sub-sub-agent-a74c7a-05"
+      ],
+      "evidence": [
+        {
+          "text": "Point estimate: \u00a79's 15/15 \u2192 ~90% recovery \u00d7 39 = 35. Floor: Wilson 95% lower bound (~80%) \u00d7 39 \u2248 30.",
+          "line": 60,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "Per-phase floors below are conservative \u2014 a real progress signal if missed, not the point-estimate from \u00a73.",
+          "line": 203,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "A pre-registered numeric gate governs the comparator: Spork must recover X_total \u2265 30 / FP \u2264 11 over baseline.",
+          "line": 25,
+          "file": "2026-07-18_dc3bc182_sub-agent-a74c7a.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/comparator-3b-ast-normalize.md",
+        "merge-tool-comparison/ISSUES.md #2",
+        "6cfcdfc",
+        "THREATS_TO_VALIDITY.md"
+      ],
+      "actors": "unclear",
+      "actors_note": "The escalation-threshold source attributes the rule to Claude; the floor and ladder sources record actors as unclear, and the later threats-review source is unclear. Left unclear because the plan-era record does not say who set the numbers.",
+      "corroboration": "mixed",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "undershoot-pause-triggers-and-timeboxes",
+      "title": "Every comparator tier carries an undershoot pause trigger and a 2\u00d7 timebox escape budget",
+      "date_from": "2026-05-14",
+      "date_to": "2026-05-16",
+      "decision": "Each tier plan pre-registers stop conditions as well as targets. Tier C: 2.5\u20133 days with a 2\u00d7 (6 day) escape, stopping on parse failures over 10% of the n=50 scenarios or any single phase exceeding 1.5d. Tier D: ~4 days with a 2\u00d7 (8 day) escape, pausing to re-examine the prototype assumptions if any phase delivers 0 recovery or commits more than 1 below its prototype-attributed estimate. Tier E: 4\u20135 days with a 2\u00d7 (8\u201310 day) escape, pausing if any phase commits 2 or more below its prototype-attributed cumulative estimate.",
+      "rationale_recorded": true,
+      "rationale": "Prototype recovery measurements are treated as upper bounds, because real recovery may be lower where the prototype's parent-context checks have edge cases the committed version does not share; and each phase is small and independently shippable, so failing fast on tree-sitter unfamiliarity is acceptable.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3b-ast-normalize-20",
+        "preA:pre-comparator-3d-extended-ast-transforms-17",
+        "preA:pre-comparator-3e-tier-e-transforms-18"
+      ],
+      "evidence": [
+        {
+          "text": "**Undershoot trigger:** if any phase delivers 0 recovery, pause and re-examine the prototype assumptions.",
+          "line": 83,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        },
+        {
+          "text": "**Undershoot trigger:** if any phase commits 2+ below its prototype-attributed estimate (cumulative), pause and re-examine.",
+          "line": 100,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        },
+        {
+          "text": "Timebox-escape budget per [`mergiraf-integration.md \u00a72`](mergiraf-integration.md): 2\u00d7 = 6 days. Triggers: parse failures on >10% of n=50 scenarios; any one phase exceeding 1.5d.",
+          "line": 286,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/comparator-3b-ast-normalize.md",
+        "docs/plans/comparator-3d-extended-ast-transforms.md",
+        "docs/plans/comparator-3e-tier-e-transforms.md \u00a73",
+        "STATUS.md"
+      ],
+      "actors": "unclear",
+      "actors_note": "The Tier D trigger is attributed to Claude; the Tier C and Tier E triggers are recorded as unclear. Left unclear because the plan-era record does not establish authorship of the thresholds.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "d3-zero-recovery-carve-out",
+      "title": "Phase 3d.3 is allowed a zero per-phase recovery floor because it only pays off paired with D.2",
+      "date_from": "2026-05-15",
+      "date_to": null,
+      "decision": "Documented exception to the per-phase undershoot trigger: phase 3d.3 may ship with 0 additional measured recovery on its own, its acceptance being instead that D.2 + D.3 combined recover at least +1 cumulative over D.1, plus a cast-only fixture test.",
+      "rationale_recorded": true,
+      "rationale": "Prototype measurement shows D.2 alone and D.3 alone each recover 0 of the cast-paren scenarios; those scenarios close only when both are active, because D.2 strips the inner value paren and D.3 then strips the outer paren-around-cast.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3d-extended-ast-transforms-15"
+      ],
+      "evidence": [
+        {
+          "text": "Per-phase floor: 0 (acceptable when paired with D.2).",
+          "line": 170,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        },
+        {
+          "text": "D.3 must land alongside D.2 for measurable recovery.",
+          "line": 169,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/comparator-3d-extended-ast-transforms.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "pause-trigger-fired-stop-and-document",
+      "title": "Honour the pre-registered pause trigger: finish 3b.5 in stop-and-document mode",
+      "date_from": "2026-05-14",
+      "date_to": null,
+      "decision": "With Tier C recovering X=5 against a floor of X\u226530 and a pause threshold of X<25, declare the plan \u00a73 pause trigger fired: complete phase 3b.5 as documentation only in stop-and-document mode, regenerate reports, append the empirical outcome to the docs, and keep ISSUES.md #2 at `decided` rather than moving it to `resolved`. Follow-up options (Tier D, 3a) are recorded and deferred.",
+      "rationale_recorded": true,
+      "rationale": "Recovery of ~12% of the still-differ residuals is far below the \u00a73 point estimate of ~90% and below the X<25 pause threshold, and the plan's \u00a73 pause trigger, \u00a76 phase 3b.4 acceptance and \u00a710 acceptance criteria all require the status to stay `decided`. The \u00a79 conclusion that residuals are AST-equivalent survives, but the \u00a73 mapping from \"AST-equivalent\" to \"recoverable by these 5 transforms\" broke \u2014 Tier C is a strict subset.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-72",
+        "preA:pre-comparator-3b-ast-normalize-22",
+        "preA:pre-stage-gamma-fp-diagnostic-21"
+      ],
+      "evidence": [
+        {
+          "text": "Phase 3b.5 doc-finalisation completed in stop-and-document mode (per plan \u00a73 pause trigger + user direction) rather than ISSUES.md-#2-resolved mode.",
+          "line": 477,
+          "file": "2026-05-14_pre-comparator-3b-ast-normalize.txt"
+        },
+        {
+          "text": "X=5 vs the plan \u00a73 floor X\u226530 and pause threshold X<25 (~65% recovery). **Plan \u00a73 pause trigger fires.** Per plan \u00a76 Phase 3b.4 + \u00a710 acceptance, ISSUES.md #2 stays `decided`, not `resolved`.",
+          "line": 244,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        }
+      ],
+      "artifacts": [
+        "b22cb54",
+        "merge-tool-comparison/ISSUES.md #2",
+        "STATUS.md",
+        "docs/plans/comparator-3b-ast-normalize.md \u00a76"
+      ],
+      "actors": "joint",
+      "actors_note": "One source records the stop-and-document mode as taken per the plan trigger plus explicit user direction; another attributes it to Claude and a third records unclear. Recorded as joint because the trigger was pre-registered and the mode was confirmed by Ali's direction.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "issues-2-held-at-decided",
+      "title": "ISSUES #2 is held at `decided` every time a tier misses the pre-registered floor",
+      "date_from": "2026-05-14",
+      "date_to": "2026-05-15",
+      "decision": "Refuse to promote ISSUES.md #2 from `decided` to `resolved` whenever the pre-registered floor is not hit, and keep the headline FP rates labelled `presentation-suspect` while publishing the new empirical breakdown alongside them. Applied after 3e (Spork TP 1\u21922 / FP 42\u219241, Mastery 0 rows: acceptance criterion not met, status recorded as `decided \u2014 3e implemented, partial`), after M3.5, and after Tier D (cumulative X_total = 12 against the 3b \u00a73 floor of X \u2265 30), with the Tier D plan stating up front that Tier D is incremental and not a closure and that closing requires Tier E or 3a.",
+      "rationale_recorded": true,
+      "rationale": "Recovery is well below the stage-\u03b3 hypothesis and the \u00a73.5 contingency hedge fired: the dominant residuals (else-if restructuring, comment placement, redundant cast parens) are patterns gjf does not normalise, Mastery's zero recovery matches the intrinsic-content-loss prediction, and the headline-number credibility problem is therefore not actually fixed. Even the expanded Tier D scope falls short of TP \u2265 32, and the plan is to be honest about that by design.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "tier-e-closes-issues-2-and-freezes-results",
+      "sources": [
+        "preA:pre-commits-61",
+        "preB:pre-mergiraf-integration-15",
+        "preA:pre-stage-gamma-fp-diagnostic-14",
+        "preA:pre-commits-74",
+        "preA:pre-commits-82",
+        "preA:pre-comparator-3d-extended-ast-transforms-04"
+      ],
+      "evidence": [
+        {
+          "text": "ISSUES.md #2 stays at `decided \u2014 3e implemented, partial`, NOT moved to",
+          "line": 1199,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "Acceptance criteria \u2014 Spork FP rate drops sharply \u2014 **not met**; the \u00a73.5 contingency hedge has fired. **ISSUES.md #2 stays at `decided`, not `resolved`.**",
+          "line": 170,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "this is BY DESIGN \u2014 Tier D is incremental, not a closure. Per \u00a73 framing: ISSUES.md #2 STAYS `decided`. The plan is honest about this.",
+          "line": 330,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/ISSUES.md #2",
+        "STATUS.md",
+        "60c5e2b",
+        "3dfecf0",
+        "8cd83c1",
+        "docs/plans/stage-gamma-fp-diagnostic.md"
+      ],
+      "actors": "unclear",
+      "actors_note": "Two of the six sources attribute the holding decision to Claude; the remaining four record actors as unclear. Left unclear because most instances are commit-log and plan text that do not name a decider.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "later-tiers-get-own-floors",
+      "title": "Tiers D and E are judged against their own lower floors, not the original X \u2265 30",
+      "date_from": "2026-05-15",
+      "date_to": "2026-05-16",
+      "decision": "Give each later tier its own acceptance criteria and judge it against them: Tier D passes at Spork TP \u2265 10 / FP \u2264 33 (X_total \u2265 8, at least +3 over Tier C) with TP \u2265 14 / FP \u2264 29 as a prototype-matching stretch, and is accepted on that basis even though cumulative X = 12 does not reach the original 3b \u00a73 floor; Tier E's floor is Spork TP \u2265 30 / FP \u2264 13 (X_total \u2265 28) with TP \u2265 32 / FP \u2264 11 as the stretch that would hit the 3b \u00a73 floor and let ISSUES #2 move decided\u2192resolved. Mastery, JDime and git-merge-file rows are expected unchanged throughout.",
+      "rationale_recorded": true,
+      "rationale": "The Tier D bar is deliberately modest \u2014 \"sets a modest but real bar\" \u2014 with the stretch tied to all six phases landing cleanly with no test regressions; Tier E's floor is a modest pull-back from the prototype's measured 32 in case some transforms under-recover once integrated. The comparator-gap framing remains intact even though full closure is reassigned to Tier E or 3a.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3d-extended-ast-transforms-03",
+        "preA:pre-stage-gamma-fp-diagnostic-27",
+        "preA:pre-comparator-3e-tier-e-transforms-17"
+      ],
+      "evidence": [
+        {
+          "text": "**Floor:** Tier D acceptance is **TP \u2265 10 / FP \u2264 33** (X_total \u2265 8 \u2014 at least +3 over Tier C). Sets a modest but real bar.",
+          "line": 70,
+          "file": "2026-05-15_pre-comparator-3d-extended-ast-transforms.txt"
+        },
+        {
+          "text": "Tier D HITS its own (lower) acceptance floor (X_d \u2265 3) and stretch (X_d = 7).",
+          "line": 319,
+          "file": "2026-05-14_pre-stage-gamma-fp-diagnostic.txt"
+        },
+        {
+          "text": "**Floor:** Tier E acceptance is **Spork TP \u2265 30 / FP \u2264 13** (X_total \u2265 28). Modest pull-back from prototype's 32 in case some transforms under-recover when integrated.",
+          "line": 89,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "reports/results.csv",
+        "merge-tool-comparison/ISSUES.md #2"
+      ],
+      "actors": "unclear",
+      "actors_note": "The Tier D floor and its acceptance are attributed to Claude; the Tier E floor source records actors as unclear. Left unclear for the merged entry because the Tier E numbers, which set the closure bar, have no recorded decider.",
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "tier-e-closes-issues-2-and-freezes-results",
+      "title": "Tier E hits the floor exactly: ISSUES #2 resolved and post-3e results.csv frozen as the final state",
+      "date_from": "2026-05-16",
+      "date_to": null,
+      "decision": "Land Tier E (3e.0 D.1 identity-bug fix plus 3e.1\u20133e.10 transforms), regenerate reports at Spork TP 32 / FP 11 (X_total = 30 \u2014 the 3b \u00a73 floor hit exactly) and flip ISSUES.md #2 from `decided` to `resolved`. The post-3e reports/results.csv (Spork 32/50, F1 0.84; git-merge-file 39/50; Mastery 12/50) is committed as the final evaluation state for the thesis, all Tier E code stays landed, and no further tiers are pursued.",
+      "rationale_recorded": true,
+      "rationale": "The pre-registered 3b plan \u00a73 floor of X \u2265 30 is hit exactly; at that point the comparator-gap framing is treated as fully empirically validated and the remaining work (Tier F non-trivial AST rewriting, or 3a test-suite ground truth) is declared out of scope.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "issues-2-held-at-decided"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-83",
+        "preA:pre-comparator-3e-tier-e-transforms-23"
+      ],
+      "evidence": [
+        {
+          "text": "(Spork TP 32 / FP 11; X_total = 30 \u2014 3b plan \u00a73 floor hit exactly).",
+          "line": 1677,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "`reports/results.csv` post-3e Tier E committed as the **final** evaluation state for the thesis.",
+          "line": 407,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        },
+        {
+          "text": "require either Tier F (non-trivial AST rewriting) or 3a (test-suite ground truth). Neither is in scope.",
+          "line": 408,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "4db9329",
+        "merge-tool-comparison/ISSUES.md #2",
+        "ast_normalize.py",
+        "reports/results.csv",
+        "reports/results.json",
+        "reports/results.tex"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "parent-context-whitelist-invariant",
+      "title": "Paren-strip rules carry a safe-parents whitelist whose semantics later tiers may widen but not change",
+      "date_from": "2026-05-16",
+      "date_to": null,
+      "decision": "Every paren-strip rule must carry an explicit safe-parents whitelist; the whitelist may be widened in future tiers, but transform semantics for already-listed contexts must not change. Tier E edits must additionally be well-formed, non-overlapping byte-range replacements that keep the post-edit text parseable, and must not touch the atomic literal handling in D.6's `_emit_leaves`.",
+      "rationale_recorded": true,
+      "rationale": "Framed as the key invariants that keep token-fold compatibility and avoid overlapping edits or invalid Java \u2014 the same conservative pattern as the 11 shipped Tier C+D transforms, which produced zero semantic-change bugs.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the invariant is in the code \u2014 ast_normalize.py carries SAFE_BINARY_PAREN_PARENTS (:83) and UNARY_SAFE_PARENTS (:125) as explicit whitelists guarding every paren-strip site (:288, :304); no later tier ran, so no listed context's semantics were ever changed.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-comparator-3e-tier-e-transforms-20"
+      ],
+      "evidence": [
+        {
+          "text": "**Conservative parent-context checks.** Every paren-strip rule has an explicit safe-parents whitelist. The whitelist is open to expansion in future tiers without changing transform semantics for already-listed contexts.",
+          "line": 259,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        },
+        {
+          "text": "None of them introduces overlapping edits or invalid Java.",
+          "line": 262,
+          "file": "2026-05-16_pre-comparator-3e-tier-e-transforms.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/comparator-3e-tier-e-transforms.md \u00a76"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "known-answer-environment-gate",
+      "title": "No run counts until the environment reproduces known answers exactly",
+      "date_from": "2026-07-03",
+      "date_to": "2026-07-22",
+      "decision": "Every remote or scoring run is preceded by a known-answer environment gate that must reproduce committed results exactly before results are trusted: the RM2 image is built natively on x86 from the committed Dockerfile and must pass 4 probes (toy known-answer cases plus exact reproduction of 3 cached file-level tags); the detector known-answer gate compares mergiraf outcomes as well as lane verdicts against the committed tune_d3 cache; the S-D7 baseline gate is operationalised as fresh mergiraf outcomes, merged-content hashes and all 5-lane baseline verdicts equal to postfix2's per file, rather than equality of aggregate unit-level numbers; and on the S-D8 instance every image is live-probed (including the real gjf format probe) with the exact canonical six-tool table required to reproduce before scoring. Gate outcomes are confirmed by pulling the gate log and file counts rather than trusting a step label or heartbeat. The kickoff's \"R2=11/164 (12/164 incl. fail-closed)\" is withdrawn as a conflation of two rounds: the operational target is postfix2's 11/164 = 10 flag + 1 fail-closed.",
+      "rationale_recorded": true,
+      "rationale": "Named as \"the gjf-lesson validation bar\": an environment must be shown to reproduce known answers before its outputs are accepted, and the canonical table is what makes the ship-images path safe because it excludes the arm64-class failure. Per-file verdict and hash equality is a stronger check than unit-level number equality, and only postfix2's verdict set is reproducible by the 732d8ff lanes flag-OFF.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:7b3b2669-06",
+        "a:2e726dc0-02",
+        "a:06ec13eb-02",
+        "a:06ec13eb-06",
+        "a:68c24033-07",
+        "b:68c24033-15"
+      ],
+      "evidence": [
+        {
+          "text": "with toy known-answer probes plus exact reproduction of 3 cached file-level tags before the run (the gjf-lesson validation bar)",
+          "line": 114,
+          "file": "2026-07-03_7b3b2669.txt"
+        },
+        {
+          "text": "live-probe every image on-instance AND require the exact canonical six-tool table reproduction before scoring \u2014 the table itself is what makes path 2 safe.",
+          "line": 85,
+          "file": "2026-07-22_68c24033.txt"
+        },
+        {
+          "text": "Known-answer gate operationalized as: fresh mergiraf outcomes + merged-content hashes + all 5-lane baseline verdicts equal to postfix2's, per file \u2014 stronger than unit-level number equality.",
+          "line": 35,
+          "file": "2026-07-22_06ec13eb.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tools/refactoring-miner:2.4.0",
+        "reports_detection/postfix2/",
+        "run_sd8.sh",
+        "ISSUES.md #31"
+      ],
+      "actors": "joint",
+      "actors_note": "Four instances are Claude's design of the gate; the S-D8 live-probe requirement was mandated in Ali's session brief. Recorded as joint to reflect both, not because options were put and picked.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "mechanical-guards-abort-before-scoring",
+      "title": "Gates are enforced by machine checks that abort, not by reading the output",
+      "date_from": "2026-07-04",
+      "date_to": "2026-07-18",
+      "decision": "Enforce gate conditions mechanically at the point of execution: the harness refuses to score until a G1 --inject-sanity run passes (10/10 injected stale-read probes fired) and sanity.json is recorded under the DRIVER_COMMIT, with the G1 run executed in the same --merged-source developer mode as the scoring arms; the Phase-3 runner validates freshly-assembled per-unit input text against the committed Phase-1 inputs for all 165 derivation units and aborts before submitting any batch on mismatch; the G2 conditions are formalised as a machine evaluator (g2_eval.md) that checks every model-cited anchor and coverage unit_id is a genuine derivation unit rather than judging by reading; the adjudication sample allocator always reserves a minimum number of agreeing units so the \u226575% acceptance gate is scorable in every scenario that passes condition 1; and a post-hoc scoring guard runs before results are written into the manifest.",
+      "rationale_recorded": true,
+      "rationale": "The G1 pass \"separates 'detectors are blind' from 'harness is broken'\", so subsequent misses are attributable to detector scope rather than environment, which is what makes the recall numbers citable. The assembly check is the guardrail working \u2014 it caught 13 apparent mismatches and aborted before submission. The mechanical G2 check guards against the confident-hallucination failure mode, where cited unit_ids and SHAs look plausible but do not match the real derivation units. The allocator change exists because a high-disagreement edge case (n_dis=52) left 0 agreeing units and the gate uncomputable. The post-hoc scoring guard prevents a repeat of incident 3.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:8740dbd3-13",
+        "a:9e4b6896-02",
+        "a:9e4b6896-05",
+        "a:6296f4f6-06",
+        "a:2e726dc0-33"
+      ],
+      "evidence": [
+        {
+          "text": "The G1 pass is the important checkpoint: it separates \"detectors are blind\" from \"harness is broken\"",
+          "line": 297,
+          "file": "2026-07-03_8740dbd3.txt"
+        },
+        {
+          "text": "it caught 13 derivation units whose freshly-assembled text differs from the committed Phase-1 inputs, and aborted **before** submitting any batch. This is exactly the guardrail working.",
+          "line": 141,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "before trusting it I must run the **firewall + gate checks mechanically** \u2014 several cited unit_ids/SHAs look like they may not match the real derivation units (the confident-hallucination failure mode)",
+          "line": 114,
+          "file": "2026-07-10_6296f4f6.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/phase2b/dev/sanity.json",
+        "reports_taxonomy/phase2/g2_eval.md",
+        "phase3/inputs",
+        "1b66a13"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "split-firewall-committed-before-content",
+      "title": "The split and control draws are committed before any content-bearing work, and held-out content never touches the instrument",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-16",
+      "decision": "Fix the population split before any labelling exists and keep held-out material out of every instrument: decide and record the corpus split up front (taxonomy derivation on one partition, detector evaluation frozen-run-style on a held-out partition or the other corpus); compute and commit reports_taxonomy/split_assignment.csv (seeded 60% derivation split, SEED=20260709, stratified A/B) before issuing any API request containing unit content, with held-out content appearing nowhere except the assembly cache; draw all codebook anchors, examples and prose only from the 165 derivation-split Phase-1 outputs with restricted fields, verified by a mechanical firewall check on cited unit_ids; exclude frozen codebook \u00a75 (the provisional coverage table) from the Phase-3 prompt; commit the tune-controls and eval-controls lists, the draw script and their hashes before any other session artifact; forbid build sessions S-D2\u2013S-D4 from opening the pre-existing scenario directories of the 32 overlapping eval/spare merge ids, with S-D5 materialising eval-controls fresh from the committed list; and refuse to touch held-out units for early true-positive evidence, the only permissible earlier demonstration being a reproduced merge from outside the study corpora, explicitly labelled a demo rather than a measurement.",
+      "rationale_recorded": true,
+      "rationale": "Deriving the taxonomy from the Schesch positives and then evaluating new detectors on the same positives is tuning on the test set \u2014 \"the exact sin the G2 freeze protocol exists to prevent\" \u2014 and the thesis's credibility visibly rests on avoiding it. Inlining \u00a75 would leak labels for 60/275 units into an independent relabel and corrupt the stability and reliability metrics. Committing the draw first means results cannot influence it, and touching anything held-out early would poison the number that actually matters.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:4c7b0828-11",
+        "a:92a3e464-03",
+        "a:6296f4f6-05",
+        "a:9e4b6896-01",
+        "a:506d875b-04",
+        "a:506d875b-11",
+        "a:acf7e1d0-15"
+      ],
+      "evidence": [
+        {
+          "text": "You need a split *decided up front*: derive taxonomy on corpus A (or a partition), evaluate detectors frozen-run-style on a held-out partition or the other corpus.",
+          "line": 637,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "Controls committed first (`cf59d37`) \u2014 split-first discipline honored.",
+          "line": 97,
+          "file": "2026-07-15_506d875b.txt"
+        },
+        {
+          "text": "Inlining it into the closed-coding prompt would leak labels for 60/275 units into an independent relabel, corrupting the stability/reliability metrics.",
+          "line": 107,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "Within the study, touching anything held-out early would poison the number that actually matters.",
+          "line": 493,
+          "file": "2026-07-16_acf7e1d0.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/split_assignment.csv",
+        "d12cf4a",
+        "controls/",
+        "cf59d37",
+        "prompts_taxonomy/phase3_closed_coding.md",
+        "a8734c7",
+        "outputs/taxonomy-protocol.md \u00a74"
+      ],
+      "actors": "joint",
+      "actors_note": "Three instances were issued in Ali's session briefs (split file first, derivation-only anchors, controls committed first) and four are Claude's design or refusals. Recorded as joint to reflect the mixed authorship of one discipline.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "never-blend-labeled-evaluations",
+      "title": "Numbers from separate labeled evaluations are never blended",
+      "date_from": "2026-07-03",
+      "date_to": "2026-07-22",
+      "decision": "Each evaluation is a distinct labeled run whose numbers are kept apart from every other: the Phase-2b evaluation runs detectors at the current committed code with the short sha recorded and is treated as a NEW labeled evaluation whose numbers must never be blended with the frozen Stage-C numbers; and in S-D7, detect_validate.py stays frozen with new runs living in reports_detectors/stagec_rerun/, the baseline arm reproducing the frozen Stage-C verdicts as its known-answer gate, and S-D7 numbers never blended with S-D5 numbers in any derived figure.",
+      "rationale_recorded": true,
+      "rationale": "Stated as authority rather than argued: \"this is a NEW labeled evaluation, separate from the frozen Stage-C numbers \u2014 never blend them\", with the S-D7 deliverable being the before/after table on one instrument.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:8740dbd3-03",
+        "b:2e726dc0-25"
+      ],
+      "evidence": [
+        {
+          "text": "this is a NEW labeled evaluation, separate",
+          "line": 157,
+          "file": "2026-07-03_8740dbd3.txt"
+        },
+        {
+          "text": "NEVER blend with S-D5 numbers in",
+          "line": 784,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detection/phase2b/",
+        "reports_detectors/stagec_rerun/",
+        "tools/detect_validate.py"
+      ],
+      "actors": "ali",
+      "actors_note": "Ali stated the never-blend rule (a:8740dbd3-03, \"this is a NEW labeled evaluation, separate\"); the second source records Claude applying it to the S-D7 cycle by freezing detect_validate.py, not deciding it independently. The sources differ on who acted, not on who ruled.",
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "qualify-numbers-by-what-they-support",
+      "title": "Every number is labelled by what it can support: validation-only, tuning-tainted, coarse-n, or corrected",
+      "date_from": "2026-06-24",
+      "date_to": "2026-07-16",
+      "decision": "Report measurements with the qualification that matches their provenance and precision: the 20-merge/arm smoke's cost numbers are directional validation of the harness and explicitly not citable results; GD2 is scoped to mechanism correctness and zero false positives on tune-controls, with any claim about real-world catch rate deferred to the pre-registered frozen-suite evaluation at S-D5; the same detector run over derivation units is descriptive only and must be labelled TUNING-TAINTED everywhere shown, held-out recall being the gating measurement; the G1 pass is reported together with the caveat that both machine conditions clear with modest margins (attribution 36.4% just above the 35% floor, escape-hatch 63.6% near the top of the [15%,65%] band, Wilson upper 70.6%); the n=12 reliability gate is published with its Wilson CI and framed as a coarse corroborating check rather than primary evidence; and a misprinted gate figure is corrected rather than left standing (stratum-B at-T3-floor fraction 6.3% \u2192 23/111 = 20.7%).",
+      "rationale_recorded": true,
+      "rationale": "The smoke ran the first 20 merges per arm \u2014 a non-random subset \u2014 so its purpose was plumbing validation, not results. Claims about real-world catch rates are deliberately reserved for the frozen-suite evaluation so they cannot be an artifact of tuning. n=12 gives a wide CI in which one override swings the result ~8 points and 9/12 = 75.0% is a knife-edge, so it must not be oversold. The 6.3% figure was a display bug from exact-string matching that excluded the T3/cap* hard-fit variants.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:fb0fa5c5-13",
+        "a:acf7e1d0-14",
+        "a:6a84a6b3-06",
+        "a:788e483b-06",
+        "a:9e4b6896-14",
+        "a:92a3e464-19"
+      ],
+      "evidence": [
+        {
+          "text": "**Purpose was validation, not citable results**",
+          "line": 375,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "GD2 was never meant to prove claim 3 \u2014 it's the build-time bar (mechanism + zero-FP); claims about real-world catch rates are deliberately reserved for the frozen-suite evaluation so they can't be an artifact of tuning.",
+          "line": 491,
+          "file": "2026-07-16_acf7e1d0.txt"
+        },
+        {
+          "text": "n=12 is a small denominator, so the gate is a coarse validity check with a wide CI \u2014 one override swings it ~8 points (9/12 = 75.0% is the knife-edge). I'll publish it with the Wilson CI and frame it as corroborating, not decisive on its own",
+          "line": 493,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "units \u2014 descriptive only, labeled TUNING-TAINTED everywhere shown.",
+          "line": 28,
+          "file": "2026-07-16_6a84a6b3.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/phase1/summary.txt",
+        "reports_taxonomy/phase3/adjudication/",
+        "outputs/detector-cycle-plan.md \u00a75 GD3",
+        "tools/taxonomy_assemble.py"
+      ],
+      "actors": "joint",
+      "actors_note": "Five instances are Claude's reporting decisions; the TUNING-TAINTED labelling requirement was issued in Ali's session brief. Recorded as joint to reflect both.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "freeze-commit-before-run-no-mid-run-patch",
+      "title": "Record the freeze commit before the run, then do not patch the instrument during it",
+      "date_from": "2026-06-11",
+      "date_to": "2026-07-18",
+      "decision": "Every evaluation is preceded by committing and recording the instrument's freeze: Stage B's changes are committed before Stage C (843e5f5) because the dirty tree makes the harness cache mis-report v1's commit 2eed882 and the G2 freeze depends on a real commit; the detector suite commit is recorded in reports_detectors/manifest.json as detector_suite_commit before any evaluation runs (freeze commit 21dcda1 naming 732d8ff, the last commit touching the driver, rather than the artifacts-only 9580e1f), after which any detector change requires a dated \u00a712 amendment plus a full rerun of S-D5; and all three detectors were built and frozen at 732d8ff before the two-arm held-out evaluation. Defects found mid-run are not patched: the var-lane declaration-guard defect identified during Stage C is left in place, the frozen run finishes and is reported as-is, the control flags are adjudicated DETECTOR-FP, and the fix goes into a separately-labelled post-fix run.",
+      "rationale_recorded": true,
+      "rationale": "The G2 freeze and the harness's cache keys both depend on the commit, so an uncommitted tree mis-attributes the run. And the plan's G2 rule applies to mid-run discoveries \u2014 finish the frozen run, report it as-is, then a separately-labeled post-fix run \u2014 because \"patching now would make the Stage-C numbers uncitable\".",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-17",
+        "a:bfc672b4-28",
+        "a:12c77ea5-09",
+        "a:2e726dc0-01",
+        "a:82dd479f-18",
+        "a:dc3bc182-sub-sub-agent-a495a0-13"
+      ],
+      "evidence": [
+        {
+          "text": "the working tree is uncommitted, so the harness cache still keys on `2eed882` (v1's commit). For the G2 freeze discipline, v2 should get its own commit before Stage C",
+          "line": 265,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "G2 rule from the plan applies: fix discovered mid-C \u2192 **finish the frozen run, report it as-is, then a separately-labeled post-fix run**. Patching now would make the Stage-C numbers uncitable.",
+          "line": 570,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "all three detectors built and **frozen 2026-07-17 at `732d8ff`**",
+          "line": 68,
+          "file": "2026-07-18_dc3bc182_sub-agent-a495a0.txt"
+        }
+      ],
+      "artifacts": [
+        "843e5f5",
+        "21dcda1",
+        "732d8ff",
+        "reports_detectors/manifest.json",
+        "semantic_merge_driver/strategies/rm2_strategies/rename_conflict.py",
+        "merge-tool-comparison/reports_detection/full/FINDINGS.md"
+      ],
+      "actors": "joint",
+      "actors_note": "The freeze step was mandated in Ali's S-D5 brief; the enforcement decisions (not patching mid-run, which commit to record) are Claude's, and two sources record actors as unclear. Recorded as joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "post-fix-rerun-deferred-to-ali",
+      "title": "Whether to run the separately labeled post-fix detector run is left as Ali's call",
+      "date_from": "2026-06-12",
+      "date_to": "2026-06-20",
+      "decision": "Leave the post-fix re-run decision open and with Ali: applying the two one-line var-lane fixes cannot be folded into the existing results because the G2 protocol requires a separate labeled run (~9 h), so Claude leaves the fix and run untouched and puts the go/hold call to Ali; the frozen numbers are held to be citable as they stand once the defect is disclosed. It is recorded as the only open item blocking ISSUES #29 \u2192 resolved.",
+      "rationale_recorded": true,
+      "rationale": "Both fixes are one-liners and the re-run is worth it for the defense slide, but the frozen numbers are already citable with the defect disclosure, and the commit-keyed cache invalidates wholesale so the re-run costs another overnight.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "three-labeled-runs-frozen-primary",
+      "sources": [
+        "a:bfc672b4-41",
+        "a:0e14484d-12"
+      ],
+      "evidence": [
+        {
+          "text": "**Post-fix run?** Both fixes are one-liners; a separately-labeled re-run (~9 h, another overnight) plausibly takes R1 to 0/193 [0, 1.9%]. Worth it for the defense slide, but the frozen numbers are already citable with the defect disclosure.",
+          "line": 647,
+          "file": "2026-06-11_bfc672b4.txt"
+        },
+        {
+          "text": "Per the G2 protocol that's a separate labeled run (~9 h). Want me to make that fix + run, or hold? That's your call \u2014 I left it untouched.",
+          "line": 230,
+          "file": "2026-06-20_0e14484d.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/ISSUES.md:696"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "three-labeled-runs-frozen-primary",
+      "title": "Close #29 with a three-run audit trail, the frozen run as the citable primary",
+      "date_from": "2026-07-02",
+      "date_to": "2026-07-18",
+      "decision": "Publish the detector results as a three-run audit trail rather than a single corrected number: frozen R1 4/193 = 2.1% is the citable primary, with post-fix round 1 (5ed92a2) at 3/193 and round 2 (f964354) at 0/193 [0, 2.0] published as separately labeled runs, the tcurdt flag retired as defect-dependent and R2 recorded as 11/164. The round-2 run was re-scored end to end (R2 unchanged, zero verdict flips) and closes ISSUES #29.",
+      "rationale_recorded": true,
+      "rationale": "The frozen run is honest and pre-registered while the post-fix runs verify the fixes, and the wrinkles \u2014 a defect-dependent lucky true positive, two residual guard defects \u2014 are documented rather than smoothed over.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "post-fix-rerun-deferred-to-ali"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:fb0fa5c5-38",
+        "a:dc3bc182-sub-sub-agent-a495a0-02"
+      ],
+      "evidence": [
+        {
+          "text": "Closes #29 with the clean citable pair: frozen-run R1 2.1% (honest, pre-registered) + post-fix R1 ~0% (the fixes verified).",
+          "line": 2065,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "The post-fix round-2 run (`f964354`) drove **R1 \u2192 0/193 = 0.0% [0, 2.0]** with R2 unchanged and zero verdict flips \u2192 **ISSUES #29 resolved**.",
+          "line": 39,
+          "file": "2026-07-18_dc3bc182_sub-agent-a495a0.txt"
+        }
+      ],
+      "artifacts": [
+        "45a87e6",
+        "ISSUES.md #29",
+        "THREATS_TO_VALIDITY.md",
+        "f964354",
+        "5ed92a2"
+      ],
+      "actors": "claude",
+      "actors_note": "One source attributes the closing decision to Claude; the retrospective source records actors as unclear. Attributed to Claude on the stronger source; Ali's approval of the round-2 rerun is recorded separately in the run-labelling decision cited as context.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "recon-gate-documented-dead-end",
+      "title": "Phase-2b is gated on recon where a documented dead-end is an acceptable outcome",
+      "date_from": "2026-07-03",
+      "date_to": null,
+      "decision": "Make Stage 0 of Phase-2b a local, timeboxed recon with an explicit gate: Phase-2b proceeds only if the recon locates a materializable labeled artifact (per-scenario semantic conflicts with retrievable base/ours/theirs). If not, write the findings to research/outputs/phase2b-recon.md, update STATUS's Phase-2b sentence to \"investigated, no usable artifact \u2014 documented YYYY-MM-DD\", and stop. Do not force a poor-fit dataset, and no AWS spend before the gate passes.",
+      "rationale_recorded": true,
+      "rationale": "\"This is gated recon-first work: a documented dead-end is an acceptable outcome\" \u2014 the honest failure mode should be an explicit documented deliverable rather than a forced result, which avoids committing compute and evaluation credibility to a poor-fit dataset.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:fb0fa5c5-43",
+        "a:8740dbd3-01"
+      ],
+      "evidence": [
+        {
+          "text": "gated recon-first work: a documented dead-end is an acceptable outcome.",
+          "line": 6,
+          "file": "2026-07-03_8740dbd3.txt"
+        },
+        {
+          "text": "Prompt 2 is **gate-first** \u2014 the honest failure mode (\"no usable artifact\") is an explicit, documented deliverable rather than a forced result",
+          "line": 2400,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "research/outputs/phase2b-recon.md",
+        "STATUS.md"
+      ],
+      "actors": "joint",
+      "actors_note": "Claude drafted the gate-first session prompt (recorded as proposed) and Ali issued it as the Phase-2b brief; recorded as joint because the gate only became binding when Ali issued it.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "instruments-finalized-before-data",
+      "title": "Instrument wording and predictions are committed before the data they will be applied to exists",
+      "date_from": "2026-07-04",
+      "date_to": "2026-07-10",
+      "decision": "Finalize and commit each measurement instrument before any of its data is assembled, and do it in a session that has not seen the data: the 17-row mapping of spgroup positives onto the 7-category taxonomy is written and frozen in category_mapping_draft.md before the AWS run (remaining a draft pending Ali's row-by-row adjudication, with row 14 flagged VERIFY, and only adjudication making the per-category table citable); Phase-2 consolidation is run in a brand-new session, not the S2 session; and its instruction wording is committed (f5935ba) before any {PHASE1_TAGS} content is read or assembled, so the ordering is visible in the git log.",
+      "rationale_recorded": true,
+      "rationale": "Freezing before the run means a predicted expected-FN can be confirmed rather than post-hoc rationalised. A fresh session is required because \"the S2 session already has the Phase-1 tags, verdicts, and mechanism summaries in its context\" \u2014 wording finalized there would be finalized by an assistant that had already seen the data it is supposed to be blind to, and the log could not demonstrate otherwise; committing first makes the pre-registration auditable in git.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:8740dbd3-10",
+        "a:4c7b0828-20",
+        "a:6296f4f6-01"
+      ],
+      "evidence": [
+        {
+          "text": "FINALIZE THE PROMPT BEFORE TOUCHING DATA.",
+          "line": 11,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "A fresh session makes the pre-data finalization genuinely pre-data and auditable.",
+          "line": 1247,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "category mapping frozen before the run, G1 positive control firing 10/10 minutes before the zeros \u2014 this is a defensible negative result",
+          "line": 356,
+          "file": "2026-07-03_8740dbd3.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detection/phase2b/category_mapping_draft.md",
+        "prompts_taxonomy/phase2_consolidation.md",
+        "f5935ba"
+      ],
+      "actors": "joint",
+      "actors_note": "The Phase-2 ordering instruction came from Ali's session brief; the fresh-session requirement and the frozen pre-run mapping are Claude's. Recorded as joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "pre-register-protocol-at-session-zero",
+      "title": "Pre-register the whole taxonomy protocol, with numeric gate criteria, in Session 0",
+      "date_from": "2026-07-08",
+      "date_to": null,
+      "decision": "Run the taxonomy program phase-by-phase in separate sessions, but require a Session 0 whose only output is a pre-registered protocol document plus committed prompt templates \u2014 no labeling runs, no detector changes, no blending with Stage-C or Phase-2b numbers. Session 0 commits all phase definitions, prompt templates with data-dependent slots, escape hatches, reliability-subset size, the corpus split, and gates G0\u2013G3 with numeric pass criteria fixed before any data exists: attribution \u226535%, escape band 15\u201365%, spot-check \u22643/15 rejects, coverage \u226590% for codebook freeze, stability \u226580% agreement \u2227 \u03ba \u22650.70, Ali's reliability acceptance \u226575%. Later phases are mechanical instantiation.",
+      "rationale_recorded": true,
+      "rationale": "\"If each phase's design is decided only *after* seeing the previous phase's results, a reviewer can ask: 'did you shape the codebook to make the numbers look good?' \u2014 garden-of-forking-paths.\" The taxonomy finding later feeds new-detector design, so the protocol must be pre-registered to prevent tuning-on-test from the start, and the criteria are therefore fixed now; the gate style mirrors the G0/G1/G2 gates of p1-detection-validation-plan.md.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-13",
+        "a:cfe6365a-01",
+        "a:cfe6365a-05"
+      ],
+      "evidence": [
+        {
+          "text": "**step-by-step execution is right, but the design must not be step-by-step.**",
+          "line": 693,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "gates G0\u2013G3 with numeric pass criteria fixed now (attribution \u226535%, escape band 15\u201365%, spot-check \u22643/15 rejects; coverage \u226590%; stability \u226580% agreement \u2227 \u03ba \u22650.70; your reliability acceptance \u226575%)",
+          "line": 90,
+          "file": "2026-07-08_cfe6365a.txt"
+        },
+        {
+          "text": "so the protocol must prevent tuning-on-test from the start.",
+          "line": 13,
+          "file": "2026-07-08_cfe6365a.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/outputs/taxonomy-protocol.md",
+        "merge-tool-comparison/outputs/p1-detection-validation-plan.md",
+        "ISSUES #30"
+      ],
+      "actors": "joint",
+      "actors_note": "Claude argued for Session 0 and drafted the gate numbers; Ali issued the Session-0 brief and adopted the proposal. Recorded as joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "frozen-authority-and-dated-amendments",
+      "title": "Frozen authority documents: harness adapts, and changes only via dated \u00a712 amendments",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-22",
+      "decision": "Treat the pre-registered protocol and its prompt/schema artifacts as frozen authorities pinned to a commit (outputs/taxonomy-protocol.md at 9209327; prompts_taxonomy/'s Phase-1 prompt and schema): harness code adapts to them, never the reverse, and detect_validate.py and the detector suite at 732d8ff are likewise left unedited, with a new runner built alongside them. Once data exists, any change to a frozen document is a dated, sanctioned \u00a712 amendment inside the document \u2014 never a silent edit \u2014 while resolutions that do not change the measurement design are recorded as session-log clarifications or paste-time patches instead. Amendment 1 is the worked example: the Batches API custom_id pattern rejects the frozen p1::<merge_id> scheme, so an API-safe custom_id() is added to the harness keeping the logical key unchanged, the scheme is recorded in the manifest, and a dated \u00a712 amendment is appended with \u00a71\u2013\u00a711 left byte-identical.",
+      "rationale_recorded": true,
+      "rationale": "The pre-registered protocol is \"the sole authority\" and changes must be non-silent so deviations are auditable, following the Stage-B precedent for sanctioned amendments. The custom_id change is \"a real, forced deviation from a \u00a79-pinned detail\", so the \u00a712 amendment is used as the sanctioned, non-silent mechanism rather than silently reconciling \u2014 only the wire encoding changes, not the logical key. Conversely, where the measurement design is not changing (only a gate's target arithmetic, resolved from committed artifacts), a session-log record is the honest instrument.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:92a3e464-01",
+        "b:4c7b0828-23",
+        "a:06ec13eb-03",
+        "b:cfe6365a-11",
+        "a:acf7e1d0-01",
+        "a:2e726dc0-30",
+        "a:92a3e464-20"
+      ],
+      "evidence": [
+        {
+          "text": "data exists = dated, sanctioned amendment in the doc (Stage-B precedent),",
+          "line": 53,
+          "file": "2026-07-08_cfe6365a.txt"
+        },
+        {
+          "text": "This is a real, forced deviation from a \u00a79-pinned detail, so I'll (1) add an API-safe `custom_id()` to the harness, (2) record it in the manifest, and (3) append a dated **\u00a712 amendment** to the protocol (the sanctioned, non-silent mechanism) rather than silently reconciling.",
+          "line": 311,
+          "file": "2026-07-08_92a3e464.txt"
+        },
+        {
+          "text": "Suite untouched at `732d8ff`, zero amendments, `detect_validate.py` unedited.",
+          "line": 127,
+          "file": "2026-07-22_06ec13eb.txt"
+        },
+        {
+          "text": "the session should record it in its session log as a paste-time patch (no \u00a712 amendment; the measurement design isn't changing, only the gate's target arithmetic)",
+          "line": 953,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/taxonomy-protocol.md",
+        "9209327",
+        "merge-tool-comparison/prompts_taxonomy/",
+        "tools/taxonomy_common.py",
+        "63298b0",
+        "reports_detectors/stagec_rerun/",
+        "ISSUES #31"
+      ],
+      "actors": "joint",
+      "actors_note": "Ali's briefs declared the freeze and the amendment rule; Claude applied and enforced them (Amendment 1, the trivial-clarification calls, the new runner). Recorded as joint.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "pin-model-prompt-and-effort",
+      "title": "Workload models, prompts and request parameters are pinned in the manifest; session models are not",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-09",
+      "decision": "Pin the measurement instruments' provenance and freeze their parameters: workload models (claude-opus-4-8 for both labeling passes, claude-fable-5 for consolidation) are frozen at Session 0 together with prompts and commit hashes, recorded per phase run in reports_taxonomy/manifest.json (model, prompt, commit), and the Phase-1 batch requests' output_config {\"effort\": \"high\"} stays exactly as pinned \u2014 changing either mid-stream is a \u00a712 protocol amendment. Session models and session effort used inside Claude Code are scaffolding, free to vary, and do not appear in the thesis.",
+      "rationale_recorded": true,
+      "rationale": "A mid-stream workload-model change \"breaks pass-to-pass comparability\", whereas session models are \"scaffolding, not measurement instruments\"; the workload effort is a pinned request parameter recorded in the manifest and so is not the session's to vary, while extra session reasoning depth buys little on mechanical work against a frozen spec.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-15",
+        "b:4c7b0828-24",
+        "a:cfe6365a-20"
+      ],
+      "evidence": [
+        {
+          "text": "**Session models are free to vary** \u2014 they're scaffolding, not measurement instruments.",
+          "line": 746,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "The **workload** effort is a different knob and it's already frozen by the protocol: the Phase-1 batch requests themselves carry `output_config: {\"effort\": \"high\"}` per \u00a79, recorded in the manifest. That one isn't yours to vary at session time; changing it would be a \u00a712 amendment because it's a pinned request parameter.",
+          "line": 1127,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "model/prompt/commit pinning via `reports_taxonomy/manifest.json`; eight THREATS additions; dated-amendment rule in \u00a712",
+          "line": 90,
+          "file": "2026-07-08_cfe6365a.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/taxonomy-protocol.md \u00a79",
+        "merge-tool-comparison/reports_taxonomy/manifest.json"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "discard-g0-pilot-outputs",
+      "title": "The G0 pilot exercises production plumbing but its outputs are discarded and its units relabelled",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-09",
+      "decision": "Run the G0 calibration pilot (10 derivation units, 7 A / 3 B) through the Batch API path with the frozen Phase-1 prompt, structured outputs from phase1_output.schema.json, thinking adaptive, effort high, model claude-opus-4-8. Discard the pilot's model outputs, record that fact in the manifest, and relabel the 10 units from scratch in the production run like any other unit. Record the verdict as G0 PASS in manifest.json (10/10 parseable and conforming, all end_turn, 0 over the 30k cap, escape hatches exercised 3 attributed / 3 indeterminate / 4 none-identified, T3/cap1 path exercised) with the discard and relabel-in-S2 flags attached, and append the S1 summary to ISSUES #30.",
+      "rationale_recorded": true,
+      "rationale": "\"Prefer the Batch API path so G0 exercises the production plumbing end-to-end.\" The G0 pass criteria as written were met, and the protocol requires the discard/relabel status to be recorded in the manifest.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:92a3e464-04",
+        "b:92a3e464-05",
+        "a:4c7b0828-19",
+        "a:92a3e464-23"
+      ],
+      "evidence": [
+        {
+          "text": "Pilot outputs are DISCARDED (record that in the manifest); the 10 units",
+          "line": 50,
+          "file": "2026-07-08_92a3e464.txt"
+        },
+        {
+          "text": "**G0 PASS** \u2014 10/10 parseable/conforming, all `end_turn` (no truncation/refusals), 0 over the 30k cap, escape hatches exercised",
+          "line": 349,
+          "file": "2026-07-08_92a3e464.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/g0_pilot/",
+        "reports_taxonomy/manifest.json",
+        "phase1_output.schema.json",
+        "f724e0a",
+        "ISSUES #30"
+      ],
+      "actors": "joint",
+      "actors_note": "The Batch-API-path and discard instructions came in Ali's session brief; the manifest verdict recording and the relabel handling are Claude's. Recorded as joint.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "g2-codebook-and-enum-freeze",
+      "title": "One G2 freeze commit locks the codebook and the Phase-3 category enum together",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-11",
+      "decision": "Ship the Phase-2/3 prompts as skeletons with {PHASE1_TAGS} / {FROZEN_CODEBOOK} slots and populate the Phase-3 output-schema category enum only at the G2 codebook-freeze commit. That commit (3e7d9b4) freezes codebook_frozen.md (8 mechanism categories plus residual-other, with a provenance header recording Ali's ruling) together with phase3_output.schema.json \u2014 primary enum = 8 ids + residual-other + 3 escape hatches (12 values), secondary = 8 + residual-other (9), skeleton note removed \u2014 and is recorded in manifest.phase2.freeze, with S4 pinning frozen_codebook_commit = 3e7d9b4. A residual-other category ships even though zero units land in it, Phase-3 coders may use only the frozen set, and no Phase-3 request, codebook_frozen.md or filled enum may exist before the freeze commit does.",
+      "rationale_recorded": true,
+      "rationale": "The residual bucket is required so Phase-3 always has somewhere to put a merge that fits nothing, given that Phase-3 may not invent categories. No reason is recorded for the single-commit freeze or the stop-at-the-gate rule beyond the protocol's own sequencing.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:cfe6365a-19",
+        "a:6296f4f6-04",
+        "b:6296f4f6-04",
+        "a:6296f4f6-18",
+        "b:6296f4f6-22"
+      ],
+      "evidence": [
+        {
+          "text": "NO Phase-3 request may exist before the freeze commit does.",
+          "line": 57,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "It's the mandatory empty \"none of the above\" bucket the protocol requires so Phase-3 always has somewhere to put a merge that fits nothing.",
+          "line": 248,
+          "file": "2026-07-10_6296f4f6.txt"
+        },
+        {
+          "text": "category enum locked: **primary** = the 8 ids + `residual-other` + the 3 escape hatches; **secondary** = 8 + `residual-other`. Skeleton note removed.",
+          "line": 413,
+          "file": "2026-07-10_6296f4f6.txt"
+        }
+      ],
+      "artifacts": [
+        "3e7d9b4",
+        "reports_taxonomy/phase2/codebook_frozen.md",
+        "prompts_taxonomy/phase3_output.schema.json",
+        "prompts_taxonomy/phase3_closed_coding.md",
+        "reports_taxonomy/manifest.json"
+      ],
+      "actors": "joint",
+      "actors_note": "The stop-at-the-freeze-commit and residual-other requirements came from Ali's brief; the enum contents and freeze commit are Claude's execution. Recorded as joint.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "yellow-band-amendment-and-rerun",
+      "title": "Yellow-band stability buys exactly one clarification amendment and a full controlled rerun",
+      "date_from": "2026-07-08",
+      "date_to": "2026-07-18",
+      "decision": "Pre-register the yellow-band path (G3 stability gates at \u226580% agreement and \u03ba \u22650.70 with \u226460 disagreements; 60\u201380% or \u03ba 0.50\u20130.70 triggers exactly one sanctioned dated codebook-clarification amendment followed by rerunning both passes; below the band the program returns to Phase 2, written up as a documented failure) and honour it when v1 lands at 78.9% agreement / \u03ba 0.741 with 58 disagreements: commit the yellow outcome as a documented result, propose Amendment 2 and wait for Ali before touching the instrument. The amendment adds one R1 clarification distinguishing the escape hatches by whether a concrete cross-side interaction is articulable \u2014 none-identified when none can be named, indeterminate when a nameable-but-unsettleable interaction exists or the code is demonstrably hidden \u2014 with no change to categories, enum, base-rate definitions or attribution thresholds. The yellow raw results are then archived to invalidate the cache per \u00a79 so both passes resubmit fresh, and everything else is held constant (population, byte-identical per-unit inputs, model/API/params, codebook \u00a71\u2013\u00a74, enum/schema, rules R2\u2013R7/C1\u2013C4); the rerun scores 82.9% [78.0, 86.9] / \u03ba 0.788 = PASS.",
+      "rationale_recorded": true,
+      "rationale": "The yellow-band cycle is pre-priced in the budget and returning to Phase 2 is explicitly a writable outcome, so landing there is the protocol working rather than failing. The clarification is narrowly scoped because 35 of 58 disagreements were none-identified \u2194 indeterminate and 37/58 escape\u2194escape while only 3 were category\u2194category: on the flip units both passes agreed on the substance and split only on which escape to use, because the instrument gave no operational rule to choose. Holding everything else fixed makes it a clean controlled comparison, so any change in stability is attributable to the single clarification.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "b:4c7b0828-29",
+        "a:9e4b6896-10",
+        "a:9e4b6896-08",
+        "a:9e4b6896-12",
+        "a:9e4b6896-11",
+        "a:dc3bc182-sub-sub-agent-a495a0-05"
+      ],
+      "evidence": [
+        {
+          "text": "The yellow-band path (one clarification amendment + full rerun) is pre-priced in the budget, so if it lands there, that's the protocol working, not failing.",
+          "line": 1366,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "This is the mandated **STOP point** \u2014 the yellow band permits exactly one codebook-clarification amendment, and the protocol says propose it and wait for you.",
+          "line": 219,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "On every one of the 35, both passes *agree on the substance* (disjoint/self-consistent sides, clean composition) and split only on which escape label to use, because the instrument never gave an operational rule to choose between them.",
+          "line": 231,
+          "file": "2026-07-11_9e4b6896.txt"
+        },
+        {
+          "text": "So this is a **clean controlled comparison**: the *only* variable is the escape-hatch decision rule.",
+          "line": 378,
+          "file": "2026-07-11_9e4b6896.txt"
+        }
+      ],
+      "artifacts": [
+        "reports_taxonomy/phase3/stability.md",
+        "reports_taxonomy/phase3/amendment2_proposal.md",
+        "597e535",
+        "3474b09",
+        "outputs/taxonomy-protocol.md \u00a712",
+        "merge-tool-comparison/reports_taxonomy/FINDINGS.md"
+      ],
+      "actors": "joint",
+      "actors_note": "The pre-registered path and the amendment proposal are Claude's; Ali approved Amendment 2 and the rerun (\"Approved. Executing the amendment path\"). One retrospective source records actors as unclear.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "gates-scored-against-written-criterion",
+      "title": "A gate is scored against its written criterion, and the re-scoring ruling goes into the record",
+      "date_from": "2026-07-10",
+      "date_to": "2026-07-16",
+      "decision": "When a gate appears to fail, score it against the criterion as pre-registered and record the scoping ruling in the machine record rather than either waving it through or failing it on a proxy count. G1 condition (iii) is scored as 0/15 qualifying rejections \u2192 PASS, scoping rejections to 'hallucinated or unsupported-by-quotes' and reclassifying Ali's 4 REJECT-UNSUPPORTED clicks as population/selection objections excluded from the gate count, with no \u00a712 amendment filed because the gate was applied as written. GD1's machine coverage of 37/48 = 77.1% is decomposed into 9 cross-file-declaration units (unreachable for file-local detectors by construction) plus 2 truncation-limited, and re-scored on the file-local target set as 37/39 = 94.9% \u2192 PASS, recorded as \u00a712 Amendment 2 with the ruling written into gd1_machine.json.",
+      "rationale_recorded": true,
+      "rationale": "All 4 G1 rejections were on escape-hatch verdicts where the model claimed no mechanism, so there was no causal story to be hallucinated or unsupported; the stated reason (\"not a good representation of the silent merge conflicts\") is a population/selection objection that actually agrees with the model's escape-hatch call, and the prescribed FAIL remedy \u2014 a full rerun \u2014 would reproduce the same correct escape hatches without addressing the concern. For GD1, the excluded units are out of reach of file-local detectors by construction, so counting them against a file-local gate misstates coverage.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:788e483b-07",
+        "a:506d875b-09"
+      ],
+      "evidence": [
+        {
+          "text": "your reason is a **population/selection** objection (\"these aren't good silent-merge examples\") \u2014 which is *different* from the criterion the gate is scored on",
+          "line": 307,
+          "file": "2026-07-09_788e483b.txt"
+        },
+        {
+          "text": "**GD1 went through its failure path and passed via your Amendment 2 ruling**: machine coverage 37/48 = 77.1% decomposed into 9 cross-file-declaration units (unreachable for file-local detectors by construction) + 2 truncation-limited \u2014 file-local re-score 37/39 = 94.9%.",
+          "line": 135,
+          "file": "2026-07-15_506d875b.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_taxonomy/phase1/spotcheck/g1_iii_adjudication.md",
+        "f2b9818",
+        "gd1_machine.json",
+        "outputs/detector-cycle-plan.md \u00a712 Amendment 2",
+        "ISSUES #31"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "cross-session-alignment-instrument",
+      "title": "One frozen authority doc per program, artifact-only handoff, pre-written prompts with STOP points",
+      "date_from": "2026-07-15",
+      "date_to": "2026-07-25",
+      "decision": "Codify the cross-session instrument and reuse it: every multi-session program has one frozen, commit-pinned authority document that each session prompt references rather than copies; state passes only through committed artifacts, never chat context or a summary handoff; each prompt carries an explicit STOP point and a uniform close-out (commit referencing the issue, summary appended to ISSUES, manifest/memory updated); all prompts are written at planning time in the plan document itself; and deviations become dated amendments. Applied to the extraction program: kickoff prompts reuse the S-D1..S-D8 shape (AUTHORITY / STATE / SCOPE / GUARDRAILS / EXIT / STOP), each session commits its JSON for the consolidator to read from disk, and S0 must produce the frozen extraction schema before any extraction session runs.",
+      "rationale_recorded": true,
+      "rationale": "\"Alignment across sessions never comes from the prompts themselves; it comes from one frozen authority document that every prompt points to, plus artifact-only state\", and writing all prompts at planning time gives \"One author, one sitting, one consistent intent \u2014 that's where alignment is actually manufactured.\" Without a frozen schema, seven sessions will use seven different granularities for \"decision\" and the consolidator inherits an incoherent pile \u2014 the same problem the frozen codebook solved for closed coding.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-27",
+        "a:c4c4d030-19"
+      ],
+      "evidence": [
+        {
+          "text": "**One authority doc per program, frozen, commit-pinned.**",
+          "line": 1662,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "Use your own #30 rule \u2014 *\"handoff between sessions is committed artifacts only.\"*",
+          "line": 195,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "The one thing S0 must produce that v1 lacked: **the frozen extraction schema**.",
+          "line": 197,
+          "file": "2026-07-25_c4c4d030.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md",
+        "outputs/taxonomy-protocol.md",
+        "ISSUES #30"
+      ],
+      "actors": "joint",
+      "actors_note": "Claude codified the instrument; Ali ruled \"lets do S0 first \u2014 write the distiller and freeze the schema\" for its reuse. Recorded as joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "extraction-mechanical-coverage-gate",
+      "title": "Extraction v2 must carry a mechanical coverage gate: lines_read equals lines_total",
+      "date_from": "2026-07-25",
+      "date_to": null,
+      "decision": "Diagnose v1's under-coverage as the absence of an enforced accounting step rather than prompt wording, and require any v2 design to carry a mechanical coverage gate whatever model runs it: each extraction unit reads its distilled file in full and emits {file, lines_total, lines_read, decisions:[...]} with a hard gate that lines_read equals lines_total, paging large files rather than sampling, and reporting coverage honestly because \"an audited 80% beats a claimed 100%\".",
+      "rationale_recorded": true,
+      "rationale": "Triage decisions were made under context pressure and the optimistic version was reported; without an enforced accounting step that failure reproduces on any model. Grep is no substitute for reading because design rationale is usually stated in ordinary prose containing none of the obvious keywords.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): adopted by this record's own rebuild \u2014 PROTOCOL.md \u00a75 G-COV requires lines_read == lines_total enforced by verify_extractions.py, Amendment 1 made the gate structural (whole file in the prompt), and preflight.py re-runs it; the v2 record was built under it (69/69 files, 100%).",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:c4c4d030-07",
+        "a:c4c4d030-12"
+      ],
+      "evidence": [
+        {
+          "text": "v1's failure wasn't a bad prompt \u2014 it was **no mechanical coverage gate**.",
+          "line": 81,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "Why grep failed here: design rationale is usually stated in ordinary prose containing none of the obvious keywords.",
+          "line": 69,
+          "file": "2026-07-25_c4c4d030.txt"
+        },
+        {
+          "text": "- Report coverage honestly. An audited 80% beats a claimed 100%.",
+          "line": 159,
+          "file": "2026-07-25_c4c4d030.txt"
+        }
+      ],
+      "artifacts": [],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "gd3-absolute-zero-fp-gate",
+      "title": "GD3 requires literally zero control flags, and any flag stops the session for Ali",
+      "date_from": "2026-07-15",
+      "date_to": "2026-07-16",
+      "decision": "Keep GD3's false-positive bar absolute: zero flags on the 200 eval-controls and the 66 spgroup-clean units, with a small adjudicated tolerance (\"\u22642 adjudicated-benign flags pass\") considered and not adopted. Any control or spgroup flag halts the session and is packaged for Ali's adjudication with full context, the amendment path being his call; flags on held-out units do not gate S-D5 and route to S-D6 adjudication via the delivered adjudication UI.",
+      "rationale_recorded": true,
+      "rationale": "The absolute bar is kept as \"defensible and consistent with the layer's identity\" \u2014 the zero-FP record is the layer's differentiator \u2014 with \u00a711 leaving the option of softening it consciously; and the amendment path after a control flag is Ali's call, not the agent's.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-32",
+        "b:2e726dc0-03",
+        "a:6a84a6b3-05"
+      ],
+      "evidence": [
+        {
+          "text": "The alternative would have been a small tolerance (e.g., \"\u22642 adjudicated-benign flags pass\"). The plan encodes *absolute*; you're confirming that's the bar you want to defend.",
+          "line": 1760,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "the absolute zero-FP bar (defensible and consistent with the layer's identity \u2014 and \u00a711 lets you soften it consciously if you disagree)",
+          "line": 1809,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "4. GD3: (ii) and (iii) require ZERO flags. Any control/spgroup flag \u2192",
+          "line": 39,
+          "file": "2026-07-16_2e726dc0.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md \u00a711",
+        "outputs/detector-cycle-plan.md \u00a75 GD3",
+        "gd3_flag_package.md"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "defer-sd7-sd8-decision",
+      "title": "The optional S-D7/S-D8 stages are decided at S-D6 close-out, not pre-committed",
+      "date_from": "2026-07-15",
+      "date_to": null,
+      "decision": "Do not pre-commit the optional Stage-C-protocol rerun (S-D7) or the whole-driver re-pricing (S-D8); record a run/later/never decision with one sentence of rationale at S-D6 close-out, so the detector cycle can close without them.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-33"
+      ],
+      "evidence": [
+        {
+          "text": "**S-D7/S-D8 deferred** \u2014 the optional Stage-C rerun and whole-driver re-pricing are decided at S-D6 close-out rather than pre-committed now.",
+          "line": 1761,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md \u00a711"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "no-driver-changes-except-stage-b",
+      "title": "Stage B is the one sanctioned exception to the no-driver-changes rule, timeboxed 3\u20135 days",
+      "date_from": "2026-06-11",
+      "date_to": null,
+      "decision": "Detector changes under semantic_merge_driver/strategies/ are permitted for Stage B as the single sanctioned exception to the standing no-driver-changes rule, timeboxed to 3\u20135 days and scoped by the adjudicated shortlist.",
+      "rationale_recorded": true,
+      "rationale": "Stated as sanctioned by the plan: the exception is bounded because it is scoped by the adjudicated shortlist and timeboxed.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:bfc672b4-08"
+      ],
+      "evidence": [
+        {
+          "text": "Next cycle is Stage B (detector changes in `semantic_merge_driver/strategies/` \u2014 the one sanctioned exception to the no-driver-changes rule), timeboxed 3\u20135 days per the plan.",
+          "line": 230,
+          "file": "2026-06-11_bfc672b4.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/strategies/"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "hard-stop-when-brief-contradicts-repo",
+      "title": "Hard-stop S-D5 at the ambiguity gate when the brief's state contradicts the repo",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Halt session S-D5 before any scope step and withdraw the brief's STATE line (\"S-D1..S-D4 DONE, GD2 PASS \u00d73. The detector suite is complete.\") as false, on five independent repo axes: ISSUES #31's status line, git HEAD at 83d3a23 with no S-D4 commits or stashes, reports_detectors/ lacking tune_d3, untouched unresolved_reference.py and RM2 rename lane, and only two GD2 build gates passed. Improvise no resolution: put the question to Ali and wait (he confirmed the premise was a mistake). Refuse in particular to record detector_suite_commit in reports_detectors/manifest.json at the current HEAD \u2014 the freeze and the whole evaluation battery wait until S-D4 lands.",
+      "rationale_recorded": true,
+      "rationale": "The discrepancy is material rather than trivial, and the prompt's own ambiguity gate requires asking Ali and waiting instead of improvising. Freezing now would freeze a suite without the D3 widening, so if S-D4 landed afterwards it would cost a dated \u00a712 amendment plus a full S-D5 rerun \u2014 a second ~$5\u201310 AWS cycle and a wasted battery; and per \u00a75 GD3 the two-arm added-recall delta exists to attribute D3, so without S-D4 the experimental arm is D1+D2 only and the D3 delta over the ~8% removed/renamed mass is zero by construction.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:6a84a6b3-01",
+        "b:6a84a6b3-02",
+        "a:6a84a6b3-02"
+      ],
+      "evidence": [
+        {
+          "text": "**AMBIGUITY CHECK: HARD STOP \u2014 the prompt's STATE line contradicts every repo authority. S-D4 has not been run.**",
+          "line": 56,
+          "file": "2026-07-16_6a84a6b3.txt"
+        },
+        {
+          "text": "Per the ambiguity gate I'm not improvising a resolution \u2014 asking and waiting.",
+          "line": 71,
+          "file": "2026-07-16_6a84a6b3.txt"
+        },
+        {
+          "text": "Freezing now freezes a suite without the D3 widening; if S-D4 lands afterwards, that's a dated \u00a712 amendment",
+          "line": 68,
+          "file": "2026-07-16_6a84a6b3.txt"
+        }
+      ],
+      "artifacts": [
+        "ISSUES #31",
+        "83d3a23",
+        "reports_detectors/manifest.json",
+        "unresolved_reference.py",
+        "outputs/detector-cycle-plan.md \u00a73"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "regression-floor-no-verdict-changes",
+      "title": "Lane widening must not change any verdict the lanes already produce",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Bind each build session to a regression floor: the widening is the smallest guarded change per inventoried shape and must not alter behaviour on any shape the existing lanes already handle, every existing fixture and regression test keeping its expected verdict \u2014 declared the hard constraint of the session. The unresolved_reference strategy's pre-existing behaviour must be byte-identical with SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS unset, and the tune runner's old CLI surface (--lane, --out dir, cache reuse, per-(scenario,lane,driver-commit) cache keys, vacuous-run smoke guard, exit codes) must survive the multi-lane rewrite. The floor is the actual pre-session suite count, not the plan's stale figure \u2014 162 green tests rather than plan \u00a73's 122, and 292 rather than the plan's stale count for S-D4 \u2014 recorded as a trivial clarification in the session log, with S-D4's GD2(iii) run executing the full suite including D1/D2.",
+      "rationale_recorded": true,
+      "rationale": "The strategy is a DEFAULT-ON merge-driver strategy, so any change to flag-unset behaviour is a hard regression, and the tune runner already worked for the ImportPruneUsage and SignatureStaleCall lanes. Interactions between lanes count, so the gate run must execute the full suite. The plan's stated baselines were simply out of date versus repo state.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "plan \u00a73's \"122 green\" regression baseline",
+        "plan \u00a78's stale test-count baseline"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-03",
+        "a:82dd479f-sub-sub-agent-a46641-02",
+        "a:acf7e1d0-18",
+        "a:f0d70a59-02",
+        "b:f0d70a59-10"
+      ],
+      "evidence": [
+        {
+          "text": "expected verdict (this is the hard constraint of the session).",
+          "line": 23,
+          "file": "2026-07-16_82dd479f.txt"
+        },
+        {
+          "text": "a DEFAULT-ON merge-driver strategy whose pre-existing behavior must be BYTE-IDENTICAL when the env flag SEMANTIC_MERGE_EXPERIMENTAL_DETECTORS is unset (hard regression constraint: every existing test keeps its verdict, and default driver behavior must not change at all)",
+          "line": 5,
+          "file": "2026-07-16_82dd479f_sub-agent-a46641.txt"
+        },
+        {
+          "text": "plan \u00a73's \"122 green\" baseline is stale \u2014 the real pre-session suite was **162**, applied as the floor",
+          "line": 69,
+          "file": "2026-07-16_f0d70a59.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md \u00a73",
+        "outputs/detector-cycle-plan.md \u00a78",
+        "semantic_merge_driver/strategies/joern_strategies/unresolved_reference.py",
+        "merge-tool-comparison/tools/detector_tune_run.py",
+        "ISSUES #31"
+      ],
+      "actors": "joint",
+      "actors_note": "The regression floor was declared in Ali's session briefs; the corrected baselines and the full-suite GD2(iii) requirement are Claude's, and one sub-agent source records actors as unclear.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "amendment-3-triple-review-gate",
+      "title": "Amendment 3: three-angle review of each detector before its gate may close",
+      "date_from": "2026-07-16",
+      "date_to": "2026-07-18",
+      "decision": "Before a detector's build gate closes, review the widened lanes three ways: as project code (idiomatic to the lanes modified, /code-review at high effort sanctioned), as a standalone analysis against Java language semantics with the JLS consulted where unclear, and as an open-source practice comparison (Error Prone, SpotBugs, IntelliJ unresolved-reference inspections, Checkstyle) recording the comparators consulted plus divergences adopted or rejected. Each finding must be fixed \u2014 with GD2 rerun if a lane changed post-gate \u2014 or the non-fix documented. Applied across the cycle, e.g. 8 FP-vector fixes pre-gate on D3.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:82dd479f-01",
+        "a:dc3bc182-sub-sub-agent-a495a0-11"
+      ],
+      "evidence": [
+        {
+          "text": "REVIEW (\u00a712 Amendment 3): before closing, review the widened lanes",
+          "line": 29,
+          "file": "2026-07-16_82dd479f.txt"
+        },
+        {
+          "text": "Amendment-3 triple reviews (code-review high + standalone JLS + OSS-practice comparison; e.g. 8 FP-vector fixes pre-gate on D3)",
+          "line": 68,
+          "file": "2026-07-18_dc3bc182_sub-agent-a495a0.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md \u00a712 Amendment 3",
+        "merge-tool-comparison/reports_detectors/tune_d3/review_record.md",
+        "merge-tool-comparison/reports_detectors/"
+      ],
+      "actors": "ali",
+      "actors_note": "The requirement is issued in Ali's session brief; the retrospective source records actors as unclear. Attributed to Ali on the brief.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "post-gate-changes-need-ali-and-rerun",
+      "title": "Post-gate code changes are reported not applied, then authorized and both gates rerun",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Report post-gate review findings without applying any of them, because post-GD2 code changes are Ali's call and each requires a suite plus tune rerun to stay protocol-clean before the S-D5 freeze. Ali then authorized the recommended patch \u2014 throws/implements/extends/permits added to _EXPR_KEYWORDS, a depth-tracked enum-constant-list parser feeding declares_member, the conflict-marker abstention moved to the stripped text, plus the merged==parent soundness invariant test \u2014 with the suite and GD2(iii) rerun and the change recorded in the manifest as a post-GD2 patch with rerun.",
+      "rationale_recorded": true,
+      "rationale": "Post-GD2 changes are Ali's call, and each would require the suite plus tune rerun to stay protocol-clean before the S-D5 freeze (cached merges make the rerun ~2 min). The recommendation argued fixes #1\u2013#3 plus invariant tests as one small pre-S-D3 commit, all in the false-negative direction except #2, which tightens suppression.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:f0d70a59-13",
+        "a:f0d70a59-14"
+      ],
+      "evidence": [
+        {
+          "text": "nothing applied \u2014 post-GD2 changes are your call, and each would require the suite + tune rerun (protocol-clean before the S-D5 freeze, cached merges make the rerun ~2 min)",
+          "line": 234,
+          "file": "2026-07-16_f0d70a59.txt"
+        },
+        {
+          "text": "go ahead with the fixes and rerun the gates",
+          "line": 266,
+          "file": "2026-07-16_f0d70a59.txt"
+        }
+      ],
+      "artifacts": [
+        "bed3638",
+        "c14670a",
+        "merge-tool-comparison/reports_detectors/tune_d1/runs.md"
+      ],
+      "actors": "joint",
+      "actors_note": "Claude reported and recommended without applying; Ali authorized. Options were put and Ali picked, so joint.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "guards-before-d1-graduates",
+      "title": "Land the two verified FP-shape guards before D1 leaves the experimental flag",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Add the generics and multi-declarator false-positive shapes as tune fixtures and land the two suppression-side guard extensions before D1 graduates from behind the experimental flag; the repro probes at scratchpad/repro_ipu.py can be folded into the fixture battery.",
+      "rationale_recorded": true,
+      "rationale": "Both shapes are realistic \u2014 generics plus IDE import-optimization, and multi-declarators in older Java \u2014 even though GD2's 0/100 tune-control result stands.",
+      "status": "proposed",
+      "status_note": "S12 (2026-07-26): still pending \u2014 no generics/multi-declarator fixtures exist in detector_tune_run.py, the two suppression-side guard extensions are not in import_prune_usage.py, and the default-enable ruling this precedes is still open with Ali. Nothing has been dropped; the precondition simply has not arrived.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:734e4529-04"
+      ],
+      "evidence": [
+        {
+          "text": "both shapes are realistic (generics plus IDE import-optimization; multi-declarators in older Java), so I'd add both as tune fixtures and land the two suppression-side guard extensions before D1 graduates from behind the experimental flag",
+          "line": 24,
+          "file": "2026-07-16_734e4529.txt"
+        }
+      ],
+      "artifacts": [
+        "scratchpad/repro_ipu.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "frozen-code-defects-documented-not-fixed",
+      "title": "Frozen files are not edited: reviews work around them and their defects are documented",
+      "date_from": "2026-07-16",
+      "date_to": null,
+      "decision": "Treat the frozen Stage-C harness and the existing lane files as uneditable for the duration of a build session and route findings accordingly: existing detector lane files must not be modified (shared-helper extraction \u2014 a shared RM2Runner, promoting _FileView scan helpers \u2014 is scheduled for a later session at the earliest); the efficiency/altitude review may only raise findings where a concretely better alternative exists with detect_validate.py frozen and lane behaviour unchanged flag-off, capped at 6 candidate findings; the verdict_of substring sentinel ('inconclusive' in message) in the frozen Stage-C harness is left unchanged as a documented non-fix with a note that the new harness should key on a message prefix; and detect_validate.py's DETECTORS tuple continues to exclude ImportPruneUsage, so S-D5's two-arm harness must wire the experimental arm explicitly.",
+      "rationale_recorded": true,
+      "rationale": "detect_validate.py is a frozen instrument that must not be edited and existing lane behaviour must not change flag-off, so any proposed restructuring has to fit inside those constraints to be actionable. Gate outcomes are unaffected by the sentinel collision, and the exclusion of the lane from DETECTORS is correct today because detect_validate is the frozen Stage-C instrument \u2014 but it would otherwise silently produce no experimental-arm coverage at S-D5.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:acf7e1d0-12",
+        "a:acf7e1d0-sub-agent-a88268-02",
+        "a:82dd479f-sub-sub-agent-a87c1f-01",
+        "a:f0d70a59-18"
+      ],
+      "evidence": [
+        {
+          "text": "documented non-fixes include the `verdict_of` \"inconclusive\"-substring sentinel in the frozen Stage-C harness (gate outcomes unaffected; S-D5 note: the new harness should key on a message prefix).",
+          "line": 453,
+          "file": "2026-07-16_acf7e1d0.txt"
+        },
+        {
+          "text": "is there a less fragile seam AVAILABLE WITHOUT editing the existing lane files (a hard project constraint from a frozen plan: existing lanes must not be modified this session; moving/extracting shared helpers is scheduled for a later session at the earliest)?",
+          "line": 5,
+          "file": "2026-07-16_acf7e1d0_sub-agent-a88268.txt"
+        },
+        {
+          "text": "Only flag when a concretely better altitude exists within the constraint that detect_validate.py is frozen and existing lane behavior must not change flag-off.",
+          "line": 9,
+          "file": "2026-07-16_82dd479f_sub-agent-a87c1f.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tools/detect_validate.py",
+        "semantic_merge_driver/strategies/rm2_strategies/rename_conflict.py",
+        "semantic_merge_driver/strategies/text_strategies/import_prune_usage.py",
+        "STATUS.md"
+      ],
+      "actors": "joint",
+      "actors_note": "The no-edit constraint is stated as a project constraint in Ali's sub-agent brief; the dispositions (documented non-fix, explicit arm wiring, capped review scope) are Claude's.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "derived-target-env-gate",
+      "title": "S-D8's flag-OFF gate is a derived target (1779 + \u0394 = 1784), pre-registered and committed before the run",
+      "date_from": "2026-07-22",
+      "date_to": null,
+      "decision": "Redefine the flag-OFF environment gate as a derived-target gate rather than literal reproduction of the P3 post-flip pooled cost of 1779: before running, compute the expected flag-OFF cost at the frozen suite 732d8ff from committed artifacts only (P3 post-flip per-file results re-priced for the five files whose verdicts the #29 post-fix commits 5ed92a2 and f964354 changed, under the same Schesch cost model), pre-register it \u2014 fixed and committed as 1784 pooled (pos 1768 / ctl 16) file-for-file \u2014 and require per-file agreement with the P3 post-flip table everywhere except those five files plus the two documented borderline-nondeterminism flips. The pre-registration must be in git before bundling, enforced by bundle_sd8.sh, and the deploy battery sequences smoke \u2192 canonical six-tool gate \u2192 flag-OFF arm \u2192 reconciliation gate against 1784 \u2192 flag-ON arm, with a --check-gate step that aborts between arms. Both arms stay on 732d8ff: pinning the flag-OFF arm back to 9e25b4e (where 1779 was measured) is rejected, as is the more expensive option of an extra redundant run.",
+      "rationale_recorded": true,
+      "rationale": "The frozen suite HEAD contains the #29 post-fix commits that changed default-lane behaviour, so a correct environment must NOT reproduce 1779 exactly; a naive \"must equal 1779\" gate would fail a healthy environment or push the session into \"close enough\" hand-waving that could mask a real env fault (the arm64-gjf class). The derived-target pattern is established practice, not improvisation \u2014 P3 used it for the \u2212146 pre-flip/post-flip derivation and #29 for carried-frozen verdicts \u2014 and the derivation reproduced P3's 1779 to the digit, cross-validating the machinery. Pinning the flag-OFF arm to 9e25b4e would smuggle the post-fix changes into the flag-ON delta and break the freeze, and the third option buys ~$5.5 of redundancy the derivation already provides. The mid-battery gate exists so the flag-ON arm does not burn ~14 h of compute on a wrong environment.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "kickoff env gate requiring literal reproduction of the post-flip 1779"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:2e726dc0-28",
+        "a:2e726dc0-29",
+        "a:68c24033-01",
+        "a:68c24033-02",
+        "a:68c24033-09",
+        "a:68c24033-10",
+        "a:68c24033-11"
+      ],
+      "evidence": [
+        {
+          "text": "Use a DERIVED-TARGET gate, not literal 1779.",
+          "line": 69,
+          "file": "2026-07-22_68c24033.txt"
+        },
+        {
+          "text": "A naive \"must equal 1779\" gate would fail on a healthy environment, or push the session into \"close enough\" hand-waving that could mask a real env fault",
+          "line": 944,
+          "file": "2026-07-16_2e726dc0.txt"
+        },
+        {
+          "text": "Do NOT pin the flag-OFF arm to `9e25b4e` \u2014 both arms stay on the frozen suite; pinning would smuggle the post-fix changes into the flag-ON delta and break the freeze.",
+          "line": 74,
+          "file": "2026-07-22_68c24033.txt"
+        },
+        {
+          "text": "mid-battery reconciliation gate that aborts before the flag-ON arm burns",
+          "line": 63,
+          "file": "2026-07-22_68c24033.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_detectors/whole_driver_flagon/predicted_flagoff.csv",
+        "merge-tool-comparison/reports_whole_driver/raw_results.json",
+        "reports_detection/postfix2/",
+        "bundle_sd8.sh",
+        "run_sd8.sh",
+        "732d8ff",
+        "9e25b4e",
+        "50d2754"
+      ],
+      "actors": "joint",
+      "actors_note": "Claude proposed the derived-target design and computed the target; Ali issued it in the session brief and made the rejection of the 9e25b4e pinning explicit. Options were put and Ali picked.",
+      "corroboration": "mixed",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "parity-lock-categorizer-to-classifier",
+      "title": "categorizer.cluster_of is parity-locked to the runtime classifier, with a test that fails on drift",
+      "date_from": "2026-05-18",
+      "date_to": null,
+      "decision": "Maintain merge-tool-comparison's `categorizer.cluster_of` as a parity-locked copy of `RefactoringClusterClassifier.cluster(base, ours, theirs)`, with `test_taxonomy_parity` failing on drift.",
+      "rationale_recorded": true,
+      "rationale": "So that a \"tool X wins in cluster C\" result computed offline is directly actionable by the runtime router, which can compute C from the same inputs.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:dc624d63-03"
+      ],
+      "evidence": [
+        {
+          "text": "`categorizer.cluster_of` is a parity-locked copy of that exact function (`test_taxonomy_parity` fails on drift).",
+          "line": 27,
+          "file": "2026-05-18_dc624d63.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/tests/test_categorizer.py",
+        "semantic_merge_driver/core/refactoring_classifier.py"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    }
+  ],
+  "not_promoted": [
+    {
+      "uid": "a:6296f4f6-19",
+      "reason": "Verification-scoping detail (superseded `vs` ids left in codebook_frozen.md's header as rename provenance, so the old-id check runs against the body only); no standing rule beyond the G2 freeze entry it sits inside."
+    },
+    {
+      "uid": "b:acf7e1d0-sub-sub-agent-af9ecb-02",
+      "reason": "Sub-agent review disposition (D2 smoke gate's RM2 Docker dependency accepted as intended fail-closed), status proposed and unratified; an instance of the documented-non-fix rule already carried by frozen-code-defects-documented-not-fixed."
+    }
+  ],
+  "cross_theme": [
+    {
+      "slug": "significance-gate-and-timebox-escape",
+      "other_theme": null,
+      "other_uid": "preA:pre-rm2-integration-12",
+      "relation": "duplicates",
+      "note": "The 2\u00d7 timebox escape rule with a STATUS.md revisit note is also recorded as an 'also'-placed decision in another theme (preA:pre-mergiraf-integration-07 and preA:pre-rm2-integration-12, both stating the identical rule). Not cited here to keep coverage clean; S10z should merge or cross-reference."
+    },
+    {
+      "slug": "two-phase-routing-decoupling",
+      "other_theme": "routing-dispatch",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "This entry decides that the S2/W5 auto-mode elifs ship as mechanism ahead of evidence. Whether the elifs exist in AutoBackend._route() is owned by the routing/dispatch theme; if that theme has a transcript-era source showing them shipped, this entry's status should move from proposed to adopted."
+    },
+    {
+      "slug": "mergiraf-promotion-gate-f1-zero-crashes",
+      "other_theme": "backend-selection",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The gate governs Mergiraf's promotion into semantic_merge_driver's structured-merge slot; the backend-selection theme likely holds the decision that actually installed Mergiraf as default (Phase 6-lite), which would settle whether this gate was ever applied."
+    },
+    {
+      "slug": "issues-2-held-at-decided",
+      "other_theme": "comparator-ground-truth",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The ISSUES #2 status ladder is a gate on the comparator's FP-inflation work; the theme owning the normalizer tiers (Tier C/D/E transforms, ast_normalize.py) holds the technical decisions these gates scored."
+    },
+    {
+      "slug": "tier-c-floor-and-escalation-ladder",
+      "other_theme": "threats-to-validity",
+      "other_uid": "a:dc3bc182-sub-sub-agent-a74c7a-05",
+      "relation": "depends-on",
+      "note": "The transcript-era confirmation of this floor comes from a THREATS_TO_VALIDITY review that also records the normalizer as tuned iteratively with no held-out validation; the threats theme may own that overfitting finding."
+    },
+    {
+      "slug": "parity-lock-categorizer-to-classifier",
+      "other_theme": "taxonomy-classifier",
+      "other_uid": "a:20b53f98-19",
+      "relation": "depends-on",
+      "note": "The parity test's failure mode was later softened to pytest.skip when the driver source is absent (a:20b53f98-19, placed in another theme). That refinement narrows this entry without changing it; S10z should link them."
+    },
+    {
+      "slug": "guards-before-d1-graduates",
+      "other_theme": "detector-lanes",
+      "other_uid": "a:dc3bc182-38",
+      "relation": "depends-on",
+      "note": "This proposal is conditioned on D1 leaving the experimental flag; the default-enabling decision was still explicitly open on 2026-07-25 (a:dc3bc182-38, another theme). If that theme resolves default-enabling, this entry's status follows."
+    },
+    {
+      "slug": "three-labeled-runs-frozen-primary",
+      "other_theme": "detection-evaluation",
+      "other_uid": "b:fb0fa5c5-59",
+      "relation": "duplicates",
+      "note": "The decision to disclose the second post-fix round as 'round 2' rather than silently re-running (b:fb0fa5c5-59) is placed in another theme but is the same closing arc as this entry."
+    },
+    {
+      "slug": "extraction-mechanical-coverage-gate",
+      "other_theme": "method-meta",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "This concerns the extraction of this very decision record; the theme owning the v1/v2 extraction post-mortem may hold the ratification (or the S0 schema artifact) that would move it off proposed."
+    }
+  ],
+  "notes": "Density and threshold. 152 primary sources landed in 47 entries (~3.2 per entry), below the 5-9 calibration signal. The reason is that this slice is not one gate discipline but four, each with its own vocabulary and its own arc: (1) the pre-transcript plan-era evidence gates for routing (S2/W5/R4b, ISSUES #2 as a gate on S3/W3), (2) the comparator FP-recovery tier ladder with pre-registered Wilson-derived floors, pause triggers and the ISSUES #2 decided\u2192resolved arc, (3) the taxonomy pre-registration protocol (Session 0, split firewall, G0\u2013G3, \u00a712 amendments, the yellow-band rerun), and (4) the detector cycle (GD1\u2013GD3, suite freeze at 732d8ff, S-D7/S-D8 derived-target env gates). Merging across those programs would have flattened distinctions the extraction passes worked to preserve, and several arcs are deliberately kept as linked pairs because the record has to show the change of mind: w5-five-condition-evidence-gate \u2192 two-phase-routing-decoupling; issues-2-held-at-decided \u2192 tier-e-closes-issues-2-and-freezes-results; post-fix-rerun-deferred-to-ali \u2192 three-labeled-runs-frozen-primary. Within programs I did merge hard (the ISSUES #2 holding decision is six sources; the split firewall seven; the derived-target gate seven).\n\nStatus downgrades. Seven entries built only on planning documents (uid preA:/preB:pre-<planname>-nn, not pre-commits-) are recorded as proposed with a status_note, per the plan-is-a-hypothesis rule: stage-gated-rollout-one-commit-per-stage, evidence-gate-scoped-to-routing-claims, two-phase-routing-decoupling, mergiraf-promotion-gate-f1-zero-crashes, s3-w3-gated-on-issues-2, pin-formatter-version, parent-context-whitelist-invariant. Two of these were extracted as adopted (pre-rm2-integration-10, pre-spork-driver-integration-07) and are downgraded here. Note the tension this exposes and leaves standing: evidence-gate-scoped-to-routing-claims records that choosing Mergiraf as the default needs no evidence, while mergiraf-promotion-gate-f1-zero-crashes gates Mergiraf's promotion into the driver on Phase 4 F1 evidence \u2014 the two plans scope 'promotion' differently and no source in the slice reconciles them.\n\nWhere I was unsure. (a) two-phase-routing-decoupling is marked proposed even though it supersedes w5-five-condition-evidence-gate, because its authority is a marked decision inside the same plan family; if S10z prefers, the supersession can stand while the status stays proposed, which is how I have written it. (b) 'joint' is used on several merged entries where some instances came from Ali's session briefs and others from Claude's design; each carries an actors_note saying so rather than taking a majority. (c) Tier D/E floors (later-tiers-get-own-floors) could arguably have been folded into tier-c-floor-and-escalation-ladder, but they lower the bar rather than detail it, so they are a separate entry.",
+  "theme": "gates-freeze",
+  "slice_primary_total": 154
+}

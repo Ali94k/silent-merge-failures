@@ -1,0 +1,446 @@
+UNIT openhft_chronicle-bytes__e3ac571d25
+repo: openhft_chronicle-bytes   merge: e3ac571d253f5fcf85f24e64833bb488092d58d9   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/test/java/net/openhft/chronicle/bytes/BytesTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -20,16 +20,17 @@
+ 
+ import net.openhft.chronicle.bytes.util.DecoratedBufferUnderflowException;
+ import net.openhft.chronicle.bytes.util.UTF8StringInterner;
+ import net.openhft.chronicle.core.io.AbstractReferenceCounted;
+ import net.openhft.chronicle.core.io.BackgroundResourceReleaser;
+ import net.openhft.chronicle.core.io.IORuntimeException;
+ import net.openhft.chronicle.core.util.Histogram;
+ import org.jetbrains.annotations.NotNull;
++import org.junit.Ignore;
+ import org.junit.Test;
+ import org.junit.runner.RunWith;
+ import org.junit.runners.Parameterized;
+ 
+ import java.io.PrintWriter;
+ import java.math.BigDecimal;
+ import java.nio.BufferOverflowException;
+ import java.nio.BufferUnderflowException;
+@@ -901,9 +902,24 @@
+ 
+                 assertEquals(sb.toString(), sb2.toString());
+                 sb.append(Integer.toString(i, 36));
+             }
+         } finally {
+             bytes.releaseLast();
+         }
+     }
+-}
++
++    @Ignore("https://github.com/OpenHFT/Chronicle-Bytes/issues/185")
++    @Test
++    public void capacityVsWriteLimitInvariant() {
++        final Bytes<?> bytes = alloc1.elasticBytes(20);
++        assertEquals(bytes.capacity(), bytes.writeLimit());
++    }
++
++    @Ignore("https://github.com/OpenHFT/Chronicle-Bytes/issues/185")
++    @Test
++    public void isClear() {
++        final Bytes<?> bytes = alloc1.elasticBytes(20);
++        assertTrue(bytes.isClear());
++    }
++
++}
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -901,9 +901,47 @@
+ 
+                 assertEquals(sb.toString(), sb2.toString());
+                 sb.append(Integer.toString(i, 36));
+             }
+         } finally {
+             bytes.releaseLast();
+         }
+     }
++
++    @Test
++    public void stopBitChar() {
++        final Bytes bytes = alloc1.fixedBytes(64);
++        for (int i = Character.MIN_VALUE; i <= Character.MAX_VALUE; i++) {
++            bytes.clear();
++            char ch = (char) i;
++            bytes.writeStopBit(ch);
++            bytes.writeUnsignedByte(0x80);
++            char c2 = bytes.readStopBitChar();
++            assertEquals(ch, c2);
++            assertEquals(0x80, bytes.readUnsignedByte());
++        }
++        bytes.releaseLast();
++    }
++
++    @Test
++    public void stopBitLong() {
++        final Bytes bytes = alloc1.fixedBytes(64);
++        for (int i = 0; i <= 63; i++) {
++            long l = 1L << i;
++            stopBitLong0(bytes, l);
++            stopBitLong0(bytes, l - 1);
++            stopBitLong0(bytes, -l);
++            stopBitLong0(bytes, ~l);
++        }
++        bytes.releaseLast();
++    }
++
++    private void stopBitLong0(Bytes bytes, long l) {
++        bytes.clear();
++        bytes.writeStopBit(l);
++        bytes.writeUnsignedByte(0x80);
++        long l2 = bytes.readStopBit();
++        assertEquals(l, l2);
++        assertEquals(0x80, bytes.readUnsignedByte());
++    }
++
+ }
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+/*
+ * Copyright 2016-2020 chronicle.software
+ *
+ * https://chronicle.software
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package net.openhft.chronicle.bytes;
+
+import net.openhft.chronicle.bytes.util.DecoratedBufferUnderflowException;
+import net.openhft.chronicle.bytes.util.UTF8StringInterner;
+import net.openhft.chronicle.core.io.AbstractReferenceCounted;
+import net.openhft.chronicle.core.io.BackgroundResourceReleaser;
+import net.openhft.chronicle.core.io.IORuntimeException;
+import net.openhft.chronicle.core.util.Histogram;
+import org.jetbrains.annotations.NotNull;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import java.io.PrintWriter;
+import java.math.BigDecimal;
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Locale;
+import java.util.Scanner;
+
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
+import static net.openhft.chronicle.bytes.Allocator.*;
+import static org.junit.Assert.*;
+import static org.junit.Assume.assumeFalse;
+
+@SuppressWarnings({"rawtypes"})
+@RunWith(Parameterized.class)
+public class BytesTest extends BytesTestCommon {
+
+    private final Allocator alloc1;
+
+    public BytesTest(String ignored, Allocator alloc1) {
+        this.alloc1 = alloc1;
+    }
+
+    @Parameterized.Parameters(name = "{0}")
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][]{
+                {"Native", NATIVE},
+                {"Heap", HEAP},
+                {"Heap ByteBuffer", BYTE_BUFFER},
+                {"Native Unchecked", NATIVE_UNCHECKED},
+                {"Heap Unchecked", HEAP_UNCHECKED},
+                {"Heap Embedded", HEAP_EMBEDDED}
+        });
+    }
+        // ... 2 lines elided ...
+    public void throwExceptionIfReleased() {
+        // ... 12 lines elided ...
+    public void writeAdv() {
+        // ... 8 lines elided ...
+    public void writeLongAdv() {
+        // ... 8 lines elided ...
+    public void testName()
+        // ... 15 lines elided ...
+    public void readUnsignedByte() {
+        // ... 17 lines elided ...
+    public void writeHistogram() {
+        // ... 23 lines elided ...
+    public void testCopy() {
+        // ... 17 lines elided ...
+    public void toHexString() {
+        // ... 23 lines elided ...
+    public void fromHexString() {
+        // ... 17 lines elided ...
+    public void internRegressionTest()
+        // ... 15 lines elided ...
+    public void testEqualBytesWithSecondStoreBeingLonger()
+        // ... 14 lines elided ...
+    public void testStopBitDouble()
+        // ... 18 lines elided ...
+    private void testSBD(@NotNull Bytes b, double v, String s)
+        // ... 7 lines elided ...
+    public void testParseUtf8() {
+        // ... 16 lines elided ...
+    public void testPartialWriteArray() {
+        // ... 10 lines elided ...
+    public void testPartialWriteBB() {
+        // ... 9 lines elided ...
+    public void testCompact() {
+        // ... 14 lines elided ...
+    public void testReadIncompleteLong()
+        // ... 21 lines elided ...
+    public void testUnwrite()
+        // ... 18 lines elided ...
+    public void testExpectNegativeOffsetAbsoluteWriteOnElasticBytesThrowsBufferOverflowException()
+        // ... 12 lines elided ...
+    public void testExpectNegativeOffsetAbsoluteWriteOnElasticBytesOfInsufficientCapacityThrowsBufferOverflowException()
+        // ... 13 lines elided ...
+    public void testExpectNegativeOffsetAbsoluteWriteOnFixedBytesThrowsBufferOverflowException() {
+        // ... 9 lines elided ...
+    public void testExpectNegativeOffsetAbsoluteWriteOnFixedBytesOfInsufficientCapacityThrowsBufferOverflowException() {
+        // ... 9 lines elided ...
+    public void testWriter()
+        // ... 32 lines elided ...
+    public void testParseUtf8High()
+        // ... 18 lines elided ...
+    public void testBigDecimalBinary()
+        // ... 12 lines elided ...
+    public void testBigDecimalText() {
+        // ... 12 lines elided ...
+    public void testWithLength() {
+        // ... 21 lines elided ...
+    public void testAppendBase() {
+        // ... 12 lines elided ...
+    public void testAppendBase16() {
+        // ... 10 lines elided ...
+    public void testMove() {
+        // ... 13 lines elided ...
+    public void testMove2() {
+        // ... 10 lines elided ...
+    public void testMoveForward() {
+        // ... 9 lines elided ...
+    public void testMoveBackward() {
+        // ... 9 lines elided ...
+    public void testMove2B() {
+        // ... 11 lines elided ...
+    public void testReadPosition() {
+        // ... 12 lines elided ...
+    public void testReadPositionTooSmall() {
+        // ... 12 lines elided ...
+    public void testReadLimit() {
+        // ... 12 lines elided ...
+    public void testReadLimitTooSmall() {
+        // ... 12 lines elided ...
+    public void uncheckedSkip() {
+        // ... 18 lines elided ...
+    public void readVolatile() {
+        // ... 17 lines elided ...
+    public void testHashCode() {
+        // ... 25 lines elided ...
+    public void testEnum() {
+        // ... 14 lines elided ...
+    public void testTimeMillis() {
+        // ... 11 lines elided ...
+    public void testDateTimeMillis() {
+        // ... 11 lines elided ...
+    public void testWriteOffset() {
+        // ... 20 lines elided ...
+    public void testToStringDoesNotChange() {
+        // ... 21 lines elided ...
+    public void to8BitString() {
+        // ... 12 lines elided ...
+    public void testParseDoubleReadLimit() {
+        // ... 13 lines elided ...
+    public void write8BitString() {
+        // ... 18 lines elided ...
+    public void write8BitNativeBytes() {
+        // ... 24 lines elided ...
+    public void write8BitHeapBytes() {
+        // ... 1 lines elided ...
+
+        @NotNull Bytes bytes = alloc1.elasticBytes(703);
+        Bytes nbytes = Bytes.allocateElasticOnHeap(36);
+        Bytes nbytes2 = Bytes.allocateElasticOnHeap(36);
+        StringBuilder sb = new StringBuilder();
+        try {
+            for (int i = 0; i <= 36; i++) {
+                nbytes.clear().append(sb);
+                bytes.write8bit(nbytes);
+                bytes.read8bit(nbytes2.clear());
+
+                assertEquals(sb.toString(), nbytes2.toString());
+                sb.append(Integer.toString(i, 36));
+            }
+        } finally {
+            bytes.releaseLast();
+            nbytes.releaseLast();
+            nbytes2.releaseLast();
+        }
+    }
+
+    @Test
+    public void write8BitCharSequence() {
+        assumeFalse(alloc1 == HEAP_EMBEDDED);
+
+        @NotNull Bytes bytes = alloc1.elasticBytes(703);
+        StringBuilder sb = new StringBuilder();
+        StringBuilder sb2 = new StringBuilder();
+        try {
+            for (int i = 0; i <= 36; i++) {
+                bytes.write8bit(sb);
+                bytes.read8bit(sb2);
+
+                assertEquals(sb.toString(), sb2.toString());
+                sb.append(Integer.toString(i, 36));
+            }
+        } finally {
+            bytes.releaseLast();
+        }
+    }
+
+    @Ignore("https://github.com/OpenHFT/Chronicle-Bytes/issues/185")
+    @Test
+    public void capacityVsWriteLimitInvariant() {
+        final Bytes<?> bytes = alloc1.elasticBytes(20);
+        assertEquals(bytes.capacity(), bytes.writeLimit());
+    }
+
+    @Ignore("https://github.com/OpenHFT/Chronicle-Bytes/issues/185")
+    @Test
+    public void isClear() {
+        final Bytes<?> bytes = alloc1.elasticBytes(20);
+        assertTrue(bytes.isClear());
+    }
+
+    @Test
+    public void stopBitChar() {
+        final Bytes bytes = alloc1.fixedBytes(64);
+        for (int i = Character.MIN_VALUE; i <= Character.MAX_VALUE; i++) {
+            bytes.clear();
+            char ch = (char) i;
+            bytes.writeStopBit(ch);
+            bytes.writeUnsignedByte(0x80);
+            char c2 = bytes.readStopBitChar();
+            assertEquals(ch, c2);
+            assertEquals(0x80, bytes.readUnsignedByte());
+        }
+        bytes.releaseLast();
+    }
+
+    @Test
+    public void stopBitLong() {
+        final Bytes bytes = alloc1.fixedBytes(64);
+        for (int i = 0; i <= 63; i++) {
+            long l = 1L << i;
+            stopBitLong0(bytes, l);
+            stopBitLong0(bytes, l - 1);
+            stopBitLong0(bytes, -l);
+            stopBitLong0(bytes, ~l);
+        }
+        bytes.releaseLast();
+    }
+
+    private void stopBitLong0(Bytes bytes, long l) {
+        bytes.clear();
+        bytes.writeStopBit(l);
+        bytes.writeUnsignedByte(0x80);
+        long l2 = bytes.readStopBit();
+        assertEquals(l, l2);
+        assertEquals(0x80, bytes.readUnsignedByte());
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -903,30 +903,16 @@
+                 assertEquals(sb.toString(), sb2.toString());
+                 sb.append(Integer.toString(i, 36));
+             }
+         } finally {
+             bytes.releaseLast();
+         }
+     }
+ 
+-    @Ignore("https://github.com/OpenHFT/Chronicle-Bytes/issues/185")
+-    @Test
+-    public void capacityVsWriteLimitInvariant() {
+-        final Bytes<?> bytes = alloc1.elasticBytes(20);
+-        assertEquals(bytes.capacity(), bytes.writeLimit());
+-    }
+-
+-    @Ignore("https://github.com/OpenHFT/Chronicle-Bytes/issues/185")
+-    @Test
+-    public void isClear() {
+-        final Bytes<?> bytes = alloc1.elasticBytes(20);
+-        assertTrue(bytes.isClear());
+-    }
+-
+     @Test
+     public void stopBitChar() {
+         final Bytes bytes = alloc1.fixedBytes(64);
+         for (int i = Character.MIN_VALUE; i <= Character.MAX_VALUE; i++) {
+             bytes.clear();
+             char ch = (char) i;
+             bytes.writeStopBit(ch);
+             bytes.writeUnsignedByte(0x80);
+@@ -954,9 +940,24 @@
+         bytes.clear();
+         bytes.writeStopBit(l);
+         bytes.writeUnsignedByte(0x80);
+         long l2 = bytes.readStopBit();
+         assertEquals(l, l2);
+         assertEquals(0x80, bytes.readUnsignedByte());
+     }
+ 
+-}
++
++    @Ignore("https://github.com/OpenHFT/Chronicle-Bytes/issues/185")
++    @Test
++    public void capacityVsWriteLimitInvariant() {
++        final Bytes<?> bytes = alloc1.elasticBytes(20);
++        assertEquals(bytes.capacity(), bytes.writeLimit());
++    }
++
++    @Ignore("https://github.com/OpenHFT/Chronicle-Bytes/issues/185")
++    @Test
++    public void isClear() {
++        final Bytes<?> bytes = alloc1.elasticBytes(20);
++        assertTrue(bytes.isClear());
++    }
++
++}
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

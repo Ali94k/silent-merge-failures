@@ -1,0 +1,1614 @@
+UNIT apache_commons-collections__15b62fb08d
+repo: apache_commons-collections   merge: 15b62fb08d34b9ba2c33cfbed228b181a0bc522e   stratum: B
+files shown: 3 of 3 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T3/cap12  (diffs at -U3; merged bodies omitted; hard-fit to the 30k budget: files capped at 12 largest merged-vs-dev diffs)
+
+=== FILE 1/3: src/main/java/org/apache/commons/collections4/IterableUtils.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -27,6 +27,7 @@
+ 
+ import org.apache.commons.collections4.functors.EqualPredicate;
+ import org.apache.commons.collections4.iterators.LazyIteratorChain;
++import org.apache.commons.collections4.iterators.PairedIterator.PairedItem;
+ import org.apache.commons.collections4.iterators.ReverseListIterator;
+ import org.apache.commons.collections4.iterators.UniqueFilterIterator;
+ 
+@@ -554,6 +555,38 @@
+         };
+     }
+ 
++    /**
++     * Provides iteration over the elements contained in a pair of Iterables in-tandem.
++     * <p>
++     * The returned iterable has an iterator that traverses the elements in {@code a}
++     * and {@code b} together until one of the iterables is traversed completely.
++     * </p>
++     *
++     * <p>
++     * The returned iterable's iterator does NOT support {@code remove()}.
++     * </p>
++     *
++     * @param <L> the left elements' type
++     * @param <R> the right elements' type
++     * @param left the iterable for the left side elements
++     * @param right the iterable for the right side elements
++     * @return an iterable, over the decorated iterables to traverse them together until one is
++     * exhausted
++     * @throws NullPointerException if any iterator is null
++     * @since 4.5
++     */
++    public static <L, R> Iterable<PairedItem<L, R>> pairedIterable(final Iterable<L> left, final Iterable<R> right) {
++        checkNotNull(left);
++        checkNotNull(right);
++
++        return new FluentIterable<PairedItem<L, R>>(){
++            @Override
++            public Iterator<PairedItem<L, R>> iterator() {
++                return IteratorUtils.pairedIterator(left.iterator(), right.iterator());
++            }
++        };
++    }
++
+     // Utility methods
+     // ----------------------------------------------------------------------
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -61,9 +61,6 @@
+         }
+     };
+ 
+-    // Empty
+-    // ----------------------------------------------------------------------
+-
+     /**
+      * Gets an empty iterable.
+      * <p>
+@@ -76,9 +73,6 @@
+     public static <E> Iterable<E> emptyIterable() {
+         return EMPTY_ITERABLE;
+     }
+-
+-    // Chained
+-    // ----------------------------------------------------------------------
+ 
+     /**
+      * Combines two iterables into a single iterable.
+@@ -185,9 +179,6 @@
+         };
+     }
+ 
+-    // Collated
+-    // ----------------------------------------------------------------------
+-
+     /**
+      * Combines the two provided iterables into an ordered iterable using
+      * natural ordering.
+@@ -240,9 +231,6 @@
+         };
+     }
+ 
+-    // Filtered
+-    // ----------------------------------------------------------------------
+-
+     /**
+      * Returns a view of the given iterable that only contains elements matching
+      * the provided predicate.
+@@ -268,9 +256,6 @@
+         };
+     }
+ 
+-    // Bounded
+-    // ----------------------------------------------------------------------
+-
+     /**
+      * Returns a view of the given iterable that contains at most the given number
+      * of elements.
+@@ -298,9 +283,6 @@
+             }
+         };
+     }
+-
+-    // Looping
+-    // ----------------------------------------------------------------------
+ 
+     /**
+      * Returns a view of the given iterable which will cycle infinitely over
+@@ -335,9 +317,6 @@
+         };
+     }
+ 
+-    // Reversed
+-    // ----------------------------------------------------------------------
+-
+     /**
+      * Returns a reversed view of the given iterable.
+      * <p>
+@@ -359,16 +338,13 @@
+         return new FluentIterable<E>() {
+             @Override
+             public Iterator<E> iterator() {
+-                final List<E> list = (iterable instanceof List<?>) ?
++                final List<E> list = iterable instanceof List<?> ?
+                         (List<E>) iterable :
+                         IteratorUtils.toList(iterable.iterator());
+                 return new ReverseListIterator<>(list);
+             }
+         };
+     }
+-
+-    // Skipping
+-    // ----------------------------------------------------------------------
+ 
+     /**
+      * Returns a view of the given iterable that skips the first N elements.
+@@ -396,9 +372,6 @@
+             }
+         };
+     }
+-
+-    // Transformed
+-    // ----------------------------------------------------------------------
+ 
+     /**
+      * Returns a transformed view of the given iterable where all of its elements
+@@ -426,9 +399,6 @@
+         };
+     }
+ 
+-    // Unique
+-    // ----------------------------------------------------------------------
+-
+     /**
+      * Returns a unique view of the given iterable.
+      * <p>
+@@ -450,9 +420,6 @@
+             }
+         };
+     }
+-
+-    // Unmodifiable
+-    // ----------------------------------------------------------------------
+ 
+     /**
+      * Returns an unmodifiable view of the given iterable.
+@@ -487,9 +454,6 @@
+             return IteratorUtils.unmodifiableIterator(unmodifiable.iterator());
+         }
+     }
+-
+-    // Zipping
+-    // ----------------------------------------------------------------------
+ 
+     /**
+      * Interleaves two iterables into a single iterable.
+@@ -553,9 +517,6 @@
+             }
+         };
+     }
+-
+-    // Utility methods
+-    // ----------------------------------------------------------------------
+ 
+     /**
+      * Returns an immutable empty iterable if the argument is null,
+@@ -1044,9 +1005,6 @@
+                                       transformer, delimiter, prefix, suffix);
+     }
+ 
+-    // Helper methods
+-    // ----------------------------------------------------------------------
+-
+     /**
+      * Fail-fast check for null arguments.
+      *
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -551,6 +551,8 @@
+         };
+     }
+ 
++    // Utility methods
++    // ----------------------------------------------------------------------
+     /**
+      * Returns an immutable empty iterable if the argument is null,
+      * or the argument itself otherwise.
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: src/main/java/org/apache/commons/collections4/IteratorUtils.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -16,55 +16,15 @@
+  */
+ package org.apache.commons.collections4;
+ 
++import org.apache.commons.collections4.functors.EqualPredicate;
++import org.apache.commons.collections4.iterators.*;
++import org.w3c.dom.Node;
++import org.w3c.dom.NodeList;
++
+ import java.lang.reflect.Array;
+ import java.lang.reflect.InvocationTargetException;
+ import java.lang.reflect.Method;
+-import java.util.ArrayList;
+-import java.util.Collection;
+-import java.util.Comparator;
+-import java.util.Dictionary;
+-import java.util.Enumeration;
+-import java.util.Iterator;
+-import java.util.List;
+-import java.util.ListIterator;
+-import java.util.Map;
+-import java.util.Objects;
+-
+-import org.apache.commons.collections4.functors.EqualPredicate;
+-import org.apache.commons.collections4.iterators.ArrayIterator;
+-import org.apache.commons.collections4.iterators.ArrayListIterator;
+-import org.apache.commons.collections4.iterators.BoundedIterator;
+-import org.apache.commons.collections4.iterators.CollatingIterator;
+-import org.apache.commons.collections4.iterators.EmptyIterator;
+-import org.apache.commons.collections4.iterators.EmptyListIterator;
+-import org.apache.commons.collections4.iterators.EmptyMapIterator;
+-import org.apache.commons.collections4.iterators.EmptyOrderedIterator;
+-import org.apache.commons.collections4.iterators.EmptyOrderedMapIterator;
+-import org.apache.commons.collections4.iterators.EnumerationIterator;
+-import org.apache.commons.collections4.iterators.FilterIterator;
+-import org.apache.commons.collections4.iterators.FilterListIterator;
+-import org.apache.commons.collections4.iterators.IteratorChain;
+-import org.apache.commons.collections4.iterators.IteratorEnumeration;
+-import org.apache.commons.collections4.iterators.IteratorIterable;
+-import org.apache.commons.collections4.iterators.ListIteratorWrapper;
+-import org.apache.commons.collections4.iterators.LoopingIterator;
+-import org.apache.commons.collections4.iterators.LoopingListIterator;
+-import org.apache.commons.collections4.iterators.NodeListIterator;
+-import org.apache.commons.collections4.iterators.ObjectArrayIterator;
+-import org.apache.commons.collections4.iterators.ObjectArrayListIterator;
+-import org.apache.commons.collections4.iterators.ObjectGraphIterator;
+-import org.apache.commons.collections4.iterators.PeekingIterator;
+-import org.apache.commons.collections4.iterators.PushbackIterator;
+-import org.apache.commons.collections4.iterators.SingletonIterator;
+-import org.apache.commons.collections4.iterators.SingletonListIterator;
+-import org.apache.commons.collections4.iterators.SkippingIterator;
+-import org.apache.commons.collections4.iterators.TransformIterator;
+-import org.apache.commons.collections4.iterators.UnmodifiableIterator;
+-import org.apache.commons.collections4.iterators.UnmodifiableListIterator;
+-import org.apache.commons.collections4.iterators.UnmodifiableMapIterator;
+-import org.apache.commons.collections4.iterators.ZippingIterator;
+-import org.w3c.dom.Node;
+-import org.w3c.dom.NodeList;
++import java.util.*;
+ 
+ /**
+  * Provides static utility methods and decorators for {@link Iterator}
+@@ -140,7 +100,7 @@
+      * @return a list iterator over nothing
+      */
+     public static <E> ResettableListIterator<E> emptyListIterator() {
+-        return EmptyListIterator.<E>resettableEmptyListIterator();
++        return EmptyListIterator.resettableEmptyListIterator();
+     }
+ 
+     /**
+@@ -153,7 +113,7 @@
+      * @return an ordered iterator over nothing
+      */
+     public static <E> OrderedIterator<E> emptyOrderedIterator() {
+-        return EmptyOrderedIterator.<E>emptyOrderedIterator();
++        return EmptyOrderedIterator.emptyOrderedIterator();
+     }
+ 
+     /**
+@@ -167,7 +127,7 @@
+      * @return a map iterator over nothing
+      */
+     public static <K, V> MapIterator<K, V> emptyMapIterator() {
+-        return EmptyMapIterator.<K, V>emptyMapIterator();
++        return EmptyMapIterator.emptyMapIterator();
+     }
+ 
+     /**
+@@ -181,7 +141,7 @@
+      * @return a map iterator over nothing
+      */
+     public static <K, V> OrderedMapIterator<K, V> emptyOrderedMapIterator() {
+-        return EmptyOrderedMapIterator.<K, V>emptyOrderedMapIterator();
++        return EmptyOrderedMapIterator.emptyOrderedMapIterator();
+     }
+ 
+     // Singleton
+@@ -907,6 +867,25 @@
+         return new ZippingIterator<>(iterators);
+     }
+ 
++    /**
++     * Gets an Iterator over the elements contained in a pair of Iterables in-tandem.
++     * <p>
++     * The returned iterator traverses the elements in {@code a} and {@code b} together until one of the iterators
++     * is exhausted.
++     * <p>
++     * The returned iterator does NOT support {@code remove()}.
++     *
++     * @param <L> the left elements' type
++     * @param <R> the right elements' type
++     * @param left the iterator for the left side elements
++     * @param right the iterator for the right side elements
++     * @return an iterator, to iterate over the decorated iterators together until one is exhausted
++     * @throws NullPointerException if any iterator is null
++     */
++    public static <L, R> PairedIterator<L, R> pairedIterator(final Iterator<L> left, Iterator<R> right) {
++        return PairedIterator.of(left, right);
++    }
++
+     // Views
+     //-----------------------------------------------------------------------
+     /**
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -17,7 +17,6 @@
+ package org.apache.commons.collections4;
+ 
+ import java.lang.reflect.Array;
+-import java.lang.reflect.InvocationTargetException;
+ import java.lang.reflect.Method;
+ import java.util.ArrayList;
+ import java.util.Collection;
+@@ -117,7 +116,6 @@
+     private IteratorUtils() {}
+ 
+     // Empty
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets an empty iterator.
+      * <p>
+@@ -185,7 +183,6 @@
+     }
+ 
+     // Singleton
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets a singleton iterator.
+      * <p>
+@@ -215,7 +212,6 @@
+     }
+ 
+     // Arrays
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets an iterator over an object array.
+      *
+@@ -313,7 +309,6 @@
+         return new ArrayIterator<>(array, start, end);
+     }
+ 
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets a list iterator over an object array.
+      *
+@@ -410,7 +405,6 @@
+     }
+ 
+     // Bounded
+-    //-----------------------------------------------------------------------
+     /**
+      * Decorates the specified iterator to return at most the given number
+      * of elements.
+@@ -450,7 +444,6 @@
+     }
+ 
+     // Unmodifiable
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets an immutable version of an {@link Iterator}. The returned object
+      * will always throw an {@link UnsupportedOperationException} for
+@@ -475,7 +468,7 @@
+      * @return an immutable version of the iterator
+      */
+     public static <E> ListIterator<E> unmodifiableListIterator(final ListIterator<E> listIterator) {
+-        return UnmodifiableListIterator.umodifiableListIterator(listIterator);
++        return UnmodifiableListIterator.unmodifiableListIterator(listIterator);
+     }
+ 
+     /**
+@@ -493,7 +486,6 @@
+     }
+ 
+     // Chained
+-    //-----------------------------------------------------------------------
+ 
+     /**
+      * Gets an iterator that iterates through two {@link Iterator}s
+@@ -540,7 +532,6 @@
+     }
+ 
+     // Collated
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets an iterator that provides an ordered iteration over the elements
+      * contained in a collection of ordered {@link Iterator}s.
+@@ -617,7 +608,6 @@
+     }
+ 
+     // Object Graph
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets an iterator that operates over an object graph.
+      * <p>
+@@ -678,7 +668,6 @@
+     }
+ 
+     // Transformed
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets an iterator that transforms the elements of another iterator.
+      * <p>
+@@ -701,7 +690,6 @@
+     }
+ 
+     // Filtered
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets an iterator that filters another iterator.
+      * <p>
+@@ -742,7 +730,6 @@
+     }
+ 
+     // Looping
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets an iterator that loops continuously over the supplied collection.
+      * <p>
+@@ -776,7 +763,6 @@
+     }
+ 
+     // org.w3c.dom.NodeList iterators
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets an {@link Iterator} that wraps the specified {@link NodeList}.
+      * The returned {@link Iterator} can be used for a single iteration.
+@@ -812,7 +798,6 @@
+     }
+ 
+     // Peeking
+-    //-----------------------------------------------------------------------
+ 
+     /**
+      * Gets an iterator that supports one-element lookahead.
+@@ -828,7 +813,6 @@
+     }
+ 
+     // Pushback
+-    //-----------------------------------------------------------------------
+ 
+     /**
+      * Gets an iterator that supports pushback of elements.
+@@ -844,7 +828,6 @@
+     }
+ 
+     // Skipping
+-    //-----------------------------------------------------------------------
+     /**
+      * Decorates the specified iterator to skip the first N elements.
+      *
+@@ -861,7 +844,6 @@
+     }
+ 
+     // Zipping
+-    //-----------------------------------------------------------------------
+     /**
+      * Returns an iterator that interleaves elements from the decorated iterators.
+      *
+@@ -908,7 +890,6 @@
+     }
+ 
+     // Views
+-    //-----------------------------------------------------------------------
+     /**
+      * Gets an iterator that provides an iterator view of the given enumeration.
+      *
+@@ -1131,15 +1112,13 @@
+                     return it;
+                 }
+             }
+-        } catch (final RuntimeException | NoSuchMethodException | IllegalAccessException |
+-            InvocationTargetException e) { // NOPMD
++        } catch (final RuntimeException | ReflectiveOperationException ignore) { // NOPMD
+             // ignore
+         }
+         return singletonIterator(obj);
+     }
+ 
+     // Utility methods
+-    //-----------------------------------------------------------------------
+ 
+     /**
+      * Applies the closure to each element of the provided iterator.
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: src/test/java/org/apache/commons/collections4/IteratorUtilsTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -1421,4 +1421,12 @@
+         assertTrue(IteratorUtils.zippingIterator(ie, ie, ie) instanceof ZippingIterator, "create instance fail");
+         assertTrue(IteratorUtils.zippingIterator(ie, ie) instanceof ZippingIterator, "create instance fail");
+     }
++
++    @Test
++    public void testPairedIterator() {
++        final ArrayList<String> stringList = new ArrayList<>();
++        final ArrayList<Integer> integerList = new ArrayList<>();
++
++        assertTrue(IteratorUtils.pairedIterator(stringList.iterator(), integerList.iterator()) instanceof PairedIterator, "create instance failed");
++    }
+ }
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -21,32 +21,41 @@
+ import static org.easymock.EasyMock.createMock;
+ import static org.easymock.EasyMock.expect;
+ import static org.easymock.EasyMock.replay;
++import static org.junit.jupiter.api.Assertions.assertAll;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ import static org.junit.jupiter.api.Assertions.assertFalse;
+ import static org.junit.jupiter.api.Assertions.assertNull;
+ import static org.junit.jupiter.api.Assertions.assertSame;
++import static org.junit.jupiter.api.Assertions.assertThrows;
+ import static org.junit.jupiter.api.Assertions.assertTrue;
+-import static org.junit.jupiter.api.Assertions.fail;
+-import static org.junit.jupiter.api.Assertions.assertThrows;
+ 
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.Comparator;
++import java.util.Dictionary;
++import java.util.Enumeration;
+ import java.util.HashMap;
+ import java.util.Iterator;
++import java.util.LinkedHashSet;
+ import java.util.List;
+ import java.util.ListIterator;
+ import java.util.Map;
+ import java.util.NoSuchElementException;
++import java.util.Set;
+ import java.util.Vector;
+-import java.util.Dictionary;
+-import java.util.Enumeration;
+-import java.util.Set;
+-import java.util.LinkedHashSet;
+-
+-import org.apache.commons.collections4.iterators.*;
++
++import org.apache.commons.collections4.iterators.ArrayIterator;
++import org.apache.commons.collections4.iterators.EmptyIterator;
++import org.apache.commons.collections4.iterators.EmptyListIterator;
++import org.apache.commons.collections4.iterators.EmptyMapIterator;
++import org.apache.commons.collections4.iterators.EmptyOrderedIterator;
++import org.apache.commons.collections4.iterators.EmptyOrderedMapIterator;
++import org.apache.commons.collections4.iterators.EnumerationIterator;
++import org.apache.commons.collections4.iterators.NodeListIterator;
++import org.apache.commons.collections4.iterators.ObjectArrayIterator;
++import org.apache.commons.collections4.iterators.ZippingIterator;
+ import org.apache.commons.collections4.map.EntrySetToMapIteratorAdapter;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+@@ -162,65 +171,36 @@
+         assertEquals("b", iterator.next());
+         iterator.reset();
+         assertEquals("a", iterator.next());
+-
+-        try {
+-            iterator = IteratorUtils.arrayIterator(Integer.valueOf(0));
+-            fail("Expecting IllegalArgumentException");
+-        } catch (final IllegalArgumentException ex) {
+-            // expected
+-        }
+-
+-        try {
+-            iterator = IteratorUtils.arrayIterator((Object[]) null);
+-            fail("Expecting NullPointerException");
+-        } catch (final NullPointerException ex) {
+-            // expected
+-        }
++        assertAll(
++                () -> assertThrows(IllegalArgumentException.class, () -> IteratorUtils.arrayIterator(Integer.valueOf(0)),
++                        "Expecting NullPointerException"),
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.arrayIterator((Object[]) null),
++                        "Expecting NullPointerException")
++        );
+ 
+         iterator = IteratorUtils.arrayIterator(objArray, 1);
+         assertEquals("b", iterator.next());
+ 
+-        try {
+-            iterator = IteratorUtils.arrayIterator(objArray, -1);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
++        assertThrows(ArrayIndexOutOfBoundsException.class, () -> IteratorUtils.arrayIterator(objArray, -1),
++                "Expecting IndexOutOfBoundsException");
+ 
+         iterator = IteratorUtils.arrayIterator(objArray, 3);
+         assertFalse(iterator.hasNext());
+         iterator.reset();
+ 
+-        try {
+-            iterator = IteratorUtils.arrayIterator(objArray, 4);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
++        assertThrows(ArrayIndexOutOfBoundsException.class, () -> IteratorUtils.arrayIterator(objArray, 4),
++                "Expecting IndexOutOfBoundsException");
+ 
+         iterator = IteratorUtils.arrayIterator(objArray, 2, 3);
+         assertEquals("c", iterator.next());
+-
+-        try {
+-            iterator = IteratorUtils.arrayIterator(objArray, 2, 4);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
+-
+-        try {
+-            iterator = IteratorUtils.arrayIterator(objArray, -1, 1);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
+-
+-        try {
+-            iterator = IteratorUtils.arrayIterator(objArray, 2, 1);
+-            fail("Expecting IllegalArgumentException");
+-        } catch (final IllegalArgumentException ex) {
+-            // expected
+-        }
++        assertAll(
++                () -> assertThrows(ArrayIndexOutOfBoundsException.class, () -> IteratorUtils.arrayIterator(objArray, 2, 4),
++                        "Expecting IndexOutOfBoundsException"),
++                () -> assertThrows(ArrayIndexOutOfBoundsException.class, () -> IteratorUtils.arrayIterator(objArray, -1, 1),
++                        "Expecting IndexOutOfBoundsException"),
++                () -> assertThrows(IllegalArgumentException.class, () -> IteratorUtils.arrayIterator(objArray, 2, 1),
++                        "Expecting IllegalArgumentException")
++        );
+ 
+         final int[] intArray = { 0, 1, 2 };
+         iterator = IteratorUtils.arrayIterator(intArray);
+@@ -232,47 +212,26 @@
+         iterator = IteratorUtils.arrayIterator(intArray, 1);
+         assertEquals(1, iterator.next());
+ 
+-        try {
+-            iterator = IteratorUtils.arrayIterator(intArray, -1);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
++        assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayIterator(intArray, -1),
++                "Expecting IndexOutOfBoundsException");
+ 
+         iterator = IteratorUtils.arrayIterator(intArray, 3);
+         assertFalse(iterator.hasNext());
+         iterator.reset();
+ 
+-        try {
+-            iterator = IteratorUtils.arrayIterator(intArray, 4);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
++        assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayIterator(intArray, 4),
++                "Expecting IndexOutOfBoundsException");
+ 
+         iterator = IteratorUtils.arrayIterator(intArray, 2, 3);
+         assertEquals(2, iterator.next());
+-
+-        try {
+-            iterator = IteratorUtils.arrayIterator(intArray, 2, 4);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
+-
+-        try {
+-            iterator = IteratorUtils.arrayIterator(intArray, -1, 1);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
+-
+-        try {
+-            iterator = IteratorUtils.arrayIterator(intArray, 2, 1);
+-            fail("Expecting IllegalArgumentException");
+-        } catch (final IllegalArgumentException ex) {
+-            // expected
+-        }
++        assertAll(
++                () -> assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayIterator(intArray, 2, 4),
++                        "Expecting IndexOutOfBoundsException"),
++                () -> assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayIterator(intArray, -1, 1),
++                        "Expecting IndexOutOfBoundsException"),
++                () -> assertThrows(IllegalArgumentException.class, () -> IteratorUtils.arrayIterator(intArray, 2, 1),
++                        "Expecting IllegalArgumentException")
++        );
+     }
+ 
+     @Test
+@@ -292,20 +251,12 @@
+         assertEquals("d", iterator.next());
+         assertEquals(4, iterator.nextIndex()); // size of list
+         assertEquals(3, iterator.previousIndex());
+-
+-        try {
+-            iterator = IteratorUtils.arrayListIterator(Integer.valueOf(0));
+-            fail("Expecting IllegalArgumentException");
+-        } catch (final IllegalArgumentException ex) {
+-            // expected
+-        }
+-
+-        try {
+-            iterator = IteratorUtils.arrayListIterator((Object[]) null);
+-            fail("Expecting NullPointerException");
+-        } catch (final NullPointerException ex) {
+-            // expected
+-        }
++        assertAll(
++                () -> assertThrows(IllegalArgumentException.class, () -> IteratorUtils.arrayListIterator(Integer.valueOf(0)),
++                        "Expecting IllegalArgumentException"),
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.arrayListIterator((Object[]) null),
++                        "Expecting NullPointerException")
++        );
+ 
+         iterator = IteratorUtils.arrayListIterator(objArray, 1);
+         assertEquals(-1, iterator.previousIndex());
+@@ -313,53 +264,30 @@
+         assertEquals(0, iterator.nextIndex());
+         assertEquals("b", iterator.next());
+         assertEquals(0, iterator.previousIndex());
+-
+-        try {
+-            iterator = IteratorUtils.arrayListIterator(objArray, -1);
+-            fail("Expecting IndexOutOfBoundsException.");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
++        assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayListIterator(objArray, -1),
++                "Expecting IndexOutOfBoundsException.");
+ 
+         iterator = IteratorUtils.arrayListIterator(objArray, 3);
+         assertTrue(iterator.hasNext());
+-        try {
+-            iterator.previous();
+-            fail("Expecting NoSuchElementException.");
+-        } catch (final NoSuchElementException ex) {
+-            // expected
+-        }
+-
+-        try {
+-            iterator = IteratorUtils.arrayListIterator(objArray, 5);
+-            fail("Expecting IndexOutOfBoundsException.");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
++
++        final ResettableListIterator<Object> finalIterator = iterator;
++        assertAll(
++                () -> assertThrows(NoSuchElementException.class, () -> finalIterator.previous(),
++                        "Expecting NoSuchElementException."),
++                () -> assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayListIterator(objArray, 5),
++                        "Expecting IndexOutOfBoundsException.")
++        );
+ 
+         iterator = IteratorUtils.arrayListIterator(objArray, 2, 3);
+         assertEquals("c", iterator.next());
+-
+-        try {
+-            iterator = IteratorUtils.arrayListIterator(objArray, 2, 5);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
+-
+-        try {
+-            iterator = IteratorUtils.arrayListIterator(objArray, -1, 1);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
+-
+-        try {
+-            iterator = IteratorUtils.arrayListIterator(objArray, 2, 1);
+-            fail("Expecting IllegalArgumentException");
+-        } catch (final IllegalArgumentException ex) {
+-            // expected
+-        }
++        assertAll(
++                () -> assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayListIterator(objArray, 2, 5),
++                        "Expecting IndexOutOfBoundsException"),
++                () -> assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayListIterator(objArray, -1, 1),
++                        "Expecting IndexOutOfBoundsException"),
++                () -> assertThrows(IllegalArgumentException.class, () -> IteratorUtils.arrayListIterator(objArray, 2, 1),
++                        "Expecting IllegalArgumentException")
++        );
+ 
+         final int[] intArray = { 0, 1, 2 };
+         iterator = IteratorUtils.arrayListIterator(intArray);
+@@ -391,22 +319,14 @@
+         assertEquals(0, iterator.previousIndex());
+         assertEquals(1, iterator.nextIndex());
+ 
+-        try {
+-            iterator = IteratorUtils.arrayListIterator(intArray, -1);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
++        assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayListIterator(intArray, -1),
++                "Expecting IndexOutOfBoundsException");
+ 
+         iterator = IteratorUtils.arrayListIterator(intArray, 3);
+         assertFalse(iterator.hasNext());
+ 
+-        try {
+-            iterator = IteratorUtils.arrayListIterator(intArray, 4);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
++        assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayListIterator(intArray, 4),
++                "Expecting IndexOutOfBoundsException");
+ 
+         iterator = IteratorUtils.arrayListIterator(intArray, 2, 3);
+         assertFalse(iterator.hasPrevious());
+@@ -414,27 +334,14 @@
+         assertEquals(2, iterator.next());
+         assertTrue(iterator.hasPrevious());
+         assertFalse(iterator.hasNext());
+-
+-        try {
+-            iterator = IteratorUtils.arrayListIterator(intArray, 2, 4);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
+-
+-        try {
+-            iterator = IteratorUtils.arrayListIterator(intArray, -1, 1);
+-            fail("Expecting IndexOutOfBoundsException");
+-        } catch (final IndexOutOfBoundsException ex) {
+-            // expected
+-        }
+-
+-        try {
+-            iterator = IteratorUtils.arrayListIterator(intArray, 2, 1);
+-            fail("Expecting IllegalArgumentException");
+-        } catch (final IllegalArgumentException ex) {
+-            // expected
+-        }
++        assertAll(
++                () -> assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayListIterator(intArray, 2, 4),
++                        "Expecting IndexOutOfBoundsException"),
++                () -> assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.arrayListIterator(intArray, -1, 1),
++                        "Expecting IndexOutOfBoundsException"),
++                () -> assertThrows(IllegalArgumentException.class, () -> IteratorUtils.arrayListIterator(intArray, 2, 1),
++                        "Expecting IllegalArgumentException")
++        );
+     }
+ 
+     @Test
+@@ -465,12 +372,8 @@
+ 
+     @Test
+     public void testAsIterableNull() {
+-        try {
+-            IteratorUtils.asIterable(null);
+-            fail("Expecting NullPointerException");
+-        } catch (final NullPointerException ex) {
+-            // success
+-        }
++        assertThrows(NullPointerException.class, () -> IteratorUtils.asIterable(null),
++                "Expecting NullPointerException");
+     }
+ 
+     @Test
+@@ -492,16 +395,10 @@
+         vector.addElement("one");
+         final Enumeration<String> en = vector.elements();
+         assertTrue(IteratorUtils.asIterator(en, coll) instanceof Iterator, "create instance fail");
+-        try {
+-            IteratorUtils.asIterator(null, coll);
+-        } catch (final NullPointerException npe) {
+-            //
+-        }
+-        try {
+-            IteratorUtils.asIterator(en, null);
+-        } catch (final NullPointerException npe) {
+-            //
+-        }
++        assertAll(
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.asIterator(null, coll)),
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.asIterator(en, null))
++        );
+     }
+ 
+     @Test
+@@ -533,12 +430,8 @@
+ 
+     @Test
+     public void testAsMultipleIterableNull() {
+-        try {
+-            IteratorUtils.asMultipleUseIterable(null);
+-            fail("Expecting NullPointerException");
+-        } catch (final NullPointerException ex) {
+-            // success
+-        }
++        assertThrows(NullPointerException.class, () -> IteratorUtils.asMultipleUseIterable(null),
++                "Expecting NullPointerException");
+     }
+ 
+     @Test
+@@ -548,7 +441,6 @@
+         assertTrue(IteratorUtils.chainedIterator(ie) instanceof Iterator, "create instance fail");
+         final Collection<Iterator<?>> coll = new ArrayList();
+         assertTrue(IteratorUtils.chainedIterator(coll) instanceof Iterator, "create instance fail");
+-
+     }
+ 
+     /**
+@@ -556,19 +448,12 @@
+      */
+     @Test
+     public void testCollatedIterator() {
+-        try {
+-            IteratorUtils.collatedIterator(null, collectionOdd.iterator(), null);
+-            fail("expecting NullPointerException");
+-        } catch (final NullPointerException npe) {
+-            // expected
+-        }
+-
+-        try {
+-            IteratorUtils.collatedIterator(null, null, collectionEven.iterator());
+-            fail("expecting NullPointerException");
+-        } catch (final NullPointerException npe) {
+-            // expected
+-        }
++        assertAll(
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.collatedIterator(null, collectionOdd.iterator(), null),
++                        "expecting NullPointerException"),
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.collatedIterator(null, null, collectionEven.iterator()),
++                        "expecting NullPointerException")
++        );
+ 
+         // natural ordering
+         Iterator<Integer> it = IteratorUtils.collatedIterator(null, collectionOdd.iterator(),
+@@ -579,7 +464,7 @@
+ 
+         final List<Integer> combinedList = new ArrayList<>(collectionOdd);
+         combinedList.addAll(collectionEven);
+-        Collections.sort(combinedList);
++        combinedList.sort(null);
+ 
+         assertEquals(combinedList, result);
+ 
+@@ -635,7 +520,6 @@
+         assertThrows(NullPointerException.class, () -> IteratorUtils.collatedIterator(null, arrayList.iterator(), arrayList.listIterator(), null));
+     }
+ 
+-    // -----------------------------------------------------------------------
+     /**
+      * Test empty iterator
+      */
+@@ -652,19 +536,12 @@
+         IteratorUtils.EMPTY_ITERATOR.reset();
+         assertSame(IteratorUtils.EMPTY_ITERATOR, IteratorUtils.EMPTY_ITERATOR);
+         assertSame(IteratorUtils.EMPTY_ITERATOR, IteratorUtils.emptyIterator());
+-        try {
+-            IteratorUtils.EMPTY_ITERATOR.next();
+-            fail();
+-        } catch (final NoSuchElementException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_ITERATOR.remove();
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
+-    }
+-
+-    // -----------------------------------------------------------------------
++        assertAll(
++                () -> assertThrows(NoSuchElementException.class, () -> IteratorUtils.EMPTY_ITERATOR.next()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.EMPTY_ITERATOR.remove())
++        );
++    }
++
+     /**
+      * Test empty list iterator
+      */
+@@ -683,34 +560,15 @@
+         IteratorUtils.EMPTY_LIST_ITERATOR.reset();
+         assertSame(IteratorUtils.EMPTY_LIST_ITERATOR, IteratorUtils.EMPTY_LIST_ITERATOR);
+         assertSame(IteratorUtils.EMPTY_LIST_ITERATOR, IteratorUtils.emptyListIterator());
+-        try {
+-            IteratorUtils.EMPTY_LIST_ITERATOR.next();
+-            fail();
+-        } catch (final NoSuchElementException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_LIST_ITERATOR.previous();
+-            fail();
+-        } catch (final NoSuchElementException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_LIST_ITERATOR.remove();
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
+-        try {
+-            IteratorUtils.emptyListIterator().set(null);
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
+-        try {
+-            IteratorUtils.emptyListIterator().add(null);
+-            fail();
+-        } catch (final UnsupportedOperationException ex) {
+-        }
+-    }
+-
+-    // -----------------------------------------------------------------------
++        assertAll(
++                () -> assertThrows(NoSuchElementException.class, () -> IteratorUtils.EMPTY_LIST_ITERATOR.next()),
++                () -> assertThrows(NoSuchElementException.class, () -> IteratorUtils.EMPTY_LIST_ITERATOR.previous()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.EMPTY_LIST_ITERATOR.remove()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.emptyListIterator().set(null)),
++                () -> assertThrows(UnsupportedOperationException.class, () -> IteratorUtils.emptyListIterator().add(null))
++        );
++    }
++
+     /**
+      * Test empty map iterator
+      */
+@@ -728,34 +586,15 @@
+         ((ResettableIterator<Object>) IteratorUtils.EMPTY_MAP_ITERATOR).reset();
+         assertSame(IteratorUtils.EMPTY_MAP_ITERATOR, IteratorUtils.EMPTY_MAP_ITERATOR);
+         assertSame(IteratorUtils.EMPTY_MAP_ITERATOR, IteratorUtils.emptyMapIterator());
+-        try {
+-            IteratorUtils.EMPTY_MAP_ITERATOR.next();
+-            fail();
+-        } catch (final NoSuchElementException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_MAP_ITERATOR.remove();
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_MAP_ITERATOR.getKey();
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_MAP_ITERATOR.getValue();
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_MAP_ITERATOR.setValue(null);
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
+-    }
+-
+-    // -----------------------------------------------------------------------
++        assertAll(
++                () -> assertThrows(NoSuchElementException.class, () -> IteratorUtils.EMPTY_MAP_ITERATOR.next()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.EMPTY_MAP_ITERATOR.remove()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.EMPTY_MAP_ITERATOR.getKey()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.EMPTY_MAP_ITERATOR.getValue()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.EMPTY_MAP_ITERATOR.setValue(null))
++        );
++    }
++
+     /**
+      * Test empty map iterator
+      */
+@@ -773,24 +612,13 @@
+         ((ResettableIterator<Object>) IteratorUtils.EMPTY_ORDERED_ITERATOR).reset();
+         assertSame(IteratorUtils.EMPTY_ORDERED_ITERATOR, IteratorUtils.EMPTY_ORDERED_ITERATOR);
+         assertSame(IteratorUtils.EMPTY_ORDERED_ITERATOR, IteratorUtils.emptyOrderedIterator());
+-        try {
+-            IteratorUtils.EMPTY_ORDERED_ITERATOR.next();
+-            fail();
+-        } catch (final NoSuchElementException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_ORDERED_ITERATOR.previous();
+-            fail();
+-        } catch (final NoSuchElementException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_ORDERED_ITERATOR.remove();
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
+-    }
+-
+-    // -----------------------------------------------------------------------
++        assertAll(
++                () -> assertThrows(NoSuchElementException.class, () -> IteratorUtils.EMPTY_ORDERED_ITERATOR.next()),
++                () -> assertThrows(NoSuchElementException.class, () -> IteratorUtils.EMPTY_ORDERED_ITERATOR.previous()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.EMPTY_ORDERED_ITERATOR.remove())
++        );
++    }
++
+     /**
+      * Test empty map iterator
+      */
+@@ -808,52 +636,24 @@
+         ((ResettableIterator<Object>) IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR).reset();
+         assertSame(IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR, IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR);
+         assertSame(IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR, IteratorUtils.emptyOrderedMapIterator());
+-        try {
+-            IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.next();
+-            fail();
+-        } catch (final NoSuchElementException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.previous();
+-            fail();
+-        } catch (final NoSuchElementException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.remove();
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.getKey();
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.getValue();
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
+-        try {
+-            IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.setValue(null);
+-            fail();
+-        } catch (final IllegalStateException ex) {
+-        }
++        assertAll(
++                () -> assertThrows(NoSuchElementException.class, () -> IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.next()),
++                () -> assertThrows(NoSuchElementException.class, () -> IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.previous()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.remove()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.getKey()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.getValue()),
++                () -> assertThrows(IllegalStateException.class, () -> IteratorUtils.EMPTY_ORDERED_MAP_ITERATOR.setValue(null))
++        );
+     }
+ 
+     @Test
+     public void testFilteredIterator() {
+         final ArrayList arrayList = new ArrayList();
+         final Iterator ie = arrayList.iterator();
+-        try {
+-            IteratorUtils.filteredIterator(ie, null);
+-        } catch (final NullPointerException npe) {
+-            //
+-        }
+-        try {
+-            IteratorUtils.filteredIterator(null, null);
+-        } catch (final NullPointerException npe) {
+-            //
+-        }
++        assertAll(
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.filteredIterator(ie, null)),
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.filteredIterator(null, null))
++        );
+     }
+ 
+     @Test
+@@ -863,16 +663,10 @@
+         final Predicate predicate = INSTANCE;
+         assertTrue(IteratorUtils.filteredListIterator(arrayList.listIterator(), predicate) instanceof ListIterator,
+                 "create instance fail");
+-        try {
+-            IteratorUtils.filteredListIterator(null, predicate);
+-        } catch (final NullPointerException npe) {
+-            //
+-        }
+-        try {
+-            IteratorUtils.filteredListIterator(arrayList.listIterator(), null);
+-        } catch (final NullPointerException npe) {
+-            //
+-        }
++        assertAll(
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.filteredListIterator(null, predicate)),
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.filteredListIterator(arrayList.listIterator(), null))
++        );
+     }
+ 
+     @Test
+@@ -884,12 +678,9 @@
+         test = IteratorUtils.find(iterableA.iterator(), testPredicate);
+         assertNull(test);
+         assertNull(IteratorUtils.find(null, testPredicate));
+-        try {
+-            assertNull(IteratorUtils.find(iterableA.iterator(), null));
+-            fail("expecting NullPointerException");
+-        } catch (final NullPointerException npe) {
+-            // expected
+-        }
++
++        assertThrows(NullPointerException.class, () -> IteratorUtils.find(iterableA.iterator(), null),
++                "expecting NullPointerException");
+     }
+ 
+     @Test
+@@ -899,7 +690,6 @@
+         assertEquals(1, (int) IteratorUtils.first(iterator));
+     }
+ 
+-    // -----------------------------------------------------------------------
+     @Test
+     public void testForEach() {
+         final List<Integer> listA = new ArrayList<>();
+@@ -914,12 +704,9 @@
+         col.add(listB);
+         IteratorUtils.forEach(col.iterator(), testClosure);
+         assertTrue(listA.isEmpty() && listB.isEmpty());
+-        try {
+-            IteratorUtils.forEach(col.iterator(), null);
+-            fail("expecting NullPointerException");
+-        } catch (final NullPointerException npe) {
+-            // expected
+-        }
++
++        assertThrows(NullPointerException.class, () -> IteratorUtils.forEach(col.iterator(), null),
++                "expecting NullPointerException");
+ 
+         IteratorUtils.forEach(null, testClosure);
+ 
+@@ -944,12 +731,8 @@
+         assertTrue(listA.isEmpty() && !listB.isEmpty());
+         assertSame(listB, last);
+ 
+-        try {
+-            IteratorUtils.forEachButLast(col.iterator(), null);
+-            fail("expecting NullPointerException");
+-        } catch (final NullPointerException npe) {
+-            // expected
+-        }
++        assertThrows(NullPointerException.class, () -> IteratorUtils.forEachButLast(col.iterator(), null),
++                "expecting NullPointerException");
+ 
+         IteratorUtils.forEachButLast(null, testClosure);
+ 
+@@ -969,12 +752,10 @@
+         assertEquals(2, (int) IteratorUtils.get(iterator, 1));
+ 
+         // Iterator, non-existent entry
+-        try {
+-            IteratorUtils.get(iterator, 10);
+-            fail("Expecting IndexOutOfBoundsException.");
+-        } catch (final IndexOutOfBoundsException e) {
+-            // expected
+-        }
++        final Iterator<Integer> finalIterator = iterator;
++        assertThrows(IndexOutOfBoundsException.class, () -> IteratorUtils.get(finalIterator, 10),
++                "Expecting IndexOutOfBoundsException.");
++
+         assertFalse(iterator.hasNext());
+     }
+ 
+@@ -1013,12 +794,9 @@
+         index = IteratorUtils.indexOf(iterableA.iterator(), testPredicate);
+         assertEquals(-1, index);
+         assertEquals(-1, IteratorUtils.indexOf(null, testPredicate));
+-        try {
+-            IteratorUtils.indexOf(iterableA.iterator(), null);
+-            fail("expecting NullPointerException");
+-        } catch (final NullPointerException npe) {
+-            // expected
+-        }
++
++        assertThrows(NullPointerException.class, () -> IteratorUtils.indexOf(iterableA.iterator(), null),
++                "expecting NullPointerException");
+     }
+ 
+     @Test
+@@ -1065,12 +843,8 @@
+         // single use iterator
+         assertFalse(IteratorUtils.asIterable(iterator).iterator().hasNext(), "should not be able to iterate twice");
+ 
+-        try {
+-            IteratorUtils.nodeListIterator((Node) null);
+-            fail("Expecting NullPointerException");
+-        } catch (final NullPointerException ex) {
+-            // success
+-        }
++        assertThrows(NullPointerException.class, () -> IteratorUtils.nodeListIterator((Node) null),
++                "Expecting NullPointerException");
+     }
+ 
+     /**
+@@ -1094,12 +868,8 @@
+         // single use iterator
+         assertFalse(IteratorUtils.asIterable(iterator).iterator().hasNext(), "should not be able to iterate twice");
+ 
+-        try {
+-            IteratorUtils.nodeListIterator((NodeList) null);
+-            fail("Expecting NullPointerException");
+-        } catch (final NullPointerException ex) {
+-            // success
+-        }
++        assertThrows(NullPointerException.class, () -> IteratorUtils.nodeListIterator((NodeList) null),
++                "Expecting NullPointerException");
+     }
+ 
+     @Test
+@@ -1113,7 +883,6 @@
+         final Iterator ie = arrayList.iterator();
+         assertTrue(IteratorUtils.peekingIterator(ie) instanceof Iterator, "create instance fail");
+         assertThrows(NullPointerException.class, () -> IteratorUtils.peekingIterator(null));
+-
+     }
+ 
+     @Test
+@@ -1143,12 +912,8 @@
+         final Object[] result = IteratorUtils.toArray(list.iterator());
+         assertEquals(list, Arrays.asList(result));
+ 
+-        try {
+-            IteratorUtils.toArray(null);
+-            fail("Expecting NullPointerException");
+-        } catch (final NullPointerException ex) {
+-            // success
+-        }
++        assertThrows(NullPointerException.class, () -> IteratorUtils.toArray(null),
++                "Expecting NullPointerException");
+     }
+ 
+     @Test
+@@ -1159,20 +924,12 @@
+         list.add(null);
+         final String[] result = IteratorUtils.toArray(list.iterator(), String.class);
+         assertEquals(list, Arrays.asList(result));
+-
+-        try {
+-            IteratorUtils.toArray(list.iterator(), null);
+-            fail("Expecting NullPointerException");
+-        } catch (final NullPointerException ex) {
+-            // success
+-        }
+-
+-        try {
+-            IteratorUtils.toArray(null, String.class);
+-            fail("Expecting NullPointerException");
+-        } catch (final NullPointerException ex) {
+-            // success
+-        }
++        assertAll(
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.toArray(list.iterator(), null),
++                        "Expecting NullPointerException"),
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.toArray(null, String.class),
++                        "Expecting NullPointerException")
++        );
+     }
+ 
+     @Test
+@@ -1184,20 +941,12 @@
+         final List<Object> result = IteratorUtils.toList(list.iterator());
+         assertEquals(list, result);
+         // add
+-        try {
+-            IteratorUtils.toList(null, 10);
+-            fail("Expecting NullPointerException");
+-        } catch (final NullPointerException ex) {
+-            // success
+-        }
+-
+-        try {
+-            IteratorUtils.toList(list.iterator(), -1);
+-            fail("Expecting IllegalArgumentException");
+-        } catch (final IllegalArgumentException ex) {
+-            // success
+-        }
+-
++        assertAll(
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.toList(null, 10),
++                        "Expecting NullPointerException"),
++                () -> assertThrows(IllegalArgumentException.class, () -> IteratorUtils.toList(list.iterator(), -1),
++                        "Expecting IllegalArgumentException")
++        );
+     }
+ 
+     @Test
+@@ -1218,28 +967,18 @@
+ 
+     @Test
+     public void testToListIteratorNull() {
+-        try {
+-            IteratorUtils.toListIterator(null);
+-            fail("Expecting NullPointerException");
+-        } catch (final NullPointerException ex) {
+-            // success
+-        }
++        assertThrows(NullPointerException.class, () -> IteratorUtils.toListIterator(null),
++                "Expecting NullPointerException");
+     }
+ 
+     @Test
+     public void testTransformedIterator() {
+         final ArrayList arrayList = new ArrayList();
+         final Iterator ie = arrayList.iterator();
+-        try {
+-            IteratorUtils.transformedIterator(ie, null);
+-        } catch (final NullPointerException npe) {
+-            //
+-        }
+-        try {
+-            IteratorUtils.transformedIterator(null, null);
+-        } catch (final NullPointerException npe) {
+-            //
+-        }
++        assertAll(
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.transformedIterator(ie, null)),
++                () -> assertThrows(NullPointerException.class, () -> IteratorUtils.transformedIterator(null, null))
++        );
+     }
+ 
+     /**
+@@ -1249,27 +988,15 @@
+     public void testUnmodifiableIteratorImmutability() {
+         final Iterator<String> iterator = getImmutableIterator();
+ 
+-        try {
+-            iterator.remove();
+-            // We shouldn't get to here.
+-            fail("remove() should throw an UnsupportedOperationException");
+-        } catch (final UnsupportedOperationException e) {
+-            // This is correct; ignore the exception.
+-        }
++        assertThrows(UnsupportedOperationException.class, () -> iterator.remove(),
++                "remove() should throw an UnsupportedOperationException");
+ 
+         iterator.next();
+ 
+-        try {
+-            iterator.remove();
+-            // We shouldn't get to here.
+-            fail("remove() should throw an UnsupportedOperationException");
+-        } catch (final UnsupportedOperationException e) {
+-            // This is correct; ignore the exception.
+-        }
+-
+-    }
+-
+-    // -----------------------------------------------------------------------
++        assertThrows(UnsupportedOperationException.class, () -> iterator.remove(),
++                "remove() should throw an UnsupportedOperationException");
++    }
++
+     /**
+      * Test next() and hasNext() for an immutable Iterator.
+      */
+@@ -1302,56 +1029,24 @@
+     @Test
+     public void testUnmodifiableListIteratorImmutability() {
+         final ListIterator<String> listIterator = getImmutableListIterator();
+-
+-        try {
+-            listIterator.remove();
+-            // We shouldn't get to here.
+-            fail("remove() should throw an UnsupportedOperationException");
+-        } catch (final UnsupportedOperationException e) {
+-            // This is correct; ignore the exception.
+-        }
+-
+-        try {
+-            listIterator.set("a");
+-            // We shouldn't get to here.
+-            fail("set(Object) should throw an UnsupportedOperationException");
+-        } catch (final UnsupportedOperationException e) {
+-            // This is correct; ignore the exception.
+-        }
+-
+-        try {
+-            listIterator.add("a");
+-            // We shouldn't get to here.
+-            fail("add(Object) should throw an UnsupportedOperationException");
+-        } catch (final UnsupportedOperationException e) {
+-            // This is correct; ignore the exception.
+-        }
++        assertAll(
++                () -> assertThrows(UnsupportedOperationException.class, () -> listIterator.remove(),
++                        "remove() should throw an UnsupportedOperationException"),
++                () -> assertThrows(UnsupportedOperationException.class, () -> listIterator.set("a"),
++                        "set(Object) should throw an UnsupportedOperationException"),
++                () -> assertThrows(UnsupportedOperationException.class, () -> listIterator.add("a"),
++                        "add(Object) should throw an UnsupportedOperationException")
++        );
+ 
+         listIterator.next();
+-
+-        try {
+-            listIterator.remove();
+-            // We shouldn't get to here.
+-            fail("remove() should throw an UnsupportedOperationException");
+-        } catch (final UnsupportedOperationException e) {
+-            // This is correct; ignore the exception.
+-        }
+-
+-        try {
+-            listIterator.set("a");
+-            // We shouldn't get to here.
+-            fail("set(Object) should throw an UnsupportedOperationException");
+-        } catch (final UnsupportedOperationException e) {
+-            // This is correct; ignore the exception.
+-        }
+-
+-        try {
+-            listIterator.add("a");
+-            // We shouldn't get to here.
+-            fail("add(Object) should throw an UnsupportedOperationException");
+-        } catch (final UnsupportedOperationException e) {
+-            // This is correct; ignore the exception.
+-        }
++        assertAll(
++                () -> assertThrows(UnsupportedOperationException.class, () -> listIterator.remove(),
++                        "remove() should throw an UnsupportedOperationException"),
++                () -> assertThrows(UnsupportedOperationException.class, () -> listIterator.set("a"),
++                        "set(Object) should throw an UnsupportedOperationException"),
++                () -> assertThrows(UnsupportedOperationException.class, () -> listIterator.add("a"),
++                        "add(Object) should throw an UnsupportedOperationException")
++        );
+     }
+ 
+     /**
+@@ -1411,7 +1106,6 @@
+         final MapIterator ie = new EntrySetToMapIteratorAdapter(set);
+         assertTrue(IteratorUtils.unmodifiableMapIterator(ie) instanceof MapIterator, "create instance fail");
+         assertThrows(NullPointerException.class, () -> IteratorUtils.unmodifiableMapIterator(null));
+-
+     }
+ 
+     @Test
+@@ -1421,4 +1115,5 @@
+         assertTrue(IteratorUtils.zippingIterator(ie, ie, ie) instanceof ZippingIterator, "create instance fail");
+         assertTrue(IteratorUtils.zippingIterator(ie, ie) instanceof ZippingIterator, "create instance fail");
+     }
++
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

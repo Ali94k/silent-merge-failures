@@ -1,0 +1,1301 @@
+UNIT premium-minds_billy__bc9db33323
+repo: premium-minds_billy   merge: bc9db3332320895636598425f8927fab20c59a09   stratum: B
+files shown: 13 of 13 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T3/cap12  (diffs at -U3; merged bodies omitted; hard-fit to the 30k budget: files capped at 12 largest merged-vs-dev diffs)
+
+=== FILE 1/13: billy-spain/src/main/java/com/premiumminds/billy/spain/persistence/dao/jpa/DAOESCreditReceiptEntryImpl.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,13 +18,12 @@
+  */
+ package com.premiumminds.billy.spain.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.impl.JPAQuery;
+ import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+ 
++import com.premiumminds.billy.core.persistence.entities.GenericInvoiceEntity;
+ import com.premiumminds.billy.spain.persistence.dao.DAOESCreditReceiptEntry;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditReceiptEntity;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditReceiptEntryEntity;
+@@ -32,7 +31,7 @@
+ import com.premiumminds.billy.spain.persistence.entities.jpa.JPAESCreditReceiptEntryEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditReceiptEntity;
+ import com.premiumminds.billy.spain.services.entities.ESCreditReceiptEntry;
+-import com.premiumminds.billy.spain.services.entities.ESReceipt;
++import com.querydsl.jpa.impl.JPAQuery;
+ 
+ public class DAOESCreditReceiptEntryImpl
+         extends AbstractDAOESGenericInvoiceEntryImpl<ESCreditReceiptEntryEntity, JPAESCreditReceiptEntryEntity>
+@@ -54,7 +53,7 @@
+     }
+ 
+     @Override
+-    public ESCreditReceiptEntity checkCreditReceipt(ESReceipt receipt) {
++    public ESCreditReceiptEntity checkCreditReceipt(GenericInvoiceEntity receipt) {
+         QJPAESCreditReceiptEntity creditReceiptEntity = QJPAESCreditReceiptEntity.jPAESCreditReceiptEntity;
+ 
+         List<JPAESCreditReceiptEntity> allCns = new JPAQuery<>(this.getEntityManager())
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -18,9 +18,6 @@
+  */
+ package com.premiumminds.billy.spain.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.impl.JPAQuery;
+-import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+@@ -31,8 +28,10 @@
+ import com.premiumminds.billy.spain.persistence.entities.jpa.JPAESCreditReceiptEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.JPAESCreditReceiptEntryEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditReceiptEntity;
+-import com.premiumminds.billy.spain.services.entities.ESCreditReceiptEntry;
++import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditReceiptEntryEntity;
+ import com.premiumminds.billy.spain.services.entities.ESReceipt;
++import com.querydsl.core.types.dsl.PathInits;
++import com.querydsl.jpa.impl.JPAQuery;
+ 
+ public class DAOESCreditReceiptEntryImpl
+         extends AbstractDAOESGenericInvoiceEntryImpl<ESCreditReceiptEntryEntity, JPAESCreditReceiptEntryEntity>
+@@ -57,19 +56,11 @@
+     public ESCreditReceiptEntity checkCreditReceipt(ESReceipt receipt) {
+         QJPAESCreditReceiptEntity creditReceiptEntity = QJPAESCreditReceiptEntity.jPAESCreditReceiptEntity;
+ 
+-        List<JPAESCreditReceiptEntity> allCns = new JPAQuery<>(this.getEntityManager())
+-            .from(creditReceiptEntity)
+-            .select(creditReceiptEntity)
+-            .fetch();
+-
+-        // TODO make a query to do this
+-        for (JPAESCreditReceiptEntity cne : allCns) {
+-            for (ESCreditReceiptEntry cnee : cne.getEntries()) {
+-                if (cnee.getReference().getNumber().compareTo(receipt.getNumber()) == 0) {
+-                    return cne;
+-                }
+-            }
+-        }
+-        return null;
++        return new JPAQuery<JPAESCreditReceiptEntity>(this.getEntityManager())
++                .from(creditReceiptEntity)
++                .where(new QJPAESCreditReceiptEntryEntity(JPAESCreditReceiptEntryEntity.class, creditReceiptEntity.entries.any().getMetadata(), PathInits.DIRECT2)
++                        .receiptReference.id.eq(receipt.getID()))
++                .select(creditReceiptEntity)
++                .fetchFirst();
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -21,16 +21,17 @@
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+-import com.premiumminds.billy.core.persistence.entities.GenericInvoiceEntity;
++
+ import com.premiumminds.billy.spain.persistence.dao.DAOESCreditReceiptEntry;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditReceiptEntity;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditReceiptEntryEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.JPAESCreditReceiptEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.JPAESCreditReceiptEntryEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditReceiptEntity;
++import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditReceiptEntryEntity;
++import com.premiumminds.billy.spain.services.entities.ESReceipt;
++import com.querydsl.core.types.dsl.PathInits;
+ import com.querydsl.jpa.impl.JPAQuery;
+-import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditReceiptEntryEntity;
+-import com.querydsl.core.types.dsl.PathInits;
+ 
+ public class DAOESCreditReceiptEntryImpl
+         extends AbstractDAOESGenericInvoiceEntryImpl<ESCreditReceiptEntryEntity, JPAESCreditReceiptEntryEntity>
+@@ -52,7 +53,7 @@
+     }
+ 
+     @Override
+-    public ESCreditReceiptEntity checkCreditReceipt(GenericInvoiceEntity receipt) {
++    public ESCreditReceiptEntity checkCreditReceipt(ESReceipt receipt) {
+         QJPAESCreditReceiptEntity creditReceiptEntity = QJPAESCreditReceiptEntity.jPAESCreditReceiptEntity;
+ 
+         return new JPAQuery<JPAESCreditReceiptEntity>(this.getEntityManager())
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package com.premiumminds.billy.core.persistence.entities does not exist
+
+=== FILE 2/13: billy-spain/src/main/java/com/premiumminds/billy/spain/persistence/dao/jpa/DAOESCreditNoteEntryImpl.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,13 +18,12 @@
+  */
+ package com.premiumminds.billy.spain.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.impl.JPAQuery;
+ import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+ 
++import com.premiumminds.billy.core.persistence.entities.GenericInvoiceEntity;
+ import com.premiumminds.billy.spain.persistence.dao.DAOESCreditNoteEntry;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditNoteEntity;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditNoteEntryEntity;
+@@ -32,7 +31,7 @@
+ import com.premiumminds.billy.spain.persistence.entities.jpa.JPAESCreditNoteEntryEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditNoteEntity;
+ import com.premiumminds.billy.spain.services.entities.ESCreditNoteEntry;
+-import com.premiumminds.billy.spain.services.entities.ESInvoice;
++import com.querydsl.jpa.impl.JPAQuery;
+ 
+ public class DAOESCreditNoteEntryImpl
+         extends AbstractDAOESGenericInvoiceEntryImpl<ESCreditNoteEntryEntity, JPAESCreditNoteEntryEntity>
+@@ -54,7 +53,7 @@
+     }
+ 
+     @Override
+-    public ESCreditNoteEntity checkCreditNote(ESInvoice invoice) {
++    public ESCreditNoteEntity checkCreditNote(GenericInvoiceEntity invoice) {
+         QJPAESCreditNoteEntity creditNoteEntity = QJPAESCreditNoteEntity.jPAESCreditNoteEntity;
+ 
+         List<JPAESCreditNoteEntity> allCns = new JPAQuery<>(this.getEntityManager())
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -18,9 +18,6 @@
+  */
+ package com.premiumminds.billy.spain.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.impl.JPAQuery;
+-import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+@@ -31,8 +28,10 @@
+ import com.premiumminds.billy.spain.persistence.entities.jpa.JPAESCreditNoteEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.JPAESCreditNoteEntryEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditNoteEntity;
+-import com.premiumminds.billy.spain.services.entities.ESCreditNoteEntry;
++import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditNoteEntryEntity;
+ import com.premiumminds.billy.spain.services.entities.ESInvoice;
++import com.querydsl.core.types.dsl.PathInits;
++import com.querydsl.jpa.impl.JPAQuery;
+ 
+ public class DAOESCreditNoteEntryImpl
+         extends AbstractDAOESGenericInvoiceEntryImpl<ESCreditNoteEntryEntity, JPAESCreditNoteEntryEntity>
+@@ -57,19 +56,11 @@
+     public ESCreditNoteEntity checkCreditNote(ESInvoice invoice) {
+         QJPAESCreditNoteEntity creditNoteEntity = QJPAESCreditNoteEntity.jPAESCreditNoteEntity;
+ 
+-        List<JPAESCreditNoteEntity> allCns = new JPAQuery<>(this.getEntityManager())
+-            .select(creditNoteEntity)
+-            .from(creditNoteEntity)
+-            .fetch();
+-
+-        // TODO make a query to do this
+-        for (JPAESCreditNoteEntity cne : allCns) {
+-            for (ESCreditNoteEntry cnee : cne.getEntries()) {
+-                if (cnee.getReference().getNumber().compareTo(invoice.getNumber()) == 0) {
+-                    return cne;
+-                }
+-            }
+-        }
+-        return null;
++        return new JPAQuery<JPAESCreditNoteEntity>(this.getEntityManager())
++                .from(creditNoteEntity)
++                .where(new QJPAESCreditNoteEntryEntity(JPAESCreditNoteEntryEntity.class, creditNoteEntity.entries.any().getMetadata(), PathInits.DIRECT2)
++                        .invoiceReference.id.eq(invoice.getID()))
++                .select(creditNoteEntity)
++                .fetchFirst();
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -21,16 +21,17 @@
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+-import com.premiumminds.billy.core.persistence.entities.GenericInvoiceEntity;
++
+ import com.premiumminds.billy.spain.persistence.dao.DAOESCreditNoteEntry;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditNoteEntity;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditNoteEntryEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.JPAESCreditNoteEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.JPAESCreditNoteEntryEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditNoteEntity;
++import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditNoteEntryEntity;
++import com.premiumminds.billy.spain.services.entities.ESInvoice;
++import com.querydsl.core.types.dsl.PathInits;
+ import com.querydsl.jpa.impl.JPAQuery;
+-import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditNoteEntryEntity;
+-import com.querydsl.core.types.dsl.PathInits;
+ 
+ public class DAOESCreditNoteEntryImpl
+         extends AbstractDAOESGenericInvoiceEntryImpl<ESCreditNoteEntryEntity, JPAESCreditNoteEntryEntity>
+@@ -52,7 +53,7 @@
+     }
+ 
+     @Override
+-    public ESCreditNoteEntity checkCreditNote(GenericInvoiceEntity invoice) {
++    public ESCreditNoteEntity checkCreditNote(ESInvoice invoice) {
+         QJPAESCreditNoteEntity creditNoteEntity = QJPAESCreditNoteEntity.jPAESCreditNoteEntity;
+ 
+         return new JPAQuery<JPAESCreditNoteEntity>(this.getEntityManager())
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package com.premiumminds.billy.core.persistence.entities does not exist
+
+=== FILE 3/13: billy-france/src/test/java/com/premiumminds/billy/france/test/FRPersistencyAbstractTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,17 +18,19 @@
+  */
+ package com.premiumminds.billy.france.test;
+ 
+-import com.premiumminds.billy.core.exceptions.SeriesUniqueCodeNotFilled;
+-import com.premiumminds.billy.core.persistence.dao.DAOInvoiceSeries;
+-import com.premiumminds.billy.core.services.exceptions.DocumentSeriesDoesNotExistException;
+-import com.premiumminds.billy.persistence.entities.jpa.JPAInvoiceSeriesEntity;
+-import com.premiumminds.billy.core.services.entities.documents.GenericInvoice;
++import com.google.inject.Guice;
++import java.util.UUID;
++
+ import org.junit.jupiter.api.AfterEach;
+ import org.junit.jupiter.api.BeforeEach;
+ 
+-import com.google.inject.Guice;
+-import com.premiumminds.billy.core.services.UID;
++import com.premiumminds.billy.core.exceptions.SeriesUniqueCodeNotFilled;
++import com.premiumminds.billy.core.persistence.dao.DAOInvoiceSeries;
++import com.premiumminds.billy.core.services.StringID;
++import com.premiumminds.billy.core.services.entities.Business;
++import com.premiumminds.billy.core.services.entities.documents.GenericInvoice;
+ import com.premiumminds.billy.core.services.exceptions.DocumentIssuingException;
++import com.premiumminds.billy.core.services.exceptions.DocumentSeriesDoesNotExistException;
+ import com.premiumminds.billy.france.FranceBootstrap;
+ import com.premiumminds.billy.france.FranceDependencyModule;
+ import com.premiumminds.billy.france.persistence.entities.FRCreditNoteEntity;
+@@ -37,11 +39,12 @@
+ import com.premiumminds.billy.france.services.documents.util.FRIssuingParams;
+ import com.premiumminds.billy.france.services.documents.util.FRIssuingParamsImpl;
+ import com.premiumminds.billy.france.services.entities.FRInvoice;
+-import com.premiumminds.billy.france.util.Services;
+ import com.premiumminds.billy.france.test.util.FRBusinessTestUtil;
+ import com.premiumminds.billy.france.test.util.FRCreditNoteTestUtil;
+ import com.premiumminds.billy.france.test.util.FRInvoiceTestUtil;
+ import com.premiumminds.billy.france.test.util.FRReceiptTestUtil;
++import com.premiumminds.billy.france.util.Services;
++import com.premiumminds.billy.persistence.entities.jpa.JPAInvoiceSeriesEntity;
+ 
+ public class FRPersistencyAbstractTest extends FRAbstractTest {
+ 
+@@ -63,11 +66,11 @@
+     }
+ 
+     public FRInvoiceEntity getNewIssuedInvoice() {
+-        return this.getNewIssuedInvoice((new UID()).toString());
++        return this.getNewIssuedInvoice(StringID.fromValue(UUID.randomUUID().toString()));
+ 
+     }
+ 
+-    public FRInvoiceEntity getNewIssuedInvoice(String businessUID) {
++    public FRInvoiceEntity getNewIssuedInvoice(StringID<Business> businessUID) {
+         Services service = new Services(FRAbstractTest.injector);
+         FRIssuingParams parameters = new FRIssuingParamsImpl();
+ 
+@@ -85,7 +88,7 @@
+         return null;
+     }
+ 
+-    public FRReceiptEntity getNewIssuedReceipt(String businessUID) {
++    public FRReceiptEntity getNewIssuedReceipt(StringID<Business> businessUID) {
+         Services service = new Services(FRAbstractTest.injector);
+         FRIssuingParams parameters = new FRIssuingParamsImpl();
+ 
+@@ -127,14 +130,14 @@
+         return parameters;
+     }
+ 
+-    protected void createSeries(String businessUID) {
++    protected void createSeries(StringID<Business> businessUID) {
+         this.createSeries(
+             new FRReceiptTestUtil(FRAbstractTest.injector).getReceiptBuilder(
+                 new FRBusinessTestUtil(FRAbstractTest.injector).getBusinessEntity(businessUID)).build(),
+             FRPersistencyAbstractTest.DEFAULT_SERIES);
+     }
+ 
+-    protected void createSeries(String businessUID, String series) {
++    protected void createSeries(StringID<Business> businessUID, String series) {
+         this.createSeries(
+             new FRReceiptTestUtil(FRAbstractTest.injector).getReceiptBuilder(
+                 new FRBusinessTestUtil(FRAbstractTest.injector).getBusinessEntity(businessUID)).build(),
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -21,6 +21,9 @@
+ import com.premiumminds.billy.core.exceptions.SeriesUniqueCodeNotFilled;
+ import com.premiumminds.billy.core.persistence.dao.DAOInvoiceSeries;
+ import com.premiumminds.billy.core.services.exceptions.DocumentSeriesDoesNotExistException;
++import com.premiumminds.billy.france.persistence.entities.FRCreditReceiptEntity;
++import com.premiumminds.billy.france.services.entities.FRReceipt;
++import com.premiumminds.billy.france.test.util.FRCreditReceiptTestUtil;
+ import com.premiumminds.billy.persistence.entities.jpa.JPAInvoiceSeriesEntity;
+ import com.premiumminds.billy.core.services.entities.documents.GenericInvoice;
+ import org.junit.jupiter.api.AfterEach;
+@@ -99,6 +102,25 @@
+         } catch (DocumentIssuingException | SeriesUniqueCodeNotFilled | DocumentSeriesDoesNotExistException e) {
+             e.printStackTrace();
+         }
++      return null;
++    }
++
++    public FRCreditReceiptEntity getNewIssuedCreditReceipt(FRReceipt receipt) {
++        Services service = new Services(FRAbstractTest.injector);
++        FRIssuingParams parameters = new FRIssuingParamsImpl();
++
++        parameters = this.getParameters("RC", "30000");
++
++        this.createSeries(receipt, "RC");
++
++        try {
++            return (FRCreditReceiptEntity) service.issueDocument(
++                    new FRCreditReceiptTestUtil(FRAbstractTest.injector).getCreditReceiptBuilder((FRReceiptEntity) receipt),
++                    parameters);
++        } catch (DocumentIssuingException | SeriesUniqueCodeNotFilled | DocumentSeriesDoesNotExistException e) {
++            e.printStackTrace();
++        }
++
+         return null;
+     }
+ 
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -18,10 +18,12 @@
+  */
+ package com.premiumminds.billy.france.test;
+ 
+-import com.google.inject.Guice;
+ import java.util.UUID;
++
+ import org.junit.jupiter.api.AfterEach;
+ import org.junit.jupiter.api.BeforeEach;
++
++import com.google.inject.Guice;
+ import com.premiumminds.billy.core.exceptions.SeriesUniqueCodeNotFilled;
+ import com.premiumminds.billy.core.persistence.dao.DAOInvoiceSeries;
+ import com.premiumminds.billy.core.services.StringID;
+@@ -32,20 +34,20 @@
+ import com.premiumminds.billy.france.FranceBootstrap;
+ import com.premiumminds.billy.france.FranceDependencyModule;
+ import com.premiumminds.billy.france.persistence.entities.FRCreditNoteEntity;
++import com.premiumminds.billy.france.persistence.entities.FRCreditReceiptEntity;
+ import com.premiumminds.billy.france.persistence.entities.FRInvoiceEntity;
+ import com.premiumminds.billy.france.persistence.entities.FRReceiptEntity;
+ import com.premiumminds.billy.france.services.documents.util.FRIssuingParams;
+ import com.premiumminds.billy.france.services.documents.util.FRIssuingParamsImpl;
+ import com.premiumminds.billy.france.services.entities.FRInvoice;
++import com.premiumminds.billy.france.services.entities.FRReceipt;
+ import com.premiumminds.billy.france.test.util.FRBusinessTestUtil;
+ import com.premiumminds.billy.france.test.util.FRCreditNoteTestUtil;
++import com.premiumminds.billy.france.test.util.FRCreditReceiptTestUtil;
+ import com.premiumminds.billy.france.test.util.FRInvoiceTestUtil;
+ import com.premiumminds.billy.france.test.util.FRReceiptTestUtil;
+ import com.premiumminds.billy.france.util.Services;
+ import com.premiumminds.billy.persistence.entities.jpa.JPAInvoiceSeriesEntity;
+-import com.premiumminds.billy.france.persistence.entities.FRCreditReceiptEntity;
+-import com.premiumminds.billy.france.services.entities.FRReceipt;
+-import com.premiumminds.billy.france.test.util.FRCreditReceiptTestUtil;
+ 
+ public class FRPersistencyAbstractTest extends FRAbstractTest {
+ 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 4/13: billy-spain/src/test/java/com/premiumminds/billy/spain/test/ESPersistencyAbstractTest.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,17 +18,20 @@
+  */
+ package com.premiumminds.billy.spain.test;
+ 
+-import com.premiumminds.billy.core.exceptions.SeriesUniqueCodeNotFilled;
+-import com.premiumminds.billy.core.persistence.dao.DAOInvoiceSeries;
+-import com.premiumminds.billy.core.services.exceptions.DocumentSeriesDoesNotExistException;
+-import com.premiumminds.billy.persistence.entities.jpa.JPAInvoiceSeriesEntity;
+-import com.premiumminds.billy.core.services.entities.documents.GenericInvoice;
++import com.google.inject.Guice;
++import java.util.UUID;
++
+ import org.junit.jupiter.api.AfterEach;
+ import org.junit.jupiter.api.BeforeEach;
+ 
+-import com.google.inject.Guice;
+-import com.premiumminds.billy.core.services.UID;
++import com.premiumminds.billy.core.exceptions.SeriesUniqueCodeNotFilled;
++import com.premiumminds.billy.core.persistence.dao.DAOInvoiceSeries;
++import com.premiumminds.billy.core.services.StringID;
++import com.premiumminds.billy.core.services.entities.Business;
++import com.premiumminds.billy.core.services.entities.documents.GenericInvoice;
+ import com.premiumminds.billy.core.services.exceptions.DocumentIssuingException;
++import com.premiumminds.billy.core.services.exceptions.DocumentSeriesDoesNotExistException;
++import com.premiumminds.billy.persistence.entities.jpa.JPAInvoiceSeriesEntity;
+ import com.premiumminds.billy.spain.SpainBootstrap;
+ import com.premiumminds.billy.spain.SpainDependencyModule;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditNoteEntity;
+@@ -63,11 +66,11 @@
+     }
+ 
+     public ESInvoiceEntity getNewIssuedInvoice() {
+-        return this.getNewIssuedInvoice((new UID()).toString());
++        return this.getNewIssuedInvoice(StringID.fromValue(UUID.randomUUID().toString()));
+ 
+     }
+ 
+-    public ESInvoiceEntity getNewIssuedInvoice(String businessUID) {
++    public ESInvoiceEntity getNewIssuedInvoice(StringID<Business> businessUID) {
+         Services service = new Services(ESAbstractTest.injector);
+         ESIssuingParams parameters = new ESIssuingParamsImpl();
+ 
+@@ -85,7 +88,7 @@
+         return null;
+     }
+ 
+-    public ESReceiptEntity getNewIssuedReceipt(String businessUID) {
++    public ESReceiptEntity getNewIssuedReceipt(StringID<Business> businessUID) {
+         Services service = new Services(ESAbstractTest.injector);
+         ESIssuingParams parameters = new ESIssuingParamsImpl();
+ 
+@@ -128,14 +131,14 @@
+         return parameters;
+     }
+ 
+-    protected void createSeries(String businessUID) {
++    protected void createSeries(StringID<Business> businessUID) {
+         this.createSeries(
+             new ESReceiptTestUtil(ESAbstractTest.injector).getReceiptBuilder(
+                 new ESBusinessTestUtil(ESAbstractTest.injector).getBusinessEntity(businessUID)).build(),
+             ESPersistencyAbstractTest.DEFAULT_SERIES);
+     }
+ 
+-    protected void createSeries(String businessUID, String series) {
++    protected void createSeries(StringID<Business> businessUID, String series) {
+         this.createSeries(
+             new ESReceiptTestUtil(ESAbstractTest.injector).getReceiptBuilder(
+                 new ESBusinessTestUtil(ESAbstractTest.injector).getBusinessEntity(businessUID)).build(),
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -23,6 +23,9 @@
+ import com.premiumminds.billy.core.services.exceptions.DocumentSeriesDoesNotExistException;
+ import com.premiumminds.billy.persistence.entities.jpa.JPAInvoiceSeriesEntity;
+ import com.premiumminds.billy.core.services.entities.documents.GenericInvoice;
++import com.premiumminds.billy.spain.persistence.entities.ESCreditReceiptEntity;
++import com.premiumminds.billy.spain.services.entities.ESReceipt;
++import com.premiumminds.billy.spain.test.util.ESCreditReceiptTestUtil;
+ import org.junit.jupiter.api.AfterEach;
+ import org.junit.jupiter.api.BeforeEach;
+ 
+@@ -102,6 +105,25 @@
+         return null;
+     }
+ 
++    public ESCreditReceiptEntity getNewIssuedCreditReceipt(ESReceipt receipt) {
++        Services service = new Services(ESAbstractTest.injector);
++        ESIssuingParams parameters = new ESIssuingParamsImpl();
++
++        parameters = this.getParameters("RC", "30000");
++
++        this.createSeries(receipt, "RC");
++
++        try {
++            return (ESCreditReceiptEntity) service.issueDocument(
++                    new ESCreditReceiptTestUtil(ESAbstractTest.injector).getCreditReceiptBuilder((ESReceiptEntity) receipt),
++                    parameters);
++        } catch (DocumentIssuingException | SeriesUniqueCodeNotFilled | DocumentSeriesDoesNotExistException e) {
++            e.printStackTrace();
++        }
++
++        return null;
++    }
++
+     public ESCreditNoteEntity getNewIssuedCreditnote(ESInvoice reference) {
+         Services service = new Services(ESAbstractTest.injector);
+         ESIssuingParams parameters = new ESIssuingParamsImpl();
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -18,10 +18,12 @@
+  */
+ package com.premiumminds.billy.spain.test;
+ 
+-import com.google.inject.Guice;
+ import java.util.UUID;
++
+ import org.junit.jupiter.api.AfterEach;
+ import org.junit.jupiter.api.BeforeEach;
++
++import com.google.inject.Guice;
+ import com.premiumminds.billy.core.exceptions.SeriesUniqueCodeNotFilled;
+ import com.premiumminds.billy.core.persistence.dao.DAOInvoiceSeries;
+ import com.premiumminds.billy.core.services.StringID;
+@@ -30,19 +32,19 @@
+ import com.premiumminds.billy.core.services.exceptions.DocumentIssuingException;
+ import com.premiumminds.billy.core.services.exceptions.DocumentSeriesDoesNotExistException;
+ import com.premiumminds.billy.persistence.entities.jpa.JPAInvoiceSeriesEntity;
+-import com.premiumminds.billy.spain.persistence.entities.ESCreditReceiptEntity;
+-import com.premiumminds.billy.spain.services.entities.ESReceipt;
+-import com.premiumminds.billy.spain.test.util.ESCreditReceiptTestUtil;
+ import com.premiumminds.billy.spain.SpainBootstrap;
+ import com.premiumminds.billy.spain.SpainDependencyModule;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditNoteEntity;
++import com.premiumminds.billy.spain.persistence.entities.ESCreditReceiptEntity;
+ import com.premiumminds.billy.spain.persistence.entities.ESInvoiceEntity;
+ import com.premiumminds.billy.spain.persistence.entities.ESReceiptEntity;
+ import com.premiumminds.billy.spain.services.documents.util.ESIssuingParams;
+ import com.premiumminds.billy.spain.services.documents.util.ESIssuingParamsImpl;
+ import com.premiumminds.billy.spain.services.entities.ESInvoice;
++import com.premiumminds.billy.spain.services.entities.ESReceipt;
+ import com.premiumminds.billy.spain.test.util.ESBusinessTestUtil;
+ import com.premiumminds.billy.spain.test.util.ESCreditNoteTestUtil;
++import com.premiumminds.billy.spain.test.util.ESCreditReceiptTestUtil;
+ import com.premiumminds.billy.spain.test.util.ESInvoiceTestUtil;
+ import com.premiumminds.billy.spain.test.util.ESReceiptTestUtil;
+ import com.premiumminds.billy.spain.util.Services;
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 5/13: billy-spain/src/main/java/com/premiumminds/billy/spain/persistence/entities/jpa/JPAESCreditNoteEntryEntity.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -28,9 +28,9 @@
+ 
+ import org.hibernate.envers.Audited;
+ 
++import com.premiumminds.billy.core.persistence.entities.GenericInvoiceEntity;
+ import com.premiumminds.billy.spain.Config;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditNoteEntryEntity;
+-import com.premiumminds.billy.spain.services.entities.ESInvoice;
+ 
+ @Entity
+ @Audited
+@@ -45,7 +45,7 @@
+     @OneToOne(fetch = FetchType.EAGER, targetEntity = JPAESInvoiceEntity.class,
+             cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+     @JoinColumn(name = "ID_ESINVOICE", referencedColumnName = "ID")
+-    protected ESInvoice reference;
++    protected GenericInvoiceEntity reference;
+ 
+     @Column(name = "REASON")
+     protected String reason;
+@@ -56,12 +56,12 @@
+     }
+ 
+     @Override
+-    public ESInvoice getReference() {
++    public GenericInvoiceEntity getReference() {
+         return this.reference;
+     }
+ 
+     @Override
+-    public void setReference(ESInvoice reference) {
++    public void setReference(GenericInvoiceEntity reference) {
+         this.reference = reference;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -45,7 +45,7 @@
+     @OneToOne(fetch = FetchType.EAGER, targetEntity = JPAESInvoiceEntity.class,
+             cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+     @JoinColumn(name = "ID_ESINVOICE", referencedColumnName = "ID")
+-    protected ESInvoice reference;
++    protected ESInvoice invoiceReference;
+ 
+     @Column(name = "REASON")
+     protected String reason;
+@@ -57,12 +57,12 @@
+ 
+     @Override
+     public ESInvoice getReference() {
+-        return this.reference;
++        return this.invoiceReference;
+     }
+ 
+     @Override
+     public void setReference(ESInvoice reference) {
+-        this.reference = reference;
++        this.invoiceReference = reference;
+     }
+ 
+     @Override
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -28,9 +28,9 @@
+ 
+ import org.hibernate.envers.Audited;
+ 
+-import com.premiumminds.billy.core.persistence.entities.GenericInvoiceEntity;
+ import com.premiumminds.billy.spain.Config;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditNoteEntryEntity;
++import com.premiumminds.billy.spain.services.entities.ESInvoice;
+ 
+ @Entity
+ @Audited
+@@ -45,7 +45,7 @@
+     @OneToOne(fetch = FetchType.EAGER, targetEntity = JPAESInvoiceEntity.class,
+             cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+     @JoinColumn(name = "ID_ESINVOICE", referencedColumnName = "ID")
+-    protected GenericInvoiceEntity invoiceReference;
++    protected ESInvoice invoiceReference;
+ 
+     @Column(name = "REASON")
+     protected String reason;
+@@ -56,12 +56,12 @@
+     }
+ 
+     @Override
+-    public GenericInvoiceEntity getReference() {
++    public ESInvoice getReference() {
+         return this.invoiceReference;
+     }
+ 
+     @Override
+-    public void setReference(GenericInvoiceEntity reference) {
++    public void setReference(ESInvoice reference) {
+         this.invoiceReference = reference;
+     }
+ 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package com.premiumminds.billy.core.persistence.entities does not exist
+
+=== FILE 6/13: billy-spain/src/main/java/com/premiumminds/billy/spain/persistence/entities/jpa/JPAESCreditReceiptEntryEntity.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,6 +18,7 @@
+  */
+ package com.premiumminds.billy.spain.persistence.entities.jpa;
+ 
++import com.premiumminds.billy.core.persistence.entities.GenericInvoiceEntity;
+ import javax.persistence.CascadeType;
+ import javax.persistence.Column;
+ import javax.persistence.Entity;
+@@ -30,7 +31,6 @@
+ 
+ import com.premiumminds.billy.spain.Config;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditReceiptEntryEntity;
+-import com.premiumminds.billy.spain.services.entities.ESReceipt;
+ 
+ @Entity
+ @Audited
+@@ -46,7 +46,7 @@
+     @OneToOne(fetch = FetchType.EAGER, targetEntity = JPAESReceiptEntity.class,
+             cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+     @JoinColumn(name = "ID_ESRECEIPT", referencedColumnName = "ID")
+-    protected ESReceipt reference;
++    protected GenericInvoiceEntity reference;
+ 
+     @Column(name = "REASON")
+     protected String reason;
+@@ -57,12 +57,12 @@
+     }
+ 
+     @Override
+-    public ESReceipt getReference() {
++    public GenericInvoiceEntity getReference() {
+         return this.reference;
+     }
+ 
+     @Override
+-    public void setReference(ESReceipt reference) {
++    public void setReference(GenericInvoiceEntity reference) {
+         this.reference = reference;
+     }
+ 
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -46,7 +46,7 @@
+     @OneToOne(fetch = FetchType.EAGER, targetEntity = JPAESReceiptEntity.class,
+             cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+     @JoinColumn(name = "ID_ESRECEIPT", referencedColumnName = "ID")
+-    protected ESReceipt reference;
++    protected ESReceipt receiptReference;
+ 
+     @Column(name = "REASON")
+     protected String reason;
+@@ -58,12 +58,12 @@
+ 
+     @Override
+     public ESReceipt getReference() {
+-        return this.reference;
++        return this.receiptReference;
+     }
+ 
+     @Override
+     public void setReference(ESReceipt reference) {
+-        this.reference = reference;
++        this.receiptReference = reference;
+     }
+ 
+     @Override
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -18,7 +18,6 @@
+  */
+ package com.premiumminds.billy.spain.persistence.entities.jpa;
+ 
+-import com.premiumminds.billy.core.persistence.entities.GenericInvoiceEntity;
+ import javax.persistence.CascadeType;
+ import javax.persistence.Column;
+ import javax.persistence.Entity;
+@@ -31,6 +30,7 @@
+ 
+ import com.premiumminds.billy.spain.Config;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditReceiptEntryEntity;
++import com.premiumminds.billy.spain.services.entities.ESReceipt;
+ 
+ @Entity
+ @Audited
+@@ -46,7 +46,7 @@
+     @OneToOne(fetch = FetchType.EAGER, targetEntity = JPAESReceiptEntity.class,
+             cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+     @JoinColumn(name = "ID_ESRECEIPT", referencedColumnName = "ID")
+-    protected GenericInvoiceEntity receiptReference;
++    protected ESReceipt receiptReference;
+ 
+     @Column(name = "REASON")
+     protected String reason;
+@@ -57,12 +57,12 @@
+     }
+ 
+     @Override
+-    public GenericInvoiceEntity getReference() {
++    public ESReceipt getReference() {
+         return this.receiptReference;
+     }
+ 
+     @Override
+-    public void setReference(GenericInvoiceEntity reference) {
++    public void setReference(ESReceipt reference) {
+         this.receiptReference = reference;
+     }
+ 
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+[RESOLVE] package com.premiumminds.billy.core.persistence.entities does not exist
+
+=== FILE 7/13: billy-france/src/main/java/com/premiumminds/billy/france/persistence/dao/jpa/DAOFRCreditNoteEntryImpl.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,9 +18,7 @@
+  */
+ package com.premiumminds.billy.france.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.impl.JPAQuery;
+ import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+@@ -33,6 +31,7 @@
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditNoteEntity;
+ import com.premiumminds.billy.france.services.entities.FRCreditNoteEntry;
+ import com.premiumminds.billy.france.services.entities.FRInvoice;
++import com.querydsl.jpa.impl.JPAQuery;
+ 
+ public class DAOFRCreditNoteEntryImpl
+         extends AbstractDAOFRGenericInvoiceEntryImpl<FRCreditNoteEntryEntity, JPAFRCreditNoteEntryEntity>
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -18,9 +18,6 @@
+  */
+ package com.premiumminds.billy.france.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.impl.JPAQuery;
+-import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+@@ -31,8 +28,10 @@
+ import com.premiumminds.billy.france.persistence.entities.jpa.JPAFRCreditNoteEntity;
+ import com.premiumminds.billy.france.persistence.entities.jpa.JPAFRCreditNoteEntryEntity;
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditNoteEntity;
+-import com.premiumminds.billy.france.services.entities.FRCreditNoteEntry;
++import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditNoteEntryEntity;
+ import com.premiumminds.billy.france.services.entities.FRInvoice;
++import com.querydsl.core.types.dsl.PathInits;
++import com.querydsl.jpa.impl.JPAQuery;
+ 
+ public class DAOFRCreditNoteEntryImpl
+         extends AbstractDAOFRGenericInvoiceEntryImpl<FRCreditNoteEntryEntity, JPAFRCreditNoteEntryEntity>
+@@ -57,19 +56,11 @@
+     public FRCreditNoteEntity checkCreditNote(FRInvoice invoice) {
+         QJPAFRCreditNoteEntity creditNoteEntity = QJPAFRCreditNoteEntity.jPAFRCreditNoteEntity;
+ 
+-        List<JPAFRCreditNoteEntity> allCns = new JPAQuery<>(this.getEntityManager())
+-            .from(creditNoteEntity)
+-            .select(creditNoteEntity)
+-            .fetch();
+-
+-        // TODO make a query to do this
+-        for (JPAFRCreditNoteEntity cne : allCns) {
+-            for (FRCreditNoteEntry cnee : cne.getEntries()) {
+-                if (cnee.getReference().getNumber().compareTo(invoice.getNumber()) == 0) {
+-                    return cne;
+-                }
+-            }
+-        }
+-        return null;
++        return new JPAQuery<JPAFRCreditNoteEntity>(this.getEntityManager())
++                .from(creditNoteEntity)
++                .where(new QJPAFRCreditNoteEntryEntity(JPAFRCreditNoteEntryEntity.class, creditNoteEntity.entries.any().getMetadata(), PathInits.DIRECT2)
++                        .invoiceReference.id.eq(invoice.getID()))
++                .select(creditNoteEntity)
++                .fetchFirst();
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -21,6 +21,7 @@
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
++
+ import com.premiumminds.billy.france.persistence.dao.DAOFRCreditNoteEntry;
+ import com.premiumminds.billy.france.persistence.entities.FRCreditNoteEntity;
+ import com.premiumminds.billy.france.persistence.entities.FRCreditNoteEntryEntity;
+@@ -29,8 +30,8 @@
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditNoteEntity;
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditNoteEntryEntity;
+ import com.premiumminds.billy.france.services.entities.FRInvoice;
++import com.querydsl.core.types.dsl.PathInits;
+ import com.querydsl.jpa.impl.JPAQuery;
+-import com.querydsl.core.types.dsl.PathInits;
+ 
+ public class DAOFRCreditNoteEntryImpl
+         extends AbstractDAOFRGenericInvoiceEntryImpl<FRCreditNoteEntryEntity, JPAFRCreditNoteEntryEntity>
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 8/13: billy-france/src/main/java/com/premiumminds/billy/france/persistence/dao/jpa/DAOFRCreditReceiptEntryImpl.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,9 +18,7 @@
+  */
+ package com.premiumminds.billy.france.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.impl.JPAQuery;
+ import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+@@ -33,6 +31,7 @@
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditReceiptEntity;
+ import com.premiumminds.billy.france.services.entities.FRCreditReceiptEntry;
+ import com.premiumminds.billy.france.services.entities.FRReceipt;
++import com.querydsl.jpa.impl.JPAQuery;
+ 
+ public class DAOFRCreditReceiptEntryImpl
+         extends AbstractDAOFRGenericInvoiceEntryImpl<FRCreditReceiptEntryEntity, JPAFRCreditReceiptEntryEntity>
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -18,9 +18,6 @@
+  */
+ package com.premiumminds.billy.france.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.impl.JPAQuery;
+-import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+@@ -31,8 +28,10 @@
+ import com.premiumminds.billy.france.persistence.entities.jpa.JPAFRCreditReceiptEntity;
+ import com.premiumminds.billy.france.persistence.entities.jpa.JPAFRCreditReceiptEntryEntity;
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditReceiptEntity;
+-import com.premiumminds.billy.france.services.entities.FRCreditReceiptEntry;
++import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditReceiptEntryEntity;
+ import com.premiumminds.billy.france.services.entities.FRReceipt;
++import com.querydsl.core.types.dsl.PathInits;
++import com.querydsl.jpa.impl.JPAQuery;
+ 
+ public class DAOFRCreditReceiptEntryImpl
+         extends AbstractDAOFRGenericInvoiceEntryImpl<FRCreditReceiptEntryEntity, JPAFRCreditReceiptEntryEntity>
+@@ -57,19 +56,11 @@
+     public FRCreditReceiptEntity checkCreditReceipt(FRReceipt receipt) {
+         QJPAFRCreditReceiptEntity creditReceiptEntity = QJPAFRCreditReceiptEntity.jPAFRCreditReceiptEntity;
+ 
+-        List<JPAFRCreditReceiptEntity> allCns = new JPAQuery<>(this.getEntityManager())
+-            .select(creditReceiptEntity)
+-            .from(creditReceiptEntity)
+-            .fetch();
+-
+-        // TODO make a query to do this
+-        for (JPAFRCreditReceiptEntity cne : allCns) {
+-            for (FRCreditReceiptEntry cnee : cne.getEntries()) {
+-                if (cnee.getReference().getNumber().compareTo(receipt.getNumber()) == 0) {
+-                    return cne;
+-                }
+-            }
+-        }
+-        return null;
++        return new JPAQuery<JPAFRCreditReceiptEntity>(this.getEntityManager())
++                .from(creditReceiptEntity)
++                .where(new QJPAFRCreditReceiptEntryEntity(JPAFRCreditReceiptEntryEntity.class, creditReceiptEntity.entries.any().getMetadata(), PathInits.DIRECT2)
++                        .receiptReference.id.eq(receipt.getID()))
++                .select(creditReceiptEntity)
++                .fetchFirst();
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -21,6 +21,7 @@
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
++
+ import com.premiumminds.billy.france.persistence.dao.DAOFRCreditReceiptEntry;
+ import com.premiumminds.billy.france.persistence.entities.FRCreditReceiptEntity;
+ import com.premiumminds.billy.france.persistence.entities.FRCreditReceiptEntryEntity;
+@@ -29,8 +30,8 @@
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditReceiptEntity;
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditReceiptEntryEntity;
+ import com.premiumminds.billy.france.services.entities.FRReceipt;
++import com.querydsl.core.types.dsl.PathInits;
+ import com.querydsl.jpa.impl.JPAQuery;
+-import com.querydsl.core.types.dsl.PathInits;
+ 
+ public class DAOFRCreditReceiptEntryImpl
+         extends AbstractDAOFRGenericInvoiceEntryImpl<FRCreditReceiptEntryEntity, JPAFRCreditReceiptEntryEntity>
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 9/13: billy-portugal/src/main/java/com/premiumminds/billy/portugal/persistence/dao/jpa/DAOPTCreditNoteEntryImpl.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,9 +18,7 @@
+  */
+ package com.premiumminds.billy.portugal.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.impl.JPAQuery;
+ import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+@@ -33,6 +31,7 @@
+ import com.premiumminds.billy.portugal.persistence.entities.jpa.QJPAPTCreditNoteEntity;
+ import com.premiumminds.billy.portugal.services.entities.PTCreditNoteEntry;
+ import com.premiumminds.billy.portugal.services.entities.PTInvoice;
++import com.querydsl.jpa.impl.JPAQuery;
+ 
+ public class DAOPTCreditNoteEntryImpl
+         extends AbstractDAOPTGenericInvoiceEntryImpl<PTCreditNoteEntryEntity, JPAPTCreditNoteEntryEntity>
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -18,9 +18,6 @@
+  */
+ package com.premiumminds.billy.portugal.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.impl.JPAQuery;
+-import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+@@ -31,8 +28,10 @@
+ import com.premiumminds.billy.portugal.persistence.entities.jpa.JPAPTCreditNoteEntity;
+ import com.premiumminds.billy.portugal.persistence.entities.jpa.JPAPTCreditNoteEntryEntity;
+ import com.premiumminds.billy.portugal.persistence.entities.jpa.QJPAPTCreditNoteEntity;
+-import com.premiumminds.billy.portugal.services.entities.PTCreditNoteEntry;
++import com.premiumminds.billy.portugal.persistence.entities.jpa.QJPAPTCreditNoteEntryEntity;
+ import com.premiumminds.billy.portugal.services.entities.PTInvoice;
++import com.querydsl.core.types.dsl.PathInits;
++import com.querydsl.jpa.impl.JPAQuery;
+ 
+ public class DAOPTCreditNoteEntryImpl
+         extends AbstractDAOPTGenericInvoiceEntryImpl<PTCreditNoteEntryEntity, JPAPTCreditNoteEntryEntity>
+@@ -58,20 +57,11 @@
+ 
+         QJPAPTCreditNoteEntity creditNoteEntity = QJPAPTCreditNoteEntity.jPAPTCreditNoteEntity;
+ 
+-        JPAQuery<PTCreditNoteEntity> query = new JPAQuery<>(this.getEntityManager());
+-
+-        query.from(creditNoteEntity);
+-
+-        List<JPAPTCreditNoteEntity> allCns = query.select(creditNoteEntity).fetch();
+-
+-        // TODO make a query to do this
+-        for (JPAPTCreditNoteEntity cne : allCns) {
+-            for (PTCreditNoteEntry cnee : cne.getEntries()) {
+-                if (cnee.getReference().getNumber().compareTo(invoice.getNumber()) == 0) {
+-                    return cne;
+-                }
+-            }
+-        }
+-        return null;
++        return new JPAQuery<JPAPTCreditNoteEntity>(this.getEntityManager())
++                .from(creditNoteEntity)
++                .where(new QJPAPTCreditNoteEntryEntity(JPAPTCreditNoteEntryEntity.class, creditNoteEntity.entries.any().getMetadata(), PathInits.DIRECT2)
++                        .reference.id.eq(invoice.getID()))
++                .select(creditNoteEntity)
++                .fetchFirst();
+     }
+ }
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+--- merged
++++ developer
+@@ -21,6 +21,7 @@
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
++
+ import com.premiumminds.billy.portugal.persistence.dao.DAOPTCreditNoteEntry;
+ import com.premiumminds.billy.portugal.persistence.entities.PTCreditNoteEntity;
+ import com.premiumminds.billy.portugal.persistence.entities.PTCreditNoteEntryEntity;
+@@ -29,8 +30,8 @@
+ import com.premiumminds.billy.portugal.persistence.entities.jpa.QJPAPTCreditNoteEntity;
+ import com.premiumminds.billy.portugal.persistence.entities.jpa.QJPAPTCreditNoteEntryEntity;
+ import com.premiumminds.billy.portugal.services.entities.PTInvoice;
++import com.querydsl.core.types.dsl.PathInits;
+ import com.querydsl.jpa.impl.JPAQuery;
+-import com.querydsl.core.types.dsl.PathInits;
+ 
+ public class DAOPTCreditNoteEntryImpl
+         extends AbstractDAOPTGenericInvoiceEntryImpl<PTCreditNoteEntryEntity, JPAPTCreditNoteEntryEntity>
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 10/13: billy-france/src/main/java/com/premiumminds/billy/france/persistence/dao/jpa/DAOFRCreditNoteImpl.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,16 +18,15 @@
+  */
+ package com.premiumminds.billy.france.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.JPAExpressions;
+-import com.querydsl.jpa.JPQLQuery;
+ import java.util.ArrayList;
+ import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+ 
+-import com.premiumminds.billy.core.services.UID;
++import com.premiumminds.billy.core.services.StringID;
++import com.premiumminds.billy.core.services.entities.Business;
++import com.premiumminds.billy.core.services.entities.documents.GenericInvoice;
+ import com.premiumminds.billy.france.persistence.dao.DAOFRCreditNote;
+ import com.premiumminds.billy.france.persistence.entities.FRCreditNoteEntity;
+ import com.premiumminds.billy.france.persistence.entities.jpa.JPAFRCreditNoteEntity;
+@@ -36,6 +35,8 @@
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditNoteEntryEntity;
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRGenericInvoiceEntity;
+ import com.premiumminds.billy.france.services.entities.FRCreditNote;
++import com.querydsl.jpa.JPAExpressions;
++import com.querydsl.jpa.JPQLQuery;
+ 
+ public class DAOFRCreditNoteImpl extends AbstractDAOFRGenericInvoiceImpl<FRCreditNoteEntity, JPAFRCreditNoteEntity>
+         implements DAOFRCreditNote {
+@@ -56,7 +57,7 @@
+     }
+ 
+     @Override
+-    public List<FRCreditNote> findByReferencedDocument(UID uidCompany, UID uidInvoice) {
++    public List<FRCreditNote> findByReferencedDocument(StringID<Business> uidCompany, StringID<GenericInvoice> uidInvoice) {
+         QJPAFRCreditNoteEntity creditNote = QJPAFRCreditNoteEntity.jPAFRCreditNoteEntity;
+         QJPAFRCreditNoteEntryEntity entry = QJPAFRCreditNoteEntryEntity.jPAFRCreditNoteEntryEntity;
+         QJPAFRGenericInvoiceEntity invoice = QJPAFRGenericInvoiceEntity.jPAFRGenericInvoiceEntity;
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -69,7 +69,7 @@
+         final JPQLQuery<String> entQ = JPAExpressions
+             .select(entry.uid)
+             .from(entry)
+-            .where(this.toDSL(entry.reference, QJPAFRGenericInvoiceEntity.class).uid.in(invQ));
++            .where(this.toDSL(entry.invoiceReference, QJPAFRGenericInvoiceEntity.class).uid.in(invQ));
+ 
+         return new ArrayList<>(this
+             .createQuery()
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 11/13: billy-france/src/main/java/com/premiumminds/billy/france/persistence/dao/jpa/DAOFRCreditReceiptImpl.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,16 +18,15 @@
+  */
+ package com.premiumminds.billy.france.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.JPAExpressions;
+-import com.querydsl.jpa.JPQLQuery;
+ import java.util.ArrayList;
+ import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+ 
+-import com.premiumminds.billy.core.services.UID;
++import com.premiumminds.billy.core.services.StringID;
++import com.premiumminds.billy.core.services.entities.Business;
++import com.premiumminds.billy.core.services.entities.documents.GenericInvoice;
+ import com.premiumminds.billy.france.persistence.dao.DAOFRCreditReceipt;
+ import com.premiumminds.billy.france.persistence.entities.FRCreditReceiptEntity;
+ import com.premiumminds.billy.france.persistence.entities.jpa.JPAFRCreditReceiptEntity;
+@@ -36,6 +35,8 @@
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRCreditReceiptEntryEntity;
+ import com.premiumminds.billy.france.persistence.entities.jpa.QJPAFRGenericInvoiceEntity;
+ import com.premiumminds.billy.france.services.entities.FRCreditReceipt;
++import com.querydsl.jpa.JPAExpressions;
++import com.querydsl.jpa.JPQLQuery;
+ 
+ public class DAOFRCreditReceiptImpl extends
+         AbstractDAOFRGenericInvoiceImpl<FRCreditReceiptEntity, JPAFRCreditReceiptEntity> implements DAOFRCreditReceipt {
+@@ -56,7 +57,7 @@
+     }
+ 
+     @Override
+-    public List<FRCreditReceipt> findByReferencedDocument(UID uidCompany, UID uidInvoice) {
++    public List<FRCreditReceipt> findByReferencedDocument(StringID<Business> uidCompany, StringID<GenericInvoice> uidInvoice) {
+         QJPAFRCreditReceiptEntity creditReceipt = QJPAFRCreditReceiptEntity.jPAFRCreditReceiptEntity;
+         QJPAFRCreditReceiptEntryEntity entry = QJPAFRCreditReceiptEntryEntity.jPAFRCreditReceiptEntryEntity;
+         QJPAFRGenericInvoiceEntity receipt = QJPAFRGenericInvoiceEntity.jPAFRGenericInvoiceEntity;
+@@ -64,7 +65,7 @@
+         final JPQLQuery<String> invQ = JPAExpressions
+             .select(receipt.uid)
+             .from(receipt)
+-            .where(receipt.uid.eq(uidInvoice.toString()));
++            .where(receipt.uid.eq(uidInvoice.getIdentifier()));
+ 
+         final JPQLQuery<String> entQ = JPAExpressions
+             .select(entry.uid)
+@@ -75,7 +76,7 @@
+             .createQuery()
+             .from(creditReceipt)
+             .where(this.toDSL(creditReceipt.business, QJPAFRBusinessEntity.class).uid
+-                       .eq(uidCompany.toString())
++                       .eq(uidCompany.getIdentifier())
+                        .and(this.toDSL(creditReceipt.entries.any(), QJPAFRCreditReceiptEntryEntity.class).uid.in(entQ)))
+             .select(creditReceipt)
+             .fetch());
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -69,7 +69,7 @@
+         final JPQLQuery<String> entQ = JPAExpressions
+             .select(entry.uid)
+             .from(entry)
+-            .where(this.toDSL(entry.reference, QJPAFRGenericInvoiceEntity.class).uid.in(invQ));
++            .where(this.toDSL(entry.receiptReference, QJPAFRGenericInvoiceEntity.class).uid.in(invQ));
+ 
+         return new ArrayList<>(this
+             .createQuery()
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 12/13: billy-spain/src/main/java/com/premiumminds/billy/spain/persistence/dao/jpa/DAOESCreditNoteImpl.java ===
+--- OURS vs BASE (unified diff, -U3) ---
+--- base
++++ ours
+@@ -18,16 +18,15 @@
+  */
+ package com.premiumminds.billy.spain.persistence.dao.jpa;
+ 
+-import com.querydsl.jpa.JPAExpressions;
+-import com.querydsl.jpa.JPQLQuery;
+ import java.util.ArrayList;
+ import java.util.List;
+-
+ import javax.inject.Inject;
+ import javax.inject.Provider;
+ import javax.persistence.EntityManager;
+ 
+-import com.premiumminds.billy.core.services.UID;
++import com.premiumminds.billy.core.services.StringID;
++import com.premiumminds.billy.core.services.entities.Business;
++import com.premiumminds.billy.core.services.entities.documents.GenericInvoice;
+ import com.premiumminds.billy.spain.persistence.dao.DAOESCreditNote;
+ import com.premiumminds.billy.spain.persistence.entities.ESCreditNoteEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.JPAESCreditNoteEntity;
+@@ -36,6 +35,8 @@
+ import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESCreditNoteEntryEntity;
+ import com.premiumminds.billy.spain.persistence.entities.jpa.QJPAESGenericInvoiceEntity;
+ import com.premiumminds.billy.spain.services.entities.ESCreditNote;
++import com.querydsl.jpa.JPAExpressions;
++import com.querydsl.jpa.JPQLQuery;
+ 
+ public class DAOESCreditNoteImpl extends AbstractDAOESGenericInvoiceImpl<ESCreditNoteEntity, JPAESCreditNoteEntity>
+         implements DAOESCreditNote {
+@@ -56,7 +57,7 @@
+     }
+ 
+     @Override
+-    public List<ESCreditNote> findByReferencedDocument(UID uidCompany, UID uidInvoice) {
++    public List<ESCreditNote> findByReferencedDocument(StringID<Business> uidCompany, StringID<GenericInvoice> uidInvoice) {
+         QJPAESCreditNoteEntity creditNote = QJPAESCreditNoteEntity.jPAESCreditNoteEntity;
+         QJPAESCreditNoteEntryEntity entry = QJPAESCreditNoteEntryEntity.jPAESCreditNoteEntryEntity;
+         QJPAESGenericInvoiceEntity invoice = QJPAESGenericInvoiceEntity.jPAESGenericInvoiceEntity;
+--- THEIRS vs BASE (unified diff, -U3) ---
+--- base
++++ theirs
+@@ -69,7 +69,7 @@
+         final JPQLQuery<String> entQ = JPAExpressions
+             .select(entry.uid)
+             .from(entry)
+-            .where(this.toDSL(entry.reference, QJPAESGenericInvoiceEntity.class).uid.in(invQ));
++            .where(this.toDSL(entry.invoiceReference, QJPAESGenericInvoiceEntity.class).uid.in(invQ));
+ 
+         return new ArrayList<>(this
+             .createQuery()
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U3) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== REMAINING 1 FILES (elided at truncation T3; listed by path + merged-vs-dev diffstat) ===
+  billy-spain/src/main/java/com/premiumminds/billy/spain/persistence/dao/jpa/DAOESCreditReceiptImpl.java  (merged-vs-dev +0 -0)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

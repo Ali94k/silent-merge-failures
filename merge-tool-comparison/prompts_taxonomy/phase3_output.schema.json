@@ -1,0 +1,93 @@
+{
+  "type": "object",
+  "properties": {
+    "unit_id": {
+      "type": "string"
+    },
+    "primary": {
+      "type": "string",
+      "enum": [
+        "stale-usage-of-pruned-import",
+        "stale-reference-to-removed-declaration",
+        "stale-reference-to-renamed-or-relocated-declaration",
+        "stale-caller-of-changed-signature",
+        "stale-expectation-of-changed-behavior",
+        "overlapping-edit-interleaving",
+        "insertion-anchored-to-relocated-code",
+        "duplicate-concurrent-addition",
+        "residual-other",
+        "none-identified",
+        "indeterminate",
+        "flaky-suspect"
+      ]
+    },
+    "secondary": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "stale-usage-of-pruned-import",
+          "stale-reference-to-removed-declaration",
+          "stale-reference-to-renamed-or-relocated-declaration",
+          "stale-caller-of-changed-signature",
+          "stale-expectation-of-changed-behavior",
+          "overlapping-edit-interleaving",
+          "insertion-anchored-to-relocated-code",
+          "duplicate-concurrent-addition",
+          "residual-other"
+        ]
+      },
+      "description": "0-2 additional categories, independently evidenced; [] otherwise"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "ours-diff",
+              "theirs-diff",
+              "merged",
+              "dev-diff",
+              "compile-delta"
+            ]
+          },
+          "quote": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "quote",
+          "role"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "unit_id",
+    "primary",
+    "secondary",
+    "evidence",
+    "confidence",
+    "notes"
+  ],
+  "additionalProperties": false
+}

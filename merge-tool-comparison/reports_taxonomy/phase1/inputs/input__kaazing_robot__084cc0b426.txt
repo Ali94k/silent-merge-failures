@@ -1,0 +1,240 @@
+UNIT kaazing_robot__084cc0b426
+repo: kaazing_robot   merge: 084cc0b426e3b6e5c33eb91da884a1b46aa411e7   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: specification/wse/src/test/java/org/kaazing/specification/wse/data/BinaryAsEscapedTextIT.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -14,16 +14,17 @@
+  * limitations under the License.
+  */
+ 
+ package org.kaazing.specification.wse.data;
+ 
+ import static java.util.concurrent.TimeUnit.SECONDS;
+ import static org.junit.rules.RuleChain.outerRule;
+ 
++import org.junit.Ignore;
+ import org.junit.Rule;
+ import org.junit.Test;
+ import org.junit.rules.DisableOnDebug;
+ import org.junit.rules.TestRule;
+ import org.junit.rules.Timeout;
+ import org.kaazing.k3po.junit.annotation.Specification;
+ import org.kaazing.k3po.junit.rules.K3poRule;
+ 
+@@ -31,24 +32,32 @@
+     private final K3poRule k3po = new K3poRule().setScriptRoot("org/kaazing/specification/wse/data/binary.as.escaped.text");
+ 
+     private final TestRule timeout = new DisableOnDebug(new Timeout(5, SECONDS));
+ 
+     @Rule
+     public final TestRule chain = outerRule(k3po).around(timeout);
+ 
+     @Test
++    @Specification({"echo.escaped.characters/request",
++        "echo.escaped.characters/response" })
++    public void shouldEchoEscapedCharacters() throws Exception {
++        k3po.finish();
++    }
++
++    @Test
+     @Specification({
+         "echo.payload.length.0/request",
+         "echo.payload.length.0/response" })
+     public void shouldEchoFrameWithPayloadLength0() throws Exception {
+         k3po.finish();
+     }
+ 
+     @Test
++    @Ignore("To be completed when wse spec is complete")
+     @Specification({
+         "echo.payload.length.127/request",
+     "echo.payload.length.127/response" })
+     public void shouldEchoFrameWithPayloadLength127() throws Exception {
+         k3po.finish();
+     }
+ 
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -14,16 +14,17 @@
+  * limitations under the License.
+  */
+ 
+ package org.kaazing.specification.wse.data;
+ 
+ import static java.util.concurrent.TimeUnit.SECONDS;
+ import static org.junit.rules.RuleChain.outerRule;
+ 
++import org.junit.Ignore;
+ import org.junit.Rule;
+ import org.junit.Test;
+ import org.junit.rules.DisableOnDebug;
+ import org.junit.rules.TestRule;
+ import org.junit.rules.Timeout;
+ import org.kaazing.k3po.junit.annotation.Specification;
+ import org.kaazing.k3po.junit.rules.K3poRule;
+ 
+@@ -31,24 +32,32 @@
+     private final K3poRule k3po = new K3poRule().setScriptRoot("org/kaazing/specification/wse/data/binary.as.escaped.text");
+ 
+     private final TestRule timeout = new DisableOnDebug(new Timeout(5, SECONDS));
+ 
+     @Rule
+     public final TestRule chain = outerRule(k3po).around(timeout);
+ 
+     @Test
++    @Specification({"echo.non.escaped.characters/request",
++        "echo.non.escaped.characters/response" })
++    public void shouldEchoNonEscapedCharacters() throws Exception {
++        k3po.finish();
++    }
++
++    @Test
+     @Specification({
+         "echo.payload.length.0/request",
+         "echo.payload.length.0/response" })
+     public void shouldEchoFrameWithPayloadLength0() throws Exception {
+         k3po.finish();
+     }
+ 
+     @Test
++    @Ignore("Escaping is underspecified, see https://github.com/k3po/k3po/pull/280/files")
+     @Specification({
+         "echo.payload.length.127/request",
+-    "echo.payload.length.127/response" })
++        "echo.payload.length.127/response" })
+     public void shouldEchoFrameWithPayloadLength127() throws Exception {
+         k3po.finish();
+     }
+ 
+ }
+--- MERGED RESULT (mergiraf; full) ---
+/*
+ * Copyright 2014, Kaazing Corporation. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.kaazing.specification.wse.data;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.junit.rules.RuleChain.outerRule;
+
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.DisableOnDebug;
+import org.junit.rules.TestRule;
+import org.junit.rules.Timeout;
+import org.kaazing.k3po.junit.annotation.Specification;
+import org.kaazing.k3po.junit.rules.K3poRule;
+
+public class BinaryAsEscapedTextIT {
+    private final K3poRule k3po = new K3poRule().setScriptRoot("org/kaazing/specification/wse/data/binary.as.escaped.text");
+
+    private final TestRule timeout = new DisableOnDebug(new Timeout(5, SECONDS));
+
+    @Rule
+    public final TestRule chain = outerRule(k3po).around(timeout);
+
+    @Test
+    @Specification({"echo.escaped.characters/request",
+        "echo.escaped.characters/response" })
+    public void shouldEchoEscapedCharacters() throws Exception {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({"echo.non.escaped.characters/request",
+        "echo.non.escaped.characters/response" })
+    public void shouldEchoNonEscapedCharacters() throws Exception {
+        k3po.finish();
+    }
+
+    @Test
+    @Specification({
+        "echo.payload.length.0/request",
+        "echo.payload.length.0/response" })
+    public void shouldEchoFrameWithPayloadLength0() throws Exception {
+        k3po.finish();
+    }
+
+    @Test
+    @Ignore("To be completed when wse spec is complete")
+    @Ignore("Escaping is underspecified, see https://github.com/k3po/k3po/pull/280/files")
+    @Specification({
+        "echo.payload.length.127/request",
+        "echo.payload.length.127/response" })
+    public void shouldEchoFrameWithPayloadLength127() throws Exception {
+        k3po.finish();
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -38,34 +38,32 @@
+ 
+     @Test
+     @Specification({"echo.escaped.characters/request",
+         "echo.escaped.characters/response" })
+     public void shouldEchoEscapedCharacters() throws Exception {
+         k3po.finish();
+     }
+ 
+-    @Test
+     @Specification({"echo.non.escaped.characters/request",
+         "echo.non.escaped.characters/response" })
+     public void shouldEchoNonEscapedCharacters() throws Exception {
+         k3po.finish();
+     }
+ 
+     @Test
+     @Specification({
+         "echo.payload.length.0/request",
+         "echo.payload.length.0/response" })
+     public void shouldEchoFrameWithPayloadLength0() throws Exception {
+         k3po.finish();
+     }
+ 
+     @Test
+     @Ignore("To be completed when wse spec is complete")
+-    @Ignore("Escaping is underspecified, see https://github.com/k3po/k3po/pull/280/files")
+     @Specification({
+         "echo.payload.length.127/request",
+         "echo.payload.length.127/response" })
+     public void shouldEchoFrameWithPayloadLength127() throws Exception {
+         k3po.finish();
+     }
+ 
+ }
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,151 @@
+UNIT nurkiewicz_java8-workshop__f5918aa79c
+repo: nurkiewicz_java8-workshop   merge: f5918aa79c6e08def4de82ff69f94733e71f7fcd   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: src/main/java/com/nurkiewicz/java8/holidays/PolishHolidays.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -48,32 +48,9 @@
+ 		LocalDate easterThatYear = Easter.sundayFor(Year.of(date.getYear()));
+ 		return date.equals(easterThatYear.plusDays(1));
+ 	}
+ 
+ 	private boolean isCorpusChristi(LocalDate date) {
+ 		LocalDate easterThatYear = Easter.sundayFor(Year.of(date.getYear()));
+ 		return date.equals(easterThatYear.plusDays(60));
+ 	}
+-
+-	@Override
+-	public boolean isWorkingDay(LocalDate date) {
+-		return !isHoliday(date);
+-	}
+-
+-	@Override
+-	public LocalDate nextHolidayAfter(LocalDate date) {
+-		LocalDate cur = date;
+-		do {
+-			cur = cur.plusDays(1);
+-		} while(isWorkingDay(cur));
+-		return cur;
+-	}
+-
+-	@Override
+-	public LocalDate nextWorkingDayAfter(LocalDate date) {
+-		LocalDate cur = date;
+-		do {
+-			cur = cur.plusDays(1);
+-		} while(isHoliday(cur));
+-		return cur;
+-	}
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -7,28 +7,28 @@
+ import java.time.MonthDay;
+ import java.time.Year;
+ import java.util.Set;
+ 
+ import static java.time.Month.AUGUST;
+ import static java.time.Month.DECEMBER;
+ import static java.time.Month.JANUARY;
+ import static java.time.Month.MAY;
+-import static java.time.Month.OCTOBER;
++import static java.time.Month.NOVEMBER;
+ 
+ public class PolishHolidays implements Holidays {
+ 
+ 	private static final Set<MonthDay> FIXED_HOLIDAYS = ImmutableSet.of(
+ 			MonthDay.of(JANUARY, 1),
+ 			MonthDay.of(JANUARY, 6),
+ 			MonthDay.of(MAY, 1),
+ 			MonthDay.of(MAY, 3),
+ 			MonthDay.of(AUGUST, 15),
+-			MonthDay.of(OCTOBER, 1),
+-			MonthDay.of(OCTOBER, 11),
++			MonthDay.of(NOVEMBER, 1),
++			MonthDay.of(NOVEMBER, 11),
+ 			MonthDay.of(DECEMBER, 25),
+ 			MonthDay.of(DECEMBER, 26)
+ 	);
+ 
+ 	public boolean isHoliday(LocalDate date) {
+ 		return isWeekend(date) ||
+ 				isFixedHoliday(date) ||
+ 				isEasterMonday(date) ||
+--- MERGED RESULT (mergiraf; full) ---
+package com.nurkiewicz.java8.holidays;
+
+import com.google.common.collect.ImmutableSet;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.MonthDay;
+import java.time.Year;
+import java.util.Set;
+
+import static java.time.Month.AUGUST;
+import static java.time.Month.DECEMBER;
+import static java.time.Month.JANUARY;
+import static java.time.Month.MAY;
+import static java.time.Month.NOVEMBER;
+
+public class PolishHolidays implements Holidays {
+
+	private static final Set<MonthDay> FIXED_HOLIDAYS = ImmutableSet.of(
+			MonthDay.of(JANUARY, 1),
+			MonthDay.of(JANUARY, 6),
+			MonthDay.of(MAY, 1),
+			MonthDay.of(MAY, 3),
+			MonthDay.of(AUGUST, 15),
+			MonthDay.of(NOVEMBER, 1),
+			MonthDay.of(NOVEMBER, 11),
+			MonthDay.of(DECEMBER, 25),
+			MonthDay.of(DECEMBER, 26)
+	);
+
+	public boolean isHoliday(LocalDate date) {
+		return isWeekend(date) ||
+				isFixedHoliday(date) ||
+				isEasterMonday(date) ||
+				isCorpusChristi(date);
+	}
+
+	private boolean isWeekend(LocalDate date) {
+		return date.getDayOfWeek() == DayOfWeek.SATURDAY ||
+				date.getDayOfWeek() == DayOfWeek.SUNDAY;
+	}
+
+	private boolean isFixedHoliday(LocalDate date) {
+		return FIXED_HOLIDAYS.contains(MonthDay.from(date));
+	}
+
+	private boolean isEasterMonday(LocalDate date) {
+		LocalDate easterThatYear = Easter.sundayFor(Year.of(date.getYear()));
+		return date.equals(easterThatYear.plusDays(1));
+	}
+
+	private boolean isCorpusChristi(LocalDate date) {
+		LocalDate easterThatYear = Easter.sundayFor(Year.of(date.getYear()));
+		return date.equals(easterThatYear.plusDays(60));
+	}
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

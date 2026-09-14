@@ -1,0 +1,458 @@
+UNIT winder_universal-g-code-sender__bc742cb4c4
+repo: winder_universal-g-code-sender   merge: bc742cb4c4807f95773dc6af9b3b966e07db1561   stratum: A
+files shown: 1 of 1 intersecting Java files
+dropped (textual-conflict, not silent — excluded): (none)
+truncation level: T0  (full inputs)
+
+=== FILE 1/1: ugs-core/src/com/willwinder/universalgcodesender/GrblController.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -64,17 +64,17 @@
+     private Character grblVersionLetter = null; // The c in 'Grbl 0.8c'
+     protected Boolean isReady = false;          // Not ready until version is received.
+     private Capabilities capabilities = new Capabilities();
+     private final GrblFirmwareSettings firmwareSettings;
+ 
+     // Polling state
+     private int outstandingPolls = 0;
+     private Timer positionPollTimer = null;  
+-    private ControllerStatus controllerStatus = new ControllerStatus("Disconnected", ControllerState.DISCONNECTED, new Position(0,0,0,Units.MM), new Position(0,0,0,Units.MM));
++    protected ControllerStatus controllerStatus = new ControllerStatus("Disconnected", ControllerState.DISCONNECTED, new Position(0,0,0,Units.MM), new Position(0,0,0,Units.MM));
+ 
+     // Canceling state
+     private Boolean isCanceling = false;     // Set for the position polling thread.
+     private int attemptsRemaining;
+     private Position lastLocation;
+ 
+     /**
+      * For storing a temporary state if using single step mode when entering the state
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,10 +1,10 @@
+ /*
+-    Copyright 2013-2019 Will Winder
++    Copyright 2013-2020 Will Winder
+ 
+     This file is part of Universal Gcode Sender (UGS).
+ 
+     UGS is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation, either version 3 of the License, or
+     (at your option) any later version.
+ 
+@@ -35,17 +35,16 @@
+ import com.willwinder.universalgcodesender.types.GrblSettingMessage;
+ import com.willwinder.universalgcodesender.utils.GrblLookups;
+ import org.apache.commons.lang3.StringUtils;
+ 
+ import javax.swing.*;
+ import java.awt.event.ActionEvent;
+ import java.awt.event.ActionListener;
+ import java.util.ArrayList;
+-import java.util.Iterator;
+ import java.util.Optional;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+ 
+ import static com.willwinder.universalgcodesender.model.UGSEvent.ControlState.COMM_CHECK;
+ import static com.willwinder.universalgcodesender.model.UGSEvent.ControlState.COMM_IDLE;
+ 
+ /**
+@@ -351,17 +350,17 @@
+             } catch (Exception e) {
+                 // Oh well, was worth a shot.
+                 System.out.println("Exception while trying to issue a soft reset: " + e.getMessage());
+             }
+         }
+     }
+     
+     @Override
+-    protected void cancelSendAfterEvent() throws Exception {
++    protected void cancelSendAfterEvent() {
+         if (this.capabilities.hasCapability(GrblCapabilitiesConstants.REAL_TIME) && this.getStatusUpdatesEnabled()) {
+             // Trigger the position listener to watch for the machine to stop.
+             this.attemptsRemaining = 50;
+             this.isCanceling = true;
+             this.lastLocation = null;
+         }
+     }
+ 
+@@ -466,37 +465,16 @@
+             throw new Exception("Must be connected to set work position");
+         }
+ 
+         String gcode = GrblUtils.getSetCoordCommand(axisPosition, this.grblVersion, this.grblVersionLetter);
+         if (StringUtils.isNotEmpty(gcode)) {
+             GcodeCommand command = createCommand(gcode);
+             this.sendCommandImmediately(command);
+         }
+-    }
+-
+-    @Override
+-    public void returnToHome() throws Exception {
+-        if (this.isCommOpen()) {
+-            ArrayList<String> commands = GrblUtils.getReturnToHomeCommands(this.grblVersion, this.grblVersionLetter, this.controllerStatus.getWorkCoord().z);
+-            if (!commands.isEmpty()) {
+-                Iterator<String> iter = commands.iterator();
+-                // Perform the homing commands
+-                while(iter.hasNext()){
+-                    String gcode = iter.next();
+-                    GcodeCommand command = createCommand(gcode);
+-                    this.sendCommandImmediately(command);
+-                }
+-                return;
+-            }
+-
+-            restoreParserModalState();
+-        }
+-        // Throw exception
+-        super.returnToHome();
+     }
+     
+     @Override
+     public void killAlarmLock() throws Exception {
+         if (this.isCommOpen()) {
+             String gcode = GrblUtils.getKillAlarmLockCommand(this.grblVersion, this.grblVersionLetter);
+             if (!"".equals(gcode)) {
+                 GcodeCommand command = createCommand(gcode);
+--- MERGED RESULT (mergiraf; windowed ±40 around base-differing regions + package/imports/signatures) ---
+/*
+    Copyright 2013-2020 Will Winder
+
+    This file is part of Universal Gcode Sender (UGS).
+
+    UGS is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    UGS is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with UGS.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package com.willwinder.universalgcodesender;
+
+import com.willwinder.universalgcodesender.firmware.IFirmwareSettings;
+import com.willwinder.universalgcodesender.firmware.grbl.GrblFirmwareSettings;
+import com.willwinder.universalgcodesender.gcode.GcodeCommandCreator;
+import com.willwinder.universalgcodesender.gcode.util.GcodeUtils;
+import com.willwinder.universalgcodesender.i18n.Localization;
+import com.willwinder.universalgcodesender.listeners.ControllerState;
+import com.willwinder.universalgcodesender.listeners.ControllerStatus;
+import com.willwinder.universalgcodesender.listeners.ControllerStatusBuilder;
+import com.willwinder.universalgcodesender.listeners.MessageType;
+import com.willwinder.universalgcodesender.model.*;
+import com.willwinder.universalgcodesender.model.UGSEvent.ControlState;
+import com.willwinder.universalgcodesender.model.UnitUtils.Units;
+import com.willwinder.universalgcodesender.types.GcodeCommand;
+import com.willwinder.universalgcodesender.types.GrblFeedbackMessage;
+import com.willwinder.universalgcodesender.types.GrblSettingMessage;
+import com.willwinder.universalgcodesender.utils.GrblLookups;
+import org.apache.commons.lang3.StringUtils;
+
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import static com.willwinder.universalgcodesender.model.UGSEvent.ControlState.COMM_CHECK;
+import static com.willwinder.universalgcodesender.model.UGSEvent.ControlState.COMM_IDLE;
+
+/**
+ * GRBL Control layer, coordinates all aspects of control.
+ *
+ * @author wwinder
+ */
+public class GrblController extends AbstractController {
+    private static final Logger logger = Logger.getLogger(GrblController.class.getName());
+
+    private static final GrblLookups ALARMS = new GrblLookups("alarm_codes");
+    private static final GrblLookups ERRORS = new GrblLookups("error_codes");
+
+    // Grbl state
+    private double grblVersion = 0.0;           // The 0.8 in 'Grbl 0.8c'
+    private Character grblVersionLetter = null; // The c in 'Grbl 0.8c'
+    protected Boolean isReady = false;          // Not ready until version is received.
+    private Capabilities capabilities = new Capabilities();
+    private final GrblFirmwareSettings firmwareSettings;
+
+    // Polling state
+    private int outstandingPolls = 0;
+    private Timer positionPollTimer = null;  
+    protected ControllerStatus controllerStatus = new ControllerStatus("Disconnected", ControllerState.DISCONNECTED, new Position(0,0,0,Units.MM), new Position(0,0,0,Units.MM));
+
+    // Canceling state
+    private Boolean isCanceling = false;     // Set for the position polling thread.
+    private int attemptsRemaining;
+    private Position lastLocation;
+
+    /**
+     * For storing a temporary state if using single step mode when entering the state
+     * check mode. When leaving check mode the temporary single step mode will be reverted.
+     */
+    private boolean temporaryCheckSingleStepMode = false;
+
+    public GrblController(AbstractCommunicator comm) {
+        super(comm);
+        
+        this.commandCreator = new GcodeCommandCreator();
+        this.positionPollTimer = createPositionPollTimer();
+
+        // Add our controller settings manager
+        this.firmwareSettings = new GrblFirmwareSettings(this);
+        this.comm.addListener(firmwareSettings);
+    }
+    
+    public GrblController() {
+        this(new GrblCommunicator());
+    }
+
+    @Override
+    public Boolean handlesAllStateChangeEvents() {
+        return capabilities.hasCapability(GrblCapabilitiesConstants.REAL_TIME);
+    }
+
+    @Override
+    public Capabilities getCapabilities() {
+        return capabilities;
+    }
+
+    @Override
+    public IFirmwareSettings getFirmwareSettings() {
+        return firmwareSettings;
+        // ... 6 lines elided ...
+    private static String lookupCode(String input, boolean shortString) {
+        // ... 32 lines elided ...
+    protected void rawResponseHandler(String response) {
+        // ... 135 lines elided ...
+    protected void pauseStreamingEvent() throws Exception {
+        // ... 6 lines elided ...
+    protected void resumeStreamingEvent() throws Exception {
+        // ... 6 lines elided ...
+    protected void closeCommBeforeEvent() {
+        // ... 4 lines elided ...
+    protected void closeCommAfterEvent() {
+        // ... 5 lines elided ...
+    protected void openCommAfterEvent() throws Exception {
+        // ... 4 lines elided ...
+    protected void isReadyToStreamCommandsEvent() throws Exception {
+        isReadyToSendCommandsEvent();
+        if (this.controllerStatus != null && this.controllerStatus.getState() == ControllerState.ALARM) {
+            throw new Exception(Localization.getString("grbl.exception.Alarm"));
+        }
+    }
+
+    @Override
+    protected void isReadyToSendCommandsEvent() throws Exception {
+        if (!this.isReady) {
+            throw new Exception(Localization.getString("controller.exception.booting"));
+        }
+    }
+    
+    @Override
+    protected void cancelSendBeforeEvent() throws Exception {
+        boolean paused = isPaused();
+        // The cancel button is left enabled at all times now, but can only be
+        // used for some versions of GRBL.
+        if (paused && !this.capabilities.hasCapability(GrblCapabilitiesConstants.REAL_TIME)) {
+            throw new Exception("Cannot cancel while paused with this version of GRBL. Reconnect to reset GRBL.");
+        }
+
+        // If we're canceling a "jog" just send the door hold command.
+        if (capabilities.hasJogging() && controllerStatus != null &&
+                controllerStatus.getState() == ControllerState.JOG) {
+            this.comm.sendByteImmediately(GrblUtils.GRBL_JOG_CANCEL_COMMAND);
+        }
+        // Otherwise, check if we can get fancy with a soft reset.
+        else if (!paused && this.capabilities.hasCapability(GrblCapabilitiesConstants.REAL_TIME)) {
+            try {
+                this.pauseStreaming();
+                this.dispatchStateChange(ControlState.COMM_SENDING_PAUSED);
+            } catch (Exception e) {
+                // Oh well, was worth a shot.
+                System.out.println("Exception while trying to issue a soft reset: " + e.getMessage());
+            }
+        }
+    }
+    
+    @Override
+    protected void cancelSendAfterEvent() {
+        if (this.capabilities.hasCapability(GrblCapabilitiesConstants.REAL_TIME) && this.getStatusUpdatesEnabled()) {
+            // Trigger the position listener to watch for the machine to stop.
+            this.attemptsRemaining = 50;
+            this.isCanceling = true;
+            this.lastLocation = null;
+        }
+    }
+
+    @Override
+    protected Boolean isIdleEvent() {
+        if (this.capabilities.hasCapability(GrblCapabilitiesConstants.REAL_TIME)) {
+            return getControlState() == COMM_IDLE || getControlState() == COMM_CHECK;
+        }
+        // Otherwise let the abstract controller decide.
+        return true;
+    }
+
+    @Override
+    public ControlState getControlState() {
+        if (!this.capabilities.hasCapability(GrblCapabilitiesConstants.REAL_TIME)) {
+            return super.getControlState();
+        }
+
+        String state = this.controllerStatus == null ? "" : StringUtils.defaultString(this.controllerStatus.getStateString());
+        switch(state.toLowerCase()) {
+            case "jog":
+            case "run":
+                return ControlState.COMM_SENDING;
+            case "hold":
+            case "door":
+            case "queue":
+                return ControlState.COMM_SENDING_PAUSED;
+            case "idle":
+                if (isStreaming()){
+                    return ControlState.COMM_SENDING_PAUSED;
+                } else {
+                    return ControlState.COMM_IDLE;
+                }
+            case "alarm":
+                return ControlState.COMM_IDLE;
+        // ... 17 lines elided ...
+    public void performHomingCycle() throws Exception {
+        // ... 16 lines elided ...
+    
+    @Override
+    public void resetCoordinatesToZero() throws Exception {
+        if (this.isCommOpen()) {
+            String gcode = GrblUtils.getResetCoordsToZeroCommand(this.grblVersion, this.grblVersionLetter);
+            if (!"".equals(gcode)) {
+                GcodeCommand command = createCommand(gcode);
+                this.sendCommandImmediately(command);
+                return;
+            }
+        }
+        // Throw exception
+        super.resetCoordinatesToZero();
+    }
+    
+    @Override
+    public void resetCoordinateToZero(final Axis axis) throws Exception {
+        if (this.isCommOpen()) {
+            String gcode = GrblUtils.getResetCoordToZeroCommand(axis, this.grblVersion, this.grblVersionLetter);
+            if (!"".equals(gcode)) {
+                GcodeCommand command = createCommand(gcode);
+                this.sendCommandImmediately(command);
+                return;
+            }
+        }
+        // Throw exception
+        super.resetCoordinatesToZero();
+    }
+
+    @Override
+    public void setWorkPosition(PartialPosition axisPosition) throws Exception {
+        if (!this.isCommOpen()) {
+            throw new Exception("Must be connected to set work position");
+        }
+
+        String gcode = GrblUtils.getSetCoordCommand(axisPosition, this.grblVersion, this.grblVersionLetter);
+        if (StringUtils.isNotEmpty(gcode)) {
+            GcodeCommand command = createCommand(gcode);
+            this.sendCommandImmediately(command);
+        }
+    }
+    
+    @Override
+    public void killAlarmLock() throws Exception {
+        if (this.isCommOpen()) {
+            String gcode = GrblUtils.getKillAlarmLockCommand(this.grblVersion, this.grblVersionLetter);
+            if (!"".equals(gcode)) {
+                GcodeCommand command = createCommand(gcode);
+                this.sendCommandImmediately(command);
+                return;
+            }
+        }
+        // Throw exception
+        super.killAlarmLock();
+    }
+
+    @Override
+    public void toggleCheckMode() throws Exception {
+        if (this.isCommOpen()) {
+            String gcode = GrblUtils.getToggleCheckModeCommand(this.grblVersion, this.grblVersionLetter);
+            if (!"".equals(gcode)) {
+                GcodeCommand command = createCommand(gcode);
+                this.sendCommandImmediately(command);
+                return;
+            }
+        }
+        // Throw exception
+        super.toggleCheckMode();
+    }
+
+    @Override
+    public void viewParserState() throws Exception {
+        if (this.isCommOpen()) {
+            String gcode = GrblUtils.getViewParserStateCommand(this.grblVersion, this.grblVersionLetter);
+            if (!"".equals(gcode)) {
+                GcodeCommand command = createCommand(gcode);
+                this.sendCommandImmediately(command);
+                return;
+            }
+        }
+        // ... 8 lines elided ...
+    public void softReset() throws Exception {
+        // ... 8 lines elided ...
+    public void jogMachine(int dirX, int dirY, int dirZ, double stepSize, 
+        // ... 12 lines elided ...
+    public void jogMachineTo(PartialPosition position, double feedRate) throws Exception {
+        // ... 13 lines elided ...
+    public String getGrblVersion() {
+        // ... 20 lines elided ...
+    public String getFirmwareVersion() {
+        // ... 4 lines elided ...
+    public ControllerStatus getControllerStatus() {
+        // ... 6 lines elided ...
+    private Timer createPositionPollTimer() {
+        // ... 3 lines elided ...
+            public void actionPerformed(ActionEvent actionEvent) {
+        // ... 2 lines elided ...
+                    public void run() {
+        // ... 29 lines elided ...
+    private void beginPollingPosition() {
+        // ... 12 lines elided ...
+    private void stopPollingPosition() {
+        // ... 7 lines elided ...
+    private void handleStatusString(final String string) {
+        // ... 63 lines elided ...
+    protected void statusUpdatesEnabledValueChanged(boolean enabled) {
+        // ... 8 lines elided ...
+    protected void statusUpdatesRateValueChanged(int rate) {
+        // ... 8 lines elided ...
+    public void sendOverrideCommand(Overrides command) throws Exception {
+        // ... 7 lines elided ...
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->

@@ -1,0 +1,1814 @@
+{
+  "entries": [
+    {
+      "slug": "refmerge-over-intellimerge",
+      "title": "Prefer operation-based RefMerge over graph-based IntelliMerge as the refactoring-aware backend",
+      "date_from": "2026-04-16",
+      "date_to": null,
+      "decision": "The pre-transcript architecture selected RefMerge's operation-based invert-merge-replay pipeline as the refactoring-aware merge backend, with IntelliMerge relegated to a comparison baseline only. This direction was later reverted (see refmerge-not-integrated and refmerge-direction-reverted).",
+      "rationale_recorded": true,
+      "rationale": "A 2,001-scenario / 20-project study showed IntelliMerge resolved only 4% of refactoring conflicts and increased conflicting LOC in 30% of scenarios, while RefMerge nearly doubled the resolution rate, reduced false positives by 23% vs Git and eliminated false negatives.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "refmerge-not-integrated",
+      "sources": [
+        "preA:pre-architecture-refmerge-02"
+      ],
+      "evidence": [
+        {
+          "text": "**Prefer operation-based over graph-based merging.**",
+          "line": 37,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "RefMerge, using the operation-based paradigm, nearly doubled IntelliMerge's resolution rate (7% vs 4%), reduced false positives by 23% compared to Git, and completely eliminated false negatives.",
+          "line": 200,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        }
+      ],
+      "artifacts": [
+        "core/merge_backends.py",
+        "docs/historical/ARCHITECTURE-refmerge.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "mergiraf-as-structural-engine",
+      "title": "Choose Mergiraf as the structural merge engine and reject JDime/Spork as the standard backend",
+      "date_from": "2026-04-16",
+      "date_to": null,
+      "decision": "Mergiraf (Rust, tree-sitter-backed) replaces the textual baseline as the standard structural merge backend; JDime and Spork are not used as the general structural engine. This choice held throughout: Mergiraf remained the default backend and, after the specialist arms were refuted, the only non-git target of the auto router.",
+      "rationale_recorded": true,
+      "rationale": "JDime and Spork are exclusively Java-engineered (JDime needs an extensible Java compiler, Spork depends on Spoon's Java-only AST), whereas Mergiraf is production-ready, needs no threshold tuning, understands Java commutativity (import/annotation ordering), and falls back to conflict markers when uncertain, giving negligible latency overhead as a drop-in Git merge driver.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-03"
+      ],
+      "evidence": [
+        {
+          "text": "**Why Mergiraf instead of JDime/Spork:**",
+          "line": 202,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "JDime and Spork are strictly and exclusively engineered for the Java programming language.",
+          "line": 203,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        }
+      ],
+      "artifacts": [
+        "core/merge_backends.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "merge-backend-abc-separate-from-strategy",
+      "title": "Introduce a MergeBackend ABC separate from MergeStrategy, with env-selected backends",
+      "date_from": "2026-04-16",
+      "date_to": "2026-05-12",
+      "decision": "Merge backends are pluggable behind a `MergeBackend` ABC in `core/backends/base.py`, kept deliberately separate from the existing `MergeStrategy` ABC, with `GitMergeFileBackend` retained as the baseline alongside `MergirafBackend`. Backends mutate `ours_path` in place, must NOT raise, and return a `MergeOutcome` of CLEAN/CONFLICT/CRASH; the driver selects one via the `SEMANTIC_MERGE_BACKEND` env var (validated against a `BACKENDS` dict, default `mergiraf` at M6-lite) and fails closed with exit 1 on CRASH. `SEMANTIC_MERGE_BACKEND=git` recovers the prior inline behaviour.",
+      "rationale_recorded": true,
+      "rationale": "Backends merge, strategies analyse \u2014 the two abstractions do different jobs, so they get separate ABCs. Keeping git merge-file as a retained backend makes the merge step configurable rather than hardcoded, so the prior behaviour stays one env-flip away.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-architecture-refmerge-17",
+        "preA:pre-mergiraf-integration-20",
+        "preA:pre-commits-32",
+        "preB:pre-commits-41",
+        "preB:pre-commits-22"
+      ],
+      "evidence": [
+        {
+          "text": "`MergeBackend` ABC. Separate from existing `MergeStrategy` ABC: backends *merge*, strategies *analyse*.",
+          "line": 219,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "base.py            MergeBackend ABC + MergeOutcome enum (CLEAN/CONFLICT/CRASH).",
+          "line": 424,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "    \"\"\"Baseline textual 3-way merge via git merge-file.\"\"\"",
+          "line": 328,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/backends/base.py",
+        "semantic_merge_driver/core/backends/git_merge_file_backend.py",
+        "semantic_merge_driver/core/backends/mergiraf_backend.py",
+        "3fef834",
+        "core/driver.py",
+        "docs/plans/mergiraf-integration.md"
+      ],
+      "actors": "unclear",
+      "actors_note": "preB:pre-commits-22 attributes the Phase-6 split to ali; the other sources record no actor. Recorded as unclear because the ABC design itself is not attributed.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "fail-closed-across-backends",
+      "title": "Every merge backend fails closed: subprocess failure rejects, never silently accepts",
+      "date_from": "2026-04-21",
+      "date_to": "2026-05-12",
+      "decision": "Fail-closed semantics are preserved across all merge backends: a subprocess failure (CRASH/TIMEOUT/missing tool) in Mergiraf, Spork or Weave must surface as a rejectable outcome rather than a silent fall-through or a clean result, and Joern strategies still reject via exit 1 regardless of which backend produced the merged file. As part of this, `subprocess.run` in the backends uses `encoding=\"utf-8\", errors=\"replace\"` so non-UTF-8 output cannot raise an uncaught `UnicodeDecodeError`.",
+      "rationale_recorded": true,
+      "rationale": "Matches the \u03b2-stage fail-closed principle already applied at the strategy layer (tool-evaluation-findings.md \u00a73) and set as the pattern in Mergiraf's Phase 6-lite; an unhandled decode error on non-UTF-8 subprocess output was identified as a real fail-open risk.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-22",
+        "preA:pre-spork-driver-integration-05",
+        "preA:pre-weave-integration-15",
+        "preA:pre-commits-34"
+      ],
+      "evidence": [
+        {
+          "text": "Preserve fail-closed semantics across both backends \u2014 subprocess failure in either backend \u2192 reject, don't silently accept.",
+          "line": 227,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "- **Fail-closed semantics.** Any Spork subprocess failure \u2192 reject, don't silently fall through. Aligns with the \u03b2-stage principle and the pattern set in the other backends.",
+          "line": 77,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        },
+        {
+          "text": "uncaught \u2014 was a real fail-open risk).",
+          "line": 451,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/backends/spork_backend.py",
+        "semantic_merge_driver/core/backends/",
+        "docs/plans/execution-sequence.md",
+        "3fef834"
+      ],
+      "actors": "unclear",
+      "actors_note": "preA:pre-spork-driver-integration-05 attributes the Spork instance to ali and preA:pre-commits-34 the encoding fix to claude; the general principle is unattributed across the other sources.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "cluster-taxonomy-by-merge-difficulty",
+      "title": "Define seven RM2 clusters by 3-way merge difficulty, resolved by a fixed precedence order",
+      "date_from": "2026-04-22",
+      "date_to": "2026-07-18",
+      "decision": "The classifier's seven clusters (MIGRATE_DECL, INTRA_BODY, SYMBOL_CASCADE, CONTAINER_MOVE, HIERARCHY_RESHAPE, LOCAL_DECL_EDIT, NONE) group RM2 refactoring types by the kind of 3-way merge difficulty they create, not by lexical name similarity. When a merge yields several clusters, dispatch resolves deterministically by the order MIGRATE_DECL > INTRA_BODY > SYMBOL_CASCADE > CONTAINER_MOVE > HIERARCHY_RESHAPE > LOCAL_DECL_EDIT > NONE; compound RM2 types map to a frozenset of clusters and resolve to the highest-priority member. These clusters exist solely to drive backend routing and must not be conflated with the seven semantic-conflict categories in ResearchSummary.xml.",
+      "rationale_recorded": true,
+      "rationale": "What makes a refactoring hard for a line-based merger is precisely the question the composition pipeline's dispatch is meant to answer, so the grouping criterion must be merge difficulty; the precedence is ordered hardest-for-line-merge first, so the most difficult profile wins the dispatch. The two seven-member taxonomies are unrelated: clusters map RM2 refactoring-type display names to merge difficulty for backend selection, whereas the categories are conflict shapes detectors target.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-06",
+        "preA:pre-rm2-integration-07",
+        "a:dc3bc182-sub-agent-a7bb0f-05"
+      ],
+      "evidence": [
+        {
+          "text": "which is precisely the question the composition pipeline's dispatch is meant to answer",
+          "line": 41,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "**Precedence on multi-cluster scenarios** (highest dispatch-priority first \u2014 hardest-for-line-merge first):",
+          "line": 61,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "These clusters drive **backend routing only** \u2014 they are unrelated to the 7 semantic-conflict categories in (d).",
+          "line": 68,
+          "file": "2026-07-18_dc3bc182_sub-agent-a7bb0f.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/refactoring_classifier.py",
+        "ResearchSummary.xml"
+      ],
+      "actors": "unclear",
+      "actors_note": "a:dc3bc182-sub-agent-a7bb0f-05 attributes the taxonomy-separation note to claude; the pre-transcript cluster design is unattributed.",
+      "corroboration": "both",
+      "provenance": "mixed",
+      "confidence": "high"
+    },
+    {
+      "slug": "routing-whole-file-presence-only",
+      "title": "Routing is whole-file and presence-only by construction, documented as a design limitation",
+      "date_from": "2026-05-20",
+      "date_to": null,
+      "decision": "Two consequences of the cluster/precedence design are recorded as design limitations rather than bugs: one label yields one backend for the entire file (no per-hunk or per-region routing), and the set union of both branches' refactoring types loses branch-of-origin and count, so concurrent same-type edits cannot be distinguished from one-sided ones.",
+      "rationale_recorded": true,
+      "rationale": "The precedence order is \"hardest-for-a-line-based-merger first\": when several kinds of change coexist, route to the tool suited to the most disruptive one, assuming easier changes survive that tool too \u2014 the resulting flattening trades the richer per-branch picture for a single deterministic route.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-28"
+      ],
+      "evidence": [
+        {
+          "text": "1. **One label \u2192 one backend for the *entire file*.** There's no per-hunk/per-region routing.",
+          "line": 444,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "2. **The union is presence-only \u2014 it loses branch-of-origin and count.**",
+          "line": 446,
+          "file": "2026-05-20_e1df1610.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/refactoring_classifier.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "chat",
+      "confidence": "medium"
+    },
+    {
+      "slug": "route-on-refactoring-detection",
+      "title": "Route merges by RM-detected refactoring: refactoring-aware backend if detected, Mergiraf otherwise",
+      "date_from": "2026-04-16",
+      "date_to": null,
+      "decision": "The original MergeRouter selects the backend from RM-ASTDiff output: if any refactoring is detected on either branch, use the refactoring-aware backend (then RefMergeBackend); otherwise use MergirafBackend. This binary gate was later reframed into a cluster-and-language classifier (see r4-cluster-language-classifier).",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "r4-cluster-language-classifier",
+      "sources": [
+        "preA:pre-architecture-refmerge-08"
+      ],
+      "evidence": [
+        {
+          "text": "    \"\"\"Routes to RefMerge if refactorings detected, Mergiraf otherwise.\"\"\"",
+          "line": 356,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        },
+        {
+          "text": "\u2502 Refactoring detected?       \u2502",
+          "line": 156,
+          "file": "2026-04-16_pre-architecture-refmerge.txt"
+        }
+      ],
+      "artifacts": [
+        "core/merge_router.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "r4-cluster-language-classifier",
+      "title": "Reframe R4 from a binary gate to a cluster-and-language classifier feeding 4-way dispatch",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "R4 stops being a binary pipeline gate and becomes a cluster-and-language classifier feeding 4-way backend dispatch, with the estimate growing from 1-2d to 3-4d and diagrams, risks and rollback updated accordingly. In parallel, spork-driver-integration.md (phases S0\u2013S4) promotes Spork from empirical-only to a MergeBackend, gated on ISSUES.md #2 resolution and language-axis dispatch evidence, growing the router to 4-backend dispatch with graceful degradation when sibling plans have not landed.",
+      "rationale_recorded": false,
+      "rationale": null,
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "route-on-refactoring-detection"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-15",
+        "preA:pre-commits-14"
+      ],
+      "evidence": [
+        {
+          "text": "rm2-integration.md: R4 reframed from binary gate to cluster-and-language",
+          "line": 158,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "from empirical-only to MergeBackend in semantic_merge_driver, gated on",
+          "line": 152,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "3549314",
+        "docs/plans/rm2-integration.md",
+        "docs/plans/spork-driver-integration.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "r4-split-a-b-acyclic",
+      "title": "Split R4 into R4a classifier and R4b default flip to break the circular dispatch dependency",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "R4 is split: R4a ships `RefactoringClusterClassifier` and `language_detect.py` as standalone importable tested components with no router change, and R4b conditionally flips the `SEMANTIC_MERGE_BACKEND` default from `mergiraf` to `auto`, originally gated on R2 cluster signal + R4a + at least one of {W5, S2}. Ownership of `language_detect.py` transfers from S2 to R4a. The {W5,S2} gate on R4b was later removed (see mvp-first-r4b-ships-skeleton).",
+      "rationale_recorded": true,
+      "rationale": "W5 and S2 each called rm2_classifier at runtime, but the classifier was introduced in R4 whose trigger required W5 or S2 to have landed \u2014 a cycle; the split makes the dependency graph acyclic, and single ownership of language_detect.py avoids duplication.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "mvp-first-r4b-ships-skeleton",
+      "sources": [
+        "preA:pre-commits-16"
+      ],
+      "evidence": [
+        {
+          "text": "W5 and S2 each called rm2_classifier at runtime, but the classifier was",
+          "line": 166,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "introduced in R4 \u2014 and R4's trigger required W5 or S2 to have landed.",
+          "line": 167,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "416e020",
+        "docs/plans/rm2-integration.md",
+        "docs/plans/execution-sequence.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "mvp-first-r4b-ships-skeleton",
+      "title": "MVP-first reframe: R4b ships the dispatch skeleton, evidence gates move to per-cluster elifs",
+      "date_from": "2026-05-05",
+      "date_to": null,
+      "decision": "R4b's trigger softens to just R4a + M6-lite landed, and R4b ships the auto-mode dispatch skeleton itself rather than waiting for W5 or S2; W5 and S2 are thereby reduced to adding single elif arms against a pre-existing skeleton, and rolling either back is removing its arm (after which auto routes that cluster to Mergiraf again). Phase 6 splits into 6-lite (MergeBackend ABC + GitMergeFileBackend + MergirafBackend, no evidence gate) and 6-validate (retroactive Phase 4 validation), and execution-sequence stage \u03b5 is re-staged MVP-track first.",
+      "rationale_recorded": true,
+      "rationale": "Evidence discipline lives at the per-cluster elif level, not at the mechanism level; the MVP track gets an end-to-end pipeline working with two backends in ~3-4 days, and because the dispatch mechanism and default flip are already in place, W5's only contribution is the routing claim itself.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "r4-split-a-b-acyclic"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-commits-19",
+        "preB:pre-weave-integration-12"
+      ],
+      "evidence": [
+        {
+          "text": "Evidence discipline lives at the per-cluster elif level,",
+          "line": 218,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "W5 then adds one elif arm to that pre-existing skeleton, rather than introducing it.",
+          "line": 21,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "513ada6",
+        "docs/plans/execution-sequence.md",
+        "semantic_merge_driver/core/driver.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "auto-backend-default-flip",
+      "title": "Ship AutoBackend and flip the SEMANTIC_MERGE_BACKEND default from mergiraf to auto",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-14",
+      "decision": "R4b wires the classifier into the driver, adds `AutoBackend` (name=\"auto\") and flips `DEFAULT_BACKEND` from `mergiraf` to `auto`. AutoBackend classifies per merge, logs cluster / language / chosen backend on every invocation, and at that point dispatches every cluster to Mergiraf. The commit message must state honestly that `auto` is functionally identical to `mergiraf` until W5/S2 land.",
+      "rationale_recorded": true,
+      "rationale": "Auto mode is functionally equivalent to mergiraf mode at that point, but it exercises the classifier and logs a dispatch decision on every merge; having the dispatch infrastructure and per-merge logging in place makes W5/S2 pure additions and gives early classifier-correctness signal from production-style usage.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "SEMANTIC_MERGE_BACKEND default of `mergiraf` set in Phase 6-lite (commit 3fef834)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-15",
+        "preA:pre-rm2-integration-26",
+        "preA:pre-commits-45"
+      ],
+      "evidence": [
+        {
+          "text": "functionally equivalent to `mergiraf` mode, but with classifier exercised + dispatch decision logged on every merge",
+          "line": 99,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        },
+        {
+          "text": "until W5 / S2 land, `auto` mode is functionally identical to `mergiraf` (every cluster falls through). The mechanism is real plumbing + logging",
+          "line": 307,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/backends/auto_backend.py",
+        "tests/test_auto_backend.py",
+        "tests/test_driver_dispatch.py",
+        "8fcc44e",
+        "core/driver.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "crash-only-single-shot-fallback",
+      "title": "AutoBackend falls back to git-merge-file once on CRASH only, never on CONFLICT",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-14",
+      "decision": "AutoBackend wraps the classifier defensively, logs `language_of(ours_path)`, and on a CRASH outcome \u2014 and only CRASH \u2014 logs and retries exactly once via `GitMergeFileBackend`; a double CRASH propagates. CONFLICT never triggers fallback. `_route()`'s docstring additionally requires future elif arms to return pre-constructed backend instances held on `self` and never to construct backends inside `_route`.",
+      "rationale_recorded": true,
+      "rationale": "CONFLICT is a valid outcome with markers and does not indicate failure, so it must not trigger fallback. Backend constructors may touch Docker or the filesystem and can fail, so that work must happen in `__init__` to preserve AutoBackend.merge()'s must-not-raise contract.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-16",
+        "preB:pre-commits-50",
+        "preA:pre-commits-46"
+      ],
+      "evidence": [
+        {
+          "text": "markers and does NOT trigger fallback) log and retry once via",
+          "line": 704,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "held on self, never construct backends inside _route \u2014 backend",
+          "line": 708,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "primary\u2192Mergiraf, single-shot fallback to GitMergeFileBackend on CRASH",
+          "line": 99,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/backends/auto_backend.py",
+        "8fcc44e"
+      ],
+      "actors": "unclear",
+      "actors_note": "preB:pre-commits-50 attributes the CRASH-only rule to ali; the other two sources record no actor.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "four-backend-cluster-dispatch-map",
+      "title": "Adopt the 4-backend cluster-keyed dispatch map in AutoBackend._route()",
+      "date_from": "2026-04-25",
+      "date_to": "2026-05-19",
+      "decision": "AutoBackend._route() implements the \u00a71.2 map: `MIGRATE_DECL` \u2192 Weave, `INTRA_BODY` + Java \u2192 Spork, `NONE` \u2192 git-merge-file, everything else (SYMBOL_CASCADE / CONTAINER_MOVE / HIERARCHY_RESHAPE / LOCAL_DECL_EDIT) \u2192 Mergiraf as default, and any routed-backend crash \u2192 git-merge-file. git-merge-file thereby plays two roles: the NONE-cluster target and the universal crash fallback. Verified end-to-end with 8 synthetic full-arm fixtures. Both specialist arms were later refuted and removed from the default (see collapse-router-to-none-git-else-mergiraf).",
+      "rationale_recorded": true,
+      "rationale": "Weave owns MIGRATE_DECL because its entity-level matching handles methods extracted independently on different branches, where Mergiraf's AST-subtree approach generates spurious conflicts from spatial proximity; Mergiraf handles the other clusters natively via PCS triples. NONE routes to git-merge-file because no refactoring detected \u21d2 use the fastest/simplest tool; the doc/code mismatch on NONE was resolved in favour of \u00a71.2 under the standing rule that when doc and code disagree the mismatch is surfaced, asked about, and the decision recorded.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [
+        "auto mode routing all clusters to Mergiraf",
+        "R4b AutoBackend code routing NONE \u2192 Mergiraf, treating git-merge-file as crash-fallback only"
+      ],
+      "superseded_by": "collapse-router-to-none-git-else-mergiraf",
+      "sources": [
+        "preA:pre-weave-integration-08",
+        "preA:pre-execution-sequence-23",
+        "preA:pre-rm2-integration-08",
+        "preB:pre-scope-tier-options-11"
+      ],
+      "evidence": [
+        {
+          "text": "because its entity-level matching handles the common case (methods extracted independently on different branches)",
+          "line": 64,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        },
+        {
+          "text": "**Resolution: \u00a71.2 is authoritative \u2014 `NONE \u2192 git-merge-file`**",
+          "line": 57,
+          "file": "2026-04-22_pre-rm2-integration.txt"
+        },
+        {
+          "text": "full \u00a71.2 map: `MIGRATE_DECL`\u2192Weave, `INTRA_BODY`+Java\u2192Spork, `NONE`\u2192git, rest\u2192Mergiraf, routed-crash\u2192git",
+          "line": 110,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/backends/auto_backend.py",
+        "semantic_merge_driver/core/driver.py",
+        "workspace/route_fixtures/",
+        "docs/plans/rm2-integration.md \u00a71.2"
+      ],
+      "actors": "unclear",
+      "actors_note": "preA:pre-rm2-integration-08 attributes the NONE resolution to ali; the other sources record no actor for the map itself.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "routing-two-phase-mechanism-then-soundness",
+      "title": "Split routing into Phase-1 mechanism (no evidence gate) and deferred Phase-2 soundness",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-19",
+      "decision": "Routing is a two-phase deliverable. Phase 1 wires the routing elifs and verifies them end-to-end with synthetic fixtures for full arm coverage, carrying no evidence gate; Phase 2 validates soundness on real data with Wilson CIs (the S3 and W3 gates) and remains deferred. S2 and W5 are Phase-1 mechanism work; S3/S4 and W0\u2013W4 are reclassified as Phase-2 soundness validation and are no longer preconditions. The Tier A\u2013D menu, which conflated mechanism with evidence gates, becomes historical.",
+      "rationale_recorded": true,
+      "rationale": "The phase split is what made the routing cycle coherent: it let the mechanism ship and be synthetically verified end-to-end while the soundness question waited for real data and Wilson CIs. Phase 1 carries no evidence burden, so the Tier framing that bundled the two no longer applies.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "stage-\u03b5 item 7 gating each routing elif on its own evidence (W3 / S3)",
+        "backends-only-cycle-supersedes-tier-menu"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-21",
+        "preA:pre-scope-tier-options-12"
+      ],
+      "evidence": [
+        {
+          "text": "The phase split that made this coherent: S2/W5 = Phase-1 *mechanism* (no evidence gate); **S3/W3 decoupled** \u2192 Phase-2 *soundness* (real data + Wilson CIs), still deferred.",
+          "line": 110,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        },
+        {
+          "text": "Tier A\u2013D menu conflated these; it is now historical.",
+          "line": 24,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/rm2-integration.md \u00a71.2",
+        "workspace/route_fixtures/",
+        "AutoBackend._route()",
+        "memory routing-two-phase"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "single-elif-and-pick-rule",
+      "title": "Ship only one routing elif per cycle, chosen by an S2-vs-W5 pick rule",
+      "date_from": "2026-05-05",
+      "date_to": null,
+      "decision": "Even at the fullest tier, only one specialized routing elif was to ship in the cycle \u2014 either S2 (INTRA_BODY+Java\u2192Spork) or W5 (MIGRATE_DECL\u2192Weave). The pick rule: S2 first when S3 evidence supports the INTRA_BODY+Java claim AND ISSUES.md #2 has resolved; W5 first when W3 evidence supports the MIGRATE_DECL claim AND ISSUES.md #2 has not.",
+      "rationale_recorded": true,
+      "rationale": "Shipping both W5 and S2 in one cycle is ~10-12 days, outside this cycle's budget. Between the two, Spork is more mature (5+ years, peer-reviewed) and matches the Java-only Schesch corpus exactly, but its empirical numbers are only trustworthy once ISSUES #2 resolves; Weave is multi-language and more general but 2.5 months old with single-contributor risk, and its evidence path does not depend on ISSUES #2 as tightly.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "both-elifs-ship-pick-rule-moot",
+      "sources": [
+        "preA:pre-scope-tier-options-04",
+        "preA:pre-scope-tier-options-05"
+      ],
+      "evidence": [
+        {
+          "text": "**Why single-elif and not dual-elif:** shipping both W5 and S2 in one cycle is ~10-12 days; outside this cycle's budget. Pick one based on R2 evidence and tool-track readiness.",
+          "line": 114,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        },
+        {
+          "text": "**S2 first** if S3 evidence supports the `INTRA_BODY`+Java claim AND [`ISSUES.md`](../../merge-tool-comparison/ISSUES.md) #2 has resolved (so Spork's empirical numbers are trustworthy).",
+          "line": 117,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/scope-tier-options.md",
+        "merge-tool-comparison/ISSUES.md #2"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "both-elifs-ship-pick-rule-moot",
+      "title": "Ship both S2 and W5 routing elifs together; the Tier-D pick rule is moot",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-19",
+      "decision": "Both the S2 (INTRA_BODY+Java\u2192Spork) and W5 (MIGRATE_DECL\u2192Weave) routing elifs are wired in AutoBackend._route() in the same Phase-1 cycle and synthetic-verified end-to-end, retiring the single-elif constraint and the S2-vs-W5 pick rule.",
+      "rationale_recorded": true,
+      "rationale": "Picking one was only ever an evidence-budget constraint, and Phase 1 carries no evidence burden, so both could ship together as mechanism.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "single-elif-and-pick-rule"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-execution-sequence-22",
+        "preA:pre-scope-tier-options-13"
+      ],
+      "evidence": [
+        {
+          "text": "The \"Tier-D pick rule\" is moot \u2014 both elifs shipped together (picking one was only an evidence-budget constraint; Phase 1 carries none).",
+          "line": 110,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        },
+        {
+          "text": "was only ever an evidence-budget constraint and Phase 1 carries no evidence",
+          "line": 26,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        }
+      ],
+      "artifacts": [
+        "AutoBackend._route()",
+        "docs/plans/rm2-integration.md \u00a71.2"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "backends-only-cycle-supersedes-tier-menu",
+      "title": "Ship backends-only for the 2026-05-18 cycle: four selectable backends, no routing elif",
+      "date_from": "2026-05-18",
+      "date_to": null,
+      "decision": "For the 2026-05-18 cycle the Tier A\u2013D menu is superseded by a 'backends-only' outcome: both Spork and Weave ship as explicitly selectable backends via `SEMANTIC_MERGE_BACKEND=spork|weave`, Weave newly Dockerized, with no routing elif and no S3/W3 evidence gate. Tiers A\u2013D are retained as the menu for a future routing cycle.",
+      "rationale_recorded": true,
+      "rationale": "It builds the four-backend spine without asserting any cluster\u2192tool routing claim \u2014 deliberately neither single-elif (Tier D) nor evidence-only (Tier C).",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "routing-two-phase-mechanism-then-soundness",
+      "sources": [
+        "preA:pre-scope-tier-options-11"
+      ],
+      "evidence": [
+        {
+          "text": "routing elif and no S3/W3 evidence gate**. This is deliberately *neither*",
+          "line": 9,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        },
+        {
+          "text": "*spine* without asserting any cluster\u2192tool routing claim.",
+          "line": 11,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        }
+      ],
+      "artifacts": [
+        "SEMANTIC_MERGE_BACKEND"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "tier-a-mergiraf-default-hypothesis",
+      "title": "Tier A ships Mergiraf-as-default as an explicitly unvalidated hypothesis",
+      "date_from": "2026-05-05",
+      "date_to": null,
+      "decision": "At Tier A all clusters route to the Mergiraf default with no specialized routing claims, and the commit carries an honest caveat that Mergiraf-as-default is a hypothesis until M2-M5 lands.",
+      "rationale_recorded": true,
+      "rationale": "Tier A ships the architectural mechanism only; the M6-lite default choice is unvalidated because M1-M5 and 6-validate defer.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): the commit carried exactly the required caveat \u2014 3fef834's message reads 'Honest caveat: Mergiraf-as-default lacks empirical backing until M4 lands', and all clusters routed to the Mergiraf default until the routing elifs landed.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-scope-tier-options-09"
+      ],
+      "evidence": [
+        {
+          "text": "**Defensibility:** ships the architectural mechanism. Honest caveat in commit: Mergiraf-as-default is hypothesis until M2-M5 lands.",
+          "line": 75,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        },
+        {
+          "text": "- All clusters route to Mergiraf default (no specialized routing claims yet).",
+          "line": 67,
+          "file": "2026-05-05_pre-scope-tier-options.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/scope-tier-options.md"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "mergiraf-default-before-evidence",
+      "title": "Accept Mergiraf as default backend before empirical validation, with git one env-flip away",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-12",
+      "decision": "`core/driver.py` defaults `SEMANTIC_MERGE_BACKEND` to `mergiraf` at M6-lite, before Phase 4 evidence exists, with the commit message carrying an honest caveat; Phase 4 and Phase 6-validate are scheduled to retroactively confirm or refute the choice, and the default reverses if Phase 4 shows Mergiraf F1 below git-merge-file. M6-lite additionally carries an explicit escape clause: default to the `git` backend if M0/M2 surface Mergiraf stability or correctness concerns, and M3.5's trigger is broadened to enumerate all Phase-3 options needing code.",
+      "rationale_recorded": true,
+      "rationale": "Knowingly accepted cost: between M6-lite and M6-validate, runtime users are routed to Mergiraf without empirical backing. Chosen because the mechanism is the load-bearing contribution, the flag is one line while the validation gate is real, and M3.5 should close ISSUES.md #2 before M4 runs so the M4 numbers are credible; the git-merge-file backend stays one env-flip away, so the risk is bounded. The M3.5 broadening was needed because otherwise Phase 3's recommended 3e path would never get implemented and ISSUES.md #2 would stay `decided`.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-19",
+        "preA:pre-commits-33",
+        "preA:pre-execution-sequence-14",
+        "preA:pre-commits-27",
+        "preB:pre-commits-31"
+      ],
+      "evidence": [
+        {
+          "text": "between M6-lite landing and M6-validate confirming, runtime users of `semantic_merge_driver` are routed to Mergiraf without empirical backing",
+          "line": 236,
+          "file": "2026-04-21_pre-mergiraf-integration.txt"
+        },
+        {
+          "text": "git-merge-file backend is one env-flip away.",
+          "line": 467,
+          "file": "2026-04-15_pre-commits.txt"
+        },
+        {
+          "text": "  the evidence-vs-mechanism trade-off explicit, including the escape clause",
+          "line": 338,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/driver.py",
+        "3fef834",
+        "ef4bb89",
+        "docs/plans/mergiraf-integration.md"
+      ],
+      "actors": "unclear",
+      "actors_note": "preB:pre-commits-31 attributes the M6-lite escape clause to ali; the remaining sources record no actor.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "mergiraf-invocation-git-driver-to-cli",
+      "title": "Invoke Mergiraf via a temp git repo and merge driver, mirroring upstream",
+      "date_from": "2026-04-22",
+      "date_to": "2026-05-11",
+      "decision": "Per the M0 recon deliverable, take Path A and integrate Mergiraf as a Git merge driver rather than calling the CLI directly: per merge, `git init` a temp dir, commit base, branch `theirs` and `ours`, configure `merge.mergiraf.driver \"mergiraf merge --git %O %A %B -s %S -x %X -y %Y -p %P\"`, append `mergiraf languages --gitattributes` to `.gitattributes`, run `git merge --no-edit theirs` and read the merged file from the working tree. Applies to both M6-lite's `MergirafBackend` and M1. Mergiraf 0.4.0 is pinned and upstream comparison numbers (n=5971: 3456 / 335 / 2180) captured for citation.",
+      "rationale_recorded": true,
+      "rationale": "The standalone three-file CLI surface is not fully documented and upstream ignores it entirely; the git-driver path is the documented, verified route and matches upstream's methodology exactly, even though it is more verbose.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "mergiraf-standalone-cli-confirmed",
+      "sources": [
+        "preA:pre-execution-sequence-11",
+        "preA:pre-mergiraf-integration-recon-08"
+      ],
+      "evidence": [
+        {
+          "text": "**Invocation strategy:** mirror upstream \u2014 set up a temp git repo per merge, configure mergiraf as the driver, run `git merge`. Resist the temptation to use the undocumented direct CLI.",
+          "line": 160,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        },
+        {
+          "text": "Path A recommendation; Mergiraf 0.4.0 pinned; invocation = Git merge driver, not direct CLI",
+          "line": 86,
+          "file": "2026-04-22_pre-execution-sequence.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/mergiraf-integration-recon.md",
+        "src/scripts/merge_tools/mergiraf.sh"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "mergiraf-standalone-cli-confirmed",
+      "title": "Use Mergiraf's standalone three-file CLI in Docker; temp-git-repo plumbing declared obsolete",
+      "date_from": "2026-05-12",
+      "date_to": "2026-05-13",
+      "decision": "Use the standalone CLI directly in both M6-lite and M1: `mergiraf merge BASE LEFT RIGHT -p PATH` (exit 0 clean, exit 1 conflict with `<<<<<<<` markers on stdout), invoked as `docker run --rm -v <workdir>:/workspace merge-tools/mergiraf:0.17.0 ... -p <path>`, capturing stdout and counting markers. The \u00a76 temp-git-repo sketch is marked OBSOLETE and kept only for historical traceability. A follow-up smoke test of all three filename/`-p` combinations (ISSUES #24) confirmed the `-p` hint alone suffices for AST mode even with extensionless on-disk filenames, so `MergirafBackend.merge()`'s invocation stays as-is with the contract documented in the module docstring.",
+      "rationale_recorded": true,
+      "rationale": "The temp-git-repo plumbing rested on the then-assumption that the standalone CLI was undocumented; the CLI is now confirmed working, and project policy is Docker-only invocation. The discriminating fixture shows extensionless plus `-p Foo.java` gives AST mode rc=0, matching the current backend invocation.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "mergiraf-invocation-git-driver-to-cli"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-mergiraf-integration-recon-09",
+        "preA:pre-commits-40"
+      ],
+      "evidence": [
+        {
+          "text": "**\u26a0 \u00a76 is OBSOLETE per the \u00a70 update callout (2026-05-12).** The temp-git-repo plumbing was the M0 recommendation under the then-assumption that the standalone CLI was undocumented.",
+          "line": 157,
+          "file": "2026-05-11_pre-mergiraf-integration-recon.txt"
+        },
+        {
+          "text": "The `-p` hint is sufficient for AST mode even with extensionless",
+          "line": 579,
+          "file": "2026-04-15_pre-commits.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/mergiraf-integration-recon.md",
+        "51aa3f2",
+        "ISSUES.md #24",
+        "core/backends/mergiraf_backend.py"
+      ],
+      "actors": "unclear",
+      "actors_note": "preA:pre-mergiraf-integration-recon-09 attributes the CLI confirmation to ali; preA:pre-commits-40 records no actor for the ISSUES #24 resolution.",
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "spork-java-only-not-default",
+      "title": "Keep Spork Java-only and non-default; the Spoon constraint is the dispatch signal",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "Spork is not made the default backend for Java: Mergiraf remains the Java default whenever the cluster is not `INTRA_BODY`, and Spork owns only the `INTRA_BODY`+Java branch. Spork is also not expanded beyond Java; the Java-only nature of Spoon is treated as the router's dispatch signal rather than a limitation to work around.",
+      "rationale_recorded": true,
+      "rationale": "On non-`INTRA_BODY` scenarios Mergiraf's multi-granularity hybrid (line \u2192 tree \u2192 markers) likely ties or beats Spork in practice at lower runtime cost, and Spork's claimed strength is sub-method granularity via Spoon, so outside that claim the simpler default applies. Spoon is Java-only by construction, so the constraint is the dispatch signal and the language axis is the thesis-relevant artefact.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-spork-driver-integration-08",
+        "preA:pre-spork-driver-integration-09"
+      ],
+      "evidence": [
+        {
+          "text": "**Why not make Spork the default for all Java?** Because on non-`INTRA_BODY` scenarios, Mergiraf's multi-granularity hybrid (line \u2192 tree \u2192 markers) likely ties or beats Spork in practice, at lower runtime cost.",
+          "line": 234,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        },
+        {
+          "text": "- Not expanding Spork to non-Java. Spoon is Java-only by construction; this plan uses the constraint as the dispatch signal.",
+          "line": 93,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/spork-driver-integration.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "extension-detection-misses-accepted",
+      "title": "Accept missed Spork dispatches from extension-only language detection",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "Accept that extension-only language detection may miss polyglot files (e.g. `.gradle` containing Java, or `.kt`), costing some Spork dispatches; Mergiraf is the safe default for anything not `.java`.",
+      "rationale_recorded": true,
+      "rationale": "The worst case under extension-only detection is missing a Spork dispatch, not making an incorrect one \u2014 misclassified Kotlin simply falls to Mergiraf, which handles it.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-spork-driver-integration-11"
+      ],
+      "evidence": [
+        {
+          "text": "Worst case is missing a Spork dispatch, not an incorrect one.",
+          "line": 204,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "core/language_detect.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "language-guard-not-second-axis",
+      "title": "Reframe the INTRA_BODY+Java condition as a defensive language guard, not a second dispatch axis",
+      "date_from": "2026-05-19",
+      "date_to": null,
+      "decision": "Withdraw the \"second dispatch axis\" claim made throughout spork-driver-integration.md (\u00a73, S3(a), S4). The `INTRA_BODY`+Java\u2192Spork condition is to be described as a defensive language guard on the Java-only Spork backend, and the thesis claim is \"cluster-based dispatch with a language guard on the Java-only specialist\", not \"two-axis dispatch demonstrated\".",
+      "rationale_recorded": true,
+      "rationale": "The only producer of `INTRA_BODY` is RM2, which is Java-only, so `cluster==INTRA_BODY` always co-occurs with `language==JAVA` in production \u2014 the guard never diverts anything and is inert under the current RM2-only toolchain; it is only unit-demonstrated via a stub classifier.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the \"second dispatch axis\" claim in spork-driver-integration.md (\u00a73, S3(a), S4)"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-spork-driver-integration-01"
+      ],
+      "evidence": [
+        {
+          "text": "The honest thesis claim is \"cluster-based dispatch with a language",
+          "line": 30,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        },
+        {
+          "text": "RM2, which is Java-only, so `cluster==INTRA_BODY` always co-occurs with",
+          "line": 24,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/spork-driver-integration.md",
+        "test_auto_backend.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "spork-backend-registration-and-adapter",
+      "title": "Register SporkBackend in the BACKENDS dict, pin spork:0.5.0, drop conflict-count gating",
+      "date_from": "2026-04-25",
+      "date_to": "2026-05-18",
+      "decision": "`SporkBackend` ships at `semantic_merge_driver/core/backends/spork_backend.py`, registered in `driver.py`'s `BACKENDS` dict rather than via a `core/driver.py` env-handler edit as \u00a7S2 sketched, with the image pinned to `merge-tools/spork:0.5.0` dual-tagged with the legacy `merge-tools/spork` tag. The backend reuses the empirical adapter's subprocess/Docker plumbing but returns `MergeBackendResult` (not `MergeResult`) and applies no conflict-count heuristic gating \u2014 conflict markers in output map directly to a CONFLICT outcome.",
+      "rationale_recorded": true,
+      "rationale": "R4b had already centralised backend selection into the BACKENDS dict, so registration there is the natural shape; the dual tag keeps the empirical adapter unaffected. No reason was recorded for dropping the conflict-count heuristic.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "\u00a7S2 pseudocode's `core/driver.py` env-handler edit"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-spork-driver-integration-04",
+        "preA:pre-spork-driver-integration-17"
+      ],
+      "evidence": [
+        {
+          "text": "`driver.py` `BACKENDS` dict (not via a `core/driver.py` env-handler edit as \u00a7S2's",
+          "line": 45,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        },
+        {
+          "text": "  - No conflict-count heuristic gating; conflict markers in output \u2192 CONFLICT outcome exactly as in",
+          "line": 123,
+          "file": "2026-04-25_pre-spork-driver-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/backends/spork_backend.py",
+        "merge-tools/spork:0.5.0"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "weave-flagged-form-and-rc1-conflict",
+      "title": "Invoke weave-driver with the `-o` flagged form and key CONFLICT off exit code 1",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "Pin the Weave invocation to the jj-style flagged form `weave-driver <base> <ours> <theirs> -o <output>` with a tempfile output path, never the positional form; W0 records the chosen form and reasoning and W1 asserts input files are unchanged after a run. The shipped `WeaveBackend` determines CONFLICT from return code 1 and preserves ours, rather than detecting `<<<<<<<` markers in the output.",
+      "rationale_recorded": true,
+      "rationale": "The positional form mutates `ours` in place by git convention and would pollute the workspace; empirically, on a whole-entity conflict the v0.3.2 positional form empties the ours file \u2014 silent data loss \u2014 which the `-o` form avoids. Marker detection was rejected because for whole-entity conflicts v0.3.2 emits a conflict summary on stdout and no git-style marker file at all, so Appendix B's regex assumption does not hold.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "Appendix B's assumption that Weave conflicts always produce `^<<<<<<<` markers in the output file"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-weave-integration-03",
+        "preA:pre-weave-integration-04"
+      ],
+      "evidence": [
+        {
+          "text": "v0.3.2's positional form **empties the ours file** (silent data loss)",
+          "line": 38,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        },
+        {
+          "text": "the backend keys CONFLICT off rc 1, not marker presence, and preserves ours",
+          "line": 43,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/weave-integration-recon.md",
+        "semantic_merge_driver/core/backends/weave_backend.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "weave-adapter-native-non-docker",
+      "title": "Plan the Weave comparator adapter as a native (non-Docker) tool mirroring git_merge_file.py",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "The planned `merge-tool-comparison/src/tools/weave.py` adapter (~80 lines) mirrors `git_merge_file.py` rather than `spork.py`, using `run_native()` with `docker_image: null` in `config/tools.yaml`, writing output to a temp file via `-o` and counting `^<<<<<<<` markers.",
+      "rationale_recorded": true,
+      "rationale": "Weave is a native Rust binary, so no Docker layer is needed.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "backends-only-cycle-supersedes-tier-menu",
+      "sources": [
+        "preA:pre-weave-integration-02"
+      ],
+      "evidence": [
+        {
+          "text": "Weave is native Rust; no Docker.",
+          "line": 137,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        },
+        {
+          "text": "`name: weave`, `adapter: weave`, `docker_image: null`, `timeout: 60`, `enabled: true`",
+          "line": 139,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/tools/weave.py",
+        "merge-tool-comparison/config/tools.yaml"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "single-pass",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "w5-depends-on-r4a-and-flag-rollback",
+      "title": "W5 depends on RM2 phase R4a, not R1, and rolls back by env-flag flip",
+      "date_from": "2026-04-25",
+      "date_to": null,
+      "decision": "W5's classifier dependency is RM2 Phase R4a (`RefactoringClusterClassifier` and `language_of` importable from `semantic_merge_driver/core/`), explicitly not Phase R1. W5 ships behind `SEMANTIC_MERGE_BACKEND` (value set `git|mergiraf|weave|spork|auto`, default `auto` from R4b), so rolling it back is a flag flip to `mergiraf`/`git`, or removal of the single elif arm.",
+      "rationale_recorded": true,
+      "rationale": "R1 writes scenario JSON for `merge-tool-comparison/` only and is not callable from the runtime driver. Keeping the change to one elif arm behind an existing env flag makes rollback a flag flip rather than a code change.",
+      "status": "adopted",
+      "status_note": "S12 (2026-07-26): both halves held \u2014 the W5 elif was wired only after R4a landed (routing Phase 1, c0a32f5), and rollback happened literally by env-flag: the refuted specialist arms survive only behind SEMANTIC_MERGE_SPECIALIST_ROUTING=1 (core/backends/auto_backend.py).",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-weave-integration-14",
+        "preA:pre-weave-integration-23"
+      ],
+      "evidence": [
+        {
+          "text": "R1 is *not* the right dependency: R1 writes scenario JSON for `merge-tool-comparison/` only and is not callable from the runtime driver.",
+          "line": 197,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        },
+        {
+          "text": "W5: behind `SEMANTIC_MERGE_BACKEND` env flag \u2014 rollback is a flag flip to `mergiraf` or `git`, not a code change.",
+          "line": 250,
+          "file": "2026-04-25_pre-weave-integration.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/rm2-integration.md",
+        "semantic_merge_driver/core/driver.py",
+        "SEMANTIC_MERGE_BACKEND"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "rm2-wrapper-contract-fail-closed-none",
+      "title": "RM2 wrapper contract: empty array is no-signal, exit 1 is a crash consumed fail-closed as NONE",
+      "date_from": "2026-05-05",
+      "date_to": null,
+      "decision": "An empty `refactorings: []` with exit 0 means 'no signal'; a wrapper exception (exit 1) is a crash that consumers R3/R4a handle fail-closed by returning the `NONE` cluster.",
+      "rationale_recorded": true,
+      "rationale": "The two outcomes are distinguishable by exit code, so the fail-closed consumer design maps cleanly onto them.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-recon-07"
+      ],
+      "evidence": [
+        {
+          "text": "empty array \u2192 no signal; non-zero exit \u2192 fail-closed.",
+          "line": 62,
+          "file": "2026-05-05_pre-rm2-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/docker/refactoring_miner/DirPairMain.java",
+        "docs/plans/rm2-recon-samples/toy-empty.json"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "file-level-tagging-loses-cross-file",
+      "title": "Accept file-level RM2 tagging at runtime, losing cross-file Extract/Move refactorings",
+      "date_from": "2026-05-05",
+      "date_to": null,
+      "decision": "R4a uses file-level RM2 tagging at runtime, accepting that cross-file refactorings (Extract And Move Method, Extract Class, Move Attribute, Move Method) are systematically missed and fall through to the `NONE` cluster.",
+      "rationale_recorded": true,
+      "rationale": "Extract/Move semantics require RM2 to see both source and destination files in one project tree, which file-level tagging by construction cannot; falling through to NONE is the safe choice because that route was the simplest/default backend.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-rm2-integration-recon-11"
+      ],
+      "evidence": [
+        {
+          "text": "File-level by construction cannot see the destination file, so these systematically fall through to the `NONE` cluster.",
+          "line": 96,
+          "file": "2026-05-05_pre-rm2-integration-recon.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/refactoring_classifier.py"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "refmerge-not-integrated",
+      "title": "Do not integrate RefMerge until three empirical conditions hold",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "RefMerge stays unbuilt and the refactoring branch of the architecture falls back to Mergiraf plus RM-2.0-informed Joern detection. RefMerge earns its slot only when all three hold: (1) refactoring-containing scenarios are \u2265 ~15% of the dataset, (2) Mergiraf's failure rate on those scenarios is materially higher than on non-refactoring scenarios, and (3) RefMerge measurably resolves those failures without new FP inflation or crashes.",
+      "rationale_recorded": true,
+      "rationale": "The four arguments for adopting RefMerge (technical convenience, an empty architectural slot, literature headline numbers, symmetry) are all a priori, not evidence about this dataset. The thesis argues complexity should be added only where simpler tools demonstrably fall short; adopting a complex merger without empirical justification and having it silently corrupt merges would falsify the thesis in its own codebase. Detection via a Method Rename strategy plus exit 1 may already be sufficient for the stated aim.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "refmerge-over-intellimerge"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "preA:pre-tool-evaluation-findings-03"
+      ],
+      "evidence": [
+        {
+          "text": "Adopting it without empirical justification \u2014 and having it silently corrupt merges on your dataset \u2014 quietly falsifies your own thesis in your own codebase.",
+          "line": 201,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        },
+        {
+          "text": "Until all three hold, RefMerge stays unbuilt.",
+          "line": 215,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/historical/ARCHITECTURE-refmerge.md",
+        "docs/plans/tool-evaluation-findings.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "reconstructed",
+      "confidence": "high"
+    },
+    {
+      "slug": "refmerge-direction-reverted",
+      "title": "RefMerge/RefactoringMiner-3.0 architecture direction confirmed reverted; gate never met",
+      "date_from": "2026-07-18",
+      "date_to": null,
+      "decision": "Retrospectively confirm that the original operation-based RefMerge + RefactoringMiner-3.0 pipeline direction was reverted and RefMerge integration was never built.",
+      "rationale_recorded": true,
+      "rationale": "RefMerge integration was conditioned on evidence that Mergiraf actually fails on refactoring scenarios, and that evidence never materialized.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "refmerge-over-intellimerge"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:dc3bc182-sub-sub-agent-a74c7a-01"
+      ],
+      "evidence": [
+        {
+          "text": "RefMerge was gated \"do NOT integrate yet\" pending evidence Mergiraf actually fails on refactoring scenarios \u2014 evidence that never materialized.",
+          "line": 43,
+          "file": "2026-07-18_dc3bc182_sub-agent-a74c7a.txt"
+        },
+        {
+          "text": "That direction was **reverted**.",
+          "line": 43,
+          "file": "2026-07-18_dc3bc182_sub-agent-a74c7a.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/historical/ARCHITECTURE-refmerge.md",
+        "docs/plans/tool-evaluation-findings.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "cost-aware-strategy-dispatch",
+      "title": "Use RM output for cost-aware strategy dispatch and refactoring-density tiering",
+      "date_from": "2026-04-22",
+      "date_to": null,
+      "decision": "Use RM 2.0 output for cost-aware strategy dispatch (D1) and refactoring-density tiering (D3): when both branches show no refactorings, run only the Joern loop strategies; otherwise add MethodRename and RefactoringConflict. Tier analysis light/standard/escalate on refactoring count. In the accompanying type-cluster \u2192 strategy mapping (D4), `INTRA_BODY`, `LOCAL_DECL_EDIT` and `NONE` deliberately trigger no specific cross-cutting checks at this stage; only SYMBOL_CASCADE, MIGRATE_DECL, CONTAINER_MOVE and HIERARCHY_RESHAPE route to strategies.",
+      "rationale_recorded": true,
+      "rationale": "Non-refactoring scenarios skip JVM-heavy refactoring-aware analysis, scaling analysis cost to case complexity. The three excluded clusters are either intra-method \u2014 where Joern's existing strategies suffice if applicable \u2014 or trivial.",
+      "status": "abandoned",
+      "status_note": "S12 (2026-07-26): never built \u2014 no RM-output-driven strategy selection or refactoring-density tiering exists anywhere; config/strategies.yaml is a static enablement list, and the driver reached its final form (post-flip router, flag-gated lanes) without it. Plan-era idea, dropped without a ruling.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "preB:pre-tool-evaluation-findings-17",
+        "preA:pre-tool-evaluation-findings-11"
+      ],
+      "evidence": [
+        {
+          "text": "Non-refactoring scenarios skip JVM-heavy refactoring-aware analysis.",
+          "line": 110,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        },
+        {
+          "text": "those merges are either intra-method (Joern's existing strategies suffice if applicable) or trivial.",
+          "line": 135,
+          "file": "2026-04-22_pre-tool-evaluation-findings.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/rm2-integration.md \u00a71.2",
+        "docs/plans/tool-evaluation-findings.md"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "mixed",
+      "provenance": "reconstructed",
+      "confidence": "medium"
+    },
+    {
+      "slug": "r2-per-cluster-evidence-insufficient",
+      "title": "R2 per-cluster contrasts inform but do not justify the S2/W5 routing elifs",
+      "date_from": "2026-05-18",
+      "date_to": null,
+      "decision": "The observed per-cluster contrasts (Spork best on INTRA_BODY F1 0.88; Mastery collapsing on SYMBOL_CASCADE) are reported as suggestive only and explicitly declared insufficient to justify enabling the S2/W5 auto-routing elifs.",
+      "rationale_recorded": true,
+      "rationale": "Per-cluster n is 4\u201318, below the Wilson-CI bar, so the signal informs but cannot justify a routing decision; reported as-is rather than tuned.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:20b53f98-18"
+      ],
+      "evidence": [
+        {
+          "text": "but per-cluster n is 4\u201318, below the Wilson-CI bar, so it *informs* but does not *justify* a future S2/W5 elif. Reported as-is, not tuned.",
+          "line": 224,
+          "file": "2026-05-18_20b53f98.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports/results.csv"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "comparator-adapters-mergiraf-weave",
+      "title": "Add mergiraf and weave comparator adapters, keeping jdime and mastery as baselines",
+      "date_from": "2026-05-20",
+      "date_to": null,
+      "decision": "Write `src/tools/mergiraf.py` and `src/tools/weave.py` mirroring the driver's invocations and enable both in `config/tools.yaml`, so the loader resolves six tools (git-merge-file, jdime, mastery, mergiraf, spork, weave); jdime and mastery are retained as baselines rather than removed.",
+      "rationale_recorded": true,
+      "rationale": "Docker images for mergiraf and weave already existed in the comparator, so only adapters and yaml entries were missing. Realigning the tool set keeps git and spork but makes the jdime/mastery findings legacy, so those two are kept as baselines.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-06"
+      ],
+      "evidence": [
+        {
+          "text": "\"Record + wire mergiraf/weave\" it is \u2014 keep jdime/mastery as baselines.",
+          "line": 600,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "Loader now resolves **6 tools**: git-merge-file, jdime, mastery, mergiraf, spork, weave (jdime/mastery kept as baselines).",
+          "line": 629,
+          "file": "2026-05-20_e1df1610.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/src/tools/mergiraf.py",
+        "merge-tool-comparison/src/tools/weave.py",
+        "merge-tool-comparison/config/tools.yaml",
+        "e334cb3"
+      ],
+      "actors": "joint",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "weave-field-loss-alarm-withdrawn",
+      "title": "Withdraw the Weave field-loss severity alarm after corpus measurement",
+      "date_from": "2026-05-25",
+      "date_to": null,
+      "decision": "Downgrade the smoke-test Weave field-loss warning: on the expanded-60 corpus Weave produced only 2 FP, so the lossy-field bug is real but rare, and Weave's entity-level conservatism makes it conflict rather than silently mis-merge on hard cases.",
+      "rationale_recorded": true,
+      "rationale": "Corpus measurement (2 FP total; MIGRATE_DECL 2 TP / 0 FP) contradicted the predicted Mastery-like content-loss FP pattern.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "the smoke-test prediction that Weave would rack up content-loss FPs like Mastery"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:e1df1610-18"
+      ],
+      "evidence": [
+        {
+          "text": "**Weave correction:** my smoke-test field-loss alarm did **not** dominate real data \u2014 only 2 FP total.",
+          "line": 798,
+          "file": "2026-05-20_e1df1610.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/reports_expanded/results.csv"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "issues-27-intra-body-spork-contraindicated",
+      "title": "File ISSUES #27: INTRA_BODY\u2192Spork routing is contraindicated by the corpus",
+      "date_from": "2026-05-25",
+      "date_to": "2026-05-26",
+      "decision": "Record as ISSUES #27, with a Summary-Table row, that on the 6 INTRA_BODY cases Spork scored 1 TP / 5 FP while default Mergiraf scored 4 TP / 0 FP, so the S2 routing arm sends merges to the worse tool \u2014 filed with the explicit caveat that n=6 on a biased set and CIs are needed before changing the arm. The follow-up recommendation is to stop auto-routing INTRA_BODY to Spork (route it to Mergiraf) while keeping Spork as an explicitly selectable backend (`SEMANTIC_MERGE_BACKEND=spork`) and as a comparator baseline, offered either as an immediate engineering change or preceded by a cluster-stratified Wilson-CI sample.",
+      "rationale_recorded": true,
+      "rationale": "It is the sharpest Phase-2 routing-soundness signal and bears on the primary deliverable (the driver). Mergiraf beats Spork in every cluster on two independent samples including INTRA_BODY (n=6 then n=10), with no cluster where Spork wins, and Spork runs ~6 s vs Mergiraf's ~0.5 s. Spork is not bad \u2014 its FPs are mostly comparator-gap (\u224827% genuine) and it does beat git \u2014 so it stays available as a baseline and explicit backend.",
+      "status": "superseded",
+      "status_note": "S12 (2026-07-26): the filing landed at the time (7086844); the drop it recommended was enacted by the later CI-grade refutation decision.",
+      "supersedes": [],
+      "superseded_by": "drop-intra-body-spork-arm",
+      "sources": [
+        "a:e1df1610-17",
+        "a:e1df1610-26"
+      ],
+      "evidence": [
+        {
+          "text": "**Track the `INTRA_BODY \u2192 Spork` finding** in ISSUES.md \u2014 it's the sharpest Phase-2 signal and bears on the primary deliverable.",
+          "line": 805,
+          "file": "2026-05-20_e1df1610.txt"
+        },
+        {
+          "text": "Short answer: **the evidence says stop *auto-routing* to Spork (let Mergiraf handle INTRA_BODY), but keep Spork available as a selectable backend and as a comparator baseline.**",
+          "line": 1247,
+          "file": "2026-05-20_e1df1610.txt"
+        }
+      ],
+      "artifacts": [
+        "merge-tool-comparison/ISSUES.md #27",
+        "7086844"
+      ],
+      "actors": "joint",
+      "actors_note": "a:e1df1610-17 (the filing) is joint \u2014 options were put and Ali picked; a:e1df1610-26 (the DROP recommendation) is claude's. Recorded joint for the entry as a whole.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "keep-s2-arm-flip-deferred",
+      "title": "Keep the S2 Spork arm live in code while the DROP flip stays deferred",
+      "date_from": "2026-05-27",
+      "date_to": null,
+      "decision": "Leave the S2 routing arm (INTRA_BODY + Java \u2192 Spork) in place at `auto_backend.py:120` despite the DROP verdict; the one-line flip remains deferred to a future cycle, and this decided-but-not-implemented state is treated as deliberate rather than drift.",
+      "rationale_recorded": true,
+      "rationale": "Code matches the docs \u2014 ISSUES #27 and CLAUDE.md both say decided=DROP with the flip deferred \u2014 so the state is consistent across code and prose and is a deliberate state, not drift.",
+      "status": "superseded",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": "route-flip-opt-in-env-flag",
+      "sources": [
+        "a:3302d287-03"
+      ],
+      "evidence": [
+        {
+          "text": "the docs explicitly flag the flip as deferred. Good \u2014 that's a deliberate state, not drift.",
+          "line": 13,
+          "file": "2026-05-27_3302d287.txt"
+        },
+        {
+          "text": "exactly as ISSUES #27 / CLAUDE.md say (decided=DROP, one-line flip deferred to a future cycle)",
+          "line": 34,
+          "file": "2026-05-27_3302d287.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/backends/auto_backend.py:120",
+        "ISSUES.md #27"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "measure-pre-flip-router-in-p2",
+      "title": "Run driver-auto on the committed pre-flip router and capture the routed backend per merge",
+      "date_from": "2026-06-24",
+      "date_to": null,
+      "decision": "The `driver-auto` arm in P2 executes the current committed `auto_backend._route` with the Spork/Weave specialist arms live, deferring the post-flip re-run to P3. The harness is extended to parse `AutoBackend: cluster=X language=Y \u2192 BACKEND` and the crash-fallback line from driver stderr, storing cluster / chosen / effective route per merge, and the report gains a routing-distribution table with per-backend FP rates.",
+      "rationale_recorded": true,
+      "rationale": "You measure the code that exists, not the code you intend \u2014 pretending the flip was done would make the whole-driver claim describe a driver never committed; and on this rename-heavy corpus the pre-flip router's results corroborate #27/#28 end-to-end. Outcome labels (clean/conflict) do not reveal which backend was chosen, so capturing the route turns an indirect signal into quantified end-to-end evidence and shows how often Spork/Weave were chosen versus crash-fell-back.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:fb0fa5c5-03",
+        "a:fb0fa5c5-04"
+      ],
+      "evidence": [
+        {
+          "text": "**Evaluation honesty: you measure the code that exists, not the code you intend.**",
+          "line": 1417,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "I'll capture both \u2014 cluster, chosen backend, and whether it fell back \u2014 so the FINDINGS can show the actual routing distribution",
+          "line": 262,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/backends/auto_backend.py",
+        "tools/whole_driver_eval.py"
+      ],
+      "actors": "joint",
+      "actors_note": "a:fb0fa5c5-03 is joint (options put, Ali picked); a:fb0fa5c5-04 is claude's implementation call. Recorded joint for the entry.",
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "propose-collapse-route-to-none-git",
+      "title": "Propose flipping auto_backend._route to NONE\u2192git, everything else\u2192Mergiraf",
+      "date_from": "2026-06-24",
+      "date_to": null,
+      "decision": "Recommend changing `auto_backend._route` (~4 lines plus test update) so routing collapses to `NONE\u2192git, else\u2192Mergiraf`, removing the `MIGRATE_DECL\u2192Weave` and `INTRA_BODY\u2192Spork` specialist arms.",
+      "rationale_recorded": true,
+      "rationale": "Both specialist arms were refuted with CI-grade evidence (#27 Spork, #28 Weave) and the docs already state the honest map, so the code currently contradicts the project's own conclusion; the flip removes the single worst code/doc mismatch at lowest risk and highest credibility.",
+      "status": "superseded",
+      "status_note": "S12 (2026-07-26): the collapse landed 2026-07-02 in modified form \u2014 arms kept behind an opt-in flag rather than deleted, exactly as the superseding entry records.",
+      "supersedes": [],
+      "superseded_by": "route-flip-opt-in-env-flag",
+      "sources": [
+        "a:ce56e78d-02"
+      ],
+      "evidence": [
+        {
+          "text": "**Land the auto-routing flip.** ~4 lines in `_route` + test update, collapsing to `NONE\u2192git, else\u2192Mergiraf`. Removes the single worst code/doc mismatch and matches the evidence you already gathered.",
+          "line": 35,
+          "file": "2026-06-24_ce56e78d.txt"
+        },
+        {
+          "text": "even though both specialist arms were refuted with CI-grade evidence (#27 Spork, #28 Weave)",
+          "line": 25,
+          "file": "2026-06-24_ce56e78d.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/backends/auto_backend.py",
+        "ISSUES.md #27",
+        "ISSUES.md #28"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "route-flip-opt-in-env-flag",
+      "title": "Land the route flip as an opt-in env flag rather than deleting the specialist arms",
+      "date_from": "2026-07-02",
+      "date_to": null,
+      "decision": "The `_route` fix keeps `NONE\u2192git` and sends everything else to Mergiraf by default, with the refuted `MIGRATE_DECL\u2192Weave` and `INTRA_BODY\u2192Spork` arms retained behind `SEMANTIC_MERGE_SPECIALIST_ROUTING=1`.",
+      "rationale_recorded": true,
+      "rationale": "The 06-10 review recommended opt-in over delete: it preserves the mechanism as apparatus \u2014 supporting the \"can route to any future candidate\" claim and reproducing the P2 before/after \u2014 without letting the refuted arms touch default behaviour.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "keep-s2-arm-flip-deferred"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:fb0fa5c5-29"
+      ],
+      "evidence": [
+        {
+          "text": "I'd go with the flag \u2014 it preserves the mechanism as apparatus without letting it touch default behavior. Plain delete is also defensible if you prefer minimal code.",
+          "line": 1503,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        },
+        {
+          "text": "The flip: default `auto` = `NONE\u2192git, else\u2192Mergiraf`; refuted arms opt-in via `SEMANTIC_MERGE_SPECIALIST_ROUTING=1`",
+          "line": 2029,
+          "file": "2026-06-24_fb0fa5c5.txt"
+        }
+      ],
+      "artifacts": [
+        "semantic_merge_driver/core/backends/auto_backend.py",
+        "9e25b4e"
+      ],
+      "actors": "claude",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "drop-intra-body-spork-arm",
+      "title": "Drop the INTRA_BODY\u2192Spork routing arm on five independent angles of refutation",
+      "date_from": "2026-07-18",
+      "date_to": null,
+      "decision": "The INTRA_BODY\u2192Spork specialist routing arm is dropped (Issue #27), based on five independent angles: file-level n=6 and n=10 replication, ci-240 pooled precision with non-overlapping CIs, Pareto-dominance on latency, a Spork-rigged 16-case synthetic battery, and the 5,405-merge test oracle.",
+      "rationale_recorded": true,
+      "rationale": "Spork lost on every angle: pooled INTRA_BODY precision 0.49 [0.37,0.60] vs Mergiraf 0.78 [0.66,0.86] (non-overlapping), 7\u201318\u00d7 slower and faster in 0/146 cases, 0 strict-wins on a battery rigged in its favour, and 39 vs Mergiraf's 272 right on the test oracle.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "auto router arm INTRA_BODY\u2192Spork"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:dc3bc182-sub-sub-agent-ab4c4f-03"
+      ],
+      "evidence": [
+        {
+          "text": "**#27 INTRA_BODY\u2192Spork** \u2014 refuted across five angles",
+          "line": 61,
+          "file": "2026-07-18_dc3bc182_sub-agent-ab4c4f.txt"
+        },
+        {
+          "text": "and the 5,405-merge test oracle (Mergiraf right 272 vs Spork 39, ~7:1). DROP.",
+          "line": 61,
+          "file": "2026-07-18_dc3bc182_sub-agent-ab4c4f.txt"
+        }
+      ],
+      "artifacts": [
+        "ISSUES.md #27"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "drop-migrate-decl-weave-arm",
+      "title": "Drop the MIGRATE_DECL\u2192Weave routing arm after the W3 gate run",
+      "date_from": "2026-07-18",
+      "date_to": null,
+      "decision": "The MIGRATE_DECL\u2192Weave specialist routing arm is dropped (Issue #28), per the W3 gate run over n=38 scenarios across 31 repos.",
+      "rationale_recorded": true,
+      "rationale": "Weave wins 0 scenarios over Mergiraf (McNemar exact p=0.0078), its correct merges are a strict subset (11\u228219), it abstains on all 7 Mergiraf dev-mismatches (71% abstention), and under the test oracle zero of Mergiraf's 7 dev-match 'FPs' fail tests \u2014 so the MIGRATE_DECL weakness that motivated a Weave specialist was itself a comparator artifact.",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "auto router arm MIGRATE_DECL\u2192Weave"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:dc3bc182-sub-sub-agent-ab4c4f-04"
+      ],
+      "evidence": [
+        {
+          "text": "**Weave wins 0 scenarios over Mergiraf; McNemar exact p=0.0078**",
+          "line": 62,
+          "file": "2026-07-18_dc3bc182_sub-agent-ab4c4f.txt"
+        },
+        {
+          "text": "The \"opening\" that motivated a Weave specialist was itself a comparator artifact. DROP.",
+          "line": 62,
+          "file": "2026-07-18_dc3bc182_sub-agent-ab4c4f.txt"
+        }
+      ],
+      "artifacts": [
+        "ISSUES.md #28",
+        "reports_migrate_decl/FINDINGS.md"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "collapse-router-to-none-git-else-mergiraf",
+      "title": "Collapse the auto router to NONE\u2192git, else\u2192Mergiraf; routing benefit is the fast-path only",
+      "date_from": "2026-07-18",
+      "date_to": null,
+      "decision": "The multi-arm specialist routing premise is abandoned: the default `auto` router became `NONE\u2192git, else\u2192Mergiraf` (landed 2026-06-27), with the refuted specialist arms preserved only behind `SEMANTIC_MERGE_SPECIALIST_ROUTING=1` as demonstrable apparatus. The record also states the honest scope of the remaining benefit: it reduces to the NONE\u2192git fast-path, not quality routing.",
+      "rationale_recorded": true,
+      "rationale": "CI-grade gates (#27 Spork, #28 Weave) plus the refactoring-merge landscape survey empirically refuted both hypothesized specialist arms \u2014 no tool beats Mergiraf in any cluster. The in-vivo whole-driver run measured pre-flip auto breaking 21/239 control merges (8.8%), all from the Spork/Weave arms, versus 0 for always-Mergiraf; post-flip is the best config measured (pooled weighted cost 1779, 3.78/file), beating always-Mergiraf by 215 and pre-flip auto by 146, with routing-caused control FPs going 21\u21920. The entire routing benefit reduces to the NONE\u2192git fast-path (49% of files: saves RM2 latency and surfaces the no-refactoring cluster more conservatively).",
+      "status": "adopted",
+      "status_note": null,
+      "supersedes": [
+        "four-backend-cluster-dispatch-map"
+      ],
+      "superseded_by": null,
+      "sources": [
+        "a:dc3bc182-sub-sub-agent-a74c7a-02",
+        "a:dc3bc182-sub-sub-agent-ab4c4f-05"
+      ],
+      "evidence": [
+        {
+          "text": "The `auto` router therefore *collapsed* from an ambitious per-cluster dispatch to an honest `NONE\u2192git, everything-else\u2192Mergiraf`",
+          "line": 47,
+          "file": "2026-07-18_dc3bc182_sub-agent-a74c7a.txt"
+        },
+        {
+          "text": "The entire routing benefit reduces to the **`NONE\u2192git` fast-path** (49% of files: saves RM2 latency + surfaces the no-refactoring cluster more conservatively) \u2014 not quality routing.",
+          "line": 64,
+          "file": "2026-07-18_dc3bc182_sub-agent-ab4c4f.txt"
+        }
+      ],
+      "artifacts": [
+        "docs/plans/multi_refactoring_merge_landscape.md",
+        "reports_whole_driver/FINDINGS.md",
+        "ISSUES #27",
+        "ISSUES #28"
+      ],
+      "actors": "unclear",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "high"
+    },
+    {
+      "slug": "experimental-lane-default-enable-open",
+      "title": "Default-enable ruling for the experimental detector lanes remains open with the user",
+      "date_from": "2026-07-23",
+      "date_to": null,
+      "decision": "Whether the experimental detector lanes graduate to default-on in the driver (plan \u00a72 N2, deferred past the cycle) is left as an open user ruling; Claude's read is that S-D8's \u221211.5% cost at +8.3 s/file with zero adjudicated FPs makes default-enabling defensible, while keeping them flag-gated and reporting both configs is equally honest.",
+      "rationale_recorded": true,
+      "rationale": "S-D8 is the evidence that decision needed: \u221211.5% cost for +8.3 s/file on an already-research-grade latency budget, with zero adjudicated FPs anywhere.",
+      "status": "open",
+      "status_note": "Ali's ruling was never recorded in the transcripts read here; would be settled by outputs/detector-cycle-plan.md \u00a72 N2 or the driver's default lane configuration in a later cycle.",
+      "supersedes": [],
+      "superseded_by": null,
+      "sources": [
+        "a:4c7b0828-39"
+      ],
+      "evidence": [
+        {
+          "text": "**The default-enable ruling is yours and still open** (plan \u00a72 N2 deferred it past the cycle).",
+          "line": 2022,
+          "file": "2026-07-06_4c7b0828.txt"
+        },
+        {
+          "text": "My read: default-enabling is now the defensible choice, but \"lanes stay flag-gated, thesis reports both configs\" is equally honest",
+          "line": 2022,
+          "file": "2026-07-06_4c7b0828.txt"
+        }
+      ],
+      "artifacts": [
+        "outputs/detector-cycle-plan.md \u00a72 N2"
+      ],
+      "actors": "ali",
+      "actors_note": null,
+      "corroboration": "both",
+      "provenance": "chat",
+      "confidence": "medium"
+    }
+  ],
+  "not_promoted": [],
+  "cross_theme": [
+    {
+      "slug": "experimental-lane-default-enable-open",
+      "other_theme": "detectors-strategies",
+      "other_uid": "a:4c7b0828-39",
+      "relation": "depends-on",
+      "note": "This is a detector-lane enablement question that reached this slice as a routing/driver-default decision. If the detectors theme owns it, S10z should merge or drop this entry to avoid duplication."
+    },
+    {
+      "slug": "cost-aware-strategy-dispatch",
+      "other_theme": "detectors-strategies",
+      "other_uid": "preB:pre-tool-evaluation-findings-17",
+      "relation": "depends-on",
+      "note": "Cost-aware dispatch selects STRATEGIES rather than merge backends; it sits on the boundary and the detectors/strategies theme may hold a related entry."
+    },
+    {
+      "slug": "mergiraf-standalone-cli-confirmed",
+      "other_theme": "infrastructure-docker",
+      "other_uid": null,
+      "relation": "depends-on",
+      "note": "The 'project policy is Docker-only invocation' rationale comes from a Docker-policy decision this slice cannot see (related also-uids preA:pre-mergiraf-integration-01, preA:pre-mergiraf-integration-recon-05 record the 0.4.0\u21920.17.0 pin override and Dockerization)."
+    },
+    {
+      "slug": "weave-adapter-native-non-docker",
+      "other_theme": "infrastructure-docker",
+      "other_uid": null,
+      "relation": "superseded-by",
+      "note": "The plan's 'Weave is native Rust; no Docker' choice was overridden when Weave was Dockerized in the 2026-05-18 backends-only cycle; the Docker-only rule itself lives in another theme."
+    },
+    {
+      "slug": "fail-closed-across-backends",
+      "other_theme": "driver-verdict-semantics",
+      "other_uid": "preA:pre-architecture-refmerge-06",
+      "relation": "depends-on",
+      "note": "The strategy-layer fail-open\u2192fail-closed switch (also-placed) is the origin of the principle this entry extends to backends."
+    },
+    {
+      "slug": "mergiraf-default-before-evidence",
+      "other_theme": "planning-process",
+      "other_uid": "preA:pre-commits-28",
+      "relation": "depends-on",
+      "note": "The M0 Path A vs Path B choice (also-placed) is the plan-level decision this default rests on."
+    },
+    {
+      "slug": "backends-only-cycle-supersedes-tier-menu",
+      "other_theme": null,
+      "other_uid": "preA:pre-scope-tier-options-01",
+      "relation": "supersedes",
+      "note": "Sources cite superseding pre-scope-tier-options-01 and -02, which are not in this slice; S10z should locate whichever theme holds them."
+    }
+  ],
+  "notes": "80 primary sources \u2192 44 entries (~1.8 sources/entry), well below the 5-9 calibration band. Reason: this theme is unusually arc-shaped. The same routing question was decided, refined, gated, reversed and re-decided across ~15 months, and the protocol requires keeping a decision separate from its reversal and from any later decision that changed the answer. The routing map alone legitimately spans six linked entries (route-on-refactoring-detection \u2192 r4-cluster-language-classifier \u2192 four-backend-cluster-dispatch-map \u2192 propose-collapse \u2192 route-flip-opt-in-env-flag \u2192 collapse-router-to-none-git-else-mergiraf) plus the two per-arm refutations. Collapsing these would hide exactly the change-of-mind the record exists to show. Where merging was safe I did it (fail-closed across four sources; the MergeBackend ABC across five; the Mergiraf-default accepted cost across five).\n\nnot_promoted is empty. I examined every primary uid and found none that was a pure restatement or a bare status update: the near-duplicates in this slice (e.g. preA:pre-execution-sequence-15 vs preA:pre-rm2-integration-26 vs preA:pre-commits-45 on the auto default flip; preA:pre-execution-sequence-22 vs preA:pre-scope-tier-options-13 on the pick rule; preB:pre-scope-tier-options-11 vs preA:pre-rm2-integration-08 on NONE\u2192git) were merged into shared entries rather than dropped, which is the same threshold decision expressed as merging instead of discarding. Flagging this explicitly per the instruction.\n\nStatus downgrades applied to plan-sourced entries with no post-plan confirmation in this slice: tier-a-mergiraf-default-hypothesis, w5-depends-on-r4a-and-flag-rollback, cost-aware-strategy-dispatch. preA:pre-architecture-refmerge-02/03/08/17 are plan-sourced but each has a transcript-era or pre-commits confirmation cited in the merged entry (or is explicitly marked superseded by a later source in-slice), which is why those carry adopted/superseded rather than proposed.\n\nOne judgment call worth auditing: I kept propose-collapse-route-to-none-git (a:ce56e78d-02, proposed to REMOVE the arms) separate from route-flip-opt-in-env-flag (a:fb0fa5c5-29, landed keeping them behind a flag) because the landed form differs materially from the proposal. Merging them would have been defensible.",
+  "theme": "backends-routing",
+  "slice_primary_total": 80
+}

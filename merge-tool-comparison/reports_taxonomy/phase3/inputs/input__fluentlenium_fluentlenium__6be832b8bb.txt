@@ -1,0 +1,1328 @@
+UNIT fluentlenium_fluentlenium__6be832b8bb
+repo: fluentlenium_fluentlenium   merge: 6be832b8bbcd5aa08e8ba37743d9c85c3821894e   stratum: B
+files shown: 3 of 4 intersecting Java files
+dropped (textual-conflict, not silent — excluded): fluentlenium-core/src/main/java/org/fluentlenium/core/FluentDriver.java
+truncation level: T0  (full inputs)
+
+=== FILE 1/3: fluentlenium-core/src/main/java/org/fluentlenium/core/action/MouseElementActions.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,12 +1,13 @@
+ package org.fluentlenium.core.action;
+ 
+ import org.openqa.selenium.WebDriver;
+ import org.openqa.selenium.WebElement;
++import org.openqa.selenium.interactions.Coordinates;
+ import org.openqa.selenium.interactions.HasInputDevices;
+ import org.openqa.selenium.interactions.Mouse;
+ 
+ /**
+  * Element specific mouse control interface.
+  */
+ public class MouseElementActions {
+     private final WebDriver driver;
+@@ -26,17 +27,34 @@
+     private org.openqa.selenium.interactions.Actions actions() {
+         return new org.openqa.selenium.interactions.Actions(driver);
+     }
+ 
+     /**
+      * Basic mouse operations
+      *
+      * @return low level interface to control the mouse
++     * @deprecated Use the following mapping for updating your code:
++     * <p>
++     * {@link Mouse#click(Coordinates)} to {@link MouseElementActions#click()}
++     * <p>
++     * {@link Mouse#doubleClick(Coordinates)} to {@link MouseElementActions#doubleClick()}
++     * <p>
++     * {@link Mouse#mouseDown(Coordinates)} to {@link MouseElementActions#moveToElement()}
++     * then {@link MouseElementActions#clickAndHold()}
++     * <p>
++     * {@link Mouse#mouseUp(Coordinates)} to {@link MouseElementActions#release()}
++     * <p>
++     * {@link Mouse#mouseMove(Coordinates)} to {@link MouseElementActions#moveToElement()}
++     * <p>
++     * {@link Mouse#mouseMove(Coordinates, long, long)} to {@link MouseElementActions#moveToElement(int, int)}
++     * <p>
++     * {@link Mouse#contextClick(Coordinates)} to {@link MouseElementActions#contextClick()}
+      */
++    @Deprecated
+     public Mouse basic() {
+         return ((HasInputDevices) driver).getMouse();
+     }
+ 
+     /**
+      * Clicks (without releasing) in the middle of the given element. This is equivalent to:
+      * <i>Actions.moveToElement(onElement).clickAndHold()</i>
+      *
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -96,32 +96,62 @@
+      * @see org.openqa.selenium.interactions.Actions#moveToElement(WebElement)
+      */
+     public MouseElementActions moveToElement() {
+         actions().moveToElement(element).perform();
+         return this;
+     }
+ 
+     /**
++     * Moves the mouse to the middle of the target element. The element is scrolled into view and its
++     * location is calculated using getBoundingClientRect.
++     *
++     * @param target element to move to and release the mouse at.
++     * @return this object reference to chain calls
++     * @see org.openqa.selenium.interactions.Actions#moveToElement(WebElement)
++     */
++    public MouseElementActions moveToElement(WebElement target) {
++        actions().moveToElement(target).perform();
++        return this;
++    }
++
++    /**
+      * Moves the mouse to an offset from the top-left corner of the element.
+      * The element is scrolled into view and its location is calculated using getBoundingClientRect.
+      *
+      * @param xOffset Offset from the top-left corner. A negative value means coordinates left from
+      *                the element
+      * @param yOffset Offset from the top-left corner. A negative value means coordinates above
+      *                the element
+      * @return this object reference to chain calls
+      * @see org.openqa.selenium.interactions.Actions#moveToElement(WebElement, int, int)
+      */
+     public MouseElementActions moveToElement(int xOffset, int yOffset) {
+         actions().moveToElement(element, xOffset, yOffset).perform();
+         return this;
+     }
+ 
+     /**
++     * Moves the mouse to an offset from the top-left corner of the target element.
++     * The element is scrolled into view and its location is calculated using getBoundingClientRect.
++     *
++     * @param target element to move to and release the mouse at.
++     * @param xOffset Offset from the top-left corner. A negative value means coordinates left from
++     *                the element
++     * @param yOffset Offset from the top-left corner. A negative value means coordinates above
++     *                the element
++     * @return this object reference to chain calls
++     * @see org.openqa.selenium.interactions.Actions#moveToElement(WebElement, int, int)
++     */
++    public MouseElementActions moveToElement(WebElement target, int xOffset, int yOffset) {
++        actions().moveToElement(target, xOffset, yOffset).perform();
++        return this;
++    }
++
++    /**
+      * Performs a context-click at middle of the given element. First performs a mouseMove
+      * to the location of the element.
+      *
+      * @return this object reference to chain calls
+      * @see org.openqa.selenium.interactions.Actions#contextClick(WebElement)
+      */
+     public MouseElementActions contextClick() {
+         actions().contextClick(element).perform();
+@@ -162,9 +192,27 @@
+      * @param yOffset vertical move offset.
+      * @return this object reference to chain calls
+      * @see org.openqa.selenium.interactions.Actions#dragAndDropBy(WebElement, int, int)
+      */
+     public MouseElementActions dragAndDropBy(int xOffset, int yOffset) {
+         actions().dragAndDropBy(element, xOffset, yOffset).perform();
+         return this;
+     }
++
++    /**
++     * A convenience method that performs click-and-hold at the location of this element,
++     * moves by a given offset of target element, then releases the mouse.
++     *
++     * This Method is not available in pure Selenium
++     *
++     * @param target element to move to and release the mouse at.
++     * @param xOffset horizontal move offset.
++     * @param yOffset vertical move offset.
++     * @return this object reference to chain calls
++     * @see org.openqa.selenium.interactions.Actions#dragAndDropBy(WebElement, int, int)
++     */
++    public MouseElementActions dragAndDropByWithTargetOffset(WebElement target, int xOffset, int yOffset) {
++        actions().clickAndHold(element).moveToElement(target, xOffset, yOffset).release().perform();
++        return this;
++    }
++
+ }
+--- MERGED RESULT (mergiraf; full) ---
+package org.fluentlenium.core.action;
+
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Coordinates;
+import org.openqa.selenium.interactions.HasInputDevices;
+import org.openqa.selenium.interactions.Mouse;
+
+/**
+ * Element specific mouse control interface.
+ */
+public class MouseElementActions {
+    private final WebDriver driver;
+    private final WebElement element;
+
+    /**
+     * Creates a new mouse element actions.
+     *
+     * @param driver  selenium driver
+     * @param element selenium element
+     */
+    public MouseElementActions(WebDriver driver, WebElement element) {
+        this.driver = driver;
+        this.element = element;
+    }
+
+    private org.openqa.selenium.interactions.Actions actions() {
+        return new org.openqa.selenium.interactions.Actions(driver);
+    }
+
+    /**
+     * Basic mouse operations
+     *
+     * @return low level interface to control the mouse
+     * @deprecated Use the following mapping for updating your code:
+     * <p>
+     * {@link Mouse#click(Coordinates)} to {@link MouseElementActions#click()}
+     * <p>
+     * {@link Mouse#doubleClick(Coordinates)} to {@link MouseElementActions#doubleClick()}
+     * <p>
+     * {@link Mouse#mouseDown(Coordinates)} to {@link MouseElementActions#moveToElement()}
+     * then {@link MouseElementActions#clickAndHold()}
+     * <p>
+     * {@link Mouse#mouseUp(Coordinates)} to {@link MouseElementActions#release()}
+     * <p>
+     * {@link Mouse#mouseMove(Coordinates)} to {@link MouseElementActions#moveToElement()}
+     * <p>
+     * {@link Mouse#mouseMove(Coordinates, long, long)} to {@link MouseElementActions#moveToElement(int, int)}
+     * <p>
+     * {@link Mouse#contextClick(Coordinates)} to {@link MouseElementActions#contextClick()}
+     */
+    @Deprecated
+    public Mouse basic() {
+        return ((HasInputDevices) driver).getMouse();
+    }
+
+    /**
+     * Clicks (without releasing) in the middle of the given element. This is equivalent to:
+     * <i>Actions.moveToElement(onElement).clickAndHold()</i>
+     *
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#clickAndHold(WebElement)
+     */
+    public MouseElementActions clickAndHold() {
+        actions().clickAndHold(element).perform();
+        return this;
+    }
+
+    /**
+     * Releases the depressed left mouse button, in the middle of the given element.
+     * This is equivalent to:
+     * <i>Actions.moveToElement(onElement).release()</i>
+     * <p>
+     * Invoking this action without invoking {@link #clickAndHold()} first will result in
+     * undefined behaviour.
+     *
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#release(WebElement)
+     */
+    public MouseElementActions release() {
+        actions().release(element).perform();
+        return this;
+    }
+
+    /**
+     * Clicks in the middle of the given element. Equivalent to:
+     * <i>Actions.moveToElement(onElement).click()</i>
+     *
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#click(WebElement)
+     */
+    public MouseElementActions click() {
+        actions().click(element).perform();
+        return this;
+    }
+
+    /**
+     * Performs a double-click at middle of the given element. Equivalent to:
+     * <i>Actions.moveToElement(element).doubleClick()</i>
+     *
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#doubleClick(WebElement)
+     */
+    public MouseElementActions doubleClick() {
+        actions().doubleClick(element).perform();
+        return this;
+    }
+
+    /**
+     * Moves the mouse to the middle of the element. The element is scrolled into view and its
+     * location is calculated using getBoundingClientRect.
+     *
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#moveToElement(WebElement)
+     */
+    public MouseElementActions moveToElement() {
+        actions().moveToElement(element).perform();
+        return this;
+    }
+
+    /**
+     * Moves the mouse to the middle of the target element. The element is scrolled into view and its
+     * location is calculated using getBoundingClientRect.
+     *
+     * @param target element to move to and release the mouse at.
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#moveToElement(WebElement)
+     */
+    public MouseElementActions moveToElement(WebElement target) {
+        actions().moveToElement(target).perform();
+        return this;
+    }
+
+    /**
+     * Moves the mouse to an offset from the top-left corner of the element.
+     * The element is scrolled into view and its location is calculated using getBoundingClientRect.
+     *
+     * @param xOffset Offset from the top-left corner. A negative value means coordinates left from
+     *                the element
+     * @param yOffset Offset from the top-left corner. A negative value means coordinates above
+     *                the element
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#moveToElement(WebElement, int, int)
+     */
+    public MouseElementActions moveToElement(int xOffset, int yOffset) {
+        actions().moveToElement(element, xOffset, yOffset).perform();
+        return this;
+    }
+
+    /**
+     * Moves the mouse to an offset from the top-left corner of the target element.
+     * The element is scrolled into view and its location is calculated using getBoundingClientRect.
+     *
+     * @param target element to move to and release the mouse at.
+     * @param xOffset Offset from the top-left corner. A negative value means coordinates left from
+     *                the element
+     * @param yOffset Offset from the top-left corner. A negative value means coordinates above
+     *                the element
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#moveToElement(WebElement, int, int)
+     */
+    public MouseElementActions moveToElement(WebElement target, int xOffset, int yOffset) {
+        actions().moveToElement(target, xOffset, yOffset).perform();
+        return this;
+    }
+
+    /**
+     * Performs a context-click at middle of the given element. First performs a mouseMove
+     * to the location of the element.
+     *
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#contextClick(WebElement)
+     */
+    public MouseElementActions contextClick() {
+        actions().contextClick(element).perform();
+        return this;
+    }
+
+    /**
+     * A convenience method that performs click-and-hold at the location of the source element,
+     * moves to the location of this element (target), then releases the mouse.
+     *
+     * @param source element to emulate button down at
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#dragAndDrop(WebElement, WebElement)
+     */
+    public MouseElementActions dragAndDropFrom(WebElement source) {
+        actions().dragAndDrop(source, element).perform();
+        return this;
+    }
+
+    /**
+     * A convenience method that performs click-and-hold at the location of this element (source),
+     * moves to the location of the target element, then releases the mouse.
+     *
+     * @param target element to move to and release the mouse at.
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#dragAndDrop(WebElement, WebElement)
+     */
+    public MouseElementActions dragAndDropTo(WebElement target) {
+        actions().dragAndDrop(element, target).perform();
+        return this;
+    }
+
+    /**
+     * A convenience method that performs click-and-hold at the location of this element,
+     * moves by a given offset, then releases the mouse.
+     *
+     * @param xOffset horizontal move offset.
+     * @param yOffset vertical move offset.
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#dragAndDropBy(WebElement, int, int)
+     */
+    public MouseElementActions dragAndDropBy(int xOffset, int yOffset) {
+        actions().dragAndDropBy(element, xOffset, yOffset).perform();
+        return this;
+    }
+
+    /**
+     * A convenience method that performs click-and-hold at the location of this element,
+     * moves by a given offset of target element, then releases the mouse.
+     *
+     * This Method is not available in pure Selenium
+     *
+     * @param target element to move to and release the mouse at.
+     * @param xOffset horizontal move offset.
+     * @param yOffset vertical move offset.
+     * @return this object reference to chain calls
+     * @see org.openqa.selenium.interactions.Actions#dragAndDropBy(WebElement, int, int)
+     */
+    public MouseElementActions dragAndDropByWithTargetOffset(WebElement target, int xOffset, int yOffset) {
+        actions().clickAndHold(element).moveToElement(target, xOffset, yOffset).release().perform();
+        return this;
+    }
+
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+(no differences)
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 2/3: fluentlenium-junit-jupiter/src/test/java/org/fluentlenium/adapter/junit/jupiter/integration/FluentTestTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,19 +1,24 @@
+ package org.fluentlenium.adapter.junit.jupiter.integration;
+ 
+-import net.jcip.annotations.NotThreadSafe;
+-import org.apache.commons.io.FileUtils;
+-import org.assertj.core.util.Files;
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.junit.jupiter.api.Assertions.assertAll;
++import static org.junit.jupiter.api.Assertions.fail;
++import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
++
+ import org.fluentlenium.adapter.SharedWebDriverContainer;
+ import org.fluentlenium.adapter.junit.jupiter.FluentTest;
+ import org.fluentlenium.adapter.junit.jupiter.MockitoExtension;
+ import org.fluentlenium.configuration.ConfigurationProperties.DriverLifecycle;
+ import org.fluentlenium.configuration.FluentConfiguration;
+ import org.fluentlenium.configuration.FluentConfiguration.BooleanValue;
++import net.jcip.annotations.NotThreadSafe;
++import org.apache.commons.io.FileUtils;
++import org.assertj.core.util.Files;
+ import org.junit.jupiter.api.AfterEach;
+ import org.junit.jupiter.api.Test;
+ import org.junit.jupiter.api.extension.ExtendWith;
+ import org.junit.platform.engine.TestExecutionResult;
+ import org.junit.platform.launcher.Launcher;
+ import org.junit.platform.launcher.LauncherDiscoveryRequest;
+ import org.junit.platform.launcher.TestExecutionListener;
+ import org.junit.platform.launcher.TestIdentifier;
+@@ -25,25 +30,21 @@
+ import org.openqa.selenium.OutputType;
+ import org.openqa.selenium.TakesScreenshot;
+ import org.openqa.selenium.WebDriver;
+ import org.openqa.selenium.WebElement;
+ 
+ import java.io.File;
+ import java.io.IOError;
+ import java.io.IOException;
++import java.nio.charset.Charset;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.List;
+ import java.util.Random;
+-
+-import static org.assertj.core.api.Assertions.assertThat;
+-import static org.junit.jupiter.api.Assertions.assertAll;
+-import static org.junit.jupiter.api.Assertions.fail;
+-import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
+ 
+ @NotThreadSafe
+ public class FluentTestTest {
+     private static List<WebDriver> drivers = new ArrayList<>();
+     private static List<WebDriver> sharedClassDrivers = new ArrayList<>();
+     private static List<WebDriver> sharedOnceDrivers = new ArrayList<>();
+ 
+     private static List<ScreenshotWebDriver> screenshotWebDrivers = new ArrayList<>();
+@@ -327,16 +328,16 @@
+         assertThat(tmpPath.list()).contains("AutomaticScreenShotTest_failingTest.html");
+         assertThat(tmpPath.list()).contains("AutomaticScreenShotTest_failingTest.png");
+ 
+         File screenshotGeneratedFile = new File(tmpPath, "AutomaticScreenShotTest_failingTest.png");
+         File htmlDumpFile = new File(tmpPath, "AutomaticScreenShotTest_failingTest.html");
+ 
+         try {
+             assertThat(FileUtils.readFileToByteArray(screenshotGeneratedFile)).isEqualTo(screenshotData);
+-            assertThat(FileUtils.readFileToString(htmlDumpFile)).isEqualTo(html);
++            assertThat(FileUtils.readFileToString(htmlDumpFile, Charset.defaultCharset())).isEqualTo(html);
+         } finally {
+             FileUtils.deleteQuietly(screenshotGeneratedFile);
+             FileUtils.deleteQuietly(htmlDumpFile);
+         }
+ 
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,14 +1,14 @@
+ package org.fluentlenium.adapter.junit.jupiter.integration;
+ 
+ import net.jcip.annotations.NotThreadSafe;
+ import org.apache.commons.io.FileUtils;
+ import org.assertj.core.util.Files;
+-import org.fluentlenium.adapter.SharedWebDriverContainer;
++import org.fluentlenium.adapter.sharedwebdriver.SharedWebDriverContainer;
+ import org.fluentlenium.adapter.junit.jupiter.FluentTest;
+ import org.fluentlenium.adapter.junit.jupiter.MockitoExtension;
+ import org.fluentlenium.configuration.ConfigurationProperties.DriverLifecycle;
+ import org.fluentlenium.configuration.FluentConfiguration;
+ import org.fluentlenium.configuration.FluentConfiguration.BooleanValue;
+ import org.junit.jupiter.api.AfterEach;
+ import org.junit.jupiter.api.Test;
+ import org.junit.jupiter.api.extension.ExtendWith;
+--- MERGED RESULT (mergiraf; full) ---
+package org.fluentlenium.adapter.junit.jupiter.integration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
+import org.fluentlenium.adapter.junit.jupiter.FluentTest;
+import org.fluentlenium.adapter.junit.jupiter.MockitoExtension;
+import org.fluentlenium.configuration.ConfigurationProperties.DriverLifecycle;
+import org.fluentlenium.configuration.FluentConfiguration;
+import org.fluentlenium.configuration.FluentConfiguration.BooleanValue;
+import net.jcip.annotations.NotThreadSafe;
+import org.apache.commons.io.FileUtils;
+import org.assertj.core.util.Files;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.platform.engine.TestExecutionResult;
+import org.junit.platform.launcher.Launcher;
+import org.junit.platform.launcher.LauncherDiscoveryRequest;
+import org.junit.platform.launcher.TestExecutionListener;
+import org.junit.platform.launcher.TestIdentifier;
+import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
+import org.junit.platform.launcher.core.LauncherFactory;
+import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
+import org.mockito.Mockito;
+import org.openqa.selenium.By;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import java.io.File;
+import java.io.IOError;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+import org.fluentlenium.adapter.sharedwebdriver.SharedWebDriverContainer;
+
+@NotThreadSafe
+public class FluentTestTest {
+    private static List<WebDriver> drivers = new ArrayList<>();
+    private static List<WebDriver> sharedClassDrivers = new ArrayList<>();
+    private static List<WebDriver> sharedOnceDrivers = new ArrayList<>();
+
+    private static List<ScreenshotWebDriver> screenshotWebDrivers = new ArrayList<>();
+    private static String html = "<html>FluentLenium</html>";
+    private static byte[] screenshotData = {1, 4, 7, 9, 2, 4, 2, 4, 3};
+
+    private static File tmpPath = Files.newTemporaryFolder();
+
+    private static List<WebDriver.Options> sharedClassDriversOptions = new ArrayList<>();
+
+    private interface ScreenshotWebDriver extends WebDriver, TakesScreenshot {
+    }
+
+    public static class InternalTest extends FluentTest {
+        @Override
+        public WebDriver newWebDriver() {
+            WebDriver webDriver = Mockito.mock(WebDriver.class);
+            drivers.add(webDriver);
+            return webDriver;
+        }
+
+        @Test
+        public void okTest() {
+            goTo("url");
+        }
+
+        @Test
+        public void okTest2() {
+            goTo("url2");
+        }
+
+        @Test
+        public void failingTest() {
+            fail("Failing Test");
+        }
+    }
+
+    @FluentConfiguration(driverLifecycle = DriverLifecycle.CLASS)
+    @ExtendWith(MockitoExtension.class)
+    public static class InternalTestSharedClass extends FluentTest {
+        @Override
+        public WebDriver newWebDriver() {
+            WebDriver webDriver = Mockito.mock(WebDriver.class);
+            sharedClassDrivers.add(webDriver);
+            return webDriver;
+        }
+
+        @Test
+        public void okTest() {
+            goTo("url");
+        }
+
+        @Test
+        public void okTest2() {
+            goTo("url2");
+        }
+
+        @Test
+        public void failingTest() {
+            fail("Failing Test");
+        }
+    }
+
+    @FluentConfiguration(driverLifecycle = DriverLifecycle.JVM)
+    public static class InternalTestSharedOnce extends FluentTest {
+        @Override
+        public WebDriver newWebDriver() {
+            WebDriver webDriver = Mockito.mock(WebDriver.class);
+            sharedOnceDrivers.add(webDriver);
+            return webDriver;
+        }
+
+        @Test
+        public void okTest() {
+            goTo("url");
+        }
+
+        @Test
+        public void okTest2() {
+            goTo("url2");
+        }
+
+        @Test
+        public void failingTest() {
+            fail("Failing Test");
+        }
+    }
+
+    @FluentConfiguration(driverLifecycle = DriverLifecycle.CLASS, deleteCookies = BooleanValue.TRUE)
+    public static class ShouldDeleteCookiesTest extends FluentTest {
+        @Override
+        public WebDriver newWebDriver() {
+            WebDriver webDriver = Mockito.mock(WebDriver.class);
+
+            WebDriver.Options options = Mockito.mock(WebDriver.Options.class);
+            sharedClassDriversOptions.add(options);
+            Mockito.when(webDriver.manage()).thenReturn(options);
+
+            sharedClassDrivers.add(webDriver);
+            return webDriver;
+        }
+
+        @Test
+        public void okTest() {
+            goTo("url");
+        }
+
+        @Test
+        public void okTest2() {
+            goTo("url2");
+        }
+
+        @Test
+        public void failingTest() {
+            fail("Failing Test");
+        }
+    }
+
+    public static class AutomaticScreenShotTest extends FluentTest {
+
+        public AutomaticScreenShotTest() {
+            getConfiguration().setHtmlDumpPath(tmpPath.getPath());
+            getConfiguration().setHtmlDumpMode(TriggerMode.AUTOMATIC_ON_FAIL);
+            getConfiguration().setScreenshotPath(tmpPath.getPath());
+            getConfiguration().setScreenshotMode(TriggerMode.AUTOMATIC_ON_FAIL);
+        }
+
+        @Override
+        public WebDriver newWebDriver() {
+            try {
+                File screenshotFile = File.createTempFile("FluentTestTest.java", "");
+                FileUtils.writeByteArrayToFile(screenshotFile, screenshotData);
+                screenshotFile.deleteOnExit();
+            } catch (IOException e) {
+                throw new IOError(e);
+            }
+
+            ScreenshotWebDriver webDriver = Mockito.mock(ScreenshotWebDriver.class);
+            byte[] screenshot = new byte[20];
+            new Random().nextBytes(screenshot);
+            Mockito.when(webDriver.getScreenshotAs(OutputType.BYTES)).thenReturn(screenshotData);
+
+            WebElement htmlElement = Mockito.mock(WebElement.class);
+            Mockito.when(htmlElement.getAttribute("innerHTML")).thenReturn(html);
+
+            Mockito.when(webDriver.findElements(By.cssSelector("html"))).thenReturn(Arrays.asList(htmlElement));
+            screenshotWebDrivers.add(webDriver);
+            return webDriver;
+        }
+
+        @Test
+        public void failingTest() {
+            fail("Failing Test");
+        }
+    }
+
+    @AfterEach
+    public void after() {
+        drivers.clear();
+        sharedClassDrivers.clear();
+        sharedOnceDrivers.clear();
+        screenshotWebDrivers.clear();
+        SharedWebDriverContainer.INSTANCE.quitAll();
+    }
+
+    @Test
+    public void testFluentTest() {
+        LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
+                .selectors(selectClass(InternalTest.class)).build();
+
+        class Listener implements TestExecutionListener {
+            public List<Throwable> failures = new ArrayList<>();
+
+            @Override
+            public void executionFinished(TestIdentifier identifier, TestExecutionResult result) {
+                result.getThrowable().ifPresent(throwable -> failures.add(throwable));
+            }
+        }
+
+        final Listener listener = new Listener();
+
+        Launcher launcher = LauncherFactory.create();
+        launcher.registerTestExecutionListeners(listener);
+        launcher.execute(request);
+
+        assertThat(listener.failures).hasSize(1);
+        assertThat(listener.failures.get(0).getMessage()).isEqualTo("Failing Test");
+
+        assertThat(drivers).hasSize(3);
+
+        for (WebDriver driver : drivers) {
+            Mockito.verify(driver).quit();
+        }
+
+        assertThat(SharedWebDriverContainer.INSTANCE.getTestClassDrivers(InternalTest.class)).isEmpty();
+    }
+
+    @Test
+    public void testInternalTestSharedClass() {
+        SummaryGeneratingListener summaryGeneratingListener = getSummaryGeneratingListener(InternalTestSharedClass.class);
+
+        assertThat(summaryGeneratingListener.getSummary().getFailures()).hasSize(1);
+        assertThat(summaryGeneratingListener.getSummary().getFailures().get(0).getException().getMessage())
+                .isEqualTo("Failing Test");
+
+        assertThat(sharedClassDrivers).hasSize(1);
+
+        for (WebDriver driver : sharedClassDrivers) {
+            Mockito.verify(driver).quit();
+        }
+
+        assertThat(SharedWebDriverContainer.INSTANCE.getTestClassDrivers(InternalTest.class)).isEmpty();
+    }
+
+    private SummaryGeneratingListener getSummaryGeneratingListener(Class<? extends FluentTest> testClass) {
+        LauncherDiscoveryRequest request = LauncherDiscoveryRequestBuilder.request()
+                .selectors(selectClass(testClass)).build();
+
+        Launcher launcher = LauncherFactory.create();
+        SummaryGeneratingListener summaryGeneratingListener
+                = new SummaryGeneratingListener();
+
+        launcher.execute(request, summaryGeneratingListener);
+        return summaryGeneratingListener;
+    }
+
+    @Test
+    public void testInternalTestSharedOnce() {
+        SummaryGeneratingListener summaryGeneratingListener = getSummaryGeneratingListener(InternalTestSharedOnce.class);
+        assertThat(summaryGeneratingListener.getSummary().getFailures()).hasSize(1);
+        assertThat(summaryGeneratingListener.getSummary().getFailures().get(0).getException().getMessage())
+                .isEqualTo("Failing Test");
+
+        assertThat(sharedOnceDrivers).hasSize(1);
+
+        for (WebDriver driver : sharedOnceDrivers) {
+            Mockito.verify(driver, Mockito.never()).quit();
+        }
+
+        assertThat(SharedWebDriverContainer.INSTANCE.getAllDrivers()).hasSize(1);
+    }
+
+    @Test
+    public void testShouldDeleteCookiesTest() {
+        SummaryGeneratingListener summaryGeneratingListener =
+                getSummaryGeneratingListener(ShouldDeleteCookiesTest.class);
+        assertThat(summaryGeneratingListener.getSummary().getFailures()).hasSize(1);
+        assertThat(summaryGeneratingListener.getSummary().getFailures().get(0).getException().getMessage())
+                .isEqualTo("Failing Test");
+
+        assertThat(sharedClassDrivers).hasSize(1);
+
+        for (WebDriver driver : sharedClassDrivers) {
+            Mockito.verify(driver).quit();
+        }
+
+        for (WebDriver.Options options : sharedClassDriversOptions) {
+            Mockito.verify(options, Mockito.times(3)).deleteAllCookies();
+        }
+
+        assertThat(SharedWebDriverContainer.INSTANCE.getAllDrivers()).isEmpty();
+    }
+
+    @Test
+    public void testAutomaticScreenShotTest() throws IOException {
+        SummaryGeneratingListener summaryGeneratingListener =
+                getSummaryGeneratingListener(AutomaticScreenShotTest.class);
+
+        assertAll("summary",
+                () -> assertThat(summaryGeneratingListener.getSummary().getFailures()).hasSize(1),
+                () -> assertThat(summaryGeneratingListener.getSummary().getFailures().get(0)
+                        .getException().getMessage()).isEqualTo("Failing Test"));
+
+        assertThat(screenshotWebDrivers).hasSize(1);
+
+        ScreenshotWebDriver driver = screenshotWebDrivers.get(0);
+
+        Mockito.verify(driver).getScreenshotAs(OutputType.BYTES);
+        Mockito.verify(driver).findElements(By.cssSelector("html"));
+
+        assertThat(tmpPath.list()).contains("AutomaticScreenShotTest_failingTest.html");
+        assertThat(tmpPath.list()).contains("AutomaticScreenShotTest_failingTest.png");
+
+        File screenshotGeneratedFile = new File(tmpPath, "AutomaticScreenShotTest_failingTest.png");
+        File htmlDumpFile = new File(tmpPath, "AutomaticScreenShotTest_failingTest.html");
+
+        try {
+            assertThat(FileUtils.readFileToByteArray(screenshotGeneratedFile)).isEqualTo(screenshotData);
+            assertThat(FileUtils.readFileToString(htmlDumpFile, Charset.defaultCharset())).isEqualTo(html);
+        } finally {
+            FileUtils.deleteQuietly(screenshotGeneratedFile);
+            FileUtils.deleteQuietly(htmlDumpFile);
+        }
+
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,14 +1,16 @@
+ package org.fluentlenium.adapter.junit.jupiter.integration;
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.junit.jupiter.api.Assertions.assertAll;
+ import static org.junit.jupiter.api.Assertions.fail;
+ import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
++
++import org.fluentlenium.adapter.sharedwebdriver.SharedWebDriverContainer;
+ import org.fluentlenium.adapter.junit.jupiter.FluentTest;
+ import org.fluentlenium.adapter.junit.jupiter.MockitoExtension;
+ import org.fluentlenium.configuration.ConfigurationProperties.DriverLifecycle;
+ import org.fluentlenium.configuration.FluentConfiguration;
+ import org.fluentlenium.configuration.FluentConfiguration.BooleanValue;
+ import net.jcip.annotations.NotThreadSafe;
+ import org.apache.commons.io.FileUtils;
+ import org.assertj.core.util.Files;
+@@ -24,25 +26,25 @@
+ import org.junit.platform.launcher.core.LauncherFactory;
+ import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
+ import org.mockito.Mockito;
+ import org.openqa.selenium.By;
+ import org.openqa.selenium.OutputType;
+ import org.openqa.selenium.TakesScreenshot;
+ import org.openqa.selenium.WebDriver;
+ import org.openqa.selenium.WebElement;
++
+ import java.io.File;
+ import java.io.IOError;
+ import java.io.IOException;
+ import java.nio.charset.Charset;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.List;
+ import java.util.Random;
+-import org.fluentlenium.adapter.sharedwebdriver.SharedWebDriverContainer;
+ 
+ @NotThreadSafe
+ public class FluentTestTest {
+     private static List<WebDriver> drivers = new ArrayList<>();
+     private static List<WebDriver> sharedClassDrivers = new ArrayList<>();
+     private static List<WebDriver> sharedOnceDrivers = new ArrayList<>();
+ 
+     private static List<ScreenshotWebDriver> screenshotWebDrivers = new ArrayList<>();
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+=== FILE 3/3: fluentlenium-junit/src/test/java/org/fluentlenium/adapter/junit/integration/FluentTestTest.java ===
+--- OURS vs BASE (unified diff, -U8) ---
+--- base
++++ ours
+@@ -1,39 +1,40 @@
+ package org.fluentlenium.adapter.junit.integration;
+ 
+-import net.jcip.annotations.NotThreadSafe;
+-import org.apache.commons.io.FileUtils;
+-import org.assertj.core.util.Files;
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.junit.Assert.fail;
++
+ import org.fluentlenium.adapter.SharedWebDriverContainer;
+ import org.fluentlenium.adapter.junit.FluentTest;
+ import org.fluentlenium.configuration.ConfigurationProperties.DriverLifecycle;
+ import org.fluentlenium.configuration.FluentConfiguration;
+ import org.fluentlenium.configuration.FluentConfiguration.BooleanValue;
++import net.jcip.annotations.NotThreadSafe;
++import org.apache.commons.io.FileUtils;
++import org.assertj.core.util.Files;
+ import org.junit.After;
+ import org.junit.Test;
+ import org.junit.runner.JUnitCore;
+ import org.junit.runner.Result;
+ import org.mockito.Mockito;
+ import org.openqa.selenium.By;
+ import org.openqa.selenium.OutputType;
+ import org.openqa.selenium.TakesScreenshot;
+ import org.openqa.selenium.WebDriver;
+ import org.openqa.selenium.WebElement;
+ 
+ import java.io.File;
+ import java.io.IOError;
+ import java.io.IOException;
++import java.nio.charset.Charset;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.List;
+ import java.util.Random;
+-
+-import static org.assertj.core.api.Assertions.assertThat;
+-import static org.junit.Assert.fail;
+ 
+ @NotThreadSafe
+ public class FluentTestTest {
+     private static List<WebDriver> drivers = new ArrayList<>();
+     private static List<WebDriver> sharedClassDrivers = new ArrayList<>();
+     private static List<WebDriver> sharedOnceDrivers = new ArrayList<>();
+ 
+     private static List<ScreenshotWebDriver> screenshotWebDrivers = new ArrayList<>();
+@@ -283,16 +284,16 @@
+         File screenshotGeneratedFile = new File(tmpPath,
+                 "AutomaticScreenShotTest_failingTest(org.fluentlenium.adapter.junit.integration"
+                         + ".FluentTestTest$AutomaticScreenShotTest).png");
+         File htmlDumpFile = new File(tmpPath, "AutomaticScreenShotTest_failingTest(org.fluentlenium.adapter.junit.integration"
+                 + ".FluentTestTest$AutomaticScreenShotTest).html");
+ 
+         try {
+             assertThat(FileUtils.readFileToByteArray(screenshotGeneratedFile)).isEqualTo(screenshotData);
+-            assertThat(FileUtils.readFileToString(htmlDumpFile)).isEqualTo(html);
++            assertThat(FileUtils.readFileToString(htmlDumpFile, Charset.defaultCharset())).isEqualTo(html);
+         } finally {
+             FileUtils.deleteQuietly(screenshotGeneratedFile);
+             FileUtils.deleteQuietly(htmlDumpFile);
+         }
+ 
+     }
+ }
+--- THEIRS vs BASE (unified diff, -U8) ---
+--- base
++++ theirs
+@@ -1,14 +1,14 @@
+ package org.fluentlenium.adapter.junit.integration;
+ 
+ import net.jcip.annotations.NotThreadSafe;
+ import org.apache.commons.io.FileUtils;
+ import org.assertj.core.util.Files;
+-import org.fluentlenium.adapter.SharedWebDriverContainer;
++import org.fluentlenium.adapter.sharedwebdriver.SharedWebDriverContainer;
+ import org.fluentlenium.adapter.junit.FluentTest;
+ import org.fluentlenium.configuration.ConfigurationProperties.DriverLifecycle;
+ import org.fluentlenium.configuration.FluentConfiguration;
+ import org.fluentlenium.configuration.FluentConfiguration.BooleanValue;
+ import org.junit.After;
+ import org.junit.Test;
+ import org.junit.runner.JUnitCore;
+ import org.junit.runner.Result;
+--- MERGED RESULT (mergiraf; full) ---
+package org.fluentlenium.adapter.junit.integration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.fail;
+import org.fluentlenium.adapter.junit.FluentTest;
+import org.fluentlenium.configuration.ConfigurationProperties.DriverLifecycle;
+import org.fluentlenium.configuration.FluentConfiguration;
+import org.fluentlenium.configuration.FluentConfiguration.BooleanValue;
+import net.jcip.annotations.NotThreadSafe;
+import org.apache.commons.io.FileUtils;
+import org.assertj.core.util.Files;
+import org.junit.After;
+import org.junit.Test;
+import org.junit.runner.JUnitCore;
+import org.junit.runner.Result;
+import org.mockito.Mockito;
+import org.openqa.selenium.By;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import java.io.File;
+import java.io.IOError;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+import org.fluentlenium.adapter.sharedwebdriver.SharedWebDriverContainer;
+
+@NotThreadSafe
+public class FluentTestTest {
+    private static List<WebDriver> drivers = new ArrayList<>();
+    private static List<WebDriver> sharedClassDrivers = new ArrayList<>();
+    private static List<WebDriver> sharedOnceDrivers = new ArrayList<>();
+
+    private static List<ScreenshotWebDriver> screenshotWebDrivers = new ArrayList<>();
+    private static String html = "<html>FluentLenium</html>";
+    private static byte[] screenshotData = {1, 4, 7, 9, 2, 4, 2, 4, 3};
+
+    private static File tmpPath = Files.newTemporaryFolder();
+
+    private static List<WebDriver.Options> sharedClassDriversOptions = new ArrayList<>();
+
+    private interface ScreenshotWebDriver extends WebDriver, TakesScreenshot {
+    }
+
+    public static class InternalTest extends FluentTest {
+        @Override
+        public WebDriver newWebDriver() {
+            WebDriver webDriver = Mockito.mock(WebDriver.class);
+            drivers.add(webDriver);
+            return webDriver;
+        }
+
+        @Test
+        public void okTest() {
+            goTo("url");
+        }
+
+        @Test
+        public void okTest2() {
+            goTo("url2");
+        }
+
+        @Test
+        public void failingTest() {
+            fail("Failing Test");
+        }
+    }
+
+    @FluentConfiguration(driverLifecycle = DriverLifecycle.CLASS)
+    public static class InternalTestSharedClass extends FluentTest {
+        @Override
+        public WebDriver newWebDriver() {
+            WebDriver webDriver = Mockito.mock(WebDriver.class);
+            sharedClassDrivers.add(webDriver);
+            return webDriver;
+        }
+
+        @Test
+        public void okTest() {
+            goTo("url");
+        }
+
+        @Test
+        public void okTest2() {
+            goTo("url2");
+        }
+
+        @Test
+        public void failingTest() {
+            fail("Failing Test");
+        }
+    }
+
+    @FluentConfiguration(driverLifecycle = DriverLifecycle.JVM)
+    public static class InternalTestSharedOnce extends FluentTest {
+        @Override
+        public WebDriver newWebDriver() {
+            WebDriver webDriver = Mockito.mock(WebDriver.class);
+            sharedOnceDrivers.add(webDriver);
+            return webDriver;
+        }
+
+        @Test
+        public void okTest() {
+            goTo("url");
+        }
+
+        @Test
+        public void okTest2() {
+            goTo("url2");
+        }
+
+        @Test
+        public void failingTest() {
+            fail("Failing Test");
+        }
+    }
+
+    @FluentConfiguration(driverLifecycle = DriverLifecycle.CLASS, deleteCookies = BooleanValue.TRUE)
+    public static class ShouldDeleteCookiesTest extends FluentTest {
+        @Override
+        public WebDriver newWebDriver() {
+            WebDriver webDriver = Mockito.mock(WebDriver.class);
+
+            WebDriver.Options options = Mockito.mock(WebDriver.Options.class);
+            sharedClassDriversOptions.add(options);
+            Mockito.when(webDriver.manage()).thenReturn(options);
+
+            sharedClassDrivers.add(webDriver);
+            return webDriver;
+        }
+
+        @Test
+        public void okTest() {
+            goTo("url");
+        }
+
+        @Test
+        public void okTest2() {
+            goTo("url2");
+        }
+
+        @Test
+        public void failingTest() {
+            fail("Failing Test");
+        }
+    }
+
+    public static class AutomaticScreenShotTest extends FluentTest {
+
+        public AutomaticScreenShotTest() {
+            getConfiguration().setHtmlDumpPath(tmpPath.getPath());
+            getConfiguration().setHtmlDumpMode(TriggerMode.AUTOMATIC_ON_FAIL);
+            getConfiguration().setScreenshotPath(tmpPath.getPath());
+            getConfiguration().setScreenshotMode(TriggerMode.AUTOMATIC_ON_FAIL);
+        }
+
+        @Override
+        public WebDriver newWebDriver() {
+            try {
+                File screenshotFile = File.createTempFile("FluentTestTest.java", "");
+                FileUtils.writeByteArrayToFile(screenshotFile, screenshotData);
+                screenshotFile.deleteOnExit();
+            } catch (IOException e) {
+                throw new IOError(e);
+            }
+
+            ScreenshotWebDriver webDriver = Mockito.mock(ScreenshotWebDriver.class);
+            byte[] screenshot = new byte[20];
+            new Random().nextBytes(screenshot);
+            Mockito.when(webDriver.getScreenshotAs(OutputType.BYTES)).thenReturn(screenshotData);
+
+            WebElement htmlElement = Mockito.mock(WebElement.class);
+            Mockito.when(htmlElement.getAttribute("innerHTML")).thenReturn(html);
+
+            Mockito.when(webDriver.findElements(By.cssSelector("html"))).thenReturn(Arrays.asList(htmlElement));
+            screenshotWebDrivers.add(webDriver);
+            return webDriver;
+        }
+
+        @Test
+        public void failingTest() {
+            fail("Failing Test");
+        }
+    }
+
+    @After
+    public void after() {
+        drivers.clear();
+        sharedClassDrivers.clear();
+        sharedOnceDrivers.clear();
+        screenshotWebDrivers.clear();
+        SharedWebDriverContainer.INSTANCE.quitAll();
+    }
+
+    @Test
+    public void testFluentTest() {
+        Result result = JUnitCore.runClasses(InternalTest.class);
+        assertThat(result.getFailures()).hasSize(1);
+        assertThat(result.getFailures().get(0).getMessage()).isEqualTo("Failing Test");
+
+        assertThat(drivers).hasSize(3);
+
+        for (WebDriver driver : drivers) {
+            Mockito.verify(driver).quit();
+        }
+
+        assertThat(SharedWebDriverContainer.INSTANCE.getTestClassDrivers(InternalTest.class)).isEmpty();
+    }
+
+    @Test
+    public void testInternalTestSharedClass() {
+        Result result = JUnitCore.runClasses(InternalTestSharedClass.class);
+        assertThat(result.getFailures()).hasSize(1);
+        assertThat(result.getFailures().get(0).getMessage()).isEqualTo("Failing Test");
+
+        assertThat(sharedClassDrivers).hasSize(1);
+
+        for (WebDriver driver : sharedClassDrivers) {
+            Mockito.verify(driver).quit();
+        }
+
+        assertThat(SharedWebDriverContainer.INSTANCE.getTestClassDrivers(InternalTest.class)).isEmpty();
+    }
+
+    @Test
+    public void testInternalTestSharedOnce() {
+        Result result = JUnitCore.runClasses(InternalTestSharedOnce.class);
+        assertThat(result.getFailures()).hasSize(1);
+        assertThat(result.getFailures().get(0).getMessage()).isEqualTo("Failing Test");
+
+        assertThat(sharedOnceDrivers).hasSize(1);
+
+        for (WebDriver driver : sharedOnceDrivers) {
+            Mockito.verify(driver, Mockito.never()).quit();
+        }
+
+        assertThat(SharedWebDriverContainer.INSTANCE.getAllDrivers()).hasSize(1);
+    }
+
+    @Test
+    public void testShouldDeleteCookiesTest() {
+        Result result = JUnitCore.runClasses(ShouldDeleteCookiesTest.class);
+        assertThat(result.getFailures()).hasSize(1);
+        assertThat(result.getFailures().get(0).getMessage()).isEqualTo("Failing Test");
+
+        assertThat(sharedClassDrivers).hasSize(1);
+
+        for (WebDriver driver : sharedClassDrivers) {
+            Mockito.verify(driver).quit();
+        }
+
+        for (WebDriver.Options options : sharedClassDriversOptions) {
+            Mockito.verify(options, Mockito.times(3)).deleteAllCookies();
+        }
+
+        assertThat(SharedWebDriverContainer.INSTANCE.getAllDrivers()).isEmpty();
+    }
+
+    @Test
+    public void testAutomaticScreenShotTest() throws IOException {
+        Result result = JUnitCore.runClasses(AutomaticScreenShotTest.class);
+        assertThat(result.getFailures()).hasSize(1);
+        assertThat(result.getFailures().get(0).getMessage()).isEqualTo("Failing Test");
+
+        assertThat(screenshotWebDrivers).hasSize(1);
+
+        ScreenshotWebDriver driver = screenshotWebDrivers.get(0);
+
+        Mockito.verify(driver).getScreenshotAs(OutputType.BYTES);
+        Mockito.verify(driver).findElements(By.cssSelector("html"));
+
+        assertThat(tmpPath.list()).contains("AutomaticScreenShotTest_failingTest(org.fluentlenium.adapter.junit.integration"
+                + ".FluentTestTest$AutomaticScreenShotTest).html");
+        assertThat(tmpPath.list()).contains("AutomaticScreenShotTest_failingTest(org.fluentlenium.adapter.junit.integration"
+                + ".FluentTestTest$AutomaticScreenShotTest).png");
+
+        File screenshotGeneratedFile = new File(tmpPath,
+                "AutomaticScreenShotTest_failingTest(org.fluentlenium.adapter.junit.integration"
+                        + ".FluentTestTest$AutomaticScreenShotTest).png");
+        File htmlDumpFile = new File(tmpPath, "AutomaticScreenShotTest_failingTest(org.fluentlenium.adapter.junit.integration"
+                + ".FluentTestTest$AutomaticScreenShotTest).html");
+
+        try {
+            assertThat(FileUtils.readFileToByteArray(screenshotGeneratedFile)).isEqualTo(screenshotData);
+            assertThat(FileUtils.readFileToString(htmlDumpFile, Charset.defaultCharset())).isEqualTo(html);
+        } finally {
+            FileUtils.deleteQuietly(screenshotGeneratedFile);
+            FileUtils.deleteQuietly(htmlDumpFile);
+        }
+
+    }
+}
+--- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+--- merged
++++ developer
+@@ -1,12 +1,14 @@
+ package org.fluentlenium.adapter.junit.integration;
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.junit.Assert.fail;
++
++import org.fluentlenium.adapter.sharedwebdriver.SharedWebDriverContainer;
+ import org.fluentlenium.adapter.junit.FluentTest;
+ import org.fluentlenium.configuration.ConfigurationProperties.DriverLifecycle;
+ import org.fluentlenium.configuration.FluentConfiguration;
+ import org.fluentlenium.configuration.FluentConfiguration.BooleanValue;
+ import net.jcip.annotations.NotThreadSafe;
+ import org.apache.commons.io.FileUtils;
+ import org.assertj.core.util.Files;
+ import org.junit.After;
+@@ -14,25 +16,25 @@
+ import org.junit.runner.JUnitCore;
+ import org.junit.runner.Result;
+ import org.mockito.Mockito;
+ import org.openqa.selenium.By;
+ import org.openqa.selenium.OutputType;
+ import org.openqa.selenium.TakesScreenshot;
+ import org.openqa.selenium.WebDriver;
+ import org.openqa.selenium.WebElement;
++
+ import java.io.File;
+ import java.io.IOError;
+ import java.io.IOException;
+ import java.nio.charset.Charset;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.List;
+ import java.util.Random;
+-import org.fluentlenium.adapter.sharedwebdriver.SharedWebDriverContainer;
+ 
+ @NotThreadSafe
+ public class FluentTestTest {
+     private static List<WebDriver> drivers = new ArrayList<>();
+     private static List<WebDriver> sharedClassDrivers = new ArrayList<>();
+     private static List<WebDriver> sharedOnceDrivers = new ArrayList<>();
+ 
+     private static List<ScreenshotWebDriver> screenshotWebDrivers = new ArrayList<>();
+--- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk; PARSE/RESOLVE/OTHER) ---
+(none)
+
+<!-- {UNIT_INPUTS} = per file, in this order:
+  === FILE k/n: <path> ===
+  --- OURS vs BASE (unified diff, -U8) ---
+  --- THEIRS vs BASE (unified diff, -U8) ---
+  --- MERGED RESULT (mergiraf; full if ≤700 lines, else windowed ±40 around
+      regions differing from base, plus package/imports/enclosing signatures) ---
+  --- MERGED vs DEVELOPER RESOLUTION (unified diff, -U8) ---
+  --- COMPILE DELTA (javac, single-file, eclipse-temurin:17-jdk):
+      errors on MERGED absent on DEV, classified PARSE/RESOLVE/OTHER;
+      "(none)" when empty ---
+-->
