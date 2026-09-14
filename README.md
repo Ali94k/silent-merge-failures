@@ -12,7 +12,7 @@ It is not the working repository. It has no development history. The data corpor
 
 The files are a snapshot of the working repository at commit `2e10f41`.
 
-<!-- RELEASE: public commit ________ · release tag ________ · DOI ________ (filled in once the release is archived) -->
+<!-- RELEASE: public commit ________ · release tag v1.0.0 · DOI ________ (filled in once the release is archived) -->
 
 ## Resolving a thesis citation
 
@@ -114,6 +114,7 @@ The printed thesis keeps five appendices: A the methodology inventories (Tables 
 | `CLAUDE.md` | The project's standing rules: the written contract that Chapter 9 cites. |
 | `THREATS_TO_VALIDITY.md` | The project's threats register, a ledger source. |
 | `LICENSE`, `LICENSE-docs.md` | The licence texts. |
+| `CITATION.cff`, `.zenodo.json` | Citation metadata for the release archive. |
 
 ## Running the code
 
